@@ -30,8 +30,15 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
                     ? std::chrono::milliseconds::max()
                     : std::chrono::milliseconds(
                           (config_["interval"].isNumeric()
-                               ? std::max(1L,  // Minimum 1ms due to millisecond precision
-                                          static_cast<long>(config_["interval"].asDouble() * 1000))
+                               ? (config_["interval"].asDouble() > 0
+                                      // Minimum 1ms due to millisecond precision
+                                      ? std::max(1L, static_cast<long>(
+                                                         config_["interval"].asDouble() * 1000))
+                                      // Only modules with no periodic default use 0 as an
+                                      // event-driven sentinel. Periodic modules fall back to their
+                                      // default interval so interval:0 cannot busy-loop or hit
+                                      // modulo-by-zero clock code.
+                                      : (interval == 0 ? 0L : 1000L * static_cast<long>(interval)))
                                : 1000 * (long)interval))),
       default_format_(format_) {
   label_.set_name(name);
@@ -121,9 +128,12 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
         }
         submenus_[key] = GTK_MENU_ITEM(item);
         menuActionsMap_[key] = it->asString();
-        GtkMenuEventData* data = new GtkMenuEventData{reap_mtx, reap, menuActionsMap_[key].c_str()};
-        g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
-                         (gpointer)data);
+        GtkMenuEventData* data = g_new(GtkMenuEventData, 1);
+	data->reap_mtx = reap_mtx;
+	data->reap = reap;
+	data->menuActionItem = menuActionsMap_[key].c_str();
+        g_signal_connect_data(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
+                         (gpointer)data, (GClosureNotify)g_free, (GConnectFlags)0);
       }
       g_object_unref(builder);
     } catch (std::runtime_error& e) {
@@ -146,22 +156,22 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
 auto ALabel::update() -> void { AModule::update(); }
 
 bool ALabel::setLabelMarkup(const Glib::ustring& markup) {
-  if (last_label_markup_ == markup) {
+  if (last_label_markup_ == markup.raw()) {
     return false;
   }
 
   label_.set_markup(markup);
-  last_label_markup_ = markup;
+  last_label_markup_ = markup.raw();
   return true;
 }
 
 bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
-  if (last_tooltip_markup_ == markup) {
+  if (last_tooltip_markup_ == markup.raw()) {
     return false;
   }
 
   label_.set_tooltip_markup(markup);
-  last_tooltip_markup_ = markup;
+  last_tooltip_markup_ = markup.raw();
   return true;
 }
 
@@ -176,7 +186,28 @@ std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    if (size != 0U) {
+    if (size != 0U && format_icons[0].isObject()) {
+      std::string last_icon;
+      for (const auto& threshold : format_icons) {
+        if (!threshold.isObject() || !threshold["icon"].isString() || !threshold["max"].isUInt()) {
+          static bool warned = false;
+          if (!warned) {
+            spdlog::warn(
+                "format-icons: skipping invalid threshold object, expected {\"icon\": \"...\", "
+                "\"max\": N}");
+            warned = true;
+          }
+          continue;
+        }
+        last_icon = threshold["icon"].asString();
+        if (percentage <= threshold["max"].asUInt()) {
+          return last_icon;
+        }
+      }
+      if (!last_icon.empty()) {
+        return last_icon;
+      }
+    } else if (size != 0U) {
       auto divisor = std::max(1U, (max == 0 ? 100U : static_cast<unsigned>(max)) / size);
       auto idx = std::clamp(percentage / divisor, 0U, size - 1);
       format_icons = format_icons[idx];
@@ -203,7 +234,28 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    if (size != 0U) {
+    if (size != 0U && format_icons[0].isObject()) {
+      std::string last_icon;
+      for (const auto& threshold : format_icons) {
+        if (!threshold.isObject() || !threshold["icon"].isString() || !threshold["max"].isUInt()) {
+          static bool warned = false;
+          if (!warned) {
+            spdlog::warn(
+                "format-icons: skipping invalid threshold object, expected {\"icon\": \"...\", "
+                "\"max\": N}");
+            warned = true;
+          }
+          continue;
+        }
+        last_icon = threshold["icon"].asString();
+        if (percentage <= threshold["max"].asUInt()) {
+          return last_icon;
+        }
+      }
+      if (!last_icon.empty()) {
+        return last_icon;
+      }
+    } else if (size != 0U) {
       auto divisor = std::max(1U, (max == 0 ? 100U : static_cast<unsigned>(max)) / size);
       auto idx = std::clamp(percentage / divisor, 0U, size - 1);
       format_icons = format_icons[idx];

@@ -31,6 +31,18 @@ Language::~Language() {
 auto Language::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
 
+  // Swap the layout CSS class here (main thread). onEvent() runs on the IPC
+  // thread and must never touch GTK -- that race corrupts the heap (#4665).
+  if (prev_short_name_ != layout_.short_name) {
+    if (!prev_short_name_.empty()) {
+      label_.get_style_context()->remove_class(prev_short_name_);
+    }
+    if (!layout_.short_name.empty()) {
+      label_.get_style_context()->add_class(layout_.short_name);
+    }
+    prev_short_name_ = layout_.short_name;
+  }
+
   spdlog::debug("hyprland language update with full name {}", layout_.full_name);
   spdlog::debug("hyprland language update with short name {}", layout_.short_name);
   spdlog::debug("hyprland language update with short description {}", layout_.short_description);
@@ -39,10 +51,18 @@ auto Language::update() -> void {
   std::string layoutName = std::string{};
   if (config_.isMember("format-" + layout_.short_description + "-" + layout_.variant)) {
     const auto propName = "format-" + layout_.short_description + "-" + layout_.variant;
-    layoutName = fmt::format(fmt::runtime(format_), config_[propName].asString());
+    layoutName =
+        trim(fmt::format(fmt::runtime(format_), config_[propName].asString(),
+                         fmt::arg("long", layout_.full_name), fmt::arg("short", layout_.short_name),
+                         fmt::arg("shortDescription", layout_.short_description),
+                         fmt::arg("variant", layout_.variant)));
   } else if (config_.isMember("format-" + layout_.short_description)) {
     const auto propName = "format-" + layout_.short_description;
-    layoutName = fmt::format(fmt::runtime(format_), config_[propName].asString());
+    layoutName =
+        trim(fmt::format(fmt::runtime(format_), config_[propName].asString(),
+                         fmt::arg("long", layout_.full_name), fmt::arg("short", layout_.short_name),
+                         fmt::arg("shortDescription", layout_.short_description),
+                         fmt::arg("variant", layout_.variant)));
   } else {
     layoutName = trim(fmt::format(fmt::runtime(format_), fmt::arg("long", layout_.full_name),
                                   fmt::arg("short", layout_.short_name),
@@ -54,24 +74,29 @@ auto Language::update() -> void {
   std::string tooltipContent = std::string{};
   bool tooltip_enabled = tooltipEnabled();
   if (tooltip_enabled) {
-    if (config_.isMember("tooltip-format")) {
-      auto tooltip_format = config_["tooltip-format"].asString();
-      if (config_.isMember("tooltip-format-" + layout_.short_description + "-" + layout_.variant)) {
-        const auto propName = "tooltip-format-" + layout_.short_description + "-" + layout_.variant;
-        tooltipContent = fmt::format(fmt::runtime(tooltip_format), config_[propName].asString());
-      } else if (config_.isMember("tooltip-format-" + layout_.short_description)) {
-        const auto propName = "tooltip-format-" + layout_.short_description;
-        tooltipContent = fmt::format(fmt::runtime(tooltip_format), config_[propName].asString());
-      } else {
-        tooltipContent =
-            trim(fmt::format(fmt::runtime(tooltip_format), fmt::arg("long", layout_.full_name),
-                             fmt::arg("short", layout_.short_name),
-                             fmt::arg("shortDescription", layout_.short_description),
-                             fmt::arg("variant", layout_.variant)));
-      }
+    // Default to "{long}" when no tooltip-format is provided, matching the man page
+    auto tooltip_format =
+        config_.isMember("tooltip-format") ? config_["tooltip-format"].asString() : "{long}";
+    if (config_.isMember("tooltip-format-" + layout_.short_description + "-" + layout_.variant)) {
+      const auto propName = "tooltip-format-" + layout_.short_description + "-" + layout_.variant;
+      tooltipContent = trim(fmt::format(fmt::runtime(tooltip_format), config_[propName].asString(),
+                                        fmt::arg("long", layout_.full_name),
+                                        fmt::arg("short", layout_.short_name),
+                                        fmt::arg("shortDescription", layout_.short_description),
+                                        fmt::arg("variant", layout_.variant)));
+    } else if (config_.isMember("tooltip-format-" + layout_.short_description)) {
+      const auto propName = "tooltip-format-" + layout_.short_description;
+      tooltipContent = trim(fmt::format(fmt::runtime(tooltip_format), config_[propName].asString(),
+                                        fmt::arg("long", layout_.full_name),
+                                        fmt::arg("short", layout_.short_name),
+                                        fmt::arg("shortDescription", layout_.short_description),
+                                        fmt::arg("variant", layout_.variant)));
     } else {
-      // if no tooltip format is provided, use the same text as the module
-      tooltipContent = layoutName;
+      tooltipContent =
+          trim(fmt::format(fmt::runtime(tooltip_format), fmt::arg("long", layout_.full_name),
+                           fmt::arg("short", layout_.short_name),
+                           fmt::arg("shortDescription", layout_.short_description),
+                           fmt::arg("variant", layout_.variant)));
     }
     spdlog::debug("hyprland language formatted tooltip content {}", tooltipContent);
   }
@@ -84,24 +109,6 @@ auto Language::update() -> void {
     }
   } else {
     label_.hide();
-  }
-
-  // Tooltip support
-  if (tooltipEnabled()) {
-    std::string tooltipFormat;
-    if (config_["tooltip-format"].isString()) {
-      tooltipFormat = config_["tooltip-format"].asString();
-    } else {
-      tooltipFormat = "{long}";
-    }
-    auto tooltipText =
-        trim(fmt::format(fmt::runtime(tooltipFormat), fmt::arg("long", layout_.full_name),
-                         fmt::arg("short", layout_.short_name),
-                         fmt::arg("shortDescription", layout_.short_description),
-                         fmt::arg("variant", layout_.variant)));
-    label_.set_tooltip_text(tooltipText);
-  } else {
-    label_.set_tooltip_text("");
   }
 
   ALabel::update();
@@ -149,9 +156,8 @@ void Language::onEvent(const std::string& ev) {
 
   layoutName = waybar::util::sanitize_string(layoutName);
 
-  removeXkbLayoutCssClass();
+  // CSS class swap happens in update() on the main thread (#4665).
   layout_ = getLayout(layoutName);
-  addXkbLayoutCssClass();
 
   spdlog::debug("hyprland language onevent with {}", layoutName);
 
@@ -173,7 +179,6 @@ void Language::initLanguage() {
     searcher = waybar::util::sanitize_string(searcher);
 
     layout_ = getLayout(searcher);
-    addXkbLayoutCssClass();
 
     spdlog::debug("hyprland language initLanguage found {}", layout_.full_name);
 
@@ -181,16 +186,6 @@ void Language::initLanguage() {
   } catch (std::exception& e) {
     spdlog::error("hyprland language initLanguage failed with {}", e.what());
   }
-}
-
-auto Language::removeXkbLayoutCssClass() -> void {
-  label_.get_style_context()->remove_class(layout_.short_name);
-  spdlog::debug("hyprland language try to remove currently short_name css class {}",
-                layout_.short_name);
-}
-auto Language::addXkbLayoutCssClass() -> void {
-  label_.get_style_context()->add_class(layout_.short_name);
-  spdlog::debug("hyprland language add new short_name css class {}", layout_.short_name);
 }
 
 auto Language::getLayout(const std::string& fullName) -> Layout {

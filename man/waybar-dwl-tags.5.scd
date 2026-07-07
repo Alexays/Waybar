@@ -8,6 +8,9 @@ waybar - dwl tags module
 
 The *tags* module displays the current state of tags in dwl.
 
+Using this module requires patching dwl with the IPC patch
+<https://codeberg.org/dwl/dwl-patches/wiki/ipc>.
+
 # CONFIGURATION
 
 Addressed by *dwl/tags*
@@ -15,7 +18,8 @@ Addressed by *dwl/tags*
 *num-tags*: ++
 	typeof: uint ++
 	default: 9 ++
-	The number of tags that should be displayed. Max 32.
+	The number of tags that should be displayed. Max 32. This should match the
+	number of tags configured in dwl.
 
 *tag-labels*: ++
 	typeof: array ++

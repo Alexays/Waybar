@@ -44,6 +44,7 @@ class Workspaces : public AModule, public EventHandler {
   auto specialVisibleOnly() const -> bool { return m_specialVisibleOnly; }
   auto persistentOnly() const -> bool { return m_persistentOnly; }
   auto moveToMonitor() const -> bool { return m_moveToMonitor; }
+  auto uniqueIcons() const -> bool { return m_uniqueIcons; }
   auto enableTaskbar() const -> bool { return m_enableTaskbar; }
   auto taskbarWithIcon() const -> bool { return m_taskbarWithIcon; }
   auto barScroll() const -> bool { return m_barScroll; }
@@ -54,6 +55,7 @@ class Workspaces : public AModule, public EventHandler {
   auto taskbarFormatBefore() const -> std::string { return m_taskbarFormatBefore; }
   auto taskbarFormatAfter() const -> std::string { return m_taskbarFormatAfter; }
   auto taskbarIconSize() const -> int { return m_taskbarIconSize; }
+  auto taskbarMaxIcons() const -> int { return m_taskbarMaxIcons; }
   auto taskbarOrientation() const -> Gtk::Orientation { return m_taskbarOrientation; }
   auto taskbarReverseDirection() const -> bool { return m_taskbarReverseDirection; }
   auto onClickWindow() const -> std::string { return m_onClickWindow; }
@@ -156,6 +158,7 @@ class Workspaces : public AModule, public EventHandler {
   bool m_specialVisibleOnly = false;
   bool m_persistentOnly = false;
   bool m_moveToMonitor = false;
+  bool m_uniqueIcons = false;
   bool m_barScroll = false;
   Json::Value m_persistentWorkspaceConfig;
 
@@ -177,6 +180,8 @@ class Workspaces : public AModule, public EventHandler {
   std::string m_formatAfter;
 
   std::map<std::string, std::string> m_iconsMap;
+  std::map<std::string, std::string> m_tooltipMap;
+  bool m_withTooltip = false;
   util::RegexCollection m_windowRewriteRules;
   bool m_anyWindowRewriteRuleUsesTitle = false;
   std::string m_formatWindowSeparator;
@@ -200,6 +205,7 @@ class Workspaces : public AModule, public EventHandler {
   std::string m_taskbarFormatBefore;
   std::string m_taskbarFormatAfter;
   int m_taskbarIconSize = 16;
+  int m_taskbarMaxIcons = 0;  // 0 means unlimited
   Gtk::Orientation m_taskbarOrientation = Gtk::ORIENTATION_HORIZONTAL;
   bool m_taskbarReverseDirection = false;
   util::EnumParser<ActiveWindowPosition> m_activeWindowEnumParser;
@@ -221,6 +227,10 @@ class Workspaces : public AModule, public EventHandler {
   Gtk::Box m_box;
   sigc::connection m_scrollEventConnection_;
   IPC& m_ipc;
+
+  // Coalesces bursts of Hyprland events into a single UI refresh. Armed and
+  // disconnected only on the GTK main thread (see Workspaces::update).
+  sigc::connection m_debounceTimer;
 };
 
 }  // namespace waybar::modules::hyprland

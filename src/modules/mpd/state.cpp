@@ -58,16 +58,21 @@ void Idle::entry() noexcept {
   auto conn = ctx_->connection().get();
   assert(conn != nullptr);
 
-  if (!mpd_send_idle_mask(
-          conn, static_cast<mpd_idle>(MPD_IDLE_PLAYER | MPD_IDLE_OPTIONS | MPD_IDLE_QUEUE))) {
-    ctx_->checkErrors(conn);
-    spdlog::error("mpd: Idle: failed to register for IDLE events");
-  } else {
-    spdlog::debug("mpd: Idle: watching FD");
-    sigc::slot<bool, Glib::IOCondition const&> idle_slot = sigc::mem_fun(*this, &Idle::on_io);
-    idle_connection_ =
-        Glib::signal_io().connect(idle_slot, mpd_connection_get_fd(conn),
-                                  Glib::IO_IN | Glib::IO_PRI | Glib::IO_ERR | Glib::IO_HUP);
+  try {
+    if (!mpd_send_idle_mask(
+            conn, static_cast<mpd_idle>(MPD_IDLE_PLAYER | MPD_IDLE_OPTIONS | MPD_IDLE_QUEUE))) {
+      ctx_->checkErrors(conn);
+      spdlog::error("mpd: Idle: failed to register for IDLE events");
+    } else {
+      spdlog::debug("mpd: Idle: watching FD");
+      sigc::slot<bool, Glib::IOCondition const&> idle_slot = sigc::mem_fun(*this, &Idle::on_io);
+      idle_connection_ =
+          Glib::signal_io().connect(idle_slot, mpd_connection_get_fd(conn),
+                                    Glib::IO_IN | Glib::IO_PRI | Glib::IO_ERR | Glib::IO_HUP);
+    }
+  } catch (std::exception const& e) {
+    spdlog::warn("mpd: Idle: error: {}", e.what());
+    ctx_->setState(std::make_unique<Disconnected>(ctx_));
   }
 }
 
@@ -114,8 +119,10 @@ bool Idle::on_io(Glib::IOCondition const&) {
 
 void Playing::entry() noexcept {
   timer();
-  idle();
   spdlog::debug("mpd: Playing: enabled {}ms periodic timer.", ctx_->playing_interval());
+  // NB: idle() may transition to Disconnected (destroying *this) on error, so it
+  // must be the last statement here — do not access members after this call.
+  idle();
 }
 
 void Playing::exit() noexcept {
@@ -143,16 +150,21 @@ void Playing::idle() noexcept {
   auto conn = ctx_->connection().get();
   assert(conn != nullptr);
 
-  if (!mpd_send_idle_mask(
-          conn, static_cast<mpd_idle>(MPD_IDLE_PLAYER | MPD_IDLE_OPTIONS | MPD_IDLE_QUEUE))) {
-    ctx_->checkErrors(conn);
-    spdlog::error("mpd: Playing: failed to register for IDLE events");
-  } else if (!idle_connection_.connected()) {
-    spdlog::trace("mpd: Playing: watching FD");
-    sigc::slot<bool, Glib::IOCondition const&> idle_slot = sigc::mem_fun(*this, &Playing::on_io);
-    idle_connection_ =
-        Glib::signal_io().connect(idle_slot, mpd_connection_get_fd(conn),
-                                  Glib::IO_IN | Glib::IO_PRI | Glib::IO_ERR | Glib::IO_HUP);
+  try {
+    if (!mpd_send_idle_mask(
+            conn, static_cast<mpd_idle>(MPD_IDLE_PLAYER | MPD_IDLE_OPTIONS | MPD_IDLE_QUEUE))) {
+      ctx_->checkErrors(conn);
+      spdlog::error("mpd: Playing: failed to register for IDLE events");
+    } else if (!idle_connection_.connected()) {
+      spdlog::trace("mpd: Playing: watching FD");
+      sigc::slot<bool, Glib::IOCondition const&> idle_slot = sigc::mem_fun(*this, &Playing::on_io);
+      idle_connection_ =
+          Glib::signal_io().connect(idle_slot, mpd_connection_get_fd(conn),
+                                    Glib::IO_IN | Glib::IO_PRI | Glib::IO_ERR | Glib::IO_HUP);
+    }
+  } catch (std::exception const& e) {
+    spdlog::warn("mpd: Playing: error: {}", e.what());
+    ctx_->setState(std::make_unique<Disconnected>(ctx_));
   }
 }
 

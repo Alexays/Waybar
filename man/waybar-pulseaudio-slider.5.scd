@@ -22,6 +22,12 @@ The volume can be controlled by dragging the slider across the bar or clicking o
     default: 100 ++
     The maximum volume value the slider should display and set.
 
+*target*: ++
+    typeof: string ++
+    default: sink ++
+    Whether the slider will control the default audio source or default audio sink. ++
+    Valid values are either "sink" or "source".
+
 *orientation*: ++
     typeof: string ++
     default: horizontal ++
@@ -53,6 +59,10 @@ The volume can be controlled by dragging the slider across the bar or clicking o
     default: empty ++
     A list of sink descriptions to ignore when tracking the default sink, so switching to those sinks does not update the slider.
 
+*sink-mapping*: ++
+    typeof: object ++
+    Sinks named by the values of this mapping will be considered to be the current sink instead of the sinks named by the respective keys.
+
 # EXAMPLES
 
 ```
@@ -76,6 +86,12 @@ The volume can be controlled by dragging the slider across the bar or clicking o
 ```
 
 # STYLE
+
+Unlike most modules, the slider modules *require* styling to display correctly.
+In particular you *need* to set *min-width* and/or *min-height* (depending on
+whether the slider is vertical or horizontal) on the *trough* node, otherwise
+the slider renders too small to be usable. This is a GTK detail, not a Waybar
+issue.
 
 The slider is a component with multiple CSS Nodes, of which the following are exposed:
 

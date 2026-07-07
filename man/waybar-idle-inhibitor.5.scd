@@ -41,15 +41,15 @@ screensaver, also known as "presentation mode".
 
 *on-click*: ++
 	typeof: string ++
-	Command to execute when clicked on the module. A click also toggles the state
+	Command to execute when clicked on the module. A click also toggles the state (enable only if dynamic timeouts are enabled).
 
 *on-click-middle*: ++
 	typeof: string ++
-	Command to execute when middle-clicked on the module using mousewheel.
+	Command to execute when middle-clicked on the module using mousewheel. (reset the timeout to the initial value if dynamic timeouts are enabled).
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right-click on the module.
+	Command to execute when you right-click on the module. (deactivate the inhibit if dynamic timeouts are enabled).
 
 *on-update*: ++
 	typeof: string ++
@@ -57,11 +57,11 @@ screensaver, also known as "presentation mode".
 
 *on-scroll-up*: ++
 	typeof: string ++
-	Command to execute when scrolling up on the module.
+	Command to execute when scrolling up on the module. (increase the timeout if dynamic timeouts are enabled).
 
 *on-scroll-down*: ++
 	typeof: string ++
-	Command to execute when scrolling down on the module.
+	Command to execute when scrolling down on the module. (decrease the timeout if dynamic timeouts are enabled).
 
 *smooth-scrolling-threshold*: ++
 	typeof: double ++
@@ -75,6 +75,17 @@ screensaver, also known as "presentation mode".
 *timeout*: ++
 	typeof: double ++
 	The number of minutes the inhibition should last.
+
+*timeout-step*: ++
+	typeof: double ++
+	default: 10 ++
+	The number of minutes to add or subtract when scrolling (when dynamic timeouts are enabled).
+
+*dynamic-timeouts*: ++
+	typeof: bool ++
+	default: false ++
+	Option to enable dynamic timeouts. ++
+	The legacy singular spelling *dynamic-timeout* is also accepted as an alias.
 
 *wait-for-activity*: ++
 	typeof: bool ++
@@ -124,6 +135,10 @@ screensaver, also known as "presentation mode".
 
 *{icon}*: Icon, as defined in *format-icons*
 
+*{timeout}*: Timeout in minutes
+
+*{timeleft}*: Time left in minutes
+
 # EXAMPLES
 
 Basic usage with timeout:
@@ -136,6 +151,21 @@ Basic usage with timeout:
 		"deactivated": ""
 	},
 	"timeout": 30.5
+}
+```
+
+With dynamic timeouts (scroll to adjust the timeout):
+
+```
+"idle_inhibitor": {
+	"format": "{status} {timeleft}/{timeout}",
+	"format-icons": {
+		"activated": "",
+		"deactivated": ""
+	},
+	"timeout": 480,
+	"dynamic-timeouts": true,
+	"timeout-step": 10
 }
 ```
 

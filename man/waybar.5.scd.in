@@ -50,6 +50,10 @@ The visual display elements for waybar use a CSS stylesheet. Waybar supports *st
 	Output specification follows sway's and can either be the output port such as "HDMI-A-1" or a string consisting of the make, model, and serial such as "Some Company ABC123 0x00000000". See *sway-output(5)* for details.
 	In an array, star '*\**' can be used at the end to accept all outputs, in case all previous entries are exclusions.
 
+*output-dimensions* ++
+	typeof: string|array ++
+	If *output* is not specified, allows selecting outputs by dimensions. Format "(width/height) (</>) (value)", e.g. "width > 1080". Multiple conditions can be chained.
+
 *position* ++
 	typeof: string ++
 	default: top ++
@@ -356,8 +360,18 @@ A group may hide all but one element, showing them only on mouse hover. In order
 
 *children-class*: ++
 	typeof: string ++
-	default: "hidden" ++
+	default: "drawer-child" ++
 	Defines the CSS class to be applied to the hidden elements.
+
+*always-visible-class*: ++
+	typeof: string ++
+	default: "" ++
+	Defines the CSS class that marks a child module as always visible. The module carrying this class remains shown while the drawer is collapsed and drives the drawer's visibility management. When empty, the leader (first) module is used.
+
+*reveal-delay*: ++
+	typeof: integer ++
+	default: 0 ++
+	Delay in milliseconds to wait after the mouse enters the group before revealing the drawer. When 0, the drawer is revealed immediately.
 
 *click-to-reveal*: ++
 	typeof: bool ++
@@ -374,6 +388,11 @@ A group may hide all but one element, showing them only on mouse hover. In order
 	default: true ++
 	Defines the direction of the transition animation. If true, the hidden elements will slide from left to right. If false, they will slide from right to left.
 	When the bar is vertical, it reads as top-to-bottom.
+
+*empty-if-drawer-empty*: ++
+	typeof: bool ++
+	default: false ++
+	Defines whether the group should be assigned the "empty" CSS class when all modules inside the drawer are hidden or missing. If false, the group will not receive the "empty" class as long as the leader module remains visible. This allows users to dynamically style or hide the entire group using CSS when its drawer contents are unavailable.
 
 *reveal-by-default*: ++
 	typeof: bool ++
@@ -397,6 +416,37 @@ Group drawers are also given the `.expanded` CSS class when they are expanded.
         "custom/reboot",
     ]
 },
+```
+To hide the power group if it is empty, apply to #power and all its children:
+```
+#power.empty,
+#power.empty * {
+    min-width: 0px;
+    min-height: 0px;
+    padding: 0px;
+    margin: 0px;
+    border: none;
+    font-size: 0px;
+    opacity: 0;
+}
+```
+
+## Select outputs by dimensions
+
+```
+{
+	"layer": "top",
+	"output-dimensions": "width > 1080",
+	...
+}
+```
+
+```
+{
+	"layer": "top",
+	"output-dimensions": ["width < 3840", "height < 2160"],
+	...
+}
 ```
 
 # SUPPORTED MODULES
@@ -424,6 +474,7 @@ Group drawers are also given the `.expanded` CSS class when they are expanded.
 - *waybar-inhibitor(5)*
 - *waybar-jack(5)*
 - *waybar-keyboard-state(5)*
+- *waybar-load(5)*
 - *waybar-memory(5)*
 - *waybar-mpd(5)*
 - *waybar-mpris(5)*

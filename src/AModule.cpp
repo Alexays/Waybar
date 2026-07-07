@@ -1,5 +1,6 @@
 #include "AModule.hpp"
 
+#include <fmt/core.h>
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
@@ -87,6 +88,13 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       }
     } else if (config_["cursor"].isString()) {
       setCursor(config_["cursor"].asString());
+    } else if (config_["cursor"].isInt() || config_["cursor"].isUInt()) {
+      // Backward-compat: legacy numeric Gdk::CursorType values (pre-0.16)
+      setCursor(Gdk::CursorType(config_["cursor"].asInt()));
+      spdlog::warn(
+          "Numeric 'cursor' values are deprecated; use a cursor-shape-v1 name string instead "
+          "(module {})",
+          name_);
     } else {
       spdlog::warn("unknown cursor option configured on module {}", name_);
     }
@@ -114,6 +122,7 @@ auto AModule::update() -> void {
     pid_children_.push_back(
         util::command::forkExec(config_["on-update"].asString(), this->reap_mtx, this->reap));
   }
+  signal_updated.emit(this);
 }
 // Get mapping between event name and module action name
 // Then call overridden doAction in order to call appropriate module action
@@ -126,6 +135,24 @@ auto AModule::doAction(const std::string& name) -> void {
 }
 
 void AModule::setCursor(std::string const& c) {
+  auto gdk_window = event_box_.get_window();
+  if (gdk_window) {
+    auto cursor = Gdk::Cursor::create(gdk_window->get_display(), c);
+    gdk_window->set_cursor(cursor);
+  } else {
+    // window may not be accessible yet, in this case,
+    // schedule another call for setting the cursor in 1 sec
+    cursor_timeout_conn_ = Glib::signal_timeout().connect_seconds(
+        [this, c]() {
+          setCursor(c);
+          return false;
+        },
+        1);
+  }
+}
+
+// Backward-compat overload: honor legacy numeric Gdk::CursorType configs (pre-0.16)
+void AModule::setCursor(Gdk::CursorType const& c) {
   auto gdk_window = event_box_.get_window();
   if (gdk_window) {
     auto cursor = Gdk::Cursor::create(gdk_window->get_display(), c);
@@ -199,13 +226,40 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
   }
   // Second call user scripts
   if (!format.empty()) {
-    if (config_[format].isString())
-      format = config_[format].asString();
-    else
+    // If the configured value for this event is a recognized built-in module
+    // action (registered in eventActionMap_), it has already been dispatched
+    // via doAction() above / handled by the module itself. Don't additionally
+    // run it as a shell command (issue #3284). Any other value is still treated
+    // as a user shell command.
+    const auto actionIt = eventActionMap_.find(format);
+    const bool isModuleAction = actionIt != eventActionMap_.cend() && config_[format].isString() &&
+                                config_[format].asString() == actionIt->second;
+    if (isModuleAction || !config_[format].isString())
       format.clear();
+    else
+      format = config_[format].asString();
   }
   if (!format.empty()) {
-    pid_children_.push_back(util::command::forkExec(format, this->reap_mtx, this->reap));
+    const int width = gdk_window_get_width(e->window);
+    const int height = gdk_window_get_height(e->window);
+    // Substitute {x}/{y} with the click position. The configured command is
+    // arbitrary user input that may contain literal braces which are not {x}/{y}
+    // (e.g. `echo ${HOME}`, `awk '{print $1}'`, brace expansions). Those make
+    // libfmt throw fmt::format_error; since we run inside a GTK signal handler an
+    // uncaught exception aborts the whole bar. Only format when a placeholder is
+    // actually present, and fall back to the raw command if formatting throws.
+    std::string cmd = format;
+    if (format.find("{x}") != std::string::npos || format.find("{y}") != std::string::npos) {
+      try {
+        cmd = fmt::format(fmt::runtime(format), fmt::arg("x", (int)round(100. * e->x / width)),
+                          fmt::arg("y", (int)round(100. * e->y / height)));
+      } catch (const fmt::format_error& err) {
+        spdlog::warn("Failed to format command '{}': {}. Running it unformatted.", format,
+                     err.what());
+        cmd = format;
+      }
+    }
+    pid_children_.push_back(util::command::forkExec(cmd, this->reap_mtx, this->reap));
   }
   dp.emit();
   return true;

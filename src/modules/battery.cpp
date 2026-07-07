@@ -610,7 +610,7 @@ waybar::modules::Battery::getInfos() {
     if (status == "Discharging" && time_to_empty_now_exists) {
       if (time_to_empty_now != 0) time_remaining = (float)time_to_empty_now / 3600.0f;
     } else if (status == "Discharging" && total_power_exists && total_energy_exists) {
-      if (smooth_power_ != 0) time_remaining = (float)total_energy / smooth_power_;
+      if (total_power != 0) time_remaining = (float)total_energy / smooth_power_;
     } else if (status == "Charging" && time_to_full_now_exists) {
       if (time_to_full_now_exists && (time_to_full_now != 0))
         time_remaining = -(float)time_to_full_now / 3600.0f;

@@ -47,11 +47,11 @@ Addressed by *mango/language*
 
 # FORMAT REPLACEMENTS
 
-*{short}*: Short name of the layout (e.g. "us"). This is also the default when no format is specified.
+*{short}*: Short name of the layout (e.g. "us").
 
 *{shortDescription}*: Short description of the layout (same as *{short}* in most cases).
 
-*{long}*: Full name of the layout as reported by Mango (e.g. "English (US)").
+*{long}*: Full name of the layout as reported by Mango (e.g. "English (US)"). The empty positional *{}* in the default format resolves to this value, so the long name is shown when no *format* is specified.
 
 *{variant}*: Variant of the layout, if any.
 

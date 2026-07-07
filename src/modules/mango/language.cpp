@@ -110,8 +110,6 @@ Language::Layout Language::getLayout(const std::string& fullName) {
           short_description = short_name;
         }
 
-        short_description = short_name;
-
         Layout info{desc, short_name, variant, short_description};
         return info;
       }

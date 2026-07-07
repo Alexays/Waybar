@@ -2,6 +2,11 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+#include <cmath>
+#include <stdexcept>
+#include <string>
+
 #include "util/scope_guard.hpp"
 
 waybar::modules::CustomGraph::CustomGraph(const std::string& name, const std::string& id,
@@ -94,7 +99,13 @@ void waybar::modules::CustomGraph::continuousWorker() {
         thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
         fp_ = util::command::open(cmd, pid_, output_name_);
         if (!fp_) {
-          throw std::runtime_error("Unable to open " + cmd);
+          // Letting this exception escape the SleeperThread would call
+          // std::terminate and kill all of Waybar. Degrade gracefully instead.
+          output_ = {1, ""};
+          dp.emit();
+          spdlog::error("Unable to restart {}: unable to open {}", name_, cmd);
+          thread_.stop();
+          return;
         }
       } else {
         thread_.stop();
@@ -134,9 +145,11 @@ void waybar::modules::CustomGraph::waitingWorker() {
 }
 
 void waybar::modules::CustomGraph::refresh(int sig) {
-  if (sig == SIGRTMIN + config_["signal"].asInt()) {
+#ifdef SIGRTMIN
+  if (config_["signal"].isInt() && sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
+#endif
 }
 
 void waybar::modules::CustomGraph::handleEvent() {
@@ -228,6 +241,22 @@ void waybar::modules::CustomGraph::parseOutputRaw() {
         tooltip_ = validated_line;
       }
       class_.clear();
+      // Derive the graph value from the first line's leading numeric value,
+      // since the raw (i3blocks) format has no dedicated percentage field.
+      std::string value = validated_line;
+      if (!value.empty() && value.back() == '%') {
+        value.pop_back();
+      }
+      try {
+        double parsed = std::stod(value);
+        if (std::isnan(parsed)) {
+          percentage_ = 0;
+        } else {
+          percentage_ = static_cast<int>(std::clamp(std::lround(parsed), 0L, 100L));
+        }
+      } catch (const std::exception&) {
+        percentage_ = 0;
+      }
     } else if (i == 1) {
       if (config_["escape"].isBool() && config_["escape"].asBool()) {
         tooltip_ = Glib::Markup::escape_text(validated_line);
@@ -247,22 +276,32 @@ void waybar::modules::CustomGraph::parseOutputJson() {
   std::istringstream output(output_.out);
   std::string line;
   class_.clear();
+  // A script can emit invalid UTF-8; passing it unchecked to Pango/GTK aborts
+  // the whole bar in g_utf8_* (see parseOutputRaw, which validates the same way).
+  auto sanitize = [](const std::string& s) -> Glib::ustring {
+    Glib::ustring value = s;
+    if (!value.validate()) {
+      value = value.make_valid();
+    }
+    return value;
+  };
   while (getline(output, line)) {
     auto parsed = parser_.parse(line);
-    if (config_["escape"].isBool() && config_["escape"].asBool()) {
-      text_ = Glib::Markup::escape_text(parsed["text"].asString());
+    const bool escape = config_["escape"].isBool() && config_["escape"].asBool();
+    if (escape) {
+      text_ = Glib::Markup::escape_text(sanitize(parsed["text"].asString()));
     } else {
-      text_ = parsed["text"].asString();
+      text_ = sanitize(parsed["text"].asString());
     }
-    if (config_["escape"].isBool() && config_["escape"].asBool()) {
-      alt_ = Glib::Markup::escape_text(parsed["alt"].asString());
+    if (escape) {
+      alt_ = Glib::Markup::escape_text(sanitize(parsed["alt"].asString()));
     } else {
-      alt_ = parsed["alt"].asString();
+      alt_ = sanitize(parsed["alt"].asString());
     }
-    if (config_["escape"].isBool() && config_["escape"].asBool()) {
-      tooltip_ = Glib::Markup::escape_text(parsed["tooltip"].asString());
+    if (escape) {
+      tooltip_ = Glib::Markup::escape_text(sanitize(parsed["tooltip"].asString()));
     } else {
-      tooltip_ = parsed["tooltip"].asString();
+      tooltip_ = sanitize(parsed["tooltip"].asString());
     }
     if (parsed["class"].isString()) {
       class_.push_back(parsed["class"].asString());

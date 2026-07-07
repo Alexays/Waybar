@@ -15,8 +15,8 @@ Addressed by *mango/layout*
 
 *format*: ++
 	typeof: string ++
-	default: {symbol} ++
-	The default format, how the layout symbol should be displayed. *{symbol}* is replaced by the current layout symbol.
+	default: {} ++
+	The default format, how the layout symbol should be displayed. The positional *{}* (the default) and *{symbol}* are both replaced by the current layout symbol.
 
 *format-<symbol>*: ++
 	typeof: string ++
@@ -42,7 +42,7 @@ For example, if your Mango compositor reports the symbol "S" for a spiral layout
 
 The layout module provides dynamic CSS classes based on the current layout symbol, allowing you to style each layout differently.
 
-* *#mango-layout*
+* *#layout*
 * *.<symbol>* - The current layout symbol is dynamically added as a CSS class name (e.g., *.S*, *.M*).
 
 # EXAMPLES
@@ -58,18 +58,18 @@ The layout module provides dynamic CSS classes based on the current layout symbo
 ## CSS Example
 
 ```
-#mango-layout {
+#layout {
     color: #ffffff;
     padding: 0 5px;
 }
 
 /* Specific color for the "S" layout */
-#mango-layout.S {
+#layout.S {
     color: #a6e3a1;
 }
 
 /* Specific color for the "M" layout */
-#mango-layout.M {
+#layout.M {
     color: #f38ba8;
 }
 ```

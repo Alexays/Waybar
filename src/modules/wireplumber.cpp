@@ -3,11 +3,40 @@
 #include <spdlog/spdlog.h>
 
 #include <cmath>
+#include <memory>
 #include <string>
+#include <unordered_set>
 
 bool isValidNodeId(uint32_t id) { return id > 0 && id < G_MAXUINT32; }
 
 std::list<waybar::modules::Wireplumber*> waybar::modules::Wireplumber::modules;
+
+// Interval between reconnect attempts after PipeWire/WirePlumber goes away. Fixed (rather than
+// growing) so the module recovers promptly whenever the service comes back, while still being
+// a bounded, main-loop-friendly poll rather than a busy loop.
+static constexpr unsigned kReconnectIntervalMs = 2000;
+
+// Async load/activation callbacks (onDefaultNodesApiLoaded, onMixerApiLoaded, onPluginActivated)
+// are handed a raw `self` pointer with no GCancellable, and WirePlumber has no way to withdraw an
+// in-flight callback. If the module is destroyed before such a callback fires (e.g. an output/bar
+// is removed while a component load is still pending, or during an audio route transition), the
+// callback would dereference a freed `self`. The destructor removes `this` from this registry
+// before any teardown, so a missing entry means `self` is dangling and the callback must bail out
+// without touching it. See https://github.com/Alexays/Waybar/issues/3974.
+bool waybar::modules::Wireplumber::isModuleAlive(waybar::modules::Wireplumber* self) {
+  return std::find(modules.begin(), modules.end(), self) != modules.end();
+}
+
+namespace {
+// user_data for the async load/activate callbacks. Pairs the module with the connection generation
+// the call was scheduled under so a completion belonging to a torn-down connection can be dropped
+// (see Wireplumber::connection_generation_ and #2882). Heap-allocated per call; the callback takes
+// ownership and frees it.
+struct AsyncCall {
+  waybar::modules::Wireplumber* self;
+  uint32_t generation;
+};
+}  // namespace
 
 waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Value& config,
                                           std::mutex& reap_mtx, std::list<pid_t>& reap)
@@ -30,24 +59,52 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
       source_muted_(false),
       source_volume_(0.0),
       default_source_name_(nullptr),
+      only_physical_(false),
       form_factor_("") {
   waybar::modules::Wireplumber::modules.push_back(this);
 
   wp_init(WP_INIT_PIPEWIRE);
-  wp_core_ = wp_core_new(nullptr, nullptr, nullptr);
-  apis_ = g_ptr_array_new_with_free_func(g_object_unref);
-  om_ = wp_object_manager_new();
 
   type_ = g_strdup(config_["node-type"].isString() ? config_["node-type"].asString().c_str()
                                                    : "Audio/Sink");
+  only_physical_ = config_["only-physical"].isBool() ? config_["only-physical"].asBool() : false;
+
+  // Wire the scroll handler once, here, rather than in onMixerApiLoaded: the latter now re-runs on
+  // every reconnect and would accumulate duplicate handlers. handleScroll no-ops while mixer_api_
+  // is null, so wiring it before the first successful connect is safe.
+  event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Wireplumber::handleScroll));
+
+  if (!setupConnection()) {
+    spdlog::error("[{}]: Could not connect to PipeWire: '{}'", name_, type_);
+    throw std::runtime_error("Could not connect to PipeWire\n");
+  }
+}
+
+// Creates a fresh WpCore/object manager, connects to PipeWire and kicks off async API loading.
+// Used both at startup and when reconnecting after a PipeWire/WirePlumber restart, so all
+// connection-scoped state is (re)built here. Returns false if the connection could not be
+// initiated. See https://github.com/Alexays/Waybar/issues/2882.
+bool waybar::modules::Wireplumber::setupConnection() {
+  // New connection generation: any async load/activate callback still in flight from a previous
+  // connection will see a mismatched generation and bail out instead of mutating this one's state.
+  ++connection_generation_;
+
+  wp_core_ = wp_core_new(nullptr, nullptr, nullptr);
+  apis_ = g_ptr_array_new_with_free_func(g_object_unref);
+  om_ = wp_object_manager_new();
+  pending_plugins_ = 0;
 
   prepare(this);
+
+  // Recover when PipeWire/WirePlumber goes away (service restart, crash). The "disconnected"
+  // signal fires on the GTK main loop; from there we schedule a reconnect attempt.
+  g_signal_connect_swapped(wp_core_, "disconnected", (GCallback)onCoreDisconnected, this);
 
   spdlog::debug("[{}]: connecting to pipewire: '{}'...", name_, type_);
 
   if (wp_core_connect(wp_core_) == 0) {
-    spdlog::error("[{}]: Could not connect to PipeWire: '{}'", name_, type_);
-    throw std::runtime_error("Could not connect to PipeWire\n");
+    return false;
   }
 
   spdlog::debug("[{}]: {} connected!", name_, type_);
@@ -55,10 +112,13 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
   g_signal_connect_swapped(om_, "installed", (GCallback)onObjectManagerInstalled, this);
 
   asyncLoadRequiredApiModules();
+  return true;
 }
 
-waybar::modules::Wireplumber::~Wireplumber() {
-  waybar::modules::Wireplumber::modules.remove(this);
+// Disconnects signal handlers and releases all connection-scoped WirePlumber objects. Safe to call
+// when already partially/fully torn down (every pointer is null-checked and cleared), so it doubles
+// as the reconnect reset and the destructor's cleanup.
+void waybar::modules::Wireplumber::teardownConnection() {
   if (mixer_api_ != nullptr) {
     g_signal_handlers_disconnect_by_data(mixer_api_, this);
   }
@@ -68,12 +128,62 @@ waybar::modules::Wireplumber::~Wireplumber() {
   if (om_ != nullptr) {
     g_signal_handlers_disconnect_by_data(om_, this);
   }
-  wp_core_disconnect(wp_core_);
+  if (wp_core_ != nullptr) {
+    g_signal_handlers_disconnect_by_data(wp_core_, this);
+    wp_core_disconnect(wp_core_);
+  }
   g_clear_pointer(&apis_, g_ptr_array_unref);
   g_clear_object(&om_);
-  g_clear_object(&wp_core_);
   g_clear_object(&mixer_api_);
   g_clear_object(&def_nodes_api_);
+  g_clear_object(&wp_core_);
+  // onObjectManagerInstalled re-populates these via out-params (which don't free the previous
+  // value), so clear them here to avoid leaking the old strings across a reconnect.
+  g_clear_pointer(&default_node_name_, g_free);
+  g_clear_pointer(&default_source_name_, g_free);
+  pending_plugins_ = 0;
+}
+
+// "disconnected" signal handler on wp_core_. Runs during the core's own signal emission, so it must
+// not tear down the core here; it only schedules a reconnect, which performs the teardown/rebuild
+// once control has returned to the main loop.
+void waybar::modules::Wireplumber::onCoreDisconnected(waybar::modules::Wireplumber* self) {
+  if (!isModuleAlive(self)) {
+    return;
+  }
+  spdlog::warn("[{}]: PipeWire connection lost; will attempt to reconnect", self->name_);
+  self->scheduleReconnect();
+}
+
+void waybar::modules::Wireplumber::scheduleReconnect() {
+  if (reconnect_timer_.connected()) {
+    return;  // a reconnect attempt is already pending
+  }
+  reconnect_timer_ = Glib::signal_timeout().connect(
+      sigc::mem_fun(*this, &Wireplumber::onReconnectTimeout), kReconnectIntervalMs);
+}
+
+// Runs on the GTK main loop. Rebuilds the connection from scratch; returns true to keep retrying at
+// the fixed interval until PipeWire is back, or false to stop once reconnected (a future
+// "disconnected" signal will re-arm the timer if needed).
+bool waybar::modules::Wireplumber::onReconnectTimeout() {
+  teardownConnection();
+  spdlog::info("[{}]: attempting to reconnect to PipeWire...", name_);
+  if (setupConnection()) {
+    spdlog::info("[{}]: reconnected to PipeWire", name_);
+    return false;
+  }
+  teardownConnection();
+  spdlog::debug("[{}]: reconnect failed; retrying in {} ms", name_, kReconnectIntervalMs);
+  return true;
+}
+
+waybar::modules::Wireplumber::~Wireplumber() {
+  // Remove from the live-module registry first so any in-flight async callback bails out (#3974),
+  // then cancel a pending reconnect so onReconnectTimeout can't fire on a half-destroyed module.
+  waybar::modules::Wireplumber::modules.remove(this);
+  reconnect_timer_.disconnect();
+  teardownConnection();
   g_free(default_node_name_);
   g_free(default_source_name_);
   g_free(type_);
@@ -116,15 +226,23 @@ void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* 
 
   // find form-factor
   const auto* devid = wp_properties_get(properties, "device.id");
-  spdlog::debug("[{}]: '{}' device.id is {}", self->name_, self->type_, devid);
+  if (devid != nullptr) {
+    spdlog::debug("[{}]: '{}' device.id is {}", self->name_, self->type_, devid);
 
-  auto* dev = static_cast<WpDevice*>(wp_object_manager_lookup(
-      self->om_, WP_TYPE_DEVICE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id", "=s", devid, nullptr));
+    g_autoptr(WpDevice) dev = static_cast<WpDevice*>(
+        wp_object_manager_lookup(self->om_, WP_TYPE_DEVICE, WP_CONSTRAINT_TYPE_G_PROPERTY,
+                                 "bound-id", "=s", devid, nullptr));
 
-  if (const auto* ff =
-          wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(dev), "device.form-factor")) {
-    self->form_factor_ = ff;
-    spdlog::debug("[{}]: Updating node form factor to: {}", self->name_, self->form_factor_);
+    const gchar* ff = dev != nullptr ? wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(dev),
+                                                                       "device.form-factor")
+                                     : nullptr;
+
+    if (ff != nullptr) {
+      self->form_factor_ = ff;
+      spdlog::debug("[{}]: Updating node form factor to: {}", self->name_, self->form_factor_);
+    } else {
+      self->form_factor_ = "";
+    }
   } else {
     self->form_factor_ = "";
   }
@@ -187,7 +305,12 @@ void waybar::modules::Wireplumber::updateVolume(waybar::modules::Wireplumber* se
 
   g_variant_lookup(variant, "volume", "d", &self->volume_);
   g_variant_lookup(variant, "step", "d", &self->min_step_);
-  g_variant_lookup(variant, "mute", "b", &self->muted_);
+  // GVariant "b" writes a gboolean (4 bytes); reading directly into the 1-byte bool member is an
+  // out-of-bounds write. Read into a gboolean temporary and assign back.
+  gboolean mute = FALSE;
+  if (g_variant_lookup(variant, "mute", "b", &mute)) {
+    self->muted_ = mute;
+  }
   g_clear_pointer(&variant, g_variant_unref);
 
   self->dp.emit();
@@ -212,7 +335,11 @@ void waybar::modules::Wireplumber::updateSourceVolume(waybar::modules::Wireplumb
   }
 
   g_variant_lookup(variant, "volume", "d", &self->source_volume_);
-  g_variant_lookup(variant, "mute", "b", &self->source_muted_);
+  // See updateVolume: GVariant "b" writes a gboolean (4 bytes), not a 1-byte bool.
+  gboolean mute = FALSE;
+  if (g_variant_lookup(variant, "mute", "b", &mute)) {
+    self->source_muted_ = mute;
+  }
   g_clear_pointer(&variant, g_variant_unref);
 
   self->dp.emit();
@@ -256,28 +383,36 @@ void waybar::modules::Wireplumber::onDefaultNodesApiChanged(waybar::modules::Wir
   spdlog::debug("[{}]: (onDefaultNodesApiChanged: {})", self->name_, self->type_);
 
   // Handle sink
-  uint32_t defaultNodeId;
+  uint32_t defaultNodeId = 0;
   g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", self->type_, &defaultNodeId);
 
   if (isValidNodeId(defaultNodeId)) {
+    uint32_t effective_id =
+        self->only_physical_ ? self->resolvePhysicalSink(defaultNodeId) : defaultNodeId;
+
+    if (self->only_physical_ && effective_id != defaultNodeId) {
+      spdlog::info("[{}]: only-physical enabled: using sink {} instead of default {}", self->name_,
+                   effective_id, defaultNodeId);
+    }
+
     g_autoptr(WpNode) node = static_cast<WpNode*>(
         wp_object_manager_lookup(self->om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id",
-                                 "=u", defaultNodeId, nullptr));
+                                 "=u", effective_id, nullptr));
 
     if (node != nullptr) {
-      const gchar* defaultNodeName =
+      const gchar* effectiveNodeName =
           wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(node), "node.name");
 
-      if (g_strcmp0(self->default_node_name_, defaultNodeName) != 0 ||
-          self->node_id_ != defaultNodeId) {
-        spdlog::debug("[{}]: Default sink changed to -> Node(name: {}, id: {})", self->name_,
-                      defaultNodeName, defaultNodeId);
+      if (g_strcmp0(self->default_node_name_, effectiveNodeName) != 0 ||
+          self->node_id_ != effective_id) {
+        spdlog::debug("[{}]: Default sink resolved to -> Node(name: {}, id: {})", self->name_,
+                      effectiveNodeName, effective_id);
 
         g_free(self->default_node_name_);
-        self->default_node_name_ = g_strdup(defaultNodeName);
-        self->node_id_ = defaultNodeId;
-        updateVolume(self, defaultNodeId);
-        updateNodeName(self, defaultNodeId);
+        self->default_node_name_ = g_strdup(effectiveNodeName);
+        self->node_id_ = effective_id;
+        updateVolume(self, effective_id);
+        updateNodeName(self, effective_id);
       }
     }
   }
@@ -330,7 +465,16 @@ void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wir
   // Get default sink
   g_signal_emit_by_name(self->def_nodes_api_, "get-default-configured-node-name", self->type_,
                         &self->default_node_name_);
-  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", self->type_, &self->node_id_);
+  uint32_t initial_sink_id = 0;
+  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", self->type_, &initial_sink_id);
+
+  if (self->only_physical_ && isValidNodeId(initial_sink_id)) {
+    self->node_id_ = self->resolvePhysicalSink(initial_sink_id);
+    spdlog::info("[{}]: only-physical enabled: initial physical sink {} (default was {})",
+                 self->name_, self->node_id_, initial_sink_id);
+  } else {
+    self->node_id_ = initial_sink_id;
+  }
 
   // Get default source
   g_signal_emit_by_name(self->def_nodes_api_, "get-default-configured-node-name", "Audio/Source",
@@ -359,7 +503,13 @@ void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wir
 }
 
 void waybar::modules::Wireplumber::onPluginActivated(WpObject* p, GAsyncResult* res,
-                                                     waybar::modules::Wireplumber* self) {
+                                                     gpointer data) {
+  std::unique_ptr<AsyncCall> call(static_cast<AsyncCall*>(data));
+  auto* self = call->self;
+  if (!isModuleAlive(self) || call->generation != self->connection_generation_) {
+    return;
+  }
+
   const auto* pluginName = wp_plugin_get_name(WP_PLUGIN(p));
   spdlog::debug("[{}]: onPluginActivated: {}", self->name_, pluginName);
   g_autoptr(GError) error = nullptr;
@@ -380,22 +530,38 @@ void waybar::modules::Wireplumber::activatePlugins() {
     WpPlugin* plugin = static_cast<WpPlugin*>(g_ptr_array_index(apis_, i));
     pending_plugins_++;
     wp_object_activate(WP_OBJECT(plugin), WP_PLUGIN_FEATURE_ENABLED, nullptr,
-                       (GAsyncReadyCallback)onPluginActivated, this);
+                       (GAsyncReadyCallback)onPluginActivated,
+                       new AsyncCall{this, connection_generation_});
   }
 }
 
 void waybar::modules::Wireplumber::prepare(waybar::modules::Wireplumber* self) {
   spdlog::debug("[{}]: preparing object manager: '{}'", name_, self->type_);
-  wp_object_manager_add_interest(om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_PW_PROPERTY, "media.class",
-                                 "=s", self->type_, nullptr);
-  wp_object_manager_add_interest(om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_PW_PROPERTY, "media.class",
-                                 "=s", "Audio/Source", nullptr);
-  wp_object_manager_add_interest(om_, WP_TYPE_DEVICE, WP_CONSTRAINT_TYPE_PW_PROPERTY, "media.class",
-                                 "=s", "Audio/Device", nullptr);
+  if (only_physical_) {
+    wp_object_manager_add_interest(om_, WP_TYPE_NODE, nullptr);
+    wp_object_manager_add_interest(om_, WP_TYPE_LINK, nullptr);
+    wp_object_manager_add_interest(om_, WP_TYPE_PORT, nullptr);
+    wp_object_manager_add_interest(om_, WP_TYPE_DEVICE, WP_CONSTRAINT_TYPE_PW_PROPERTY,
+                                   "media.class", "=s", "Audio/Device", nullptr);
+    wp_object_manager_request_object_features(om_, WP_TYPE_GLOBAL_PROXY, WP_OBJECT_FEATURES_ALL);
+  } else {
+    wp_object_manager_add_interest(om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_PW_PROPERTY, "media.class",
+                                   "=s", self->type_, nullptr);
+    wp_object_manager_add_interest(om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_PW_PROPERTY, "media.class",
+                                   "=s", "Audio/Source", nullptr);
+    wp_object_manager_add_interest(om_, WP_TYPE_DEVICE, WP_CONSTRAINT_TYPE_PW_PROPERTY,
+                                   "media.class", "=s", "Audio/Device", nullptr);
+  }
 }
 
 void waybar::modules::Wireplumber::onDefaultNodesApiLoaded(WpObject* p, GAsyncResult* res,
-                                                           waybar::modules::Wireplumber* self) {
+                                                           gpointer data) {
+  std::unique_ptr<AsyncCall> call(static_cast<AsyncCall*>(data));
+  auto* self = call->self;
+  if (!isModuleAlive(self) || call->generation != self->connection_generation_) {
+    return;
+  }
+
   gboolean success = FALSE;
   g_autoptr(GError) error = nullptr;
 
@@ -412,11 +578,17 @@ void waybar::modules::Wireplumber::onDefaultNodesApiLoaded(WpObject* p, GAsyncRe
 
   spdlog::debug("[{}]: loading mixer api module", self->name_);
   wp_core_load_component(self->wp_core_, "libwireplumber-module-mixer-api", "module", nullptr,
-                         "mixer-api", nullptr, (GAsyncReadyCallback)onMixerApiLoaded, self);
+                         "mixer-api", nullptr, (GAsyncReadyCallback)onMixerApiLoaded,
+                         new AsyncCall{self, call->generation});
 }
 
-void waybar::modules::Wireplumber::onMixerApiLoaded(WpObject* p, GAsyncResult* res,
-                                                    waybar::modules::Wireplumber* self) {
+void waybar::modules::Wireplumber::onMixerApiLoaded(WpObject* p, GAsyncResult* res, gpointer data) {
+  std::unique_ptr<AsyncCall> call(static_cast<AsyncCall*>(data));
+  auto* self = call->self;
+  if (!isModuleAlive(self) || call->generation != self->connection_generation_) {
+    return;
+  }
+
   gboolean success = FALSE;
   g_autoptr(GError) error = nullptr;
 
@@ -437,16 +609,13 @@ void waybar::modules::Wireplumber::onMixerApiLoaded(WpObject* p, GAsyncResult* r
   self->activatePlugins();
 
   self->dp.emit();
-
-  self->event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-  self->event_box_.signal_scroll_event().connect(sigc::mem_fun(*self, &Wireplumber::handleScroll));
 }
 
 void waybar::modules::Wireplumber::asyncLoadRequiredApiModules() {
   spdlog::debug("[{}]: loading default nodes api module", name_);
   wp_core_load_component(wp_core_, "libwireplumber-module-default-nodes-api", "module", nullptr,
                          "default-nodes-api", nullptr, (GAsyncReadyCallback)onDefaultNodesApiLoaded,
-                         this);
+                         new AsyncCall{this, connection_generation_});
 }
 
 static const std::array<std::string, 7> ports = {
@@ -491,28 +660,46 @@ auto waybar::modules::Wireplumber::update() -> void {
     label_.get_style_context()->remove_class("bluetooth");
   }
 
-  // Handle sink mute state
+  // A module configured with node-type "Audio/Source" tracks a source as its primary node, so its
+  // primary mute state (muted_) must drive the source-muted class rather than the sink classes.
+  const bool is_source_type = g_strcmp0(type_, "Audio/Source") == 0;
+
+  // Handle primary node mute state
   if (muted_) {
     // Check muted bluetooth format exists, otherwise fall back to default muted format.
     if (format_name != "format" && !config_[format_name + "-muted"].isString())
       format_name = "format";
     format_name += "-muted";
-    label_.get_style_context()->add_class("muted");
-    label_.get_style_context()->add_class("sink-muted");
+    if (is_source_type) {
+      label_.get_style_context()->add_class("source-muted");
+    } else {
+      label_.get_style_context()->add_class("muted");
+      label_.get_style_context()->add_class("sink-muted");
+    }
   } else {
-    label_.get_style_context()->remove_class("muted");
-    label_.get_style_context()->remove_class("sink-muted");
+    if (is_source_type) {
+      label_.get_style_context()->remove_class("source-muted");
+    } else {
+      label_.get_style_context()->remove_class("muted");
+      label_.get_style_context()->remove_class("sink-muted");
+    }
   }
 
-  // Handle source mute state
-  if (source_muted_) {
-    label_.get_style_context()->add_class("source-muted");
-  } else {
-    label_.get_style_context()->remove_class("source-muted");
+  // Handle the secondary source mute state (only relevant for sink modules, which additionally
+  // track the default source for {format_source}). A source module already owns source-muted above.
+  if (!is_source_type) {
+    if (source_muted_) {
+      label_.get_style_context()->add_class("source-muted");
+    } else {
+      label_.get_style_context()->remove_class("source-muted");
+    }
   }
 
-  double vol_cube = pow(volume_, 3);
-  double source_vol_cube = pow(source_volume_, 3);
+  // mixer-api is configured with the linear scale, so volume_ holds the raw linear gain. The
+  // perceptual "cubic" value shown by wpctl and used for {volume} is cbrt(linear), not linear^3.
+  // Cubing here drives small linear gains (typical for Bluetooth sinks) to 0%.
+  double vol_cube = cbrt(volume_);
+  double source_vol_cube = cbrt(source_volume_);
 
   int vol = round(vol_cube * 100.0);
   int source_vol = round(source_vol_cube * 100.0);
@@ -586,7 +773,10 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
     step = config_["scroll-step"].asDouble();
   }
   if (config_["max-volume"].isDouble()) {
-    maxVolume = config_["max-volume"].asDouble();
+    // {volume} is displayed as cubic-percent (cbrt(volume_) * 100), while volume_/newVol are
+    // linear gains. Map the documented cubic-percent ceiling into the linear domain the clamp
+    // operates in, restoring the 0.15.0 cap semantics (e.g. 130 -> pow(1.3, 3) linear -> 130%).
+    maxVolume = pow(config_["max-volume"].asDouble() / 100.0, 3);
   }
 
   double vol = volume_;
@@ -596,11 +786,11 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
   }
 
   if (scale == "cubic") {
-    vol = pow(vol, 3);
+    vol = cbrt(vol);
   } else if (scale == "db") {
     vol = log10(vol) * 20.0;
   } else if (scale == "cubic_percent") {
-    vol = pow(vol, 3) * 100.0;
+    vol = cbrt(vol) * 100.0;
   }
 
   double newVol = vol;
@@ -611,11 +801,11 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
   }
 
   if (scale == "cubic") {
-    newVol = cbrt(newVol);
+    newVol = pow(newVol, 3);
   } else if (scale == "db") {
     newVol = exp10(newVol / 20.0);
   } else if (scale == "cubic_percent") {
-    newVol = cbrt(newVol / 100.0);
+    newVol = pow(newVol / 100.0, 3);
   }
 
   if (dir == SCROLL_DIR::UP) {
@@ -641,4 +831,207 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
     g_variant_unref(variant);
   }
   return true;
+}
+
+// Finds the output node for filter chains defined in pipewire,
+// since their input nodes are NOT providing actual outputs
+uint32_t waybar::modules::Wireplumber::findPlaybackNodeId(const gchar* description) {
+  if (!description || *description == '\0') {
+    return 0;
+  }
+
+  spdlog::debug("[{}]: Searching for playback node with node.description = {}", name_, description);
+
+  g_autoptr(WpIterator) it = wp_object_manager_new_filtered_iterator(
+      om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_PW_PROPERTY, "node.description", "=s", description,
+      WP_CONSTRAINT_TYPE_PW_PROPERTY, "media.class", "=s", "Stream/Output/Audio", nullptr);
+
+  uint32_t playback_id = 0;
+
+  g_auto(GValue) item = G_VALUE_INIT;
+  if (wp_iterator_next(it, &item)) {
+    WpNode* output_node = WP_NODE(g_value_get_object(&item));
+    playback_id = wp_proxy_get_bound_id(WP_PROXY(output_node));
+
+    spdlog::debug("[{}]: Found matching playback node id {}", name_, playback_id);
+  }
+  g_value_unset(&item);
+
+  if (playback_id == 0) {
+    spdlog::debug("[{}]: No playback node found with description '{}'", name_, description);
+  }
+
+  return playback_id;
+}
+
+uint32_t waybar::modules::Wireplumber::get_linked_sink_id(WpObjectManager* om,
+                                                          uint32_t from_node_id) {
+  spdlog::debug("[{}]: Searching for links connected to node {}", name_, from_node_id);
+
+  g_autoptr(WpIterator) out_it =
+      wp_object_manager_new_filtered_iterator(om, WP_TYPE_LINK, WP_CONSTRAINT_TYPE_PW_PROPERTY,
+                                              "link.output.node", "=u", from_node_id, nullptr);
+
+  g_auto(GValue) item = G_VALUE_INIT;
+  if (wp_iterator_next(out_it, &item)) {
+    WpLink* link = WP_LINK(g_value_get_object(&item));
+    guint32 out_node, out_port, in_node, in_port;
+    wp_link_get_linked_object_ids(link, &out_node, &out_port, &in_node, &in_port);
+
+    spdlog::debug("[{}]: Found outgoing link {} -> {}", name_, out_node, in_node);
+
+    g_value_unset(&item);
+    return in_node;
+  }
+  g_value_unset(&item);
+
+  spdlog::debug("[{}]: No links found connected to node {}", name_, from_node_id);
+  return 0;
+}
+
+// Follow non-monitor output ports to the next node
+uint32_t waybar::modules::Wireplumber::get_linked_node_from_output_ports(WpObjectManager* om,
+                                                                         uint32_t from_node_id) {
+  spdlog::debug("[{}]: Searching for non-monitor output ports on node {}", name_, from_node_id);
+
+  g_autoptr(WpIterator) port_it = wp_object_manager_new_filtered_iterator(
+      om, WP_TYPE_PORT, WP_CONSTRAINT_TYPE_PW_PROPERTY, "node.id", "=u", from_node_id,
+      WP_CONSTRAINT_TYPE_PW_PROPERTY, "port.direction", "=s", "out", nullptr);
+
+  g_auto(GValue) port_item = G_VALUE_INIT;
+  while (wp_iterator_next(port_it, &port_item)) {
+    WpPort* port = WP_PORT(g_value_get_object(&port_item));
+
+    g_autoptr(WpProperties) port_props =
+        wp_pipewire_object_get_properties(WP_PIPEWIRE_OBJECT(port));
+    if (!port_props) {
+      g_value_unset(&port_item);
+      continue;
+    }
+
+    const gchar* name = wp_properties_get(port_props, "port.name");
+
+    // WP_CONSTRAINT_VERB_MATCHES uses GPatternSpec and it is glob-like. Unfortunately, there is no
+    // way to express "not beginning with a string" in glob-style regex. Or at least I didn't figure
+    // out how to do that. Therefore, just filter them out with a conditional. Performance
+    // difference should be negligible anyway.
+    if (!name || g_str_has_prefix(name, "monitor_")) {
+      g_value_unset(&port_item);
+      continue;
+    }
+
+    spdlog::debug("[{}]: Found non-monitor output port with name '{}'", name_, name);
+
+    // Find outgoing link from this port
+    uint32_t port_id = wp_proxy_get_bound_id(WP_PROXY(port));
+
+    g_autoptr(WpIterator) link_it =
+        wp_object_manager_new_filtered_iterator(om, WP_TYPE_LINK, WP_CONSTRAINT_TYPE_PW_PROPERTY,
+                                                "link.output.port", "=u", port_id, nullptr);
+
+    g_auto(GValue) link_item = G_VALUE_INIT;
+    if (wp_iterator_next(link_it, &link_item)) {
+      WpLink* link = WP_LINK(g_value_get_object(&link_item));
+      guint32 out_node, out_port, in_node, in_port;
+      wp_link_get_linked_object_ids(link, &out_node, &out_port, &in_node, &in_port);
+
+      spdlog::debug("[{}]: Found link from port {} (node {}) -> node {}", name_, port_id,
+                    from_node_id, in_node);
+      g_value_unset(&link_item);
+      g_value_unset(&port_item);
+      return in_node;
+    }
+    g_value_unset(&link_item);
+
+    g_value_unset(&port_item);
+  }
+  g_value_unset(&port_item);
+
+  spdlog::debug("[{}]: No non-monitor output ports with links on node {}", name_, from_node_id);
+  return 0;
+}
+
+uint32_t waybar::modules::Wireplumber::resolvePhysicalSink(uint32_t start_id) {
+  if (!isValidNodeId(start_id) || !only_physical_) {
+    return start_id;
+  }
+
+  std::unordered_set<uint32_t> visited;
+  uint32_t current_id = start_id;
+  int depth = 0;
+  const int max_depth = 10;
+
+  spdlog::debug("[{}]: Starting physical sink resolution from id {}", name_, start_id);
+
+  // Follow the output node chain until a physical device is found
+  while (visited.insert(current_id).second && depth++ < max_depth) {
+    g_autoptr(WpProxy) proxy = static_cast<WpProxy*>(
+        wp_object_manager_lookup(om_, WP_TYPE_GLOBAL_PROXY, WP_CONSTRAINT_TYPE_G_PROPERTY,
+                                 "bound-id", "=u", current_id, nullptr));
+
+    if (!proxy || !WP_IS_PIPEWIRE_OBJECT(proxy)) {
+      spdlog::warn("[{}]: Node {} not found during resolution", name_, current_id);
+      break;
+    }
+
+    // 1: If it has a device.id, we found the physical sink
+    g_autoptr(WpProperties) props = wp_pipewire_object_get_properties(WP_PIPEWIRE_OBJECT(proxy));
+    if (!props) props = wp_properties_new_empty();
+
+    const gchar* device_id = wp_properties_get(props, "device.id");
+    if (device_id != nullptr) {
+      spdlog::debug("[{}]: Found physical sink {} (device.id = {})", name_, current_id, device_id);
+      break;
+    }
+
+    spdlog::debug("[{}]: Node {} is virtual, trying direct output ports", name_, current_id);
+
+    // 2: Try following non-monitor output ports
+    uint32_t next_id = get_linked_node_from_output_ports(om_, current_id);
+    if (next_id != 0) {
+      spdlog::debug("[{}]: Following direct output port link to node {}", name_, next_id);
+      current_id = next_id;
+      continue;
+    }
+
+    // 3: Search for audio stream node
+    // (pipewire filter chains create a node for input and a separate node for output)
+    const gchar* description = wp_properties_get(props, "node.description");
+    if (!description || *description == '\0') {
+      spdlog::warn("[{}]: Virtual node {} has no description/nick - cannot search playback node",
+                   name_, current_id);
+      break;
+    }
+
+    spdlog::debug("[{}]: No direct output ports, searching playback node for description '{}'",
+                  name_, description);
+
+    uint32_t playback_id = findPlaybackNodeId(description);
+    if (playback_id == 0) {
+      spdlog::warn("[{}]: No playback node found for virtual sink {} - stopping at virtual sink",
+                   name_, current_id);
+      break;
+    }
+
+    next_id = get_linked_sink_id(om_, playback_id);
+    if (next_id == 0) {
+      spdlog::warn("[{}]: Playback node {} has no outgoing links - stopping at virtual sink {}",
+                   name_, playback_id, current_id);
+      break;
+    }
+
+    spdlog::debug("[{}]: Following playback node link to node {}", name_, next_id);
+    current_id = next_id;
+  }
+
+  GVariant* variant = nullptr;
+  g_signal_emit_by_name(mixer_api_, "get-volume", current_id, &variant);
+
+  if (variant == nullptr) {
+    spdlog::warn("[{}]: Node {} does not support volume - fallback to default sink id", name_,
+                 current_id);
+    current_id = start_id;
+  }
+  spdlog::info("[{}]: Final resolved sink id {}", name_, current_id);
+  return current_id;
 }

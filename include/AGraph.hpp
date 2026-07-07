@@ -28,7 +28,7 @@ class AGraph : public AModule {
 
   void addValue(const int n);
 
-  const std::chrono::seconds interval_;
+  const std::chrono::milliseconds interval_;
 
   bool onDraw(const Cairo::RefPtr<Cairo::Context>& cr);
 

@@ -63,8 +63,11 @@ If the title matches a regular expression from the *rewrite* object, it is repla
 # STYLE
 
 - *#window*
-- *#window.empty* – applied when no window is focused (module hidden by default)
-- *#window.solo* – applied when only one window is present on the active workspace
-- *#window.<app-id>* – applied when a single window with the given app ID is on the workspace
 
-The classes *.empty*, *.solo*, and the app‑ID class are set on the module’s event box.
+The following classes are set on the module's event box (the container that
+wraps *#window*), not on *#window* itself. Target them directly or with a
+descendant selector such as *.solo #window*:
+
+- *.empty* – applied when no window is focused (module hidden by default)
+- *.solo* – applied when only one window is present on the active workspace
+- *.<app-id>* – applied when a single window with the given app ID is on the workspace

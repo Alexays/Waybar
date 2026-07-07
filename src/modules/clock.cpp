@@ -83,6 +83,20 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config,
       iso8601Calendar_ = config_[kCldPlaceholder]["iso8601"].asBool();
     }
 
+    if (config_[kCldPlaceholder]["weeks-numbering"].isString()) {
+      const std::string wn{config_[kCldPlaceholder]["weeks-numbering"].asString()};
+      const std::map<std::string, WeekNumbering> wnModes{{"iso", WeekNumbering::ISO},
+                                                         {"monday", WeekNumbering::MONDAY},
+                                                         {"sunday", WeekNumbering::SUNDAY}};
+      if (wnModes.find(wn) != wnModes.end())
+        weekNumbering_ = wnModes.at(wn);
+      else
+        spdlog::warn(
+            "Clock calendar configuration weeks-numbering \"{}\" is not recognized. "
+            "Locale default is used instead",
+            wn);
+    }
+
     if (config_[kCldPlaceholder]["weeks-pos"].isString()) {
       if (config_[kCldPlaceholder]["weeks-pos"].asString() == "left") cldWPos_ = WS::LEFT;
       if (config_[kCldPlaceholder]["weeks-pos"].asString() == "right") cldWPos_ = WS::RIGHT;
@@ -106,18 +120,26 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config,
       cldBaseDay_ = year_month_day{floor<days>(local_time)}.day();
     } else
       fmtMap_.insert({3, "{}"});
+    const auto weekFmt = [this]() -> std::string {
+      switch (weekNumbering_) {
+        case WeekNumbering::ISO:
+          return "{:%V}";
+        case WeekNumbering::MONDAY:
+          return "{:%W}";
+        case WeekNumbering::SUNDAY:
+          return "{:%U}";
+        default:
+          return iso8601Calendar_ ? "{:%V}" : ((first_day_of_week() == Monday) ? "{:%W}" : "{:%U}");
+      }
+    }();
     if (config_[kCldPlaceholder]["format"]["weeks"].isString() && cldWPos_ != WS::HIDDEN) {
-      const auto defaultFmt =
-          iso8601Calendar_ ? "{:%V}" : ((first_day_of_week() == Monday) ? "{:%W}" : "{:%U}");
       fmtMap_.insert({4, std::regex_replace(config_[kCldPlaceholder]["format"]["weeks"].asString(),
-                                            std::regex("\\{\\}"), defaultFmt)});
+                                            std::regex("\\{\\}"), weekFmt)});
       Glib::ustring tmp{std::regex_replace(fmtMap_[4], std::regex("</?[^>]+>|\\{.*\\}"), "")};
       cldWnLen_ += tmp.size();
     } else {
       if (cldWPos_ != WS::HIDDEN) {
-        const auto defaultFmt =
-            iso8601Calendar_ ? "{:%V}" : ((first_day_of_week() == Monday) ? "{:%W}" : "{:%U}");
-        fmtMap_.insert({4, defaultFmt});
+        fmtMap_.insert({4, weekFmt});
       } else {
         cldWnLen_ = 0;
       }
@@ -164,31 +186,70 @@ auto waybar::modules::Clock::update() -> void {
   const auto* tz = tzList_[tzCurrIdx_] != nullptr ? tzList_[tzCurrIdx_] : local_zone();
   const zoned_time now{tz, floor<seconds>(system_clock::now())};
 
-  setLabelMarkup(fmt_lib::vformat(m_locale_, format_, fmt_lib::make_format_args(now)));
+  try {
+    setLabelMarkup(fmt_lib::vformat(m_locale_, format_, fmt_lib::make_format_args(now)));
+  } catch (const std::exception& e) {
+    // An unsupported/invalid specifier (e.g. the %-I / %OI padding modifiers, which the
+    // date/std::chrono formatter does not implement) must not take the whole module down.
+    // Warn once and fall back to a safe default so the bar still loads.
+    static bool warned = false;
+    if (!warned) {
+      spdlog::warn(
+          "Clock: could not format \"{}\": {}. Falling back to a default; check your format "
+          "specifiers.",
+          format_, e.what());
+      warned = true;
+    }
+    try {
+      setLabelMarkup(fmt_lib::vformat(m_locale_, "{:%H:%M}", fmt_lib::make_format_args(now)));
+    } catch (...) {
+      setLabelMarkup("");
+    }
+  }
 
   if (tooltipEnabled()) {
     const year_month_day today{floor<days>(now.get_local_time())};
     const auto shiftedDay{today + cldCurrShift_};
+    // choose::earliest disambiguates the DST fall-back hour (ambiguous local
+    // time) and skips forward over the spring-forward gap (nonexistent local
+    // time); without it this constructor throws and aborts Waybar every minute
+    // during a DST transition. Fixes #2615 (and its many duplicates).
     const zoned_time shiftedNow{
-        tz, local_days(shiftedDay) + (now.get_local_time() - floor<days>(now.get_local_time()))};
+        tz, local_days(shiftedDay) + (now.get_local_time() - floor<days>(now.get_local_time())),
+        choose::earliest};
 
     if (tzInTooltip_) tzText_ = getTZtext(now.get_sys_time());
     if (cldInTooltip_) cldText_ = get_calendar(today, shiftedDay, tz);
     if (ordInTooltip_) ordText_ = get_ordinal_date(shiftedDay);
-    if (tzInTooltip_ || cldInTooltip_ || ordInTooltip_) {
-      // std::vformat doesn't support named arguments.
-      m_tlpText_ =
-          std::regex_replace(m_tlpFmt_, std::regex("\\{" + kTZPlaceholder + "\\}"), tzText_);
-      m_tlpText_ = std::regex_replace(
-          m_tlpText_, std::regex("\\{" + kCldPlaceholder + "\\}"),
-          fmt_lib::vformat(m_locale_, cldText_, fmt_lib::make_format_args(shiftedNow)));
-      m_tlpText_ =
-          std::regex_replace(m_tlpText_, std::regex("\\{" + kOrdPlaceholder + "\\}"), ordText_);
-    } else {
-      m_tlpText_ = m_tlpFmt_;
-    }
+    try {
+      if (tzInTooltip_ || cldInTooltip_ || ordInTooltip_) {
+        // std::vformat doesn't support named arguments.
+        m_tlpText_ =
+            std::regex_replace(m_tlpFmt_, std::regex("\\{" + kTZPlaceholder + "\\}"), tzText_);
+        m_tlpText_ = std::regex_replace(
+            m_tlpText_, std::regex("\\{" + kCldPlaceholder + "\\}"),
+            fmt_lib::vformat(m_locale_, cldText_, fmt_lib::make_format_args(shiftedNow)));
+        m_tlpText_ =
+            std::regex_replace(m_tlpText_, std::regex("\\{" + kOrdPlaceholder + "\\}"), ordText_);
+      } else {
+        m_tlpText_ = m_tlpFmt_;
+      }
 
-    m_tlpText_ = fmt_lib::vformat(m_locale_, m_tlpText_, fmt_lib::make_format_args(now));
+      m_tlpText_ = fmt_lib::vformat(m_locale_, m_tlpText_, fmt_lib::make_format_args(now));
+    } catch (const std::exception& e) {
+      // An unsupported/invalid specifier (e.g. %-I / %OI) in the tooltip-format or the
+      // calendar format must not take the whole module down every tick. Warn once and skip
+      // the tooltip for this update so the bar keeps working.
+      static bool tlpWarned = false;
+      if (!tlpWarned) {
+        spdlog::warn(
+            "Clock: could not format tooltip \"{}\": {}. Skipping tooltip; check your "
+            "tooltip-format/calendar format specifiers.",
+            m_tlpFmt_, e.what());
+        tlpWarned = true;
+      }
+      m_tlpText_.clear();
+    }
 
     // Pango doesn't support CSS classes but to continue using it while staying
     // backwards compatible this approach uses post-posting to replace fake
@@ -420,9 +481,10 @@ auto waybar::modules::Clock::get_calendar(const year_month_day& today, const yea
                           fmt_lib::make_format_args(
                               (line == 2)
                                   ? static_cast<const zoned_seconds&&>(
-                                        zoned_seconds{tz, local_days{ymTmp / 1}})
+                                        zoned_seconds{tz, local_days{ymTmp / 1}, choose::earliest})
                                   : static_cast<const zoned_seconds&&>(zoned_seconds{
-                                        tz, local_days{cldGetWeekForLine(ymTmp, firstdow, line)}})))
+                                        tz, local_days{cldGetWeekForLine(ymTmp, firstdow, line)},
+                                        choose::earliest})))
                    << ' ';
               } else {
                 os << pads;
@@ -461,11 +523,12 @@ auto waybar::modules::Clock::get_calendar(const year_month_day& today, const yea
                    << fmt_lib::vformat(
                           m_locale_, fmtMap_[4],
                           fmt_lib::make_format_args(
-                              (line == 2) ? static_cast<const zoned_seconds&&>(
-                                                zoned_seconds{tz, local_days{ymTmp / 1}})
-                                          : static_cast<const zoned_seconds&&>(
-                                                zoned_seconds{tz, local_days{cldGetWeekForLine(
-                                                                      ymTmp, firstdow, line)}})));
+                              (line == 2)
+                                  ? static_cast<const zoned_seconds&&>(
+                                        zoned_seconds{tz, local_days{ymTmp / 1}, choose::earliest})
+                                  : static_cast<const zoned_seconds&&>(zoned_seconds{
+                                        tz, local_days{cldGetWeekForLine(ymTmp, firstdow, line)},
+                                        choose::earliest})));
               else
                 os << pads;
             }
@@ -547,8 +610,12 @@ void waybar::modules::Clock::tz_down() {
   tzCurrIdx_ = (tzCurrIdx_ == 0) ? tzSize - 1 : tzCurrIdx_ - 1;
 }
 void waybar::modules::Clock::action_exec(const std::string& action) {
-  auto cmd = action.substr(strlen("exec "));
-  pid_children_.push_back(util::command::forkExec(cmd));
+  const auto pos = action.find(" ");
+  if (pos == std::string::npos || action.find_first_not_of(" ", pos) == std::string::npos) {
+    spdlog::error("Clock: exec action requires a command argument");
+    return;
+  }
+  pid_children_.push_back(util::command::forkExec(action.substr(pos + 1)));
 }
 
 #ifdef HAVE_LANGINFO_1STDAY

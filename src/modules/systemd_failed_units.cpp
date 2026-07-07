@@ -282,21 +282,42 @@ auto SystemdFailedUnits::update() -> void {
 
   last_status_ = overall_state_;
 
-  setLabelMarkup(fmt::format(
-      fmt::runtime(nr_failed_ == 0 ? format_ok_ : format_), fmt::arg("nr_failed", nr_failed_),
-      fmt::arg("nr_failed_system", nr_failed_system_), fmt::arg("nr_failed_user", nr_failed_user_),
-      fmt::arg("system_state", system_state_), fmt::arg("user_state", user_state_),
-      fmt::arg("overall_state", overall_state_)));
+  // A malformed user format/tooltip-format (e.g. an unknown {placeholder}) makes fmt throw a
+  // fmt::format_error; catch it so a bad config warns once instead of taking update() down.
+  try {
+    setLabelMarkup(fmt::format(
+        fmt::runtime(nr_failed_ == 0 ? format_ok_ : format_), fmt::arg("nr_failed", nr_failed_),
+        fmt::arg("nr_failed_system", nr_failed_system_),
+        fmt::arg("nr_failed_user", nr_failed_user_), fmt::arg("system_state", system_state_),
+        fmt::arg("user_state", user_state_), fmt::arg("overall_state", overall_state_)));
+  } catch (const std::exception& e) {
+    static bool labelWarned = false;
+    if (!labelWarned) {
+      spdlog::warn("systemd-failed-units: invalid format, using fallback: {}", e.what());
+      labelWarned = true;
+    }
+    setLabelMarkup(fmt::format("{} failed", nr_failed_));
+  }
   if (tooltipEnabled()) {
     std::string failed_list = BuildTooltipFailedList();
     auto tooltip_template = overall_state_ == "ok" ? tooltip_format_ok_ : tooltip_format_;
     if (!tooltip_template.empty()) {
-      setTooltipMarkup(fmt::format(
-          fmt::runtime(tooltip_template), fmt::arg("nr_failed", nr_failed_),
-          fmt::arg("nr_failed_system", nr_failed_system_),
-          fmt::arg("nr_failed_user", nr_failed_user_), fmt::arg("system_state", system_state_),
-          fmt::arg("user_state", user_state_), fmt::arg("overall_state", overall_state_),
-          fmt::arg("failed_units_list", failed_list)));
+      try {
+        setTooltipMarkup(fmt::format(
+            fmt::runtime(tooltip_template), fmt::arg("nr_failed", nr_failed_),
+            fmt::arg("nr_failed_system", nr_failed_system_),
+            fmt::arg("nr_failed_user", nr_failed_user_), fmt::arg("system_state", system_state_),
+            fmt::arg("user_state", user_state_), fmt::arg("overall_state", overall_state_),
+            fmt::arg("failed_units_list", failed_list)));
+      } catch (const std::exception& e) {
+        static bool tooltipWarned = false;
+        if (!tooltipWarned) {
+          spdlog::warn("systemd-failed-units: invalid tooltip-format, skipping tooltip: {}",
+                       e.what());
+          tooltipWarned = true;
+        }
+        setTooltipMarkup("");
+      }
     } else {
       setTooltipMarkup("");
     }

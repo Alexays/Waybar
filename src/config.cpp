@@ -175,21 +175,38 @@ void Config::mergeConfig(Json::Value& a_config_, Json::Value& b_config_) {
   }
 }
 bool isValidOutput(const Json::Value& config, const std::string& name,
-                   const std::string& identifier) {
+                   const std::string& identifier, int32_t width, int32_t height) {
+  const auto isOutputMatches = [&](const std::string& output) -> bool {
+    if (output.substr(0, 1) == "$") {
+      auto* const environment_value = std::getenv(output.substr(1).c_str());
+      if (environment_value != nullptr) {
+        const std::string output_from_env = environment_value;
+        return output_from_env == name || output_from_env == identifier;
+      }
+
+      spdlog::warn("The environment value is unknown: {}", output);
+    }
+
+    return output == name || output == identifier;
+  };
+
   if (config["output"].isArray()) {
     for (auto const& output_conf : config["output"]) {
       if (output_conf.isString()) {
         auto config_output = output_conf.asString();
+
         if (config_output.substr(0, 1) == "!") {
-          if (config_output.substr(1) == name || config_output.substr(1) == identifier) {
+          if (isOutputMatches(config_output.substr(1))) {
             return false;
           }
 
           continue;
         }
-        if (config_output == name || config_output == identifier) {
+
+        if (isOutputMatches(config_output)) {
           return true;
         }
+
         if (config_output.substr(0, 1) == "*") {
           return true;
         }
@@ -200,14 +217,72 @@ bool isValidOutput(const Json::Value& config, const std::string& name,
 
   if (config["output"].isString()) {
     auto config_output = config["output"].asString();
+
     if (!config_output.empty()) {
       if (config_output.substr(0, 1) == "!") {
-        return config_output.substr(1) != name && config_output.substr(1) != identifier;
+        return !isOutputMatches(config_output.substr(1));
       }
-      return config_output == name || config_output == identifier;
+
+      return isOutputMatches(config_output);
     }
   }
 
+  // if "output-dimensions" is a string, make it an array of size 1
+  Json::Value config_output_dimensions = config["output-dimensions"];
+  if (config_output_dimensions.isString()) {
+    Json::Value jsonArray(Json::arrayValue);
+    jsonArray.append(config_output_dimensions);
+    config_output_dimensions = jsonArray;
+  }
+  if (config_output_dimensions.isArray()) {
+    for (auto const& config_output_dimension : config_output_dimensions) {
+      if (!config_output_dimension.isString()) {
+        continue;
+      }
+      std::string str = config_output_dimension.asString();
+      auto first_space = str.find(' ');
+      if (first_space == std::string::npos) {
+        spdlog::warn(
+            "Ignoring malformed 'output-dimensions' entry (expected '<dimension> <comparator> "
+            "<value>'): '{}'",
+            str);
+        continue;
+      }
+      std::string dimension = str.substr(0, first_space);
+      str = str.substr(first_space + 1);
+      auto second_space = str.find(' ');
+      if (second_space == std::string::npos) {
+        spdlog::warn(
+            "Ignoring malformed 'output-dimensions' entry (expected '<dimension> <comparator> "
+            "<value>'): '{}'",
+            config_output_dimension.asString());
+        continue;
+      }
+      std::string comparator = str.substr(0, second_space);
+      int value;
+      try {
+        value = std::stoi(str.substr(second_space + 1));
+      } catch (const std::exception& e) {
+        spdlog::warn("Ignoring 'output-dimensions' entry with non-integer value: '{}'",
+                     config_output_dimension.asString());
+        continue;
+      }
+
+      int comparison_value;
+      if (dimension == "height") {
+        comparison_value = height;
+      } else if (dimension == "width") {
+        comparison_value = width;
+      } else {
+        continue;
+      }
+
+      if ((comparator == "<" && comparison_value >= value) ||
+          (comparator == ">" && comparison_value <= value)) {
+        return false;
+      }
+    }
+  }
   return true;
 }
 
@@ -223,15 +298,16 @@ void Config::load(const std::string& config) {
 }
 
 std::vector<Json::Value> Config::getOutputConfigs(const std::string& name,
-                                                  const std::string& identifier) {
+                                                  const std::string& identifier, int32_t width,
+                                                  int32_t height) {
   std::vector<Json::Value> configs;
   if (config_.isArray()) {
     for (auto const& config : config_) {
-      if (config.isObject() && isValidOutput(config, name, identifier)) {
+      if (config.isObject() && isValidOutput(config, name, identifier, width, height)) {
         configs.push_back(config);
       }
     }
-  } else if (isValidOutput(config_, name, identifier)) {
+  } else if (isValidOutput(config_, name, identifier, width, height)) {
     configs.push_back(config_);
   }
   return configs;

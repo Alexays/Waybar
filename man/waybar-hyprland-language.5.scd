@@ -68,7 +68,7 @@ Addressed by *hyprland/language*
 
 # FORMAT REPLACEMENTS
 
-*{short}*: Short name of layout (e.g. "us"). Equals to {}.
+*{short}*: Short name of layout (e.g. "us").
 
 *{shortDescription}*: Short description of layout (e.g. "en").
 
@@ -113,3 +113,4 @@ Addressed by *hyprland/language*
 # STYLE
 
 - *#language*
+- *#language.<layout>* (per-layout class derived from the layout short name, e.g. '.us')

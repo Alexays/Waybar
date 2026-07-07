@@ -87,14 +87,41 @@ auto isChildPath(const std::string& child, const std::string& parent) -> bool {
   return child.starts_with(parent);
 }
 
+// Returns the configured controller alias, accepting either the documented "controller" key or
+// its "controller-alias" synonym ("controller-alias" takes precedence when both are set).
+auto getConfiguredControllerAlias(const Json::Value& config) -> std::optional<std::string> {
+  if (config["controller-alias"].isString()) {
+    return config["controller-alias"].asString();
+  }
+  if (config["controller"].isString()) {
+    return config["controller"].asString();
+  }
+  return std::nullopt;
+}
+
+// Returns true only if some configured format/tooltip string actually references the peripheral
+// battery placeholder. The GATT battery scan issues over-the-air BLE reads, so it must stay
+// opt-in: users who don't display {device_battery_percentage_peripheral} pay zero cost.
+auto configUsesPeripheralBattery(const Json::Value& config) -> bool {
+  for (const auto& key : config.getMemberNames()) {
+    if (config[key].isString() &&
+        config[key].asString().find("device_battery_percentage_peripheral") != std::string::npos) {
+      return true;
+    }
+  }
+  return false;
+}
+
 auto readBatteryCharacteristicValue(GDBusProxy* proxy_char) -> std::optional<unsigned char> {
   GVariantBuilder builder;
   g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
 
   GError* error = nullptr;
+  // Use a small finite timeout (2s) instead of the default (-1 == 25s) so a sleeping or
+  // dropped BLE peripheral cannot stall the Waybar main thread for ~25s on a synchronous read.
   GVariant* gvar =
       g_dbus_proxy_call_sync(proxy_char, "ReadValue", g_variant_new("(a{sv})", &builder),
-                             G_DBUS_CALL_FLAGS_NONE, -1, nullptr, &error);
+                             G_DBUS_CALL_FLAGS_NONE, 2000, nullptr, &error);
   if (error != nullptr) {
     g_error_free(error);
     return std::nullopt;
@@ -162,9 +189,8 @@ waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& 
   }
 
   if (cur_controller_ = findCurController(); !cur_controller_) {
-    if (config_["controller-alias"].isString()) {
-      spdlog::warn("no bluetooth controller found with alias '{}'",
-                   config_["controller-alias"].asString());
+    if (auto controller_alias = getConfiguredControllerAlias(config_)) {
+      spdlog::warn("no bluetooth controller found with alias '{}'", *controller_alias);
     } else {
       spdlog::warn("no bluetooth controller found");
     }
@@ -324,7 +350,14 @@ auto waybar::modules::Bluetooth::update() -> void {
               fmt::arg("device_alias", dev.alias), fmt::arg("icon", enumerate_icon),
               fmt::arg("device_battery_percentage", dev.battery_percentage.value_or(0)),
               fmt::arg("device_battery_percentage_peripheral",
-                       dev.battery_percentage_peripheral.value_or(0)));
+                       dev.battery_percentage_peripheral.value_or(0)),
+              // Also accept the module-level placeholders so {status} etc. don't
+              // throw "argument not found" in an enumerate format (#4384).
+              fmt::arg("status", state_), fmt::arg("num_connections", connected_devices_.size()),
+              fmt::arg("controller_address", cur_controller_ ? cur_controller_->address : "null"),
+              fmt::arg("controller_address_type",
+                       cur_controller_ ? cur_controller_->address_type : "null"),
+              fmt::arg("controller_alias", cur_controller_ ? cur_controller_->alias : "null"));
         }
       }
       device_enumerate_ = ss.str();
@@ -358,9 +391,9 @@ auto waybar::modules::Bluetooth::onObjectAdded(GDBusObjectManager* manager, GDBu
   ControllerInfo info;
   Bluetooth* bt = static_cast<Bluetooth*>(user_data);
 
+  auto controller_alias = getConfiguredControllerAlias(bt->config_);
   if (!bt->cur_controller_.has_value() && bt->getControllerProperties(object, info) &&
-      (!bt->config_["controller-alias"].isString() ||
-       bt->config_["controller-alias"].asString() == info.alias)) {
+      (!controller_alias.has_value() || controller_alias.value() == info.alias)) {
     bt->cur_controller_ = std::move(info);
     bt->dp.emit();
   }
@@ -539,7 +572,9 @@ auto waybar::modules::Bluetooth::processBatteryServiceCharacteristics(
 
     if (hasUserDescriptionDescriptor(objects, char_path, user_description_uuid)) {
       peripheral_battery = battery_value.value();
-    } else {
+    } else if (!central_battery.has_value()) {
+      // Only fill the central sink once so multiple non-described 0x2a19 characteristics don't
+      // clobber each other (order-dependent last-writer-wins) or an already-set Battery1 value.
       central_battery = battery_value.value();
     }
   }
@@ -565,8 +600,20 @@ auto waybar::modules::Bluetooth::getDeviceProperties(GDBusObject* object, Device
     g_object_unref(proxy_device);
 
     device_info.battery_percentage = getDeviceBatteryPercentage(object);
-    getDeviceGattBatteryLevels(object, device_info.battery_percentage,
-                               device_info.battery_percentage_peripheral);
+    // Only perform the (synchronous, over-the-air) GATT battery scan when the peripheral battery
+    // placeholder is actually used and the device's services are resolved. This keeps the scan off
+    // the frequent property-changed hot path (RSSI/TxPower updates leave ServicesResolved false or
+    // unchanged) and opt-in for split-keyboard style peripherals.
+    if (device_info.services_resolved && configUsesPeripheralBattery(config_)) {
+      // Read the GATT central level into a separate local; only fall back to it when the
+      // authoritative org.bluez.Battery1 percentage is absent, so the GATT scan can never overwrite
+      // the Battery1 value used by {device_battery_percentage}.
+      std::optional<unsigned char> gatt_central;
+      getDeviceGattBatteryLevels(object, gatt_central, device_info.battery_percentage_peripheral);
+      if (!device_info.battery_percentage.has_value()) {
+        device_info.battery_percentage = gatt_central;
+      }
+    }
 
     return true;
   }
@@ -606,9 +653,9 @@ auto waybar::modules::Bluetooth::findCurController() -> std::optional<Controller
   for (GList* l = objects; l != NULL; l = l->next) {
     GDBusObject* object = G_DBUS_OBJECT(l->data);
     ControllerInfo info;
+    auto controller_alias = getConfiguredControllerAlias(config_);
     if (getControllerProperties(object, info) &&
-        (!config_["controller-alias"].isString() ||
-         config_["controller-alias"].asString() == info.alias)) {
+        (!controller_alias.has_value() || controller_alias.value() == info.alias)) {
       controller_info = std::move(info);
       break;
     }

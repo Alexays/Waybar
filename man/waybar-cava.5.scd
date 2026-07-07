@@ -37,7 +37,7 @@ libcava lives in:
 |[ *method* \[output\]
 :[ string
 :[
-:< Manages which frontend Waybar cava module should use. Values: raw, sdl_glsl
+:< Manages which frontend Waybar cava module should use. Values: raw, sdl_glsl. Not a waybar JSON key: it is set through the *method* option in the *\[output\]* section of the cava configuration file (*cava_config*)
 |[ *framerate*
 :[ integer
 :[ 30
@@ -111,12 +111,20 @@ libcava lives in:
 :[ false
 :[ Disables or enables the so-called "Monstercat smoothing" with or without "waves"
 |[ *noise_reduction*
+:[ double
+:[ 0.77
+:[ Fractional value between 0.0 - 1.0. The raw visualization is very noisy, this factor adjusts the integral and gravity filters to keep the signal smooth. Values near 1.0 will be very slow and smooth, near 0.0 will be fast but noisy
+|[ *gravity*
 :[ integer
-:[ 77
-:[ Range between 0 - 100. The raw visualization is very noisy, this factor adjusts the integral and gravity filters to keep the signal smooth. 100 will be very slow and smooth, 0 will be fast but noisy
+:[
+:[ Gravity smoothing filter. Higher values make the bars drop faster. Adjusted by *noise_reduction* when set
+|[ *integral*
+:[ integer
+:[
+:[ Integral smoothing filter. Higher values make the visualization smoother but less precise. Adjusted by *noise_reduction* when set
 |[ *input_delay*
 :[ integer
-:[ 2
+:[ 4
 :[ Sets the delay before fetching audio source thread start working. On author's machine, Waybar starts much faster than pipewire audio server, and without a little delay cava module fails because pipewire is not ready
 |[ *ascii_max_range*
 :[ integer
@@ -124,7 +132,7 @@ libcava lives in:
 :[ It's impossible to set it directly. The value is dictated by the number of icons in the array *format-icons*
 |[ *data_format*
 :[ string
-:[ asci
+:[ ascii
 :[ Raw data format. Can be 'binary' or 'ascii'
 |[ *raw_target*
 :[ string
@@ -157,11 +165,11 @@ libcava lives in:
 |[ *background*
 :[ string
 :[
-:[ GLSL actual. Support hex code colors only. Must be within ''
+:[ GLSL actual. Support hex code colors only. Must be within ''. Not a waybar JSON key: set it as *background* in the *\[color\]* section of the cava configuration file (*cava_config*)
 |[ *foreground*
 :[ string
 :[
-:[ GLSL actual. Support hex code colors only. Must be within ''
+:[ GLSL actual. Support hex code colors only. Must be within ''. Not a waybar JSON key: set it as *foreground* in the *\[color\]* section of the cava configuration file (*cava_config*)
 |[ *gradient*
 :[ integer
 :[ 0
@@ -185,7 +193,7 @@ libcava lives in:
 |[ *continuous_rendering*
 :[ integer
 :[ 0
-:[ GLSL actual. Keep rendering even if no audio. Recommended to set to 1
+:[ GLSL actual. Keep rendering even if no audio. Recommended to set to 1. Not a waybar JSON key: set it as *continuous_rendering* in the *\[output\]* section of the cava configuration file (*cava_config*)
 
 Configuration can be provided as:
 - The only cava configuration file which is provided through *cava_config*. The rest configuration can be skipped
@@ -208,7 +216,12 @@ Configuration can be provided as:
 # SOLVING ISSUES
 
 . On start Waybar throws an exception "error while loading shared libraries: libcava.so: cannot open shared object file: No such file or directory".
-  It might happen when libcava for some reason hasn't been registered in the system. sudo ldconfig should help
+  It might happen when libcava for some reason hasn't been registered in the system. sudo ldconfig should help.
+  It might also happen when Waybar was installed into /usr/local while libcava lives elsewhere. In that case:
+   1. Drop the local cava library: sudo rm -rfv /usr/local/include/cava /usr/local/lib64/pkgconfig/cava.pc /usr/local/lib64/libcava.so
+   2. Set the prefix where Waybar should be installed: meson configure build -Dprefix="/usr"
+   3. Build Waybar: make
+   4. Install Waybar into the system: sudo meson install -C build
 . Waybar is starting but cava module doesn't react to the music
    1. In such cases at first need to make sure usual cava application is working as well
    2. If so, need to comment all configuration options. Uncomment cava_config and provide the path to the working cava config
@@ -253,9 +266,12 @@ In case when cava releases new version and you're wanna get it, it should be rai
 ```
 # STYLE
 
-- *#cava*
+- *#cava* Raw frontend widget
 - *#cava.silent* Applied after no sound has been detected for sleep_timer seconds
 - *#cava.updated* Applied when a new frame is shown
+- *#cavaGLSL* GLSL frontend widget (used instead of *#cava* when the cava *method* is *sdl_glsl*)
+- *#cavaGLSL.silent* Applied after no sound has been detected for sleep_timer seconds
+- *#cavaGLSL.updated* Applied when a new frame is shown
 # FRONTENDS
 
 ## RAW

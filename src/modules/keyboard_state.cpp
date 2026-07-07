@@ -86,7 +86,6 @@ auto isCommonFormatIcons(const Json::Value& config) -> bool {
 auto keyStateToIcons(const Json::Value& config)
     -> std::unordered_map<std::string, std::vector<std::string>> {
   std::unordered_map<std::string, std::vector<std::string>> key_icon_states;
-  std::vector<std::string> default_icons = {"unlocked", "locked"};
 
   if (isCommonFormatIcons(config)) {
     std::vector<std::string> icons = {
@@ -100,26 +99,18 @@ auto keyStateToIcons(const Json::Value& config)
     return key_icon_states;
   }
 
-  bool found_any = false;
+  const auto& format_icons = config["format-icons"];
   for (const auto& key : std::vector<std::string>{"numlock", "capslock", "scrolllock"}) {
     std::string map_key = key.substr(0, key.length() - 4);
     map_key[0] = std::toupper(map_key[0]);
-    if (config["format-icons"].isObject() && config["format-icons"][key].isObject()) {
-      std::string unlocked = config["format-icons"][key]["unlocked"].isString()
-                                 ? config["format-icons"][key]["unlocked"].asString()
-                                 : "unlocked";
-      std::string locked = config["format-icons"][key]["locked"].isString()
-                               ? config["format-icons"][key]["locked"].asString()
-                               : "locked";
-      key_icon_states[map_key] = {unlocked, locked};
-      found_any = true;
+    std::string unlocked = "unlocked";
+    std::string locked = "locked";
+    if (format_icons.isObject() && format_icons[key].isObject()) {
+      const auto& obj = format_icons[key];
+      if (obj["unlocked"].isString()) unlocked = obj["unlocked"].asString();
+      if (obj["locked"].isString()) locked = obj["locked"].asString();
     }
-  }
-
-  if (!found_any) {
-    key_icon_states["Num"] = default_icons;
-    key_icon_states["Caps"] = default_icons;
-    key_icon_states["Scroll"] = default_icons;
+    key_icon_states[map_key] = {unlocked, locked};
   }
 
   return key_icon_states;
@@ -279,10 +270,16 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
           std::lock_guard<std::mutex> lock(devices_mutex_);
           auto it = libinput_devices_.find(dev_path);
           if (it != libinput_devices_.end()) {
-            spdlog::info("Keyboard {} has been removed.", dev_path);
-            libinput_path_remove_device(it->second);
-            libinput_device_unref(it->second);
+            struct libinput_device* device = it->second;
+            // Erase from the map first so that a second IN_DELETE event for the
+            // same path becomes a no-op. This keeps removal idempotent and
+            // ensures libinput_path_remove_device()/libinput_device_unref() are
+            // called exactly once per device, avoiding a libinput list_remove
+            // assertion abort on double removal.
             libinput_devices_.erase(it);
+            spdlog::info("Keyboard {} has been removed.", dev_path);
+            libinput_path_remove_device(device);
+            libinput_device_unref(device);
           }
         }
         i += sizeof(struct inotify_event) + event->len;
@@ -302,31 +299,47 @@ auto waybar::modules::KeyboardState::update() -> void {
   sleep(0);  // Wait for keyboard status change
   int numl = 0, capsl = 0, scrolll = 0;
 
-  try {
-    std::string dev_path;
-    {
-      std::lock_guard<std::mutex> lock(devices_mutex_);
-      if (libinput_devices_.empty()) {
-        return;
-      }
-      if (config_["device-path"].isString() &&
-          libinput_devices_.find(config_["device-path"].asString()) != libinput_devices_.end()) {
-        dev_path = config_["device-path"].asString();
-      } else {
-        dev_path = libinput_devices_.begin()->first;
+  std::vector<std::string> dev_paths;
+  {
+    std::lock_guard<std::mutex> lock(devices_mutex_);
+    if (libinput_devices_.empty()) {
+      return;
+    }
+    if (config_["device-path"].isString() &&
+        libinput_devices_.find(config_["device-path"].asString()) != libinput_devices_.end()) {
+      // An explicit device was configured: read lock state from just that device.
+      dev_paths.push_back(config_["device-path"].asString());
+    } else {
+      // No explicit device: a multi-node keyboard may expose several event
+      // devices where only one of them actually toggles the lock LEDs. OR the
+      // LED values across all devices so a lock is reported on if any device
+      // reports it on.
+      for (const auto& [dev_path, _] : libinput_devices_) {
+        dev_paths.push_back(dev_path);
       }
     }
-    int fd = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
-    auto dev = openDevice(fd);
-    numl = libevdev_get_event_value(dev, EV_LED, LED_NUML);
-    capsl = libevdev_get_event_value(dev, EV_LED, LED_CAPSL);
-    scrolll = libevdev_get_event_value(dev, EV_LED, LED_SCROLLL);
-    libevdev_free(dev);
-    closeFile(fd);
-  } catch (const errno_error& e) {
-    // ENOTTY just means the device isn't an evdev device, skip it
-    if (e.code != ENOTTY) {
-      spdlog::warn(e.what());
+  }
+  for (const auto& dev_path : dev_paths) {
+    try {
+      int fd = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
+      libevdev* dev;
+      try {
+        dev = openDevice(fd);
+      } catch (...) {
+        // openDevice does not close the fd if libevdev_new_from_fd fails.
+        closeFile(fd);
+        throw;
+      }
+      numl |= libevdev_get_event_value(dev, EV_LED, LED_NUML);
+      capsl |= libevdev_get_event_value(dev, EV_LED, LED_CAPSL);
+      scrolll |= libevdev_get_event_value(dev, EV_LED, LED_SCROLLL);
+      libevdev_free(dev);
+      closeFile(fd);
+    } catch (const errno_error& e) {
+      // ENOTTY just means the device isn't an evdev device, skip it
+      if (e.code != ENOTTY) {
+        spdlog::warn(e.what());
+      }
     }
   }
 
@@ -372,7 +385,14 @@ auto waybar::modules::KeyboardState::update() -> void {
 auto waybar::modules ::KeyboardState::tryAddDevice(const std::string& dev_path) -> void {
   try {
     int fd = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
-    auto dev = openDevice(fd);
+    libevdev* dev;
+    try {
+      dev = openDevice(fd);
+    } catch (...) {
+      // openDevice does not close the fd if libevdev_new_from_fd fails.
+      closeFile(fd);
+      throw;
+    }
     if (supportsLockStates(dev)) {
       spdlog::info("Found device {} at '{}'", libevdev_get_name(dev), dev_path);
       std::lock_guard<std::mutex> lock(devices_mutex_);

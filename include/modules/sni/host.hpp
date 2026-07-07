@@ -14,19 +14,22 @@ namespace waybar::modules::SNI {
 
 class Host {
  public:
-  Host(const std::size_t id, const Json::Value&, const Bar&, const std::vector<std::string>&,
+  Host(std::size_t id, const Json::Value&, const Bar&, const std::vector<std::string>&,
        const std::function<void(std::unique_ptr<Item>&)>&,
-       const std::function<void(std::unique_ptr<Item>&)>&, const std::function<void()>&);
+       const std::function<void(std::unique_ptr<Item>&)>&, const std::function<void()>&,
+       const std::function<void()>&);
   ~Host();
 
   void checkIgnoreList(const std::vector<std::string>& ignore_list,
                        const std::function<void(std::unique_ptr<Item>&)>& on_remove);
 
+  void reorderItems();
+
  private:
-  void busAcquired(const Glib::RefPtr<Gio::DBus::Connection>&, Glib::ustring);
-  void nameAppeared(const Glib::RefPtr<Gio::DBus::Connection>&, Glib::ustring,
+  void busAcquired(const Glib::RefPtr<Gio::DBus::Connection>&, const Glib::ustring&);
+  void nameAppeared(const Glib::RefPtr<Gio::DBus::Connection>&, const Glib::ustring&,
                     const Glib::ustring&);
-  void nameVanished(const Glib::RefPtr<Gio::DBus::Connection>&, Glib::ustring);
+  void nameVanished(const Glib::RefPtr<Gio::DBus::Connection>&, const Glib::ustring&);
   static void proxyReady(GObject*, GAsyncResult*, gpointer);
   static void registerHost(GObject*, GAsyncResult*, gpointer);
   static void itemRegistered(SnWatcher*, const gchar*, gpointer);
@@ -36,7 +39,7 @@ class Host {
   void removeItem(std::vector<std::unique_ptr<Item>>::iterator);
   void clearItems();
 
-  std::tuple<std::string, std::string> getBusNameAndObjectPath(const std::string);
+  static std::tuple<std::string, std::string> getBusNameAndObjectPath(const std::string&);
   void addRegisteredItem(const std::string& service);
 
   std::vector<std::unique_ptr<Item>> items_;
@@ -53,6 +56,12 @@ class Host {
   const std::vector<std::string> ignore_list_;
   const std::function<void(std::unique_ptr<Item>&)> on_add_;
   const std::function<void(std::unique_ptr<Item>&)> on_remove_;
+  // Re-applies the configured ordering to the already-added tray widgets. This
+  // must NOT re-run the add path (which would re-parent widgets and reconnect
+  // signals); it only reorders existing children.
+  const std::function<void()> on_reorder_;
+
+  ItemOrderMap orders_;
   const std::function<void()> on_update_;
 };
 

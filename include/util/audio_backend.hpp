@@ -29,10 +29,17 @@ class AudioBackend {
   static void volumeModifyCb(pa_context*, int, void*);
   static void sourceVolumeModifyCb(pa_context*, int, void*);
   void connectContext();
+  // Non-throwing reconnect used from the PulseAudio callback thread. Throwing
+  // across the libpulse C callback boundary calls std::terminate, so this
+  // swallows any failure and reports it via the return value instead.
+  bool reconnectContext() noexcept;
 
   pa_threaded_mainloop* mainloop_;
   pa_mainloop_api* mainloop_api_;
   pa_context* context_;
+  // Guards against the FAILED -> connect -> FAILED recursion / busy loop when a
+  // reconnect attempt fails synchronously inside pa_context_connect().
+  bool reconnecting_{false};
   pa_cvolume pa_volume_;
   pa_cvolume pa_source_volume_;
 

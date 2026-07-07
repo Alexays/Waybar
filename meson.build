@@ -74,6 +74,7 @@ wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
 gtkmm = dependency('gtkmm-3.0', version : ['>=3.22.0'])
+giomm = dependency('giomm-2.4', version : ['>=2.4.0'])
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
 giounix = dependency('gio-unix-2.0')
 jsoncpp = dependency('jsoncpp', version : ['>=1.9.2'], fallback : ['jsoncpp', 'jsoncpp_dep'])
@@ -94,6 +95,7 @@ xkbregistry = dependency('xkbregistry')
 libjack = dependency('jack', required: get_option('jack'))
 libwireplumber = dependency('wireplumber-0.5', required: get_option('wireplumber'))
 libgps = dependency('libgps', required: get_option('gps'))
+libmm_glib = dependency('mm-glib', required: get_option('wwan'))
 
 libsndio = compiler.find_library('sndio', required: get_option('sndio'))
 if libsndio.found()
@@ -194,7 +196,8 @@ src_files = files(
     'src/util/regex_collection.cpp',
     'src/util/css_reload_helper.cpp',
     'src/util/transform_8bit_to_rgba.cpp',
-    'src/util/utf8_string.cpp'
+    'src/util/utf8_string.cpp',
+    'src/util/command_line_stream.cpp'
 )
 
 gps_src_files = files(
@@ -219,6 +222,7 @@ man_files = files(
     'man/waybar-states.5.scd',
     'man/waybar-menu.5.scd',
     'man/waybar-temperature.5.scd',
+    'man/waybar-user.5.scd',
 )
 
 inc_dirs = ['include']
@@ -364,6 +368,7 @@ if get_option('niri')
         'src/modules/niri/language.cpp',
         'src/modules/niri/window.cpp',
         'src/modules/niri/workspaces.cpp',
+        'src/modules/niri/workspace.cpp',
     )
     man_files += files(
         'man/waybar-niri-language.5.scd',
@@ -397,6 +402,10 @@ if true
         'src/modules/wayfire/backend.cpp',
         'src/modules/wayfire/window.cpp',
         'src/modules/wayfire/workspaces.cpp',
+    )
+    man_files += files(
+        'man/waybar-wayfire-window.5.scd',
+        'man/waybar-wayfire-workspaces.5.scd',
     )
 endif
 
@@ -436,6 +445,7 @@ if pipewire.found()
         'src/modules/privacy/privacy_item.cpp',
         'src/util/pipewire/pipewire_backend.cpp',
         'src/util/pipewire/privacy_node_info.cpp',
+        'src/util/geoclue_backend.cpp',
     )
     man_files += files('man/waybar-privacy.5.scd')
 endif
@@ -605,6 +615,12 @@ if libgps.found()
     )
 endif
 
+if libmm_glib.found()
+   add_project_arguments('-DHAVE_LIBMM_GLIB', language: 'cpp')
+   src_files += files('src/modules/wwan.cpp')
+   man_files += files('man/waybar-wwan.5.scd')
+endif
+
 subdir('protocol')
 
 app_resources = []
@@ -623,6 +639,7 @@ executable(
         jsoncpp,
         wayland_cursor,
         gtkmm,
+        giomm,
         dbusmenu_gtk,
         giounix,
         libinput,
@@ -644,6 +661,7 @@ executable(
         libsndio,
         tz_dep,
         xkbregistry,
+        libmm_glib
     ],
     include_directories: inc_dirs,
     install: true,

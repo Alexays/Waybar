@@ -2,6 +2,9 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+
+#include "modules/sni/item.hpp"
 #include "util/scope_guard.hpp"
 
 namespace waybar::modules::SNI {
@@ -9,11 +12,11 @@ namespace waybar::modules::SNI {
 static const unsigned RETRY_DELAY_MS = 200;
 static const unsigned MAX_RETRIES = 10;
 
-Host::Host(const std::size_t id, const Json::Value& config, const Bar& bar,
+Host::Host(std::size_t id, const Json::Value& config, const Bar& bar,
            const std::vector<std::string>& ignore_list,
            const std::function<void(std::unique_ptr<Item>&)>& on_add,
            const std::function<void(std::unique_ptr<Item>&)>& on_remove,
-           const std::function<void()>& on_update)
+           const std::function<void()>& on_reorder, const std::function<void()>& on_update)
     : bus_name_("org.kde.StatusNotifierHost-" + std::to_string(getpid()) + "-" +
                 std::to_string(id)),
       object_path_("/StatusNotifierHost/" + std::to_string(id)),
@@ -24,7 +27,19 @@ Host::Host(const std::size_t id, const Json::Value& config, const Bar& bar,
       ignore_list_(ignore_list),
       on_add_(on_add),
       on_remove_(on_remove),
-      on_update_(on_update) {}
+      on_reorder_(on_reorder),
+      on_update_(on_update) {
+  auto orders = config["orders"];
+  if (!orders.isNull()) {
+    for (auto itr = orders.begin(); itr != orders.end(); ++itr) {
+      auto key = itr.name();
+      auto& value = *itr;
+      assert(value.isInt());
+
+      orders_[key] = value.asInt();
+    }
+  }
+}
 
 Host::~Host() {
   retry_connection_.disconnect();
@@ -77,13 +92,13 @@ void Host::checkIgnoreList(const std::vector<std::string>& ignore_list,
   }
 }
 
-void Host::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib::ustring name) {
+void Host::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, const Glib::ustring& name) {
   watcher_id_ = Gio::DBus::watch_name(conn, "org.kde.StatusNotifierWatcher",
                                       sigc::mem_fun(*this, &Host::nameAppeared),
                                       sigc::mem_fun(*this, &Host::nameVanished));
 }
 
-void Host::nameAppeared(const Glib::RefPtr<Gio::DBus::Connection>& conn, const Glib::ustring name,
+void Host::nameAppeared(const Glib::RefPtr<Gio::DBus::Connection>& conn, const Glib::ustring& name,
                         const Glib::ustring& name_owner) {
   if (cancellable_ != nullptr) {
     // TODO
@@ -94,7 +109,8 @@ void Host::nameAppeared(const Glib::RefPtr<Gio::DBus::Connection>& conn, const G
                        "/StatusNotifierWatcher", cancellable_, &Host::proxyReady, this);
 }
 
-void Host::nameVanished(const Glib::RefPtr<Gio::DBus::Connection>& conn, const Glib::ustring name) {
+void Host::nameVanished(const Glib::RefPtr<Gio::DBus::Connection>& conn,
+                        const Glib::ustring& name) {
   retry_connection_.disconnect();
   retry_count_ = 0;
   g_cancellable_cancel(cancellable_);
@@ -111,11 +127,11 @@ void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
     }
   });
   SnWatcher* watcher = sn_watcher_proxy_new_finish(res, &error);
-  if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+  if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED) != 0) {
     spdlog::error("Host: {}", error->message);
     return;
   }
-  auto host = static_cast<SNI::Host*>(data);
+  auto* host = static_cast<SNI::Host*>(data);
   if (error != nullptr) {
     spdlog::error("Host: {}", error->message);
     g_clear_object(&host->cancellable_);
@@ -128,12 +144,24 @@ void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
     // Store the timeout connection so it is disconnected in ~Host, avoiding a
     // use-after-free if the Host is destroyed before the retry fires.
     host->retry_connection_ = Glib::signal_timeout().connect(
-        [host]() {
+        [host]() -> bool {
           if (host->watcher_ != nullptr) {
             return false;
           }
-          auto conn = Gio::DBus::Connection::get_sync(Gio::DBus::BusType::BUS_TYPE_SESSION);
-          host->nameAppeared(conn, "org.kde.StatusNotifierWatcher", "");
+          try {
+            auto conn = Gio::DBus::Connection::get_sync(Gio::DBus::BusType::BUS_TYPE_SESSION);
+            host->nameAppeared(conn, "org.kde.StatusNotifierWatcher", "");
+          } catch (const Glib::Error& e) {
+            spdlog::error("Host: retry get_sync failed: {}", static_cast<std::string>(e.what()));
+            if (host->retry_count_ < MAX_RETRIES) {
+              host->retry_count_ += 1;
+              return true;  // re-arm this timer; never let the exception escape
+            }
+            spdlog::warn("Host: giving up on watcher proxy creation after {} retries",
+                         host->retry_count_);
+          } catch (const std::exception& e) {
+            spdlog::error("Host: retry failed: {}", e.what());
+          }
           return false;
         },
         RETRY_DELAY_MS);
@@ -153,18 +181,18 @@ void Host::registerHost(GObject* src, GAsyncResult* res, gpointer data) {
     }
   });
   sn_watcher_call_register_host_finish(SN_WATCHER(src), res, &error);
-  if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+  if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED) != 0) {
     spdlog::error("Host: {}", error->message);
     return;
   }
-  auto host = static_cast<SNI::Host*>(data);
+  auto* host = static_cast<SNI::Host*>(data);
   if (error != nullptr) {
     spdlog::error("Host: {}", error->message);
     return;
   }
   g_signal_connect(host->watcher_, "item-registered", G_CALLBACK(&Host::itemRegistered), data);
   g_signal_connect(host->watcher_, "item-unregistered", G_CALLBACK(&Host::itemUnregistered), data);
-  auto items = sn_watcher_dup_registered_items(host->watcher_);
+  auto* items = sn_watcher_dup_registered_items(host->watcher_);
   if (items != nullptr) {
     spdlog::info("Host: Found {} pre-registered SNI items", g_strv_length(items));
     for (uint32_t i = 0; items[i] != nullptr; i += 1) {
@@ -176,7 +204,7 @@ void Host::registerHost(GObject* src, GAsyncResult* res, gpointer data) {
 }
 
 void Host::itemRegistered(SnWatcher* watcher, const gchar* service, gpointer data) {
-  auto host = static_cast<SNI::Host*>(data);
+  auto* host = static_cast<SNI::Host*>(data);
   spdlog::info("Host::itemRegistered called with service: {}", service);
   host->addRegisteredItem(service);
   // host->checkIgnoreList(host->ignore_list_, std::bind(&Host::itemUnregistered, host,
@@ -184,8 +212,8 @@ void Host::itemRegistered(SnWatcher* watcher, const gchar* service, gpointer dat
 }
 
 void Host::itemUnregistered(SnWatcher* watcher, const gchar* service, gpointer data) {
-  auto host = static_cast<SNI::Host*>(data);
-  auto [bus_name, object_path] = host->getBusNameAndObjectPath(service);
+  auto* host = static_cast<SNI::Host*>(data);
+  auto [bus_name, object_path] = waybar::modules::SNI::Host::getBusNameAndObjectPath(service);
   for (auto it = host->items_.begin(); it != host->items_.end(); ++it) {
     if ((*it)->bus_name == bus_name && (*it)->object_path == object_path) {
       host->removeItem(it);
@@ -232,7 +260,7 @@ void Host::clearItems() {
   }
 }
 
-std::tuple<std::string, std::string> Host::getBusNameAndObjectPath(const std::string service) {
+std::tuple<std::string, std::string> Host::getBusNameAndObjectPath(const std::string& service) {
   auto it = service.find('/');
   if (it != std::string::npos) {
     return {service.substr(0, it), service.substr(it)};
@@ -248,19 +276,32 @@ void Host::addRegisteredItem(const std::string& service) {
       return;
     }
   }
-  std::string bus_name, object_path;
+  std::string bus_name;
+  std::string object_path;
   std::tie(bus_name, object_path) = getBusNameAndObjectPath(service);
   spdlog::debug("SNI item registered: bus_name={}, object_path={}, full_service={}", bus_name,
                 object_path, service);
-  auto it = std::find_if(items_.begin(), items_.end(), [&bus_name, &object_path](const auto& item) {
+  auto it = std::ranges::find_if(items_, [&bus_name, &object_path](const auto& item) {
     return bus_name == item->bus_name && object_path == item->object_path;
   });
   if (it == items_.end()) {
     spdlog::debug("Adding SNI item: {}", bus_name);
     items_.emplace_back(std::make_unique<Item>(
         bus_name, object_path, config_, bar_, [this](Item& item) { itemReady(item); },
-        [this](Item& item) { itemInvalidated(item); }, on_update_));
+        [this](Item& item) { itemInvalidated(item); }, on_update_, *this, orders_));
   }
+}
+
+void Host::reorderItems() {
+  // Re-apply the configured ordering to the tray. This is invoked while an
+  // item's Id/order is first resolved (from Item::setCustomIcon), which happens
+  // *before* the item is marked ready and added. It must therefore only reorder
+  // the widgets that have already been added; re-running the full add path here
+  // would (a) re-parent widgets and reconnect signals for every item and (b)
+  // mutate items_ from within checkIgnoreList while it is being iterated,
+  // invalidating iterators/pointers. Delegating to on_reorder_ keeps this to a
+  // pure reordering of existing children.
+  on_reorder_();
 }
 
 }  // namespace waybar::modules::SNI

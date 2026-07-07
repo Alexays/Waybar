@@ -84,7 +84,9 @@ Addressed by *systemd-failed-units*
 *{overall_state}:* Overall state of the systemd and user session. ("ok" or "degraded")
 
 *{failed_units_list}:* Bulleted list of failed units using *tooltip-unit-format*. Empty when
-there are no failed units.
+there are no failed units. This replacement is only available in *tooltip-format* and
+*tooltip-format-ok*; it is not supplied to *format*/*format-ok* and using it there breaks
+label rendering.
 
 The *tooltip-unit-format* string supports the following replacements:
 

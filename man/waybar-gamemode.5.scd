@@ -28,7 +28,7 @@ Feral Gamemode optimizations.
 
 *tooltip-format*: ++
 	typeof: string ++
-	default: Games running: {glyph} ++
+	default: Games running: {count} ++
 	The text format of the tooltip.
 
 *hide-not-running*: ++
@@ -54,7 +54,7 @@ Feral Gamemode optimizations.
 *icon-size*: ++
 	typeof: unsigned integer ++
 	default: 20 ++
-	Defines the size of the icons.
+	Defines the size of the icons. Set to *0* for auto size.
 
 *icon-spacing*: ++
 	typeof: unsigned integer ++

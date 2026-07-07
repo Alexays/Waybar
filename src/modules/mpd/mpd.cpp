@@ -29,7 +29,7 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config, std:
       connection_(nullptr, &mpd_connection_free),
       status_(nullptr, &mpd_status_free),
       song_(nullptr, &mpd_song_free),
-      ellipsis_(config_["ellipsis"].isString() ? config_["ellipsis"].asString() : "\u2026") {
+      ellipsis_(config_["ellipsis"].isString() ? config_["ellipsis"].asString() : "") {
   if (!config_["port"].isNull() && !config_["port"].isUInt()) {
     spdlog::warn("{}: `port` configuration should be an unsigned int", module_name_);
   }
@@ -63,7 +63,8 @@ auto waybar::modules::MPD::update() -> void {
 std::string waybar::modules::MPD::getTag(mpd_tag_type type, unsigned idx) const {
   std::string result =
       config_["unknown-tag"].isString() ? config_["unknown-tag"].asString() : "N/A";
-  const char* tag = mpd_song_get_tag(song_.get(), type, idx);
+  // song_ is null when there is no current song (e.g. after `mpc clear`) (#5183).
+  const char* tag = song_ ? mpd_song_get_tag(song_.get(), type, idx) : nullptr;
 
   // mpd_song_get_tag can return NULL, so make sure it's valid before setting
   if (tag) result = tag;
@@ -72,6 +73,9 @@ std::string waybar::modules::MPD::getTag(mpd_tag_type type, unsigned idx) const 
 }
 
 std::string waybar::modules::MPD::getFilename() const {
+  if (!song_) {
+    return "";
+  }
   std::string path = mpd_song_get_uri(song_.get());
   size_t position = path.find_last_of("/");
   if (position == std::string::npos) {
@@ -295,13 +299,29 @@ void waybar::modules::MPD::tryConnect() {
     return;
   }
 
-  connection_ =
-      detail::unique_connection(mpd_connection_new(server_, port_, timeout_), &mpd_connection_free);
+  // tryConnect() runs on the GTK main thread (via Glib::signal_timeout), so a
+  // blocking connect freezes the whole bar. Bound the connect attempt to a
+  // short timeout so an unreachable MPD server fails fast instead of hanging
+  // the loop for the full user-facing `timeout_` (up to 30s by default, #1186).
+  // The third argument to mpd_connection_new() is also the default command
+  // read timeout, so restore `timeout_` once connected to avoid shortening
+  // reads for slow-but-alive servers.
+  static constexpr unsigned kConnectTimeoutMs = 2'000;
+  unsigned connect_timeout =
+      (timeout_ != 0 && timeout_ < kConnectTimeoutMs) ? timeout_ : kConnectTimeoutMs;
+
+  connection_ = detail::unique_connection(mpd_connection_new(server_, port_, connect_timeout),
+                                          &mpd_connection_free);
 
   if (connection_ == nullptr) {
     spdlog::error("{}: Failed to connect to MPD", module_name_);
     connection_.reset();
     return;
+  }
+
+  // Restore the user-configured timeout for subsequent command reads.
+  if (timeout_ != 0) {
+    mpd_connection_set_timeout(connection_.get(), timeout_);
   }
 
   try {

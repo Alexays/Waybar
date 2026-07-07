@@ -8,6 +8,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include <chrono>
 #include <sstream>
 #include <thread>
 #include <vector>
@@ -100,71 +101,121 @@ void IPC::sendAsync(const Json::Value& request) {
 IPC::IPC() : sockfd_(-1), active_client_(Json::nullValue) { startIPC(); }
 
 IPC::~IPC() {
+  running_ = false;
   if (sockfd_ != -1) close(sockfd_);
   if (ipc_thread_.joinable()) ipc_thread_.join();
 }
 
 void IPC::startIPC() {
+  // Connect synchronously so a missing socket (this WM isn't the active
+  // compositor) throws here and lets the module constructor fail, instead of
+  // the module always attaching with a permanently empty widget.
   sockfd_ = IPC::connectToSocket();
 
   ipc_thread_ = std::thread([this]() {
     spdlog::info("Mango IPC thread started");
 
-    struct pollfd pfd;
-    pfd.fd = sockfd_;
-    pfd.events = POLLIN;
-
-    const std::vector<std::string> subs = {"watch all-monitors"};
-    for (const auto& cmd : subs) {
-      if (write(sockfd_, cmd.c_str(), cmd.size()) != (ssize_t)cmd.size() ||
-          write(sockfd_, "\n", 1) != 1) {
-        spdlog::error("Failed to subscribe to {}", cmd);
-        return;
-      }
-    }
-
     char buf[4096];
     std::string buffer;
-    while (true) {
-      int ret = poll(&pfd, 1, 1000);
-      if (ret == 0) continue;
-      if (ret < 0) {
-        if (errno == EINTR) continue;
-        spdlog::error("IPC poll error: {}", strerror(errno));
-        break;
-      }
+    bool have_initial_fd = true;
 
-      if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
-        spdlog::info("Mango IPC socket closed or invalid");
-        break;
+    // Reconnect loop: if the event stream drops (POLLHUP/POLLERR, read()==0 or
+    // an error) we back off briefly and re-establish the socket instead of
+    // leaving every mango module frozen forever with stale content.
+    while (running_) {
+      if (!have_initial_fd) {
+        try {
+          sockfd_ = IPC::connectToSocket();
+        } catch (const std::exception& e) {
+          spdlog::error("Mango IPC: failed to reconnect: {}", e.what());
+          std::this_thread::sleep_for(std::chrono::seconds(2));
+          continue;
+        }
       }
+      have_initial_fd = false;
 
-      if (pfd.revents & POLLIN) {
-        ssize_t n = read(sockfd_, buf, sizeof(buf));
-        if (n == 0) {
-          spdlog::info("Mango IPC connection closed");
+      bool subscribed = true;
+      const std::vector<std::string> subs = {"watch all-monitors"};
+      for (const auto& cmd : subs) {
+        if (write(sockfd_, cmd.c_str(), cmd.size()) != (ssize_t)cmd.size() ||
+            write(sockfd_, "\n", 1) != 1) {
+          spdlog::error("Failed to subscribe to {}", cmd);
+          subscribed = false;
           break;
         }
-        if (n < 0) {
+      }
+      if (!subscribed) {
+        if (sockfd_ != -1) {
+          close(sockfd_);
+          sockfd_ = -1;
+        }
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        continue;
+      }
+
+      struct pollfd pfd;
+      pfd.fd = sockfd_;
+      pfd.events = POLLIN;
+      buffer.clear();
+
+      bool connected = true;
+      while (running_ && connected) {
+        int ret = poll(&pfd, 1, 1000);
+        if (ret == 0) continue;
+        if (ret < 0) {
           if (errno == EINTR) continue;
-          spdlog::error("IPC read error: {}", strerror(errno));
+          spdlog::error("IPC poll error: {}", strerror(errno));
+          connected = false;
           break;
         }
-        buffer.append(buf, n);
 
-        size_t pos;
-        while ((pos = buffer.find('\n')) != std::string::npos) {
-          std::string line = buffer.substr(0, pos);
-          buffer.erase(0, pos + 1);
-          if (line.empty()) continue;
-          try {
-            parseIPC(line);
-          } catch (const std::exception& e) {
-            spdlog::warn("Failed to parse IPC line: {} - {}", line, e.what());
+        if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+          spdlog::info("Mango IPC socket closed or invalid");
+          connected = false;
+          break;
+        }
+
+        if (pfd.revents & POLLIN) {
+          ssize_t n = read(sockfd_, buf, sizeof(buf));
+          if (n == 0) {
+            spdlog::info("Mango IPC connection closed");
+            connected = false;
+            break;
+          }
+          if (n < 0) {
+            if (errno == EINTR) continue;
+            spdlog::error("IPC read error: {}", strerror(errno));
+            connected = false;
+            break;
+          }
+          buffer.append(buf, n);
+
+          size_t pos;
+          while ((pos = buffer.find('\n')) != std::string::npos) {
+            std::string line = buffer.substr(0, pos);
+            buffer.erase(0, pos + 1);
+            if (line.empty()) continue;
+            try {
+              parseIPC(line);
+            } catch (const std::exception& e) {
+              spdlog::warn("Failed to parse IPC line: {} - {}", line, e.what());
+            }
           }
         }
       }
+
+      // On shutdown leave the socket for the destructor to close (avoids a
+      // double close); on a genuine disconnect close it before reconnecting.
+      if (!running_) break;
+      if (sockfd_ != -1) {
+        close(sockfd_);
+        sockfd_ = -1;
+      }
+      spdlog::warn("Mango IPC: event stream closed, reconnecting");
+      std::this_thread::sleep_for(std::chrono::seconds(2));
     }
+
+    spdlog::info("Mango IPC thread stopping");
   });
 }
 
@@ -204,18 +255,13 @@ void IPC::parseIPC(const std::string& line) {
       }
     }
 
-    std::vector<EventHandler*> handlers_to_notify;
     {
       std::lock_guard<std::mutex> lock(callback_mutex_);
       for (auto& [ev, handler] : callbacks_) {
         if (ev == "monitor") {
-          handlers_to_notify.push_back(handler);
+          handler->onEvent(root);
         }
       }
-    }
-
-    for (auto* handler : handlers_to_notify) {
-      handler->onEvent(root);
     }
 
     return;

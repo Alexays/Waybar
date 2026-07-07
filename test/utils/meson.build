@@ -13,10 +13,13 @@ test_src = files(
     '../../src/config.cpp',
     'JsonParser.cpp',
     'SafeSignal.cpp',
+    'format.cpp',
     'sleeper_thread.cpp',
     'command.cpp',
+    'command_line_stream.cpp',
     'css_reload_helper.cpp',
     '../../src/util/css_reload_helper.cpp',
+    '../../src/util/command_line_stream.cpp',
 )
 
 if tz_dep.found()

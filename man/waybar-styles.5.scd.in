@@ -35,7 +35,7 @@ If no file is found there, Waybar repeats the same search using *style.css*.
 An example user-controlled stylesheet that just changes the color of the clock to be green on black, while keeping the rest of the system config the same would be:
 
 ```
-@import url("file:///etc/xdg/waybar/style.css")
+@import url("file:///etc/xdg/waybar/style.css");
 
 #clock {
   background: #000000;
@@ -66,6 +66,11 @@ If set to a string value, it must be a valid cursor name
 see the cursor-shape-v1 protocol for all possible cursor types:
 https://wayland.app/protocols/cursor-shape-v1#wp_cursor_shape_device_v1:enum:shape.
 Depending on the compositor and cursor theme used, cursors not listed in the protocol may also work.
+
+Prior to 0.16.0 the `cursor` option accepted a numeric _Gdk::CursorType_ value
+(e.g. `"cursor": 8`). Numeric values are deprecated but still honored for
+backward compatibility; a cursor-shape-v1 name string (e.g. `"grab"`) is now
+preferred.
 
 Example of disabling the cursor on a custom module:
 

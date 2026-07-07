@@ -8,17 +8,19 @@ waybar - mpd module
 
 The *mpd* module displays information about a running "Music Player Daemon" instance.
 
+Note that Waybar must be compiled with MPD support in order to use this module.
+
 # CONFIGURATION
 
 Addressed by *mpd*
 
 *server*: ++
 	typeof: string ++
-	The network address or Unix socket path of the MPD server. If empty, connect to the default host.
+	The network address or Unix socket path of the MPD server. If empty, connect to the default host (`MPD_HOST`).
 
 *port*: ++
 	typeof: integer ++
-	The port MPD listens to. If empty, use the default port.
+	The port MPD listens to. If empty, use the default port (`MPD_PORT`).
 
 *password*: ++
 	typeof: string ++
@@ -93,6 +95,11 @@ Addressed by *mpd*
 *title-len*: ++
 	typeof: integer ++
 	Maximum length of the Title tag.
+
+*ellipsis*: ++
+	typeof: string ++
+	default: "" ++
+	The string appended to the Artist, Album, Album Artist and Title tags when they are truncated by the corresponding length option (`artist-len`, `album-len`, `album-artist-len`, `title-len`).
 
 *rotate*: ++
 	typeof: integer ++

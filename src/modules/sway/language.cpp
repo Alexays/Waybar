@@ -117,6 +117,17 @@ void Language::onEvent(const struct Ipc::ipc_response& res) {
 
 auto Language::update() -> void {
   std::lock_guard<std::mutex> lock(mutex_);
+  // Apply the CSS class here, on the GTK main thread. set_current_layout() runs on the IPC worker
+  // thread, so mutating label_'s style context there would crash (#3702).
+  if (layout_.short_name != applied_class_) {
+    if (!applied_class_.empty()) {
+      label_.get_style_context()->remove_class(applied_class_);
+    }
+    if (!layout_.short_name.empty()) {
+      label_.get_style_context()->add_class(layout_.short_name);
+    }
+    applied_class_ = layout_.short_name;
+  }
   if (hide_single_ && layouts_map_.size() <= 1) {
     event_box_.hide();
     return;
@@ -146,6 +157,10 @@ auto Language::update() -> void {
 }
 
 auto Language::set_current_layout(const std::string& current_layout) -> void {
+  // Runs on the IPC worker thread (via onEvent) as well as the main thread (via onCmd), so it must
+  // not touch GTK widgets - off-main-thread widget mutation caused SIGSEGV (#3702). Only record the
+  // target layout here; update() applies the matching CSS class on the main thread.
+  //
   // Guard against unknown / empty layout names: transient virtual keyboards (e.g. wtype) and
   // hot-plugged devices whose layouts haven't made it into the map yet would otherwise blank out
   // layout_ via map::operator[]'s default-construct-on-miss.
@@ -153,9 +168,7 @@ auto Language::set_current_layout(const std::string& current_layout) -> void {
   if (it == layouts_map_.end()) {
     return;
   }
-  label_.get_style_context()->remove_class(layout_.short_name);
   layout_ = it->second;
-  label_.get_style_context()->add_class(layout_.short_name);
 }
 
 auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) -> void {

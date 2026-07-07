@@ -6,13 +6,16 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cassert>
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <unordered_map>
 
 #include "gdk/gdk.h"
+#include "modules/sni/host.hpp"
 #include "modules/sni/icon_manager.hpp"
-#include "util/format.hpp"
+#include "util/format.hpp"  // IWYU pragma: keep
 #include "util/gtk_icon.hpp"
 
 template <>
@@ -40,7 +43,8 @@ static const unsigned UPDATE_DEBOUNCE_TIME = 10;
 
 Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar,
            const std::function<void(Item&)>& on_ready,
-           const std::function<void(Item&)>& on_invalidate, const std::function<void()>& on_updated)
+           const std::function<void(Item&)>& on_invalidate, const std::function<void()>& on_updated,
+           Host& host, const ItemOrderMap& orders)
     : bus_name(bn),
       object_path(op),
       icon_size(16),
@@ -49,7 +53,9 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
       bar_(bar),
       on_ready_(on_ready),
       on_invalidate_(on_invalidate),
-      on_updated_(on_updated) {
+      on_updated_(on_updated),
+      host_(host),
+      orders_(orders) {
   if (config["icon-size"].isUInt()) {
     icon_size = config["icon-size"].asUInt();
   }
@@ -172,15 +178,23 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
        * I still haven't found a way for it to pick from theme automatically, although
        * it might be my theme.
        */
+      std::string icon_id = id;
       if (id == "chrome_status_icon_1") {
         Glib::VariantBase value;
         this->proxy_->get_cached_property(value, "ToolTip");
         tooltip = get_variant<ToolTip>(value);
         if (!tooltip.text.empty()) {
-          setCustomIcon(tooltip.text.lowercase());
+          icon_id = tooltip.text.lowercase();
+          setCustomIcon(icon_id);
         }
       } else {
-        setCustomIcon(id);
+        setCustomIcon(icon_id);
+      }
+
+      // Check if this item should be hidden
+      if (IconManager::instance().isHidden(icon_id)) {
+        spdlog::debug("Hiding tray item with ID: {}", icon_id);
+        is_hidden_ = true;
       }
     } else if (name == "Title") {
       title = get_variant<std::string>(value);
@@ -238,7 +252,7 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
 
 void Item::setStatus(const Glib::ustring& value) {
   status_ = value.lowercase();
-  event_box.set_visible(show_passive_ || status_.compare("passive") != 0);
+  event_box.set_visible(!is_hidden_ && (show_passive_ || status_.compare("passive") != 0));
 
   auto style = event_box.get_style_context();
   for (const auto& class_name : style->list_classes()) {
@@ -270,6 +284,17 @@ void Item::invalidate() {
 
 void Item::setCustomIcon(const std::string& id) {
   spdlog::debug("SNI tray id: {}", id);
+
+  if (order_ == -1) {
+    auto iter = orders_.find(id);
+    if (iter != orders_.end()) {
+      order_ = iter->second;
+      spdlog::debug("reordering tray item {}, order: {}", id, order_);
+    } else {
+      order_ = 0;
+    }
+    host_.reorderItems();
+  }
 
   std::string custom_icon = IconManager::instance().getIconForApp(id);
   if (!custom_icon.empty()) {
@@ -552,6 +577,15 @@ void Item::makeMenu() {
     if (dbus_menu != nullptr) {
       g_object_ref_sink(G_OBJECT(dbus_menu));
       g_object_weak_ref(G_OBJECT(dbus_menu), (GWeakNotify)onMenuDestroyed, this);
+      // Provide an accel group to the dbusmenu client. Without one, items that export menu
+      // accelerators (e.g. Mattermost) trigger gtk_widget_set_accel_path() with a NULL accel group,
+      // which raises a Gtk-CRITICAL and corrupts menu state (or aborts under fatal-criticals).
+      DbusmenuGtkClient* client = dbusmenu_gtkmenu_get_client(DBUSMENU_GTKMENU(dbus_menu));
+      if (client != nullptr) {
+        GtkAccelGroup* accel_group = gtk_accel_group_new();
+        dbusmenu_gtkclient_set_accel_group(client, accel_group);
+        g_object_unref(accel_group);
+      }
       gtk_menu = Glib::wrap(GTK_MENU(dbus_menu));
       gtk_menu->attach_to_widget(event_box);
     }

@@ -29,12 +29,29 @@ The brightness can be controlled by dragging the slider across the bar or clicki
 
 *device*: ++
     typeof: string ++
-    The name of the preferred device to control. If left empty, a device will be chosen automatically.
+    The name of the preferred device to control. If left empty, a device will be chosen automatically. ++
+    Both screen backlights (the udev *backlight* subsystem) and keyboard backlights (LEDs in the udev *leds* subsystem, e.g. *white:kbd_backlight*) are supported; name such an LED here to control it. When left empty, a screen backlight is always preferred for automatic selection.
+
+*interval*: ++
+    typeof: uint ++
+    default: 1000 ++
+    The interval in milliseconds at which the brightness is polled and the slider is updated.
 
 *expand*: ++
 	typeof: bool ++
 	default: false ++
 	Enables this module to consume all left over space dynamically.
+
+*Note*: As well as the JSON configuration, the slider modules are special in
+that they *require* styling to work. You *need* to set *min-width* and/or
+*min-height* (depending on whether your slider is vertical or not) for it to
+display correctly. That is a GTK detail, not an issue with Waybar. See the
+*STYLE* section below.
+
+*Warning*: If *min* is set to *0* (default), the slider can set brightness to
+*0*, which may completely disable the backlight on some devices, making the
+screen fully black. Consider setting a small minimum value (e.g. *10*) or
+configuring brightness keybinds as a fallback.
 
 # EXAMPLES
 

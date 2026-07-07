@@ -3,6 +3,7 @@
 #include <cairomm/context.h>
 #include <fmt/format.h>
 
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <iostream>
@@ -17,10 +18,13 @@ AGraph::AGraph(const Json::Value& config, const std::string& name, const std::st
     : AModule(config, name, id,
               config["format-alt"].isString() || config["menu"].isString() || enable_click,
               enable_scroll),
-      interval_(config_["interval"] == "once"
-                    ? std::chrono::seconds::max()
-                    : std::chrono::seconds(
-                          config_["interval"].isUInt() ? config_["interval"].asUInt() : interval)) {
+      interval_(
+          config_["interval"] == "once"
+              ? std::chrono::milliseconds::max()
+              : std::chrono::milliseconds(
+                    config_["interval"].isNumeric()
+                        ? std::max(1L, static_cast<long>(config_["interval"].asDouble() * 1000))
+                        : 1000L * static_cast<long>(interval))) {
   graph_.signal_draw().connect(sigc::mem_fun(*this, &AGraph::onDraw));
   graph_.set_name(name);
   if (!id.empty()) {
@@ -75,13 +79,17 @@ AGraph::AGraph(const Json::Value& config, const std::string& name, const std::st
 
       // Make the GtkBuilder and check for errors in his parsing
       if (gtk_builder_add_from_string(builder, fileContent.str().c_str(), -1, nullptr) == 0U) {
+        g_object_unref(builder);
         throw std::runtime_error("Error found in the file " + menuFile);
       }
 
       menu_ = gtk_builder_get_object(builder, "menu");
       if (menu_ == nullptr) {
+        g_object_unref(builder);
         throw std::runtime_error("Failed to get 'menu' object from GtkBuilder");
       }
+      // Keep the menu alive after dropping the transient GtkBuilder.
+      g_object_ref(menu_);
       submenus_ = std::map<std::string, GtkMenuItem*>();
       menuActionsMap_ = std::map<std::string, std::string>();
 
@@ -94,6 +102,7 @@ AGraph::AGraph(const Json::Value& config, const std::string& name, const std::st
         g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
                          (gpointer)menuActionsMap_[key].c_str());
       }
+      g_object_unref(builder);
     } catch (std::runtime_error& e) {
       spdlog::warn("Error while creating the menu : {}. Menu popup not activated.", e.what());
     }

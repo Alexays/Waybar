@@ -38,6 +38,7 @@ class Tags : public waybar::AModule {
   std::vector<Gtk::Button> buttons_;
   struct zriver_output_status_v1* output_status_;
   struct zriver_seat_status_v1* seat_status_;
+  bool hide_vacant_ = false;  // parsed once; asBool() in a wl callback would throw (#4078)
 };
 
 } /* namespace waybar::modules::river */

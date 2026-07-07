@@ -87,8 +87,11 @@ class ALabel : public AModule {
   static void handleGtkMenuEvent(GtkMenuItem* menuitem, gpointer data);
 
  private:
-  std::optional<Glib::ustring> last_label_markup_;
-  std::optional<Glib::ustring> last_tooltip_markup_;
+  // Raw UTF-8 bytes, not Glib::ustring: ustring::operator== collates with
+  // g_utf8_collate(), which gives private-use codepoints (nerd-font icons)
+  // no collation weight, so two different icons compare equal.
+  std::optional<std::string> last_label_markup_;
+  std::optional<std::string> last_tooltip_markup_;
 };
 
 }  // namespace waybar

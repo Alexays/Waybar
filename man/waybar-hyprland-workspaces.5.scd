@@ -14,11 +14,11 @@ Addressed by *hyprland/workspaces*
 
 *format*: ++
 	typeof: string ++
-	default: {id} ++
+	default: {name} ++
 	The format, how information should be displayed.
 
 *format-icons*: ++
-	typeof: array ++
+	typeof: object ++
 	Based on the workspace ID and state, the corresponding icon gets selected. See *icons*.
 
 *window-rewrite*: ++
@@ -88,6 +88,11 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	default: 16 ++
 	Size of the icons in the workspace taskbar.
 
+		*max-icons*: ++
+	typeof: int ++
+	default: 0 (unlimited) ++
+	Maximum number of icons to show per workspace. When set, duplicate icons (windows with the same class) are removed first, then the list is trimmed to this limit. Set to 0 for unlimited icons.
+
 		*icon-theme*: ++
 	typeof: string | array ++
 	default: [] ++
@@ -134,7 +139,8 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 *persistent-workspaces*: ++
 	typeof: object ++
 	default: empty ++
-	Lists workspaces that should always be shown, even when they do not exist. Keys are workspace names and values are arrays of output names on which the workspace should be shown (an empty array means all outputs). See the examples below.
+	Lists workspaces that should always be shown, even when they do not exist. Keys are workspace names and values are arrays of output names on which the workspace should be shown (an empty array means all outputs). See the examples below. ++
+	Note: for persistent workspaces to actually work you must also declare them in your Hyprland config, e.g. *workspace = 1, monitor:eDP-1, persistent:true*.
 
 *all-outputs*: ++
 	typeof: bool ++
@@ -157,6 +163,11 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	If set to true, open the workspace on the current monitor when clicking on a workspace button.
 	Otherwise, the workspace will open on the monitor where it was previously assigned.
 	Analog to using `focusworkspaceoncurrentmonitor` dispatcher instead of `workspace` in Hyprland.
+
+*unique-icons*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, only one instance of each window icon will be shown per workspace.
 
 *enable-bar-scroll*: ++
 	typeof: bool ++
@@ -185,6 +196,15 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	If set to special-centered, workspaces will sort by default with special workspaces in the center.
 	If none of those, workspaces will sort with default behavior.
 
+*tooltip*: ++
+	typeof: bool ++
+	default: true ++
+	Option to disable tooltip on hover.
+
+*tooltips*: ++
+	typeof: object ++
+	Based on the workspace ID and state, the corresponding tooltip gets selected. Selection works the same as *format-icons* do. Format replacements are supported. See *icons*.
+
 *expand*: ++
 	typeof: bool ++
 	default: false ++
@@ -198,6 +218,34 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 
 *{icon}*: Icon, as defined in *format-icons*.
 
+*{windows}*: The windows in the workspace, formatted according to *window-rewrite* and joined with *format-window-separator*.
+
+# WINDOW REWRITE RULES
+
+The rules in *window-rewrite* are regexes that may match against a window's
+class, title, or both. There are four categories of rule, distinguished by how
+they are written in the config:
+
+[- *Rule*
+:- *Category*
+|[ *something*
+:[ Vague
+|[ *class<something>*
+:[ Class-only
+|[ *title<something>*
+:[ Title-only
+|[ *class<something1> title<something2>*
+:[ Hybrid
+
+When the config contains only "vague" rules, they are matched against window
+*classes* only. This is both for backwards compatibility and for performance:
+matching against the title requires listening to window title changes via
+Hyprland's IPC, which is unnecessary when no title rule is in use.
+
+When the config contains *at least one* "title-only" or "hybrid" rule, then all
+"vague" rules match against *both* class and title. This lets you define vague
+rules where it does not matter whether the class or the title matched.
+
 # ICONS
 
 Additional to workspace name matching, the following *format-icons* can be set.
@@ -208,6 +256,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *empty*: Will be shown on non-active, non-special empty persistent workspaces
 - *visible*: Will be shown on workspaces that are visible but not active. For example: this is useful if you want your visible workspaces on other monitors to have the same look as active.
 - *persistent*: Will be shown on non-empty persistent workspaces
+- *urgent*: Will be shown on non-active urgent workspaces
 
 # EXAMPLES
 
@@ -274,6 +323,51 @@ Additional to workspace name matching, the following *format-icons* can be set.
 }
 ```
 
+```
+"hyprland/workspaces": {
+	"format": "{icon}",
+	"format-window-separator": ", ",
+	"tooltip": true,
+	"tooltips": {
+		"default": "{name}: {windows}",
+		"empty": "" // Will result in no tooltip
+	}
+	"format-icons": {
+		"1": "",
+		"2": "",
+		"3": "",
+		"4": "",
+		"5": "",
+		"active": "",
+		"default": ""
+	},
+	// Window rewrites omitted for brevity
+}
+```
+
+```
+"hyprland/workspaces": {
+	"format": "{icon}",
+	"format-window-separator": ", ",
+	"tooltip": true,
+	"tooltips": {
+		"1": "This is the first workspace",
+		"2": "This is the second",
+		"2": "And this is the third"
+	}
+	"format-icons": {
+		"1": "",
+		"2": "",
+		"3": "",
+		"4": "",
+		"5": "",
+		"active": "",
+		"default": ""
+	},
+	// Window rewrites omitted for brevity
+}
+```
+
 # Style
 
 - *#workspaces*
@@ -284,6 +378,8 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *#workspaces button.persistent*
 - *#workspaces button.special*
 - *#workspaces button.urgent*
+- *#workspaces button.workspace-hover* (applied while the pointer is over the button)
+- *#workspaces button.<workspace-name>* (per-workspace class derived from the workspace name, sanitized to a valid CSS class name, e.g. a workspace named "1" yields '.ws-1'; special workspaces also get the raw name class)
 - *#workspaces button.hosting-monitor* (gets applied if workspace-monitor == waybar-monitor)
 - *#workspaces .workspace-label*
 - *#workspaces .taskbar-window* (each window in the taskbar, only if 'workspace-taskbar.enable' is true)

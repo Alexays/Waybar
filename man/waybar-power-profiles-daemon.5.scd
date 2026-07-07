@@ -44,6 +44,18 @@ $XDG_CONFIG_HOME/waybar/config
 
 
 
+# FORMAT REPLACEMENTS
+
+*{profile}*: Active profile full name.
+
+*{icon}*: Icon (from *format-icons*) representing the active profile.
+
+*{cpu_driver}*: The CPU driver reported by recent power-profiles-daemon versions. *(tooltip)*
+
+*{platform_driver}*: The platform driver reported by recent power-profiles-daemon versions. *(tooltip)*
+
+*{driver}*: Kept for backward compatibility: resolves to the legacy single driver on older daemons and falls back to the CPU driver on recent ones. *(tooltip)*
+
 # CONFIGURATION EXAMPLES
 
 Compact display (default config):
@@ -77,3 +89,12 @@ Display the full profile name:
   }
 }
 ```
+
+# STYLE
+
+- *#power-profiles-daemon*
+- *#power-profiles-daemon.performance* Applied when the *performance* profile is active.
+- *#power-profiles-daemon.balanced* Applied when the *balanced* profile is active.
+- *#power-profiles-daemon.power-saver* Applied when the *power-saver* profile is active.
+
+*Note*: the module applies a CSS class equal to the name of the active profile, so any additional profile exposed by power-profiles-daemon can be styled by its name.

@@ -10,9 +10,13 @@ import signal
 import gi
 import json
 import os
+import dbus
+import dbus.service
+from dbus.mainloop.glib import DBusGMainLoop
 from typing import List
 
 logger = logging.getLogger(__name__)
+
 
 def signal_handler(sig, frame):
     logger.info("Received signal to stop, exiting")
@@ -37,7 +41,26 @@ class PlayerManager:
         self.selected_player = selected_player
         self.excluded_player = excluded_player.split(',') if excluded_player else []
 
+        # use dbus to shift player (e.g. after playerctld shift)
+        bus = dbus.SessionBus(mainloop=DBusGMainLoop())
+        bus.add_signal_receiver(
+            lambda *args, **kwargs: self.on_dbus_shift(*args, **kwargs),
+            signal_name="Shift",
+            dbus_interface="org.waybar.Player")
+        # register well-known bus name
+        bus.request_name("org.waybar.Player")
+
         self.init_players()
+
+    def on_dbus_shift(self, *args, **kwargs):
+        # there is no implicit way to get current player,
+        # so we need to create a new manager to get the right order of players
+        new_manager = Playerctl.PlayerManager()
+        if len(new_manager.props.player_names) > 1:
+            current_player_name = new_manager.props.player_names[0].name
+            for player in self.get_players():
+                if player.props.player_name == current_player_name:
+                    self.on_metadata_changed(player, player.props.metadata)
 
     def init_players(self):
         for player in self.manager.props.player_names:
@@ -153,6 +176,7 @@ class PlayerManager:
     def on_player_vanished(self, _, player):
         logger.info(f"Player {player.props.player_name} has vanished")
         self.show_most_important_player()
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser()

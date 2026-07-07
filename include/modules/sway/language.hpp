@@ -54,6 +54,9 @@ class Language : public ALabel, public sigc::trackable {
   const static std::string XKB_ACTIVE_LAYOUT_NAME_KEY;
 
   Layout layout_;
+  // CSS class currently applied to label_. Tracked so update() (main thread) can swap classes
+  // instead of set_current_layout() mutating the widget from the IPC worker thread (#3702).
+  std::string applied_class_;
   std::string tooltip_format_ = "";
   std::map<std::string, Layout> layouts_map_;
   bool hide_single_;

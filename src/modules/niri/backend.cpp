@@ -21,7 +21,15 @@
 
 namespace waybar::modules::niri {
 
-IPC::IPC() { startIPC(); }
+IPC::IPC() {
+  // Connect synchronously so a missing socket (this WM isn't the active
+  // compositor) throws here, same as before the reconnect loop below existed.
+  // That lets the module constructor fail and Factory disable the module,
+  // instead of the module always attaching with a permanently empty widget.
+  startIPC(connectToSocket());
+}
+
+IPC::~IPC() { running_ = false; }
 
 int IPC::connectToSocket() {
   const char* socket_path = getenv("NIRI_SOCKET");
@@ -52,43 +60,71 @@ int IPC::connectToSocket() {
   return socketfd.release();
 }
 
-void IPC::startIPC() {
+void IPC::startIPC(int initial_socketfd) {
   // will start IPC and relay events to parseIPC
 
-  int socketfd = connectToSocket();
-
-  std::thread([this, socketfd]() {
+  std::thread([this, initial_socketfd]() {
     spdlog::info("Niri IPC starting");
 
-    auto unix_istream = Gio::UnixInputStream::create(socketfd, true);
-    auto unix_ostream = Gio::UnixOutputStream::create(socketfd, false);
-    auto istream = Gio::DataInputStream::create(unix_istream);
-    auto ostream = Gio::DataOutputStream::create(unix_ostream);
+    bool have_initial_fd = true;
 
-    if (!ostream->put_string("\"EventStream\"\n") || !ostream->flush()) {
-      spdlog::error("Niri IPC: failed to start event stream");
-      return;
-    }
-
-    std::string line;
-    if (!istream->read_line(line) || line != R"({"Ok":"Handled"})") {
-      spdlog::error("Niri IPC: failed to start event stream");
-      return;
-    }
-
-    while (istream->read_line(line)) {
-      spdlog::debug("Niri IPC: received {}", line);
-
-      try {
-        parseIPC(line);
-      } catch (std::exception& e) {
-        spdlog::warn("Failed to parse IPC message: {}, reason: {}", line, e.what());
-      } catch (...) {
-        throw;
+    // Reconnect loop: if the event stream drops *after* the initial connect
+    // above succeeded, we back off briefly and re-establish the socket
+    // instead of leaving the module frozen forever.
+    while (running_) {
+      int socketfd;
+      if (have_initial_fd) {
+        socketfd = initial_socketfd;
+        have_initial_fd = false;
+      } else {
+        try {
+          socketfd = connectToSocket();
+        } catch (std::exception& e) {
+          spdlog::error("Niri IPC: failed to connect: {}", e.what());
+          std::this_thread::sleep_for(std::chrono::seconds(2));
+          continue;
+        }
       }
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      auto unix_istream = Gio::UnixInputStream::create(socketfd, true);
+      auto unix_ostream = Gio::UnixOutputStream::create(socketfd, false);
+      auto istream = Gio::DataInputStream::create(unix_istream);
+      auto ostream = Gio::DataOutputStream::create(unix_ostream);
+
+      if (!ostream->put_string("\"EventStream\"\n") || !ostream->flush()) {
+        spdlog::error("Niri IPC: failed to start event stream");
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        continue;
+      }
+
+      std::string line;
+      if (!istream->read_line(line) || line != R"({"Ok":"Handled"})") {
+        spdlog::error("Niri IPC: failed to start event stream");
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        continue;
+      }
+
+      // Drain events as fast as they arrive; throttling here back-pressures the
+      // socket, fills niri's send buffer and makes niri drop the stream.
+      while (running_ && istream->read_line(line)) {
+        spdlog::debug("Niri IPC: received {}", line);
+
+        try {
+          parseIPC(line);
+        } catch (std::exception& e) {
+          spdlog::warn("Failed to parse IPC message: {}, reason: {}", line, e.what());
+        } catch (...) {
+          throw;
+        }
+      }
+
+      if (!running_) break;
+
+      spdlog::warn("Niri IPC: event stream closed, reconnecting");
+      std::this_thread::sleep_for(std::chrono::seconds(2));
     }
+
+    spdlog::info("Niri IPC stopping");
   }).detach();
 }
 
@@ -196,12 +232,12 @@ void IPC::parseIPC(const std::string& line) {
       for (auto& win : windows_) {
         win["is_focused"] = focused && win["id"].asUInt64() == id;
       }
-    } else if (const auto &payload = ev["WindowLayoutsChanged"]) {
-      const auto &values = payload["changes"];
-      for (const auto &changed : values) {
+    } else if (const auto& payload = ev["WindowLayoutsChanged"]) {
+      const auto& values = payload["changes"];
+      for (const auto& changed : values) {
         const auto id = changed[0].asUInt64();
-        const auto &change = changed[1];
-        for (auto &win : windows_) {
+        const auto& change = changed[1];
+        for (auto& win : windows_) {
           if (win["id"].asUInt64() == id) {
             win["layout"] = change;
             break;
@@ -249,7 +285,7 @@ void IPC::unregisterForIPC(EventHandler* ev_handler) {
 Json::Value IPC::send(const Json::Value& request) {
   util::ScopedFd socketfd(connectToSocket());
 
-  auto unix_istream = Gio::UnixInputStream::create(socketfd, true);
+  auto unix_istream = Gio::UnixInputStream::create(socketfd, false);
   auto unix_ostream = Gio::UnixOutputStream::create(socketfd, false);
   auto istream = Gio::DataInputStream::create(unix_istream);
   auto ostream = Gio::DataOutputStream::create(unix_ostream);

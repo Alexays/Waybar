@@ -1,14 +1,14 @@
+#include <cmath>
+
 #include "modules/memory.hpp"
 
 namespace {
-const std::unordered_map<std::string, float> kUnits = {{"kB", 1.000},
-                                                       {"kiB", 1.024},
-                                                       {"MB", 1.000 * 1000.0},
-                                                       {"MiB", 1.024 * 1024.0},
-                                                       {"GB", 1.000 * 1000.0 * 1000.0},
-                                                       {"GiB", 1.024 * 1024.0 * 1024.0},
-                                                       {"TB", 1.000 * 1000.0 * 1000.0 * 1000.0},
-                                                       {"TiB", 1.024 * 1024.0 * 1024.0 * 1024.0}};
+// /proc/meminfo reports values in kiB (1024 bytes) despite the 'kB' label.
+// These divisors convert a kiB count to the requested unit.
+const std::unordered_map<std::string, float> kUnits = {
+    {"B", 1.0 / 1024.0},        {"kB", 1000.0 / 1024.0}, {"kiB", 1.0},
+    {"MB", 1000000.0 / 1024.0}, {"MiB", 1024.0},         {"GB", 1000000000.0 / 1024.0},
+    {"GiB", 1024.0 * 1024.0},   {"TB", 1e12 / 1024.0},   {"TiB", 1024.0 * 1024.0 * 1024.0}};
 }
 
 waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config,
@@ -58,12 +58,15 @@ auto waybar::modules::Memory::update() -> void {
     }
 
     float divisor = kUnits.at(unit_);
-    float total_ram = memtotal / divisor;
-    float total_swap = swaptotal / divisor;
-    float used_ram = (memtotal - memfree) / divisor;
-    float used_swap = (swaptotal - swapfree) / divisor;
-    float available_ram = memfree / divisor;
-    float available_swap = swapfree / divisor;
+    // Pre-round to 2 decimals so bare {total}/{used}/{avail} placeholders print
+    // cleanly, matching the 0.15.0 behavior (an explicit spec like {used:.1f}
+    // still overrides this).
+    float total_ram = 0.01f * std::round((memtotal / divisor) * 100.0f);
+    float total_swap = 0.01f * std::round((swaptotal / divisor) * 100.0f);
+    float used_ram = 0.01f * std::round(((memtotal - memfree) / divisor) * 100.0f);
+    float used_swap = 0.01f * std::round(((swaptotal - swapfree) / divisor) * 100.0f);
+    float available_ram = 0.01f * std::round((memfree / divisor) * 100.0f);
+    float available_swap = 0.01f * std::round((swapfree / divisor) * 100.0f);
 
     auto format = format_;
     auto state = getState(used_ram_percentage);

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cctype>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -277,7 +278,10 @@ void Workspace::insertWindow(WindowCreationPayload create_window_payload) {
       // If the vector contains the address, update the window representation, otherwise insert it
       if (it != m_windowMap.end()) {
         *it = repr;
-      } else {
+      } else if (!m_workspaceManager.uniqueIcons() || repr.repr_rewrite.empty() ||
+                 std::ranges::find_if(m_windowMap, [&repr](const auto& window) {
+                   return window.repr_rewrite == repr.repr_rewrite;
+                 }) == m_windowMap.end()) {
         m_windowMap.emplace_back(repr);
       }
     }
@@ -292,8 +296,8 @@ bool Workspace::onWindowOpened(WindowCreationPayload const& create_window_payloa
   return false;
 }
 
-std::string& Workspace::selectIcon(std::map<std::string, std::string>& icons_map) {
-  spdlog::trace("Selecting icon for workspace {}", name());
+std::string& Workspace::selectString(std::map<std::string, std::string>& icons_map) {
+  spdlog::trace("Selecting string for workspace {}", name());
   if (isUrgent()) {
     auto urgentNamedIconIt = icons_map.find("urgent:" + name());
     if (urgentNamedIconIt != icons_map.end()) {
@@ -375,7 +379,7 @@ std::string& Workspace::selectIcon(std::map<std::string, std::string>& icons_map
   return m_name;
 }
 
-void Workspace::update(const std::string& workspace_icon) {
+void Workspace::update(const std::string& workspace_icon, const std::string& workspace_tooltip) {
   if (this->m_workspaceManager.persistentOnly() && !this->isPersistent()) {
     m_button.hide();
     return;
@@ -434,7 +438,8 @@ void Workspace::update(const std::string& workspace_icon) {
     auto windowSeparator = m_workspaceManager.getWindowSeparator();
     auto groupThreshold = m_workspaceManager.windowRewriteGroupThreshold();
 
-    auto end_it = m_workspaceManager.maxWindows() == 0
+    auto end_it = (m_workspaceManager.maxWindows() <= 0 ||
+                   static_cast<size_t>(m_workspaceManager.maxWindows()) >= m_windowMap.size())
                       ? m_windowMap.end()
                       : m_windowMap.begin() + m_workspaceManager.maxWindows();
 
@@ -485,6 +490,12 @@ void Workspace::update(const std::string& workspace_icon) {
     }
   }
 
+  if (!workspace_tooltip.empty()) {
+    m_button.set_tooltip_text(
+        fmt::format(fmt::runtime(workspace_tooltip), fmt::arg("id", id()), fmt::arg("name", name()),
+                    fmt::arg("icon", workspace_icon), fmt::arg("windows", windows)));
+  }
+
   auto formatBefore = m_workspaceManager.formatBefore();
   m_labelBefore.set_markup(fmt::format(fmt::runtime(formatBefore), fmt::arg("id", id()),
                                        fmt::arg("name", name()), fmt::arg("icon", workspace_icon),
@@ -516,11 +527,47 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
     }
   }
 
-  bool isFirst = true;
-  auto processWindow = [&](const WindowRepr& window_repr) {
+  // Build a list of windows to display, removing duplicates by window_class
+  // and respecting max-icons limit
+  std::vector<const WindowRepr*> windowsToShow;
+  std::set<std::string> seenClasses;
+
+  auto addWindowIfUnique = [&](const WindowRepr& window_repr) {
     if (shouldSkipWindow(window_repr)) {
-      return;  // skip
+      return;
     }
+    // Deduplicate by window_class
+    if (seenClasses.find(window_repr.window_class) != seenClasses.end()) {
+      return;
+    }
+    seenClasses.insert(window_repr.window_class);
+    windowsToShow.push_back(&window_repr);
+  };
+
+  if (m_workspaceManager.taskbarReverseDirection()) {
+    for (auto it = m_windowMap.rbegin(); it != m_windowMap.rend(); ++it) {
+      addWindowIfUnique(*it);
+    }
+  } else {
+    for (const auto& window_repr : m_windowMap) {
+      addWindowIfUnique(window_repr);
+    }
+  }
+
+  // Apply max-icons limit if configured
+  int maxIcons = m_workspaceManager.taskbarMaxIcons();
+  if (maxIcons > 0 && static_cast<int>(windowsToShow.size()) > maxIcons) {
+    windowsToShow.resize(maxIcons);
+  }
+
+  // Apply max-windows limit if configured
+  int maxWindows = m_workspaceManager.maxWindows();
+  if (maxWindows > 0 && static_cast<int>(windowsToShow.size()) > maxWindows) {
+    windowsToShow.resize(maxWindows);
+  }
+
+  bool isFirst = true;
+  for (const auto* window_repr : windowsToShow) {
     if (isFirst) {
       isFirst = false;
     } else if (m_workspaceManager.getWindowSeparator() != "") {
@@ -530,29 +577,29 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
     }
 
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
-    window_box->set_tooltip_markup(window_repr.window_title);
+    window_box->set_tooltip_markup(window_repr->window_title);
 
     auto button = Gtk::manage(new Gtk::Button());
     button->set_relief(Gtk::RELIEF_NONE);
     button->add(*window_box);
     button->get_style_context()->add_class("taskbar-window");
-    if (window_repr.isActive) {
+    if (window_repr->isActive) {
       button->get_style_context()->add_class("active");
     }
     if (m_workspaceManager.onClickWindow() != "") {
       button->signal_button_press_event().connect(
-          sigc::bind(sigc::mem_fun(*this, &Workspace::handleClick), window_repr.address), false);
+          sigc::bind(sigc::mem_fun(*this, &Workspace::handleClick), window_repr->address), false);
     }
 
     auto text_before = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatBefore()),
-                                   fmt::arg("title", window_repr.window_title));
+                                   fmt::arg("title", window_repr->window_title));
     if (!text_before.empty()) {
       auto window_label_before = Gtk::make_managed<Gtk::Label>(text_before);
       window_box->pack_start(*window_label_before, true, true);
     }
 
     if (m_workspaceManager.taskbarWithIcon()) {
-      auto app_info_ = IconLoader::get_app_info_from_app_id_list(window_repr.window_class);
+      auto app_info_ = IconLoader::get_app_info_from_app_id_list(window_repr->window_class);
       int icon_size = m_workspaceManager.taskbarIconSize();
       auto window_icon = Gtk::make_managed<Gtk::Image>();
       m_workspaceManager.iconLoader().image_load_icon(*window_icon, app_info_, icon_size);
@@ -560,7 +607,7 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
     }
 
     auto text_after = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatAfter()),
-                                  fmt::arg("title", window_repr.window_title));
+                                  fmt::arg("title", window_repr->window_title));
     if (!text_after.empty()) {
       auto window_label_after = Gtk::make_managed<Gtk::Label>(text_after);
       window_box->pack_start(*window_label_after, true, true);
@@ -568,24 +615,6 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
 
     m_content.pack_start(*button, true, false);
     button->show_all();
-  };
-
-  if (m_workspaceManager.taskbarReverseDirection()) {
-    auto rend_it = m_workspaceManager.maxWindows() == 0
-                       ? m_windowMap.rend()
-                       : m_windowMap.rbegin() + m_workspaceManager.maxWindows();
-
-    for (auto it = m_windowMap.rbegin(); it != rend_it; ++it) {
-      processWindow(*it);
-    }
-  } else {
-    auto end_it = m_workspaceManager.maxWindows() == 0
-                      ? m_windowMap.end()
-                      : m_windowMap.begin() + m_workspaceManager.maxWindows();
-
-    for (auto it = m_windowMap.begin(); it != end_it; ++it) {
-      processWindow(*it);
-    }
   }
 
   auto formatAfter = m_workspaceManager.formatAfter();

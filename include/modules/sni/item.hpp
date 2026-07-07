@@ -24,11 +24,15 @@ struct ToolTip {
   Glib::ustring text;
 };
 
+class Host;
+
+using ItemOrderMap = std::unordered_map<std::string, int>;
+
 class Item : public sigc::trackable {
  public:
   Item(const std::string&, const std::string&, const Json::Value&, const Bar&,
        const std::function<void(Item&)>&, const std::function<void(Item&)>&,
-       const std::function<void()>&);
+       const std::function<void()>&, Host&, const ItemOrderMap&);
   ~Item();
 
   bool isReady() const;
@@ -64,6 +68,7 @@ class Item : public sigc::trackable {
    * while compliant SNI implementation would always reset the flag to desired value.
    */
   bool item_is_menu = true;
+  int order_ = -1;  // -1 means not set
 
  private:
   void onConfigure(GdkEventConfigure* ev);
@@ -101,6 +106,8 @@ class Item : public sigc::trackable {
   gdouble distance_scrolled_y_ = 0;
   // visibility of items with Status == Passive
   bool show_passive_ = false;
+  // hidden via config
+  bool is_hidden_ = false;
   bool ready_ = false;
   Glib::ustring status_ = "active";
 
@@ -112,6 +119,9 @@ class Item : public sigc::trackable {
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
   Glib::RefPtr<Gio::Cancellable> cancellable_;
   std::set<std::string_view> update_pending_;
+
+  Host& host_;
+  const ItemOrderMap& orders_;
 };
 
 }  // namespace waybar::modules::SNI

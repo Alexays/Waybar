@@ -138,6 +138,17 @@ Task::Task(const waybar::Bar& bar, const Json::Value& config, Taskbar* tbar,
   content_.show();
   button.add(content_);
 
+  // Apply optional label truncation (ellipsize).
+  if (config_["truncate"].isBool() && config_["truncate"].asBool()) {
+    text_before_.set_single_line_mode(true);
+    text_before_.set_ellipsize(Pango::ELLIPSIZE_END);
+    text_before_.set_line_wrap(false);
+
+    text_after_.set_single_line_mode(true);
+    text_after_.set_ellipsize(Pango::ELLIPSIZE_END);
+    text_after_.set_line_wrap(false);
+  }
+
   format_before_.clear();
   format_after_.clear();
 
@@ -234,6 +245,7 @@ void Task::handle_title(const char* title) {
   }
   title_ = title;
   hide_if_ignored();
+  hide_if_duplicate();
 
   if ((!with_icon_ && !with_name_) || app_info_) {
     return;
@@ -258,19 +270,34 @@ void Task::set_minimize_hint() {
                                                 minimize_hint.y, minimize_hint.w, minimize_hint.h);
 }
 
+void Task::hide_if_duplicate() {
+  const auto& squash_list = tbar_->squash_list();
+  bool contains_app =
+      squash_list.contains("*") || squash_list.contains(title_) || squash_list.contains(app_id_);
+
+  // Squashes if the app is in the squash list and more than 1 instance is open
+  if (contains_app && (tbar_->task_id_count(app_id_) > 1 || tbar_->task_title_count(title_) > 1)) {
+    squashed_ = true;
+    hide_button();
+  }
+
+  if (!squashed_ && !ignored_ && (tbar_->all_outputs() || on_bar_output_)) {
+    show_button();
+  }
+}
+
 void Task::hide_if_ignored() {
   if (tbar_->ignore_list().count(app_id_) || tbar_->ignore_list().count(title_)) {
     ignored_ = true;
-    if (button_visible_) {
-      auto output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
-      handle_output_leave(output);
-    }
-  } else {
-    bool is_was_ignored = ignored_;
+    hide_button();
+    return;
+  }
+
+  if (ignored_) {
+    /* The app_id/title changed to a value that is no longer ignored */
     ignored_ = false;
-    if (is_was_ignored) {
-      auto output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
-      handle_output_enter(output);
+    if (!squashed_ && (tbar_->all_outputs() || on_bar_output_)) {
+      show_button();
     }
   }
 }
@@ -283,6 +310,7 @@ void Task::handle_app_id(const char* app_id) {
   }
   app_id_ = app_id;
   hide_if_ignored();
+  hide_if_duplicate();
 
   auto ids_replace_map = tbar_->app_ids_replace_map();
   if (ids_replace_map.count(app_id_)) {
@@ -318,38 +346,67 @@ void Task::on_button_size_allocated(Gtk::Allocation& alloc) {
 }
 
 void Task::handle_output_enter(struct wl_output* output) {
+  spdlog::debug("{} entered output {}", repr(), (void*)output);
+
+  if (tbar_->show_output(output)) {
+    on_bar_output_ = true;
+  }
+
   if (ignored_) {
     spdlog::debug("{} is ignored", repr());
     return;
   }
+  if (squashed_) {
+    spdlog::debug("{} was squashed", repr());
+    return;
+  }
 
-  spdlog::debug("{} entered output {}", repr(), (void*)output);
-
-  if (!button_visible_ && (tbar_->all_outputs() || tbar_->show_output(output))) {
-    /* The task entered the output of the current bar make the button visible */
-    button.signal_size_allocate().connect_notify(
-        sigc::mem_fun(this, &Task::on_button_size_allocated));
-    tbar_->add_button(button);
-    if (!config_["active-only"].asBool() || active()) {
-      button.show();
-    }
-    button_visible_ = true;
-    spdlog::debug("{} now visible on {}", repr(), bar_.output->name);
-    tbar_->update_bar_css_classes();
+  if (tbar_->all_outputs() || on_bar_output_) {
+    /* The task entered the output of the current bar, make the button visible */
+    show_button();
   }
 }
 
 void Task::handle_output_leave(struct wl_output* output) {
   spdlog::debug("{} left output {}", repr(), (void*)output);
 
-  if (button_visible_ && !tbar_->all_outputs() && tbar_->show_output(output)) {
-    /* The task left the output of the current bar, make the button invisible */
-    tbar_->remove_button(button);
-    button.hide();
-    button_visible_ = false;
-    spdlog::debug("{} now invisible on {}", repr(), bar_.output->name);
-    tbar_->update_bar_css_classes();
+  if (tbar_->show_output(output)) {
+    on_bar_output_ = false;
   }
+
+  if (!tbar_->all_outputs() && !on_bar_output_) {
+    /* The task left the output of the current bar, make the button invisible */
+    hide_button();
+  }
+}
+
+void Task::show_button() {
+  if (button_visible_) {
+    return;
+  }
+  if (!size_allocate_connected_) {
+    button.signal_size_allocate().connect_notify(
+        sigc::mem_fun(this, &Task::on_button_size_allocated));
+    size_allocate_connected_ = true;
+  }
+  tbar_->add_button(button);
+  if (!config_["active-only"].asBool() || active()) {
+    button.show();
+  }
+  button_visible_ = true;
+  spdlog::debug("{} now visible on {}", repr(), bar_.output->name);
+  tbar_->update_bar_css_classes();
+}
+
+void Task::hide_button() {
+  if (!button_visible_) {
+    return;
+  }
+  tbar_->remove_button(button);
+  button.hide();
+  button_visible_ = false;
+  spdlog::debug("{} now invisible on {}", repr(), bar_.output->name);
+  tbar_->update_bar_css_classes();
 }
 
 void Task::handle_state(struct wl_array* state) {
@@ -419,6 +476,28 @@ void Task::handle_closed() {
     tbar_->remove_button(button);
     button_visible_ = false;
   }
+
+  const auto& squash_list = tbar_->squash_list();
+  const bool in_squash_list =
+      squash_list.contains("*") || squash_list.contains(title_) || squash_list.contains(app_id_);
+  if (in_squash_list && !squashed_ &&
+      (tbar_->task_id_count(app_id_) > 1 || tbar_->task_title_count(title_) > 1)) {
+    // Find next squashed task with same title or id (excluding ourselves)
+    auto tasks = tbar_->tasks();
+    const auto it = std::ranges::find_if(tasks, [this](auto&& task) {
+      return &task != this && task.squashed_ &&
+             (task.app_id() == app_id_ || task.title() == title_);
+    });
+
+    if (it != tasks.end() && !(*it).ignored_) {
+      Task& task = *it;
+      task.squashed_ = false;
+      if (tbar_->all_outputs() || task.on_bar_output_) {
+        task.show_button();
+      }
+    }
+  }
+
   tbar_->remove_task(id_);
 }
 
@@ -566,7 +645,7 @@ void Task::update() {
     if (markup)
       button.set_tooltip_markup(txt);
     else
-      button.set_tooltip_markup(txt);
+      button.set_tooltip_text(txt);
   }
 }
 
@@ -636,6 +715,27 @@ Taskbar::Taskbar(const std::string& id, const waybar::Bar& bar, const Json::Valu
   box_.get_style_context()->add_class("empty");
   event_box_.add(box_);
 
+  // wlr/taskbar interprets on-click* config values as built-in actions, handled
+  // per-task in Task::handle_clicked. Register the recognized action names so
+  // AModule dispatches them via doAction() instead of also running them as shell
+  // commands (issue #3284). Values that are not built-in actions are left alone
+  // and still run as user shell commands.
+  const auto is_builtin_action = [](const std::string& v) {
+    return v == "activate" || v == "minimize" || v == "minimize-raise" || v == "maximize" ||
+           v == "fullscreen" || v == "close";
+  };
+  for (const auto* event : {"on-click", "on-click-middle", "on-click-right"}) {
+    if (config_[event].isString() && is_builtin_action(config_[event].asString())) {
+      eventActionMap_.insert({event, config_[event].asString()});
+    }
+  }
+
+  // Make task buttons distribute evenly across the available width.
+  if (config_["homogeneous"].isBool() && config_["homogeneous"].asBool()) {
+    box_.set_homogeneous(true);
+    box_.set_hexpand(true);
+  }
+
   struct wl_display* display = Client::inst()->wl_display;
   struct wl_registry* registry = wl_display_get_registry(display);
 
@@ -664,6 +764,13 @@ Taskbar::Taskbar(const std::string& id, const waybar::Bar& bar, const Json::Valu
   if (config_["ignore-list"].isArray()) {
     for (auto& app_name : config_["ignore-list"]) {
       ignore_list_.emplace(app_name.asString());
+    }
+  }
+
+  // Load squash-list
+  if (config_["squash-list"].isArray()) {
+    for (auto& app_name : config_["squash-list"]) {
+      squash_list_.emplace(app_name.asString());
     }
   }
 
@@ -949,11 +1056,18 @@ void Taskbar::handle_workspace_removed(struct ext_workspace_handle_v1* handle) {
 }
 
 void Taskbar::add_button(Gtk::Button& bt) {
-  /* Only let the buttons expand to fill the taskbar when "expand" is enabled
-   * and the bar is horizontal (see the Task constructor for details). */
+  /* When "homogeneous" is enabled, let every child expand and fill so the buttons
+   * divide the available width equally. Otherwise, only let the buttons expand to
+   * fill the taskbar when "expand" is enabled and the bar is horizontal (see the
+   * Task constructor for details). */
+  const bool homogeneous = config_["homogeneous"].isBool() && config_["homogeneous"].asBool();
   bool expand = config_["expand"].isBool() && config_["expand"].asBool();
   bool horizontal = bar_.orientation == Gtk::ORIENTATION_HORIZONTAL;
-  if (expand && horizontal) {
+  if (homogeneous) {
+    box_.pack_start(bt, true, true);
+    bt.set_hexpand(true);
+    bt.set_halign(Gtk::ALIGN_FILL);
+  } else if (expand && horizontal) {
     box_.pack_start(bt, true, true);
   } else {
     box_.pack_start(bt, false, false);
@@ -1044,8 +1158,18 @@ const IconLoader& Taskbar::icon_loader() const { return icon_loader_; }
 
 const std::unordered_set<std::string>& Taskbar::ignore_list() const { return ignore_list_; }
 
+const std::unordered_set<std::string>& Taskbar::squash_list() const { return squash_list_; }
+
 const std::map<std::string, std::string>& Taskbar::app_ids_replace_map() const {
   return app_ids_replace_map_;
+}
+
+std::size_t Taskbar::task_id_count(std::string_view id) const {
+  return std::ranges::count_if(tasks_, [=](auto&& task) { return id == task->app_id(); });
+}
+
+std::size_t Taskbar::task_title_count(std::string_view title) const {
+  return std::ranges::count_if(tasks_, [=](auto&& task) { return title == task->title(); });
 }
 
 } /* namespace waybar::modules::wlr */
