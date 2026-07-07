@@ -1,165 +1,137 @@
-#include <cstdlib>
-#include <thread>
-#include <chrono>
-#include <gdk/gdk.h>
+#include "modules/hyprland/workbar/window_icon.hpp"
 
+#include <gdk/gdk.h>
 #include <gtkmm/icontheme.h>
 
-#include "modules/hyprland/workbar/window_icon.hpp"
+#include <chrono>
+#include <cstdlib>
+#include <thread>
+
+#include "modules/hyprland/backend.hpp"
 #include "modules/hyprland/workbar/drag_state.hpp"
 #include "modules/hyprland/workbar/widget.hpp"
-#include "modules/hyprland/backend.hpp"
 
 using WorkbarWidget = waybar::modules::hyprland::workbar::Widget;
 
 namespace waybar::modules::hyprland::workbar {
 
-
 void WindowIcon::focusWindow() {
-    if (window_.workspace_visible) {
-        IPC::dispatch("workspace",
-                      std::to_string(window_.workspace_id));
-    } else {
-        IPC::dispatch("focusworkspaceoncurrentmonitor",
-                      std::to_string(window_.workspace_id));
-    }
+  if (window_.workspace_visible) {
+    IPC::dispatch("workspace", std::to_string(window_.workspace_id));
+  } else {
+    IPC::dispatch("focusworkspaceoncurrentmonitor", std::to_string(window_.workspace_id));
+  }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(40));
-
-    IPC::dispatch("focuswindow",
-                  "address:" + window_.address);
+  IPC::dispatch("focuswindow", "address:" + window_.address);
 }
 
 WindowIcon::WindowIcon(const WindowState& window) {
+  add(image_);
 
-    add(image_);
+  get_style_context()->add_class("window-icon");
 
-    get_style_context()->add_class("window-icon");
+  add_events(Gdk::BUTTON_PRESS_MASK | Gdk::BUTTON_RELEASE_MASK | Gdk::POINTER_MOTION_MASK);
 
-    add_events(
-        Gdk::BUTTON_PRESS_MASK |
-        Gdk::BUTTON_RELEASE_MASK |
-        Gdk::POINTER_MOTION_MASK
-    );
+  signal_clicked().connect([this]() { focusWindow(); });
 
-    signal_clicked().connect([this]() {
-        focusWindow();
-    });
+  setWindow(window);
 
-    setWindow(window);
-
-    show_all();
-
+  show_all();
 }
 
 void WindowIcon::setWindow(const WindowState& window) {
-    auto theme = Gtk::IconTheme::get_default();
+  auto theme = Gtk::IconTheme::get_default();
 
-    try {
-        auto pixbuf = theme->load_icon(
-            theme->has_icon(window.class_name)
-                ? window.class_name
-                : "application-x-executable",
-            64,   // load a large icon
-            Gtk::ICON_LOOKUP_FORCE_SIZE);
+  try {
+    auto pixbuf = theme->load_icon(
+        theme->has_icon(window.class_name) ? window.class_name : "application-x-executable",
+        64,  // load a large icon
+        Gtk::ICON_LOOKUP_FORCE_SIZE);
 
-        auto scaled = pixbuf->scale_simple(
-            16, 16,
-            Gdk::INTERP_BILINEAR);
+    auto scaled = pixbuf->scale_simple(16, 16, Gdk::INTERP_BILINEAR);
 
-        image_.set(scaled);
-            
-    } catch (...) {
-    }
+    image_.set(scaled);
 
-    window_ = window;
+  } catch (...) {
+  }
 
-    auto context = get_style_context();
+  window_ = window;
 
-    if (window.active) {
-        context->add_class("active");
-    } else {
-        context->remove_class("active");
-    }
+  auto context = get_style_context();
 
-    
+  if (window.active) {
+    context->add_class("active");
+  } else {
+    context->remove_class("active");
+  }
 }
 
-
 bool WindowIcon::on_button_press_event(GdkEventButton* event) {
+  if (event->button == 1) {
+    left_pressed_ = true;
 
-    if (event->button == 1) {
-        left_pressed_ = true;
+    press_x_ = event->x;
+    press_y_ = event->y;
+    dragging_ = false;
+  }
 
-        press_x_ = event->x;
-        press_y_ = event->y;
-        dragging_ = false;
-    }
-
-    return Gtk::Button::on_button_press_event(event);
+  return Gtk::Button::on_button_press_event(event);
 }
 
 bool WindowIcon::on_motion_notify_event(GdkEventMotion* event) {
-    if (!left_pressed_) {
-        return Gtk::Button::on_motion_notify_event(event);
-    }
-
-    if (!dragging_) {
-
-        double dx = event->x - press_x_;
-        double dy = event->y - press_y_;
-
-        if (dx * dx + dy * dy > 36) {
-            dragging_ = true;
-
-            auto* widget = WorkbarWidget::instance();
-
-            if (widget) {
-                widget->beginDrag(window_);
-            }
-        }
-    }
-
-    // <-- ADD THIS NEW BLOCK
-    if (dragging_) {
-
-        auto* widget = WorkbarWidget::instance();
-
-        if (widget) {
-            widget->updateDrag(event->x_root, event->y_root);
-        }
-    }
-
+  if (!left_pressed_) {
     return Gtk::Button::on_motion_notify_event(event);
+  }
+
+  if (!dragging_) {
+    double dx = event->x - press_x_;
+    double dy = event->y - press_y_;
+
+    if (dx * dx + dy * dy > 36) {
+      dragging_ = true;
+
+      auto* widget = WorkbarWidget::instance();
+
+      if (widget) {
+        widget->beginDrag(window_);
+      }
+    }
+  }
+
+  // <-- ADD THIS NEW BLOCK
+  if (dragging_) {
+    auto* widget = WorkbarWidget::instance();
+
+    if (widget) {
+      widget->updateDrag(event->x_root, event->y_root);
+    }
+  }
+
+  return Gtk::Button::on_motion_notify_event(event);
 }
 
 bool WindowIcon::on_button_release_event(GdkEventButton* event) {
-
-    if (event->button == 2) {
-        IPC::dispatch("closewindow",
-                      "address:" + window_.address);
-
-        return true;
-    } 
-
-    left_pressed_ = false;
-
-    if (dragging_) {
-
-        dragging_ = false;
-
-        auto* widget = WorkbarWidget::instance();
-        if (widget) {
-            widget->endDrag();
-        }
-
-    } else if (event->button == 1) {
-
-        focusWindow();
-
-    }
+  if (event->button == 2) {
+    IPC::dispatch("closewindow", "address:" + window_.address);
 
     return true;
+  }
+
+  left_pressed_ = false;
+
+  if (dragging_) {
+    dragging_ = false;
+
+    auto* widget = WorkbarWidget::instance();
+    if (widget) {
+      widget->endDrag();
+    }
+
+  } else if (event->button == 1) {
+    focusWindow();
+  }
+
+  return true;
 }
 
 }  // namespace waybar::modules::hyprland::workbar

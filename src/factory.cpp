@@ -35,8 +35,8 @@
 #include "modules/hyprland/submap.hpp"
 #include "modules/hyprland/window.hpp"
 #include "modules/hyprland/windowcount.hpp"
-#include "modules/hyprland/workspaces.hpp"
 #include "modules/hyprland/workbar/module.hpp"
+#include "modules/hyprland/workspaces.hpp"
 #endif
 #ifdef HAVE_NIRI
 #include "modules/niri/language.hpp"
@@ -221,7 +221,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::hyprland::Workspaces(id, bar_, config_[name]);
     }
     if (ref == "hyprland/workbar") {
-        return new waybar::modules::hyprland::workbar::Module(id, config_[name]);
+      return new waybar::modules::hyprland::workbar::Module(id, config_[name]);
     }
 #endif
 #ifdef HAVE_NIRI

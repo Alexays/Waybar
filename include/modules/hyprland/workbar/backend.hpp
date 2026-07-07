@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
 #include <functional>
+#include <string>
 
 #include "modules/hyprland/backend.hpp"
 #include "modules/hyprland/workbar/model.hpp"

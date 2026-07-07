@@ -338,6 +338,7 @@ if true
         'man/waybar-hyprland-submap.5.scd',
         'man/waybar-hyprland-window.5.scd',
         'man/waybar-hyprland-workspaces.5.scd',
+        'man/waybar-hyprland-workbar.5.scd',
     )
 endif
 

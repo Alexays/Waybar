@@ -6,25 +6,25 @@
 namespace waybar::modules::hyprland::workbar {
 
 struct WindowState {
-    std::string address;
-    std::string class_name;
-    std::string title;
+  std::string address;
+  std::string class_name;
+  std::string title;
 
-    int workspace_id;
+  int workspace_id;
 
-    bool active = false;
-    bool workspace_visible = false;
+  bool active = false;
+  bool workspace_visible = false;
 };
 
 struct WorkspaceState {
-    int id;
+  int id;
 
-    bool active = false;
-    bool visible = false;
+  bool active = false;
+  bool visible = false;
 
-    std::string monitor;
+  std::string monitor;
 
-    std::vector<WindowState> windows;
+  std::vector<WindowState> windows;
 };
 
 using WorkspaceList = std::vector<WorkspaceState>;

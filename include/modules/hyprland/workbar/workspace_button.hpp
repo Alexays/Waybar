@@ -1,12 +1,13 @@
 #pragma once
 
-#include <memory>
-#include <vector>
-#include <unordered_map>
-#include <gtkmm/button.h>
 #include <gtkmm/box.h>
-#include <gtkmm/label.h>
+#include <gtkmm/button.h>
 #include <gtkmm/image.h>
+#include <gtkmm/label.h>
+
+#include <memory>
+#include <unordered_map>
+#include <vector>
 
 #include "modules/hyprland/workbar/model.hpp"
 #include "modules/hyprland/workbar/window_icon.hpp"
@@ -22,7 +23,6 @@ class WorkspaceButton : public Gtk::Box {
   void setWorkspace(const WorkspaceState& workspace);
 
  private:
-  
   Gtk::Box box_;
   Gtk::Box icons_;
 
@@ -31,6 +31,4 @@ class WorkspaceButton : public Gtk::Box {
   std::unordered_map<std::string, std::unique_ptr<WindowIcon>> window_icons_;
 };
 
-
-
-}  // namespace waybar::modules::hyprland
+}  // namespace waybar::modules::hyprland::workbar
