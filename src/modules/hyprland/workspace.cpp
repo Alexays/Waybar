@@ -521,13 +521,7 @@ bool Workspace::isEmpty() const {
 }
 
 void Workspace::updateTaskbar(const std::string& workspace_icon) {
-  for (auto child : m_content.get_children()) {
-    if (child != &m_labelBefore) {
-      m_content.remove(*child);
-    }
-  }
-
-  // Build a list of windows to display, removing duplicates by window_class
+  // Build the list of windows to display, removing duplicates by window_class
   // and respecting max-icons limit
   std::vector<const WindowRepr*> windowsToShow;
   std::set<std::string> seenClasses;
@@ -564,6 +558,37 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
   int maxWindows = m_workspaceManager.maxWindows();
   if (maxWindows > 0 && static_cast<int>(windowsToShow.size()) > maxWindows) {
     windowsToShow.resize(maxWindows);
+  }
+
+  // Skip the rebuild when nothing this function renders has changed. With
+  // 'update-active-window' the taskbar is refreshed on every activewindowv2
+  // event, but most focus changes leave a given workspace's taskbar identical.
+  // Tearing it down and recreating every button/label/icon each time leaks a
+  // GtkCssStaticStyle per gtk_widget_show() that GTK never frees, so unchanged
+  // rebuilds accumulate memory unbounded (Alexays/Waybar#5186). Compare a
+  // signature of everything rendered below and bail out early when it matches.
+  std::string signature = name();
+  signature.push_back('\x1f');
+  signature.append(workspace_icon);
+  for (const auto* window_repr : windowsToShow) {
+    signature.push_back('\x1e');
+    signature.append(window_repr->window_class);
+    signature.push_back('\x1f');
+    signature.append(window_repr->window_title);
+    signature.push_back('\x1f');
+    signature.append(window_repr->address);
+    signature.push_back(window_repr->isActive ? '\x01' : '\x02');
+  }
+  if (signature == m_lastTaskbarSignature) {
+    return;
+  }
+  m_lastTaskbarSignature = signature;
+
+  // Content changed: tear down the previous taskbar widgets and rebuild.
+  for (auto child : m_content.get_children()) {
+    if (child != &m_labelBefore) {
+      m_content.remove(*child);
+    }
   }
 
   bool isFirst = true;
