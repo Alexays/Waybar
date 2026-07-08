@@ -82,29 +82,31 @@ std::tuple<std::string, std::string> AIconLabel::extractIcon(const std::string& 
 }
 
 auto AIconLabel::update() -> void {
-  label_contains_icon = false;
-
-  auto [iconLabel, cleanLabel] = extractIcon(label_.get_label().c_str());
-  label_contains_icon = iconLabel.length() > 0;
+  if (label_.get_label().length() > 0) {
+    auto [iconLabel, cleanLabel] = extractIcon(label_.get_label().c_str());
+    label_contains_icon = iconLabel.length() > 0;
+    iconLabel_ = iconLabel;
+    cleanLabel_ = cleanLabel;
+  }
 
   if (label_contains_icon) {
-    label_.set_markup(cleanLabel);
+    label_.set_markup(cleanLabel_);
 
-    if (iconLabel.front() == '/') {
+    if (iconLabel_.front() == '/') {
       try {
         int scaled_icon_size = app_icon_size_ * image_.get_scale_factor();
-        auto pixbuf = Gdk::Pixbuf::create_from_file(iconLabel, scaled_icon_size, scaled_icon_size);
+        auto pixbuf = Gdk::Pixbuf::create_from_file(iconLabel_, scaled_icon_size, scaled_icon_size);
 
         auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
                                                               image_.get_window());
         image_.set(surface);
         image_.set_visible(true);
       } catch (const Glib::Exception& e) {
-        spdlog::warn("Failed to load embedded icon {}: {}", iconLabel, std::string(e.what()));
+        spdlog::warn("Failed to load embedded icon {}: {}", iconLabel_, std::string(e.what()));
         image_.set_visible(false);
       }
     } else {
-      image_.set_from_icon_name(iconLabel, Gtk::ICON_SIZE_INVALID);
+      image_.set_from_icon_name(iconLabel_, Gtk::ICON_SIZE_INVALID);
       image_.set_visible(true);
     }
   }

@@ -25,6 +25,10 @@ class AIconLabel : public ALabel {
 
   bool iconEnabled() const;
   bool setTooltipMarkup(const Glib::ustring& markup);
+
+ private:
+   std::string iconLabel_;
+   std::string cleanLabel_;
 };
 
 }  // namespace waybar
