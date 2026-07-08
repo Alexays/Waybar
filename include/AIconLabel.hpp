@@ -24,7 +24,7 @@ class AIconLabel : public ALabel {
   bool label_contains_icon{false};
 
   bool iconEnabled() const;
-  bool setTooltipMarkup(const Glib::ustring& markup);
+  bool setTooltipMarkup (const Glib::ustring& markup) override;
 
  private:
    std::string iconLabel_;

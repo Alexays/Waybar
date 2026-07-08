@@ -82,7 +82,7 @@ std::tuple<std::string, std::string> AIconLabel::extractIcon(const std::string& 
 }
 
 auto AIconLabel::update() -> void {
-  if (label_.get_label().length() > 0) {
+  if (label_.get_label().length() > 0 && label_.get_label().c_str() != cleanLabel_) {
     auto [iconLabel, cleanLabel] = extractIcon(label_.get_label().c_str());
     label_contains_icon = iconLabel.length() > 0;
     iconLabel_ = iconLabel;

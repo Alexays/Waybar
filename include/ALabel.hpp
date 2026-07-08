@@ -37,8 +37,8 @@ class ALabel : public AModule {
   std::optional<std::string> last_label_markup_;
   std::optional<std::string> last_tooltip_markup_;
 
-  bool setLabelMarkup(const Glib::ustring& markup);
-  bool setTooltipMarkup(const Glib::ustring& markup);
+  virtual bool setLabelMarkup(const Glib::ustring& markup);
+  virtual bool setTooltipMarkup(const Glib::ustring& markup);
 
   // resolveTooltipFormat() / resolveFormat() are inherited from AModule.
 
