@@ -67,7 +67,7 @@ A module that implements a 'menu' needs 3 properties defined in its config :
 	GtkMenu with id *menu*.
 
 *menu-actions*: ++
-	typeof: array ++
+	typeof: object ++
 	The actions corresponding to the buttons of the menu. The identifiers of
 	each actions needs to exists as an id in the 'menu-file' for it to be linked
 	properly.

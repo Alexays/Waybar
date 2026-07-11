@@ -16,6 +16,10 @@ Addressed by *bluetooth*
 	typeof: string ++
 	Use the controller with the defined alias. Otherwise, a random controller is used. Recommended to define when there is more than 1 controller available to the system.
 
+*controller-alias*: ++
+	typeof: string ++
+	Synonym for *controller*. If both are set, *controller-alias* takes precedence.
+
 *format-device-preference*: ++
 	typeof: array ++
 	A ranking of bluetooth devices, addressed by their alias. The order is from *first displayed* to *last displayed*. ++
@@ -178,6 +182,9 @@ At the time of writing, the experimental features of BlueZ need to be turned on,
 
 *{device_battery_percentage}*: Battery percentage of the displayed device if available. Use only in the config options defined below.
 
+*{device_battery_percentage_peripheral}*: Battery percentage of the peripheral half of a split keyboard (e.g., ZMK keyboards with separate central and peripheral batteries). ++
+This is read from GATT Battery Service characteristics that have a User Description descriptor. Use only in the config options defined below.
+
 ## CONFIGURATION
 
 *format-connected-battery*: ++
@@ -220,6 +227,17 @@ At the time of writing, the experimental features of BlueZ need to be turned on,
 }
 ```
 
+Split keyboard with separate central/peripheral batteries (e.g., ZMK):
+
+```
+"bluetooth": {
+	"format-device-preference": [ "Keyball44" ],
+	"format": "",
+	"format-connected-battery": " {device_battery_percentage}%|{device_battery_percentage_peripheral}%",
+	"tooltip-format-connected": "{device_alias}\\nCentral: {device_battery_percentage}%\\nPeripheral: {device_battery_percentage_peripheral}%"
+}
+```
+
 # STYLE
 
 - *#bluetooth*
@@ -227,6 +245,7 @@ At the time of writing, the experimental features of BlueZ need to be turned on,
 - *#bluetooth.off*
 - *#bluetooth.on*
 - *#bluetooth.connected*
+- *#bluetooth.no-controller*
 - *#bluetooth.discoverable*
 - *#bluetooth.discovering*
 - *#bluetooth.pairable*

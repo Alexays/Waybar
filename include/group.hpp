@@ -10,14 +10,16 @@
 namespace waybar {
 
 class Group : public AModule {
- public:
-  Group(const std::string &, const std::string &, const Json::Value &, bool);
-  ~Group() override = default;
-  auto update() -> void override;
-  operator Gtk::Widget &() override;
+  sigc::connection reveal_timeout_;
 
-  virtual Gtk::Box &getBox();
-  void addWidget(Gtk::Widget &widget);
+ public:
+  Group(const std::string&, const std::string&, const Json::Value&, bool);
+  ~Group() override;
+  auto update() -> void override;
+  operator Gtk::Widget&() override;
+
+  virtual Gtk::Box& getBox();
+  void addWidget(AModule* module);
 
  protected:
   Gtk::Box box;
@@ -26,12 +28,20 @@ class Group : public AModule {
   bool is_first_widget = true;
   bool is_drawer = false;
   bool click_to_reveal = false;
+  std::string always_visible_class;
+  bool empty_if_drawer_empty = false;
+  int reveal_delay = 0;
   std::string add_class_to_drawer_children;
-  bool handleMouseEnter(GdkEventCrossing *const &ev) override;
-  bool handleMouseLeave(GdkEventCrossing *const &ev) override;
-  bool handleToggle(GdkEventButton *const &ev) override;
+  bool handleMouseEnter(GdkEventCrossing* const& ev) override;
+  bool handleMouseLeave(GdkEventCrossing* const& ev) override;
+  bool handleToggle(GdkEventButton* const& ev) override;
+  bool handleScroll(GdkEventScroll* e) override;
   void show_group();
   void hide_group();
+  void manage_visibility(AModule* module);
+  void show_widget(Gtk::Widget& widget);
+  void hide_widget(Gtk::Widget& widget);
+  void hide_current_widget_if_inactive();
 };
 
 }  // namespace waybar

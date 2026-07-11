@@ -29,6 +29,7 @@ client_protocols = [
 	['river-status-unstable-v1.xml'],
 	['river-control-unstable-v1.xml'],
 	['dwl-ipc-unstable-v2.xml'],
+	['ext-idle-notify-v1.xml'],
 ]
 
 if wayland_protos.version().version_compare('>=1.39')

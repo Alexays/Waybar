@@ -14,10 +14,10 @@ namespace {
 class FileDescriptor {
  public:
   explicit FileDescriptor(int fd) : fd_(fd) {}
-  FileDescriptor(const FileDescriptor &other) = delete;
-  FileDescriptor(FileDescriptor &&other) noexcept = delete;
-  FileDescriptor &operator=(const FileDescriptor &other) = delete;
-  FileDescriptor &operator=(FileDescriptor &&other) noexcept = delete;
+  FileDescriptor(const FileDescriptor& other) = delete;
+  FileDescriptor(FileDescriptor&& other) noexcept = delete;
+  FileDescriptor& operator=(const FileDescriptor& other) = delete;
+  FileDescriptor& operator=(FileDescriptor&& other) noexcept = delete;
   ~FileDescriptor() {
     if (fd_ != -1) {
       if (close(fd_) != 0) {
@@ -31,27 +31,27 @@ class FileDescriptor {
   int fd_;
 };
 
-void check_eq(int rc, int expected, const char *message = "eq, rc was: ") {
+void check_eq(int rc, int expected, const char* message = "eq, rc was: ") {
   if (rc != expected) {
     throw std::runtime_error(fmt::format(fmt::runtime(message), rc));
   }
 }
 
-void check_neq(int rc, int bad_rc, const char *message = "neq, rc was: ") {
+void check_neq(int rc, int bad_rc, const char* message = "neq, rc was: ") {
   if (rc == bad_rc) {
     throw std::runtime_error(fmt::format(fmt::runtime(message), rc));
   }
 }
 
-void check0(int rc, const char *message = "rc wasn't 0") { check_eq(rc, 0, message); }
+void check0(int rc, const char* message = "rc wasn't 0") { check_eq(rc, 0, message); }
 
-void check_gte(int rc, int gte, const char *message = "rc was: ") {
+void check_gte(int rc, int gte, const char* message = "rc was: ") {
   if (rc < gte) {
     throw std::runtime_error(fmt::format(fmt::runtime(message), rc));
   }
 }
 
-void check_nn(const void *ptr, const char *message = "ptr was null") {
+void check_nn(const void* ptr, const char* message = "ptr was null") {
   if (ptr == nullptr) {
     throw std::runtime_error(message);
   }
@@ -61,58 +61,91 @@ void check_nn(const void *ptr, const char *message = "ptr was null") {
 
 namespace waybar::util {
 
-static void upsert_device(std::vector<BacklightDevice> &devices, udev_device *dev) {
-  const char *name = udev_device_get_sysname(dev);
+static void upsert_device(std::vector<BacklightDevice>& devices, udev_device* dev) {
+  const char* name = udev_device_get_sysname(dev);
   check_nn(name);
 
-  const char *actual_brightness_attr =
+  const char* actual_brightness_attr =
       strncmp(name, "amdgpu_bl", 9) == 0 || strcmp(name, "apple-panel-bl") == 0
           ? "brightness"
           : "actual_brightness";
 
-  const char *actual = udev_device_get_sysattr_value(dev, actual_brightness_attr);
-  const char *max = udev_device_get_sysattr_value(dev, "max_brightness");
-  const char *power = udev_device_get_sysattr_value(dev, "bl_power");
+  const char* actual = udev_device_get_sysattr_value(dev, actual_brightness_attr);
+  const char* max = udev_device_get_sysattr_value(dev, "max_brightness");
+  const char* power = udev_device_get_sysattr_value(dev, "bl_power");
+  const char* subsystem = udev_device_get_subsystem(dev);
 
-  auto found = std::find_if(devices.begin(), devices.end(), [name](const BacklightDevice &device) {
+  auto found = std::find_if(devices.begin(), devices.end(), [name](const BacklightDevice& device) {
     return device.name() == name;
   });
   if (found != devices.end()) {
     if (actual != nullptr) {
-      found->set_actual(std::stoi(actual));
+      try {
+        found->set_actual(std::stoi(actual));
+      } catch (const std::exception&) {
+      }
     }
     if (max != nullptr) {
-      found->set_max(std::stoi(max));
+      try {
+        found->set_max(std::stoi(max));
+      } catch (const std::exception&) {
+      }
     }
     if (power != nullptr) {
-      found->set_powered(std::stoi(power) == 0);
+      try {
+        found->set_powered(std::stoi(power) == 0);
+      } catch (const std::exception&) {
+      }
     }
   } else {
-    const int actual_int = actual == nullptr ? 0 : std::stoi(actual);
-    const int max_int = max == nullptr ? 0 : std::stoi(max);
-    const bool power_bool = power == nullptr ? true : std::stoi(power) == 0;
-    devices.emplace_back(name, actual_int, max_int, power_bool);
+    int actual_int = 0, max_int = 0;
+    bool power_bool = true;
+    try {
+      if (actual != nullptr) actual_int = std::stoi(actual);
+    } catch (const std::exception&) {
+    }
+    try {
+      if (max != nullptr) max_int = std::stoi(max);
+    } catch (const std::exception&) {
+    }
+    try {
+      if (power != nullptr) power_bool = std::stoi(power) == 0;
+    } catch (const std::exception&) {
+    }
+    devices.emplace_back(name, actual_int, max_int, power_bool,
+                         subsystem != nullptr ? subsystem : "backlight");
   }
 }
 
-static void enumerate_devices(std::vector<BacklightDevice> &devices, udev *udev) {
+static void enumerate_devices(std::vector<BacklightDevice>& devices, udev* udev) {
   std::unique_ptr<udev_enumerate, UdevEnumerateDeleter> enumerate{udev_enumerate_new(udev)};
   udev_enumerate_add_match_subsystem(enumerate.get(), "backlight");
+  // Also enumerate keyboard-backlight LEDs (e.g. "white:kbd_backlight"), which
+  // live in the "leds" subsystem but expose the same brightness/max_brightness
+  // attributes the read path uses.
+  udev_enumerate_add_match_subsystem(enumerate.get(), "leds");
   udev_enumerate_scan_devices(enumerate.get());
-  udev_list_entry *enum_devices = udev_enumerate_get_list_entry(enumerate.get());
-  udev_list_entry *dev_list_entry;
+  udev_list_entry* enum_devices = udev_enumerate_get_list_entry(enumerate.get());
+  udev_list_entry* dev_list_entry;
   udev_list_entry_foreach(dev_list_entry, enum_devices) {
-    const char *path = udev_list_entry_get_name(dev_list_entry);
+    const char* path = udev_list_entry_get_name(dev_list_entry);
     std::unique_ptr<udev_device, UdevDeviceDeleter> dev{udev_device_new_from_syspath(udev, path)};
     check_nn(dev.get(), "dev new failed");
     upsert_device(devices, dev.get());
   }
 }
 
-BacklightDevice::BacklightDevice(std::string name, int actual, int max, bool powered)
-    : name_(std::move(name)), actual_(actual), max_(max), powered_(powered) {}
+BacklightDevice::BacklightDevice(std::string name, int actual, int max, bool powered,
+                                 std::string subsystem)
+    : name_(std::move(name)),
+      actual_(actual),
+      max_(max),
+      powered_(powered),
+      subsystem_(std::move(subsystem)) {}
 
 std::string BacklightDevice::name() const { return name_; }
+
+std::string BacklightDevice::subsystem() const { return subsystem_; }
 
 int BacklightDevice::get_actual() const { return actual_; }
 
@@ -158,6 +191,10 @@ BacklightBackend::BacklightBackend(std::chrono::milliseconds interval,
     check_nn(mon.get(), "udev monitor new failed");
     check_gte(udev_monitor_filter_add_match_subsystem_devtype(mon.get(), "backlight", nullptr), 0,
               "udev failed to add monitor filter: ");
+    // Also monitor the "leds" subsystem so keyboard-backlight changes are
+    // reflected live, mirroring the enumeration above.
+    check_gte(udev_monitor_filter_add_match_subsystem_devtype(mon.get(), "leds", nullptr), 0,
+              "udev failed to add monitor filter: ");
     udev_monitor_enable_receiving(mon.get());
 
     auto udev_fd = udev_monitor_get_fd(mon.get());
@@ -184,7 +221,7 @@ BacklightBackend::BacklightBackend(std::chrono::milliseconds interval,
         devices = devices_;
       }
       for (int i = 0; i < event_count; ++i) {
-        const auto &event = events[i];
+        const auto& event = events[i];
         check_eq(event.data.fd, udev_fd, "unexpected udev fd");
         std::unique_ptr<udev_device, UdevDeviceDeleter> dev{udev_monitor_receive_device(mon.get())};
         if (!dev) {
@@ -193,9 +230,21 @@ BacklightBackend::BacklightBackend(std::chrono::milliseconds interval,
         upsert_device(devices, dev.get());
       }
 
-      // Refresh state if timed out
+      // Refresh state if timed out. Only re-read the sysfs attributes of the
+      // devices we already track instead of re-enumerating the whole udev tree
+      // (udev_enumerate_scan_devices), which walks all of /sys/class/backlight
+      // and /sys/class/leds and floods the filesystem with open/close syscalls
+      // on every polling tick (#5020). Device add/remove is already delivered
+      // by the udev monitor above, so a periodic full re-scan is redundant.
       if (event_count == 0) {
-        enumerate_devices(devices, udev.get());
+        for (const auto& device : devices) {
+          std::unique_ptr<udev_device, UdevDeviceDeleter> dev{
+              udev_device_new_from_subsystem_sysname(udev.get(), device.subsystem().c_str(),
+                                                     device.name().c_str())};
+          if (dev) {
+            upsert_device(devices, dev.get());
+          }
+        }
       }
       {
         std::scoped_lock<std::mutex> lock(udev_thread_mutex_);
@@ -206,27 +255,40 @@ BacklightBackend::BacklightBackend(std::chrono::milliseconds interval,
   };
 }
 
-const BacklightDevice *BacklightBackend::best_device(const std::vector<BacklightDevice> &devices,
+const BacklightDevice* BacklightBackend::best_device(const std::vector<BacklightDevice>& devices,
                                                      std::string_view preferred_device) {
   const auto found = std::find_if(
       devices.begin(), devices.end(),
-      [preferred_device](const BacklightDevice &dev) { return dev.name() == preferred_device; });
+      [preferred_device](const BacklightDevice& dev) { return dev.name() == preferred_device; });
   if (found != devices.end()) {
     return &(*found);
   }
 
-  const auto max = std::max_element(
-      devices.begin(), devices.end(),
-      [](const BacklightDevice &l, const BacklightDevice &r) { return l.get_max() < r.get_max(); });
+  // No device was explicitly configured (or the configured name did not match).
+  // Automatic selection must keep preferring a screen backlight (the "backlight"
+  // subsystem) so that a keyboard-backlight LED, now that the "leds" subsystem is
+  // also enumerated, is never accidentally picked as the default. Only fall back
+  // to other subsystems (e.g. "leds") when no "backlight" device exists at all.
+  const auto max = std::max_element(devices.begin(), devices.end(),
+                                    [](const BacklightDevice& l, const BacklightDevice& r) {
+                                      const bool l_backlight = l.subsystem() == "backlight";
+                                      const bool r_backlight = r.subsystem() == "backlight";
+                                      if (l_backlight != r_backlight) {
+                                        // Rank any non-backlight device below every backlight
+                                        // device.
+                                        return r_backlight;
+                                      }
+                                      return l.get_max() < r.get_max();
+                                    });
 
   return max == devices.end() ? nullptr : &(*max);
 }
 
-const BacklightDevice *BacklightBackend::get_previous_best_device() {
+const BacklightDevice* BacklightBackend::get_previous_best_device() {
   return previous_best_.has_value() ? &(*previous_best_) : nullptr;
 }
 
-void BacklightBackend::set_previous_best_device(const BacklightDevice *device) {
+void BacklightBackend::set_previous_best_device(const BacklightDevice* device) {
   if (device == nullptr) {
     previous_best_ = std::nullopt;
   } else {
@@ -234,17 +296,17 @@ void BacklightBackend::set_previous_best_device(const BacklightDevice *device) {
   }
 }
 
-void BacklightBackend::set_scaled_brightness(const std::string &preferred_device, int brightness) {
+void BacklightBackend::set_scaled_brightness(const std::string& preferred_device, int brightness) {
   GET_BEST_DEVICE(best, (*this), preferred_device);
 
   if (best != nullptr) {
     const auto max = best->get_max();
     const auto abs_val = static_cast<int>(std::round(brightness * max / 100.0F));
-    set_brightness_internal(best->name(), abs_val, best->get_max());
+    set_brightness_internal(best->name(), abs_val, best->get_max(), best->subsystem());
   }
 }
 
-void BacklightBackend::set_brightness(const std::string &preferred_device, ChangeType change_type,
+void BacklightBackend::set_brightness(const std::string& preferred_device, ChangeType change_type,
                                       double step) {
   GET_BEST_DEVICE(best, (*this), preferred_device);
 
@@ -255,25 +317,31 @@ void BacklightBackend::set_brightness(const std::string &preferred_device, Chang
 
     const int new_brightness = change_type == ChangeType::Increase ? best->get_actual() + abs_step
                                                                    : best->get_actual() - abs_step;
-    set_brightness_internal(best->name(), new_brightness, max);
+    set_brightness_internal(best->name(), new_brightness, max, best->subsystem());
   }
 }
 
-void BacklightBackend::set_brightness_internal(const std::string &device_name, int brightness,
-                                               int max_brightness) {
+void BacklightBackend::set_brightness_internal(const std::string& device_name, int brightness,
+                                               int max_brightness, const std::string& subsystem) {
+  if (!login_proxy_) {
+    spdlog::error("Login proxy not available, cannot set brightness");
+    return;
+  }
+
   brightness = std::clamp(brightness, 0, max_brightness);
 
   auto call_args = Glib::VariantContainerBase(
-      g_variant_new("(ssu)", "backlight", device_name.c_str(), brightness));
+      g_variant_new("(ssu)", subsystem.c_str(), device_name.c_str(), brightness));
 
   login_proxy_->call_sync("SetBrightness", call_args);
 }
 
-int BacklightBackend::get_scaled_brightness(const std::string &preferred_device) {
+int BacklightBackend::get_scaled_brightness(const std::string& preferred_device) {
   GET_BEST_DEVICE(best, (*this), preferred_device);
 
   if (best != nullptr) {
-    return best->get_actual() * 100 / best->get_max();
+    if (best->get_max() == 0) return 0;
+    return static_cast<int>(std::round(best->get_actual() * 100.0F / best->get_max()));
   }
 
   return 0;

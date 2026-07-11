@@ -37,6 +37,7 @@ class Language : public waybar::ALabel, public EventHandler {
   util::JsonParser parser_;
 
   Layout layout_;
+  std::string prev_short_name_;  // applied CSS class; touched only in update() (#4665)
 
   IPC& m_ipc;
 };

@@ -49,6 +49,11 @@ Addressed by *river/window*
 	typeof: string ++
 	Command to execute when you right-click on the module.
 
+*tooltip*: ++
+	typeof: bool ++
+	default: true ++
+	Option to enable tooltip on hover. The tooltip shows the same text as the module label.
+
 *menu*: ++
 	typeof: string ++
 	Action that popups the menu.

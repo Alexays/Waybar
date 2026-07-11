@@ -1,5 +1,6 @@
 #include "AModule.hpp"
 
+#include <fmt/core.h>
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
@@ -17,9 +18,13 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true},
       isExpand{config_["expand"].isBool() ? config_["expand"].asBool() : false},
       distance_scrolled_y_(0.0),
-      distance_scrolled_x_(0.0) {
+      distance_scrolled_x_(0.0),
+      cursor_timeout_conn_() {
   // Configure module action Map
   const Json::Value actions{config_["actions"]};
+
+  disable_on_sleep_ =
+      config_["disable-on-sleep"].isBool() ? config_["disable-on-sleep"].asBool() : false;
 
   for (Json::Value::const_iterator it = actions.begin(); it != actions.end(); ++it) {
     if (it.key().isString() && it->isString())
@@ -42,7 +47,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       std::find_if(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
         // True if there is any non-release type event
         return eventEntry.first.second != GdkEventType::GDK_BUTTON_RELEASE &&
-               config[eventEntry.second].isString();
+               (config[eventEntry.second].isString() || config[eventEntry.second].isBool());
       }) != eventMap_.cend();
 
   if (enable_click || hasUserEvents) {
@@ -72,10 +77,21 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 
   // Respect user configuration of cursor
   if (config_.isMember("cursor")) {
-    if (config_["cursor"].isBool() && config_["cursor"].asBool()) {
-      setCursor(Gdk::HAND2);
-    } else if (config_["cursor"].isInt()) {
+    if (config_["cursor"].isBool()) {
+      if (config_["cursor"].asBool()) {
+        setCursor("pointer");
+      } else {
+        setCursor("default");
+      }
+    } else if (config_["cursor"].isString()) {
+      setCursor(config_["cursor"].asString());
+    } else if (config_["cursor"].isInt() || config_["cursor"].isUInt()) {
+      // Backward-compat: legacy numeric Gdk::CursorType values (pre-0.16)
       setCursor(Gdk::CursorType(config_["cursor"].asInt()));
+      spdlog::warn(
+          "Numeric 'cursor' values are deprecated; use a cursor-shape-v1 name string instead "
+          "(module {})",
+          name_);
     } else {
       spdlog::warn("unknown cursor option configured on module {}", name_);
     }
@@ -83,10 +99,17 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 }
 
 AModule::~AModule() {
+  if (cursor_timeout_conn_.connected()) {
+    cursor_timeout_conn_.disconnect();
+  }
   for (const auto& pid : pid_children_) {
     if (pid != -1) {
       killpg(pid, SIGTERM);
     }
+  }
+  if (menu_ != nullptr) {
+    g_object_unref(menu_);
+    menu_ = nullptr;
   }
 }
 
@@ -95,6 +118,7 @@ auto AModule::update() -> void {
   if (config_["on-update"].isString()) {
     pid_children_.push_back(util::command::forkExec(config_["on-update"].asString()));
   }
+  signal_updated.emit(this);
 }
 // Get mapping between event name and module action name
 // Then call overridden doAction in order to call appropriate module action
@@ -106,15 +130,33 @@ auto AModule::doAction(const std::string& name) -> void {
   }
 }
 
-void AModule::setCursor(Gdk::CursorType const& c) {
+void AModule::setCursor(std::string const& c) {
   auto gdk_window = event_box_.get_window();
   if (gdk_window) {
-    auto cursor = Gdk::Cursor::create(c);
+    auto cursor = Gdk::Cursor::create(gdk_window->get_display(), c);
     gdk_window->set_cursor(cursor);
   } else {
     // window may not be accessible yet, in this case,
     // schedule another call for setting the cursor in 1 sec
-    Glib::signal_timeout().connect_seconds(
+    cursor_timeout_conn_ = Glib::signal_timeout().connect_seconds(
+        [this, c]() {
+          setCursor(c);
+          return false;
+        },
+        1);
+  }
+}
+
+// Backward-compat overload: honor legacy numeric Gdk::CursorType configs (pre-0.16)
+void AModule::setCursor(Gdk::CursorType const& c) {
+  auto gdk_window = event_box_.get_window();
+  if (gdk_window) {
+    auto cursor = Gdk::Cursor::create(gdk_window->get_display(), c);
+    gdk_window->set_cursor(cursor);
+  } else {
+    // window may not be accessible yet, in this case,
+    // schedule another call for setting the cursor in 1 sec
+    cursor_timeout_conn_ = Glib::signal_timeout().connect_seconds(
         [this, c]() {
           setCursor(c);
           return false;
@@ -130,7 +172,7 @@ bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
 
   // Default behavior indicating event availability
   if (hasUserEvents_ && !config_.isMember("cursor")) {
-    setCursor(Gdk::HAND2);
+    setCursor("pointer");
   }
 
   return false;
@@ -143,7 +185,7 @@ bool AModule::handleMouseLeave(GdkEventCrossing* const& e) {
 
   // Default behavior indicating event availability
   if (hasUserEvents_ && !config_.isMember("cursor")) {
-    setCursor(Gdk::ARROW);
+    setCursor("default");
   }
 
   return false;
@@ -166,9 +208,9 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
   }
 
   // Check that a menu has been configured
-  if (config_["menu"].isString()) {
+  if (rec != eventMap_.cend() && config_["menu"].isString()) {
     // Check if the event is the one specified for the "menu" option
-    if (rec->second == config_["menu"].asString()) {
+    if (rec->second == config_["menu"].asString() && menu_ != nullptr) {
       // Popup the menu
       gtk_widget_show_all(GTK_WIDGET(menu_));
       gtk_menu_popup_at_pointer(GTK_MENU(menu_), reinterpret_cast<GdkEvent*>(e));
@@ -180,13 +222,40 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
   }
   // Second call user scripts
   if (!format.empty()) {
-    if (config_[format].isString())
-      format = config_[format].asString();
-    else
+    // If the configured value for this event is a recognized built-in module
+    // action (registered in eventActionMap_), it has already been dispatched
+    // via doAction() above / handled by the module itself. Don't additionally
+    // run it as a shell command (issue #3284). Any other value is still treated
+    // as a user shell command.
+    const auto actionIt = eventActionMap_.find(format);
+    const bool isModuleAction = actionIt != eventActionMap_.cend() && config_[format].isString() &&
+                                config_[format].asString() == actionIt->second;
+    if (isModuleAction || !config_[format].isString())
       format.clear();
+    else
+      format = config_[format].asString();
   }
   if (!format.empty()) {
-    pid_children_.push_back(util::command::forkExec(format));
+    const int width = gdk_window_get_width(e->window);
+    const int height = gdk_window_get_height(e->window);
+    // Substitute {x}/{y} with the click position. The configured command is
+    // arbitrary user input that may contain literal braces which are not {x}/{y}
+    // (e.g. `echo ${HOME}`, `awk '{print $1}'`, brace expansions). Those make
+    // libfmt throw fmt::format_error; since we run inside a GTK signal handler an
+    // uncaught exception aborts the whole bar. Only format when a placeholder is
+    // actually present, and fall back to the raw command if formatting throws.
+    std::string cmd = format;
+    if (format.find("{x}") != std::string::npos || format.find("{y}") != std::string::npos) {
+      try {
+        cmd = fmt::format(fmt::runtime(format), fmt::arg("x", (int)round(100. * e->x / width)),
+                          fmt::arg("y", (int)round(100. * e->y / height)));
+      } catch (const fmt::format_error& err) {
+        spdlog::warn("Failed to format command '{}': {}. Running it unformatted.", format,
+                     err.what());
+        cmd = format;
+      }
+    }
+    pid_children_.push_back(util::command::forkExec(cmd));
   }
   dp.emit();
   return true;

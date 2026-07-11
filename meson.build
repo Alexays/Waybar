@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.14.0',
+    version: '0.15.0',
     license: 'MIT',
     meson_version: '>= 0.59.0',
     default_options : [
@@ -74,6 +74,7 @@ wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
 gtkmm = dependency('gtkmm-3.0', version : ['>=3.22.0'])
+giomm = dependency('giomm-2.4', version : ['>=2.4.0'])
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
 giounix = dependency('gio-unix-2.0')
 jsoncpp = dependency('jsoncpp', version : ['>=1.9.2'], fallback : ['jsoncpp', 'jsoncpp_dep'])
@@ -94,6 +95,7 @@ xkbregistry = dependency('xkbregistry')
 libjack = dependency('jack', required: get_option('jack'))
 libwireplumber = dependency('wireplumber-0.5', required: get_option('wireplumber'))
 libgps = dependency('libgps', required: get_option('gps'))
+libmm_glib = dependency('mm-glib', required: get_option('wwan'))
 
 libsndio = compiler.find_library('sndio', required: get_option('sndio'))
 if libsndio.found()
@@ -111,6 +113,10 @@ gtk_layer_shell = dependency('gtk-layer-shell-0', version: ['>=0.9.0'],
         default_options: ['introspection=false', 'vapi=false'],
         fallback: ['gtk-layer-shell', 'gtk_layer_shell'])
 systemd = dependency('systemd', required: get_option('systemd'))
+libsystemd = dependency('libsystemd', required: get_option('systemd'))
+if libsystemd.found()
+    add_project_arguments('-DHAVE_LIBSYSTEMD', language: 'cpp')
+endif
 
 cpp_lib_chrono = compiler.compute_int('__cpp_lib_chrono', prefix : '#include <chrono>')
 have_chrono_timezones = cpp_lib_chrono >= 201611
@@ -159,11 +165,13 @@ endif
 
 src_files = files(
     'src/factory.cpp',
+    'src/AGraph.cpp',
     'src/AModule.cpp',
     'src/ALabel.cpp',
     'src/AIconLabel.cpp',
     'src/AAppIconLabel.cpp',
     'src/modules/custom.cpp',
+    'src/modules/custom_graph.cpp',
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
     'src/modules/image.cpp',
@@ -182,10 +190,14 @@ src_files = files(
     'src/util/ustring_clen.cpp',
     'src/util/sanitize_str.cpp',
     'src/util/rewrite_string.cpp',
+    'src/util/hosts_check.cpp',
     'src/util/gtk_icon.cpp',
     'src/util/icon_loader.cpp',
     'src/util/regex_collection.cpp',
-    'src/util/css_reload_helper.cpp'
+    'src/util/css_reload_helper.cpp',
+    'src/util/transform_8bit_to_rgba.cpp',
+    'src/util/utf8_string.cpp',
+    'src/util/command_line_stream.cpp'
 )
 
 man_files = files(
@@ -196,6 +208,7 @@ man_files = files(
     'man/waybar-states.5.scd',
     'man/waybar-menu.5.scd',
     'man/waybar-temperature.5.scd',
+    'man/waybar-user.5.scd',
 )
 
 inc_dirs = ['include']
@@ -209,6 +222,7 @@ if is_linux
         'src/modules/bluetooth.cpp',
         'src/modules/cffi.cpp',
         'src/modules/cpu.cpp',
+        'src/modules/cpu_graph.cpp',
         'src/modules/cpu_frequency/common.cpp',
         'src/modules/cpu_frequency/linux.cpp',
         'src/modules/cpu_usage/common.cpp',
@@ -233,6 +247,7 @@ elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     src_files += files(
         'src/modules/cffi.cpp',
         'src/modules/cpu.cpp',
+        'src/modules/cpu_graph.cpp',
         'src/modules/cpu_frequency/bsd.cpp',
         'src/modules/cpu_frequency/common.cpp',
         'src/modules/cpu_usage/bsd.cpp',
@@ -339,11 +354,31 @@ if get_option('niri')
         'src/modules/niri/language.cpp',
         'src/modules/niri/window.cpp',
         'src/modules/niri/workspaces.cpp',
+        'src/modules/niri/workspace.cpp',
     )
     man_files += files(
         'man/waybar-niri-language.5.scd',
         'man/waybar-niri-window.5.scd',
         'man/waybar-niri-workspaces.5.scd',
+    )
+endif
+
+if get_option('mango')
+    add_project_arguments('-DHAVE_MANGO', language: 'cpp')
+    src_files += files(
+        'src/modules/mango/backend.cpp',
+        'src/modules/mango/language.cpp',
+        'src/modules/mango/keymode.cpp',
+        'src/modules/mango/window.cpp',
+        'src/modules/mango/workspaces.cpp',
+        'src/modules/mango/layout.cpp'
+    )
+    man_files += files(
+        'man/waybar-mango-language.5.scd',
+        'man/waybar-mango-keymode.5.scd',
+        'man/waybar-mango-window.5.scd',
+        'man/waybar-mango-workspaces.5.scd',
+        'man/waybar-mango-layout.5.scd'
     )
 endif
 
@@ -353,6 +388,10 @@ if true
         'src/modules/wayfire/backend.cpp',
         'src/modules/wayfire/window.cpp',
         'src/modules/wayfire/workspaces.cpp',
+    )
+    man_files += files(
+        'man/waybar-wayfire-window.5.scd',
+        'man/waybar-wayfire-workspaces.5.scd',
     )
 endif
 
@@ -392,6 +431,7 @@ if pipewire.found()
         'src/modules/privacy/privacy_item.cpp',
         'src/util/pipewire/pipewire_backend.cpp',
         'src/util/pipewire/privacy_node_info.cpp',
+        'src/util/geoclue_backend.cpp',
     )
     man_files += files('man/waybar-privacy.5.scd')
 endif
@@ -523,6 +563,12 @@ if libgps.found()
    man_files += files('man/waybar-gps.5.scd')
 endif
 
+if libmm_glib.found()
+   add_project_arguments('-DHAVE_LIBMM_GLIB', language: 'cpp')
+   src_files += files('src/modules/wwan.cpp')
+   man_files += files('man/waybar-wwan.5.scd')
+endif
+
 subdir('protocol')
 
 app_resources = []
@@ -541,6 +587,7 @@ executable(
         jsoncpp,
         wayland_cursor,
         gtkmm,
+        giomm,
         dbusmenu_gtk,
         giounix,
         libinput,
@@ -549,6 +596,7 @@ executable(
         upower_glib,
         pipewire,
         playerctl,
+        libsystemd,
         libpulse,
         libjack,
         libwireplumber,
@@ -563,7 +611,8 @@ executable(
 		xkbregistry,
         cava,
         eproxy,
-        libgps
+        libgps,
+        libmm_glib
     ],
     include_directories: inc_dirs,
     install: true,

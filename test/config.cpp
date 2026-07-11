@@ -16,11 +16,11 @@ TEST_CASE("Load simple config", "[config]") {
     REQUIRE(data["height"].asInt() == 30);
   }
   SECTION("select configs for configured output") {
-    auto configs = conf.getOutputConfigs("HDMI-0", "Fake HDMI output #0");
+    auto configs = conf.getOutputConfigs("HDMI-0", "Fake HDMI output #0", 0, 0);
     REQUIRE(configs.size() == 1);
   }
   SECTION("select configs for missing output") {
-    auto configs = conf.getOutputConfigs("HDMI-1", "Fake HDMI output #1");
+    auto configs = conf.getOutputConfigs("HDMI-1", "Fake HDMI output #1", 0, 0);
     REQUIRE(configs.empty());
   }
 }
@@ -30,7 +30,7 @@ TEST_CASE("Load config with multiple bars", "[config]") {
   conf.load("test/config/multi.json");
 
   SECTION("select multiple configs #1") {
-    auto data = conf.getOutputConfigs("DP-0", "Fake DisplayPort output #0");
+    auto data = conf.getOutputConfigs("DP-0", "Fake DisplayPort output #0", 0, 0);
     REQUIRE(data.size() == 4);
     REQUIRE(data[0]["layer"].asString() == "bottom");
     REQUIRE(data[0]["height"].asInt() == 20);
@@ -43,7 +43,7 @@ TEST_CASE("Load config with multiple bars", "[config]") {
     REQUIRE(data[3]["height"].asInt() == 24);
   }
   SECTION("select multiple configs #2") {
-    auto data = conf.getOutputConfigs("HDMI-0", "Fake HDMI output #0");
+    auto data = conf.getOutputConfigs("HDMI-0", "Fake HDMI output #0", 0, 0);
     REQUIRE(data.size() == 2);
     REQUIRE(data[0]["layer"].asString() == "bottom");
     REQUIRE(data[0]["height"].asInt() == 20);
@@ -52,7 +52,7 @@ TEST_CASE("Load config with multiple bars", "[config]") {
     REQUIRE(data[1]["height"].asInt() == 23);
   }
   SECTION("select single config by output description") {
-    auto data = conf.getOutputConfigs("HDMI-1", "Fake HDMI output #1");
+    auto data = conf.getOutputConfigs("HDMI-1", "Fake HDMI output #1", 0, 0);
     REQUIRE(data.size() == 1);
     REQUIRE(data[0]["layer"].asString() == "overlay");
     REQUIRE(data[0]["position"].asString() == "left");
@@ -75,11 +75,11 @@ TEST_CASE("Load simple config with include", "[config]") {
     REQUIRE((data.isMember("nullOption") && data["nullOption"].isNull()));
   }
   SECTION("select configs for configured output") {
-    auto configs = conf.getOutputConfigs("HDMI-0", "Fake HDMI output #0");
+    auto configs = conf.getOutputConfigs("HDMI-0", "Fake HDMI output #0", 0, 0);
     REQUIRE(configs.size() == 1);
   }
   SECTION("select configs for missing output") {
-    auto configs = conf.getOutputConfigs("HDMI-1", "Fake HDMI output #1");
+    auto configs = conf.getOutputConfigs("HDMI-1", "Fake HDMI output #1", 0, 0);
     REQUIRE(configs.empty());
   }
 }
@@ -116,25 +116,25 @@ TEST_CASE("Load multiple bar config with include", "[config]") {
   conf.load("test/config/include-multi.json");
 
   SECTION("bar config with sole include") {
-    auto data = conf.getOutputConfigs("OUT-0", "Fake output #0");
+    auto data = conf.getOutputConfigs("OUT-0", "Fake output #0", 0, 0);
     REQUIRE(data.size() == 1);
     REQUIRE(data[0]["height"].asInt() == 20);
   }
 
   SECTION("bar config with output and include") {
-    auto data = conf.getOutputConfigs("OUT-1", "Fake output #1");
+    auto data = conf.getOutputConfigs("OUT-1", "Fake output #1", 0, 0);
     REQUIRE(data.size() == 1);
     REQUIRE(data[0]["height"].asInt() == 21);
   }
 
   SECTION("bar config with output override") {
-    auto data = conf.getOutputConfigs("OUT-2", "Fake output #2");
+    auto data = conf.getOutputConfigs("OUT-2", "Fake output #2", 0, 0);
     REQUIRE(data.size() == 1);
     REQUIRE(data[0]["height"].asInt() == 22);
   }
 
   SECTION("multiple levels of include") {
-    auto data = conf.getOutputConfigs("OUT-3", "Fake output #3");
+    auto data = conf.getOutputConfigs("OUT-3", "Fake output #3", 0, 0);
     REQUIRE(data.size() == 1);
     REQUIRE(data[0]["height"].asInt() == 23);
   }
@@ -166,6 +166,7 @@ TEST_CASE("Load Hyprland Workspaces bar config", "[config]") {
   REQUIRE(hyprland["active-only"].asBool() == true);
   REQUIRE(hyprland["all-outputs"].asBool() == false);
   REQUIRE(hyprland["move-to-monitor"].asBool() == true);
+  REQUIRE(hyprland["unique-icons"].asBool() == true);
   REQUIRE(hyprland["format"].asString() == "{icon} {windows}");
   REQUIRE(hyprland["format-window-separator"].asString() == " ");
   REQUIRE(hyprland["on-scroll-down"].asString() == "hyprctl dispatch workspace e-1");

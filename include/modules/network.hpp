@@ -17,6 +17,8 @@
 #include "util/rfkill.hpp"
 #endif
 
+#define ETH_ALEN 6
+
 enum ip_addr_pref : uint8_t { IPV4, IPV6, IPV4_6 };
 
 namespace waybar::modules {
@@ -34,6 +36,7 @@ class Network : public ALabel {
   static int handleEvents(struct nl_msg*, void*);
   static int handleEventsDone(struct nl_msg*, void*);
   static int handleScan(struct nl_msg*, void*);
+  static int handleStationGet(struct nl_msg *msg, void *data);
 
   void askForStateDump(void);
 
@@ -48,15 +51,18 @@ class Network : public ALabel {
   bool matchInterface(const std::string& ifname, const std::vector<std::string>& altnames,
                       std::string& matched) const;
   auto getInfo() -> void;
+  bool isWireless() const;
   const std::string getNetworkState() const;
   void clearIface();
   std::optional<std::pair<unsigned long long, unsigned long long>> readBandwidthUsage();
+  uint32_t readLinkSpeed() const;
 
   int ifid_{-1};
   ip_addr_pref addr_pref_{ip_addr_pref::IPV4};
   struct sockaddr_nl nladdr_{0};
   struct nl_sock* sock_{nullptr};
   struct nl_sock* ev_sock_{nullptr};
+  struct nl_sock* station_sock_{nullptr};
   int efd_{-1};
   int ev_fd_{-1};
   int nl80211_id_{-1};
@@ -70,6 +76,9 @@ class Network : public ALabel {
 
   unsigned long long bandwidth_down_total_{0};
   unsigned long long bandwidth_up_total_{0};
+  unsigned long long bandwidth_down_prev_{0};
+  unsigned long long bandwidth_up_prev_{0};
+  std::chrono::steady_clock::time_point bandwidth_last_sample_time_;
 
   std::string state_;
   std::string essid_;
@@ -87,6 +96,7 @@ class Network : public ALabel {
   uint8_t signal_strength_;
   std::string signal_strength_app_;
   uint32_t route_priority;
+  uint32_t link_speed_{0};
 
   util::SleeperThread thread_;
   util::SleeperThread thread_timer_;
@@ -94,6 +104,8 @@ class Network : public ALabel {
   util::Rfkill rfkill_{RFKILL_TYPE_WLAN};
 #endif
   float frequency_{0};
+  uint32_t tx_bitrate_{0};
+  uint32_t rx_bitrate_{0};
 };
 
 }  // namespace waybar::modules

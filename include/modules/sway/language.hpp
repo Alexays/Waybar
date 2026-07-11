@@ -47,13 +47,16 @@ class Language : public ALabel, public sigc::trackable {
   void onEvent(const struct Ipc::ipc_response&);
   void onCmd(const struct Ipc::ipc_response&);
 
-  auto set_current_layout(std::string current_layout) -> void;
+  auto set_current_layout(const std::string& current_layout) -> void;
   auto init_layouts_map(const std::vector<std::string>& used_layouts) -> void;
 
   const static std::string XKB_LAYOUT_NAMES_KEY;
   const static std::string XKB_ACTIVE_LAYOUT_NAME_KEY;
 
   Layout layout_;
+  // CSS class currently applied to label_. Tracked so update() (main thread) can swap classes
+  // instead of set_current_layout() mutating the widget from the IPC worker thread (#3702).
+  std::string applied_class_;
   std::string tooltip_format_ = "";
   std::map<std::string, Layout> layouts_map_;
   bool hide_single_;

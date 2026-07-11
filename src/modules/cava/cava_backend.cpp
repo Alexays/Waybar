@@ -2,6 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <stdexcept>
+
 std::shared_ptr<waybar::modules::cava::CavaBackend> waybar::modules::cava::CavaBackend::inst(
     const Json::Value& config) {
   static auto* backend = new CavaBackend(config);
@@ -20,7 +22,13 @@ waybar::modules::cava::CavaBackend::CavaBackend(const Json::Value& config) : con
       spdlog::warn("Cava backend. Read source error: {0}", e.what());
     }
     read_thread_.sleep_for(fetch_input_delay_);
-    loadConfig();
+    // loadConfig() now throws on failure; contain it so a runtime config error
+    // logs instead of terminating the process (#4456).
+    try {
+      loadConfig();
+    } catch (const std::exception& e) {
+      spdlog::error("{}", e.what());
+    }
   };
   // Write outcoming data. Emit signals
   out_thread_ = [this] {
@@ -175,18 +183,19 @@ void waybar::modules::cava::CavaBackend::loadConfig() {
   error_.length = 0;
 
   if (!load_config(cfgPath, &prm_, &error_)) {
-    spdlog::error("cava backend. Error loading config. {0}", error_.message);
-    exit(EXIT_FAILURE);
+    // Throw, don't exit(): a bad config must disable only the cava module, not
+    // kill the whole bar (#4456). Caught by the factory (ctor) / read_thread_.
+    throw std::runtime_error(std::string{"cava backend: error loading config: "} + error_.message);
   }
 
   // Override cava parameters by the user config
   prm_.inAtty = 0;
   auto const output{prm_.output};
   // prm_.output = ::cava::output_method::OUTPUT_RAW;
-  if (config_["data_format"].isString()) {
-    if (prm_.data_format) free(prm_.data_format);
-    prm_.data_format = strdup(config_["data_format"].asString().c_str());
-  }
+  if (prm_.data_format) free(prm_.data_format);
+  // Default to ascii for format-icons output; allow user override
+  prm_.data_format = strdup(
+      config_["data_format"].isString() ? config_["data_format"].asString().c_str() : "ascii");
   if (config_["raw_target"].isString()) {
     if (prm_.raw_target) free(prm_.raw_target);
     prm_.raw_target = strdup(config_["raw_target"].asString().c_str());
@@ -218,7 +227,7 @@ void waybar::modules::cava::CavaBackend::loadConfig() {
     prm_.input = ::cava::input_method_by_name(config_["method"].asString().c_str());
   if (config_["source"].isString()) {
     if (prm_.audio_source) free(prm_.audio_source);
-    prm_.audio_source = config_["source"].asString().data();
+    prm_.audio_source = strdup(config_["source"].asString().c_str());
   }
   if (config_["sample_rate"].isNumeric()) prm_.samplerate = config_["sample_rate"].asLargestInt();
   if (config_["sample_bits"].isInt()) prm_.samplebits = config_["sample_bits"].asInt();
@@ -252,8 +261,7 @@ void waybar::modules::cava::CavaBackend::loadConfig() {
   input_source_ = get_input(&audio_data_, &prm_);
 
   if (!input_source_) {
-    spdlog::error("cava backend API didn't provide input audio source method");
-    exit(EXIT_FAILURE);
+    throw std::runtime_error("cava backend: API didn't provide an input audio source");
   }
 
   prm_.output = ::cava::output_method::OUTPUT_RAW;

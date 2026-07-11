@@ -45,7 +45,7 @@ static const bool LC_TIME_is_sane = []() {
 
     ss << std::put_time(&tm, "%x %X");
     return ss.str() == "01/03/2022 12:00:00 PM";
-  } catch (std::exception &) {
+  } catch (std::exception&) {
     return false;
   }
 }();
@@ -77,7 +77,7 @@ TEST_CASE("Format UTC time", "[clock][util]") {
       CHECK(fmt_lib::format(loc, "{:%F %r}", tm) == "2022-01-03 01:04:05 PM");
 #endif
       CHECK(fmt_lib::format(loc, "{:%Y%m%d%H%M%S}", tm) == "20220103130405");
-    } catch (const std::runtime_error &) {
+    } catch (const std::runtime_error&) {
       WARN("Locale en_US not found, skip tests");
     }
   }
@@ -94,7 +94,7 @@ TEST_CASE("Format UTC time", "[clock][util]") {
       CHECK(fmt_lib::format(loc, "{:%F %T}", tm) == "2022-01-03 13:04:05");
 #endif
       CHECK(fmt_lib::format(loc, "{:%Y%m%d%H%M%S}", tm) == "20220103130405");
-    } catch (const std::runtime_error &) {
+    } catch (const std::runtime_error&) {
       WARN("Locale en_GB not found, skip tests");
     }
   }
@@ -113,7 +113,7 @@ TEST_CASE("Format UTC time", "[clock][util]") {
       CHECK(fmt_lib::format("{:%Y%m%d%H%M%S}", tm) == "20220103130405");
 
       std::locale::global(loc);
-    } catch (const std::runtime_error &) {
+    } catch (const std::runtime_error&) {
       WARN("Locale en_US not found, skip tests");
     }
   }
@@ -147,7 +147,7 @@ TEST_CASE("Format zoned time", "[clock][util]") {
       CHECK(fmt_lib::format(loc, "{:%F %r}", tm) == "2022-01-03 08:04:05 AM");
 #endif
       CHECK(fmt_lib::format(loc, "{:%Y%m%d%H%M%S}", tm) == "20220103080405");
-    } catch (const std::runtime_error &) {
+    } catch (const std::runtime_error&) {
       WARN("Locale en_US not found, skip tests");
     }
   }
@@ -164,7 +164,7 @@ TEST_CASE("Format zoned time", "[clock][util]") {
       CHECK(fmt_lib::format(loc, "{:%F %T}", tm) == "2022-01-03 08:04:05");
 #endif
       CHECK(fmt_lib::format(loc, "{:%Y%m%d%H%M%S}", tm) == "20220103080405");
-    } catch (const std::runtime_error &) {
+    } catch (const std::runtime_error&) {
       WARN("Locale en_GB not found, skip tests");
     }
   }
@@ -183,7 +183,7 @@ TEST_CASE("Format zoned time", "[clock][util]") {
       CHECK(fmt_lib::format("{:%Y%m%d%H%M%S}", tm) == "20220103080405");
 
       std::locale::global(loc);
-    } catch (const std::runtime_error &) {
+    } catch (const std::runtime_error&) {
       WARN("Locale en_US not found, skip tests");
     }
   }

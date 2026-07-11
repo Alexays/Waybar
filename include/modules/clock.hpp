@@ -12,6 +12,7 @@ const std::string kOrdPlaceholder{"ordinal_date"};
 
 enum class CldMode { MONTH, YEAR };
 enum class WS { LEFT, RIGHT, HIDDEN };
+enum class WeekNumbering { LOCALE, ISO, MONDAY, SUNDAY };
 
 class Clock final : public ALabel {
  public:
@@ -51,6 +52,7 @@ class Clock final : public ALabel {
   date::day cldBaseDay_{0};      // calendar Cached day. Is used when today is changing(midnight)
   std::string cldText_{""};      // calendar text to print
   bool iso8601Calendar_{false};  // whether the calendar is in ISO8601
+  WeekNumbering weekNumbering_{WeekNumbering::LOCALE};  // week number calculation method
   CldMode cldMode_{CldMode::MONTH};
   auto get_calendar(const date::year_month_day& today, const date::year_month_day& ymd,
                     const date::time_zone* tz) -> const std::string;
@@ -80,6 +82,7 @@ class Clock final : public ALabel {
   void cldShift_reset();
   void tz_up();
   void tz_down();
+  void action_exec(const std::string& action);
   // Module Action Map
   static inline std::map<const std::string, void (waybar::modules::Clock::* const)()> actionMap_{
       {"mode", &waybar::modules::Clock::cldModeSwitch},
@@ -88,6 +91,9 @@ class Clock final : public ALabel {
       {"shift_reset", &waybar::modules::Clock::cldShift_reset},
       {"tz_up", &waybar::modules::Clock::tz_up},
       {"tz_down", &waybar::modules::Clock::tz_down}};
+  static inline std::map<const std::string,
+                         void (waybar::modules::Clock::* const)(const std::string& action)>
+      actionWithArgsMap_{{"exec", &waybar::modules::Clock::action_exec}};
 };
 
 }  // namespace waybar::modules

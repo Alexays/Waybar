@@ -43,7 +43,9 @@ void Window::onCmd(const struct Ipc::ipc_response& res) {
     auto output = payload["output"].isString() ? payload["output"].asString() : "";
     std::tie(app_nb_, floating_count_, windowId_, window_, app_id_, app_class_, shell_, layout_,
              marks_) = getFocusedNode(payload["nodes"], output);
-    updateAppIconName(app_id_, app_class_);
+    // Do not resolve the app icon here: onCmd runs on the sway IPC worker thread and
+    // updateAppIconName() touches the global Gtk::IconTheme cache, which is not thread-safe.
+    // The icon is resolved in update() on the main thread instead (triggered by dp.emit()).
     dp.emit();
   } catch (const std::exception& e) {
     spdlog::error("Window: {}", e.what());
@@ -94,14 +96,17 @@ auto Window::update() -> void {
     old_app_id_ = app_id_;
   }
 
-  label_.set_markup(waybar::util::rewriteString(
+  setLabelMarkup(waybar::util::rewriteString(
       fmt::format(fmt::runtime(format_), fmt::arg("title", window_), fmt::arg("app_id", app_id_),
                   fmt::arg("shell", shell_), fmt::arg("marks", marks_)),
       config_["rewrite"]));
   if (tooltipEnabled()) {
-    label_.set_tooltip_text(window_);
+    setTooltipMarkup(Glib::Markup::escape_text(window_));
   }
 
+  // Resolve the app icon on the main thread to avoid racing with GTK draw on the
+  // global Gtk::IconTheme cache (see onCmd).
+  updateAppIconName(app_id_, app_class_);
   updateAppIcon();
 
   // Call parent update
@@ -184,9 +189,9 @@ std::tuple<std::string, std::string, std::string, std::string> getWindowInfo(
         continue;
       }
       if (!marks.empty()) {
-        marks += ',';
+        marks.append(",");
       }
-      marks += m.asString();
+      marks.append(m.asString());
     }
   }
   return {app_id, app_class, shell, marks};
