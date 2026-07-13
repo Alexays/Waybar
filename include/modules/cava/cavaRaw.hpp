@@ -1,30 +1,38 @@
 #pragma once
 
+#include <map>
+#include <string>
+
+#include <sigc++/connection.h>
+
 #include "ALabel.hpp"
 #include "cava_backend.hpp"
 
 namespace waybar::modules::cava {
 
-class Cava final : public ALabel, public sigc::trackable {
+class CavaRaw final : public ALabel {
  public:
-  Cava(const std::string&, const Json::Value&);
-  ~Cava() = default;
+  CavaRaw(const std::string&, const Json::Value&);
+  ~CavaRaw();
   auto doAction(const std::string& name) -> void override;
 
  private:
+  using Action = void (CavaRaw::*)();
+
   std::shared_ptr<CavaBackend> backend_;
   // Text to display
-  Glib::ustring label_text_{""};
+  Glib::ustring label_text_;
   bool silence_{false};
   bool hide_on_silence_{false};
-  std::string format_silent_{""};
-  int ascii_range_{0};
+  std::string format_silent_;
   // Cava method
-  void pause_resume();
+  void pauseResume();
   auto onUpdate(const std::string& input) -> void;
   auto onSilence() -> void;
   // ModuleActionMap
-  static inline std::map<const std::string, void (waybar::modules::cava::Cava::* const)()>
-      actionMap_{{"mode", &waybar::modules::cava::Cava::pause_resume}};
+  static const std::map<std::string, Action> actionMap_;
+
+  sigc::connection update_conn_;
+  sigc::connection silence_conn_;
 };
 }  // namespace waybar::modules::cava
