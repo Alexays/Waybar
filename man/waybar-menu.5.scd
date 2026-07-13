@@ -7,7 +7,7 @@ waybar - menu property
 # OVERVIEW
 
 
-Some modules support a 'menu', which allows to have a popup menu whan a defined
+Some modules support a 'menu', which allows to have a popup menu when a defined
 click is done over the module.
 
 # PROPERTIES
@@ -67,7 +67,7 @@ A module that implements a 'menu' needs 3 properties defined in its config :
 	GtkMenu with id *menu*.
 
 *menu-actions*: ++
-	typeof: array ++
+	typeof: object ++
 	The actions corresponding to the buttons of the menu. The identifiers of
 	each actions needs to exists as an id in the 'menu-file' for it to be linked
 	properly.
@@ -87,15 +87,15 @@ Module config :
 ```
 "custom/power": {
 	"format" : "⏻ ",
-		"tooltip": false,
-		"menu": "on-click",
-		"menu-file": "~/.config/waybar/power_menu.xml",
-		"menu-actions": {
-			"shutdown": "shutdown",
-			"reboot": "reboot",
-			"suspend": "systemctl suspend",
-			"hibernate": "systemctl hibernate",
-		},
+	"tooltip": false,
+	"menu": "on-click",
+	"menu-file": "~/.config/waybar/power_menu.xml",
+	"menu-actions": {
+		"shutdown": "shutdown",
+		"reboot": "reboot",
+		"suspend": "systemctl suspend",
+		"hibernate": "systemctl hibernate",
+	},
 },
 ```
 
@@ -104,28 +104,28 @@ Module config :
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <object class="GtkMenu" id="menu">
-	<child>
-		<object class="GtkMenuItem" id="suspend">
-			<property name="label">Suspend</property>
-        </object>
-	</child>
-	<child>
-        <object class="GtkMenuItem" id="hibernat">
-			<property name="label">Hibernate</property>
-        </object>
-	</child>
+		<child>
+			<object class="GtkMenuItem" id="suspend">
+				<property name="label">Suspend</property>
+			</object>
+		</child>
+		<child>
+			<object class="GtkMenuItem" id="hibernate">
+				<property name="label">Hibernate</property>
+			</object>
+		</child>
     <child>
-        <object class="GtkMenuItem" id="shutdown">
-			<property name="label">Shutdown</property>
-        </object>
+			<object class="GtkMenuItem" id="shutdown">
+				<property name="label">Shutdown</property>
+			</object>
     </child>
     <child>
       <object class="GtkSeparatorMenuItem" id="delimiter1"/>
     </child>
     <child>
-		<object class="GtkMenuItem" id="reboot">
-			<property name="label">Reboot</property>
-		</object>
+			<object class="GtkMenuItem" id="reboot">
+				<property name="label">Reboot</property>
+			</object>
     </child>
   </object>
 </interface>

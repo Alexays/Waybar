@@ -27,10 +27,25 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	default: false ++
 	Option to use the battery design capacity instead of its current maximal capacity.
 
+*full-at-plugged*: ++
+	typeof: bool ++
+	default: false ++
+	When enabled, a battery that is *Full* while the adapter is online is reported with the *Plugged* status instead of *Full* (so you can style/format it separately). Disabled by default to preserve the existing *Full* behaviour.
+
 *interval*: ++
 	typeof: integer ++
 	default: 60 ++
 	The interval in which the information gets polled.
+
+*smooth-power*: ++
+	typeof: bool ++
+	default: false ++
+	Enable exponential smoothing of the battery power reading used to estimate the *{time}* remaining, so the estimate fluctuates less between refreshes.
+
+*smooth-power-time-constant*: ++
+	typeof: double ++
+	default: 260.0 ++
+	The time constant (in seconds) of the *smooth-power* exponential filter. Only used when *smooth-power* is enabled. Values below 1.0 are clamped to 1.0.
 
 *states*: ++
 	typeof: object ++
@@ -91,6 +106,11 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	typeof: string ++
 	Command to execute when scrolling up on the module.
 
+*weighted-average*: ++
+    typeof: bool ++
+    default: true ++
+    Option to combine multiple batteries with different capacities.
+
 *on-scroll-down*: ++
 	typeof: string ++
 	Command to execute when scrolling down on the module.
@@ -104,6 +124,11 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	default: true ++
 	Option to disable tooltip on hover.
 
+*tooltip-format*: ++
+	typeof: string ++
+	default: {timeTo} ++
+	The tooltip format. See *CUSTOM FORMATS* for status/state-specific variants.
+
 *bat-compatibility*: ++
 	typeof: bool ++
 	default: false ++
@@ -116,7 +141,7 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 *menu-file*: ++
 	typeof: string ++
 	Location of the menu descriptor file. There need to be an element of type
-	GtkMenu with id *menu*
+	GtkMenu with id *menu*.
 
 *menu-actions*: ++
 	typeof: array ++
@@ -126,6 +151,10 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	typeof: bool ++
 	default: false ++
 	Enables this module to consume all left over space dynamically.
+
+*events*: ++
+	typeof: object ++
+	Specifies commands to be executed on specific battery states. See *EVENTS* section below.
 
 # FORMAT REPLACEMENTS
 
@@ -140,6 +169,12 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 *{cycles}*: Amount of charge cycles the highest-capacity battery has seen. *(Linux only)*
 
 *{health}*: The percentage of the highest-capacity battery's original maximum charge it can still hold.
+
+The following additional replacement is available in *tooltip-format* (and its
+custom variants) only:
+
+*{timeTo}*: Either an estimate of time until full or empty, or "Full", "Plugged"
+or "Empty" depending on the current battery status.
 
 # TIME FORMAT
 
@@ -160,12 +195,31 @@ The *battery* module allows one to define custom formats based on up to two fact
 
 *format-<status>-<state>*: You can also set a custom format depending on both values.
 
+The tooltip format can be customized the same way. The best fitting from
+*tooltip-format*, *tooltip-format-<state>*, *tooltip-format-<status>* and
+*tooltip-format-<status>-<state>* will be used (using the same logic as
+*format-\**).
+
 # STATES
 
 - Every entry (*state*) consists of a *<name>* (typeof: *string*) and a *<value>* (typeof: *integer*).
 - The state can be addressed as a CSS class in the *style.css*. The name of the CSS class is the *<name>* of the state.	Each class gets activated when the current capacity is equal to or below the configured *<value>*.
 - Also each state can have its own *format*. Those can be configured via *format-<name>*. Or if you want to differentiate a bit more even as *format-<status>-<state>*. For more information see *custom-formats*.
 
+# EVENTS
+
+Every entry in the *events* object consists of a *<event-name>* (typeof: *string*) and a *<command>* (typeof: *string*). ++
+*<event-name>* can be in one of the following formats:
+
+- *on-<status>-<state>*
+- *on-<status>-<capacity>*
+- *on-<status>*
+
+Where:
+
+- *<status>* is either *charging* or *discharging*,
+- *<state>* is the name of one of the states specified in the *states* object,
+- *<capacity>* is a battery level value (between *0-100*).
 
 
 # EXAMPLES
@@ -178,9 +232,30 @@ The *battery* module allows one to define custom formats based on up to two fact
 		"warning": 30,
 		"critical": 15
 	},
+	"events": {
+		"on-discharging-warning": "notify-send -u normal 'Low Battery'",
+		"on-discharging-critical": "notify-send -u critical 'Very Low Battery'",
+		"on-charging-100": "notify-send -u normal 'Battery Full!'",
+		"on-discharging": "notify-send -u normal 'Power Switch' Discharging",
+		"on-charging": "notify-send -u normal 'Power Switch' Charging'"
+	},
 	"format": "{capacity}% {icon}",
 	"format-icons": ["", "", "", "", ""],
 	"max-length": 25
+}
+```
+
+Custom icon set depending on the status (*format-icons* as an object):
+
+```
+"battery": {
+	"bat": "BAT2",
+	"interval": 60,
+	"format": "{capacity}% {icon}",
+	"format-icons": {
+		"default": ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"],
+		"charging": ["󰢟", "󰢜", "󰂆", "󰂇", "󰂈", "󰢝", "󰂉", "󰢞", "󰂊", "󰂋", "󰂅"]
+	}
 }
 ```
 

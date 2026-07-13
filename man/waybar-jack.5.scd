@@ -6,7 +6,13 @@ waybar - JACK module
 
 # DESCRIPTION
 
-The *jack* module displays the current state of the JACK server.
+The *jack* module displays the current state of the JACK server. It supports both
+the JACK2 <https://github.com/jackaudio/jack2> and PipeWire <https://pipewire.org/>
+implementations of the JACK API.
+
+PipeWire users are advised to run at least v0.3.57; earlier versions cause the
+Waybar client to hang indefinitely if the server shuts down while the module is
+running.
 
 # CONFIGURATION
 
@@ -45,7 +51,7 @@ Addressed by *jack*
 	The format of information displayed in the tooltip.
 
 *interval*: ++
-	typeof: integer ++
+	typeof: integer or float ++
 	default: 1 ++
 	The interval in which the information gets polled.
 

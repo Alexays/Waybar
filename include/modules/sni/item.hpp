@@ -11,6 +11,7 @@
 #include <libdbusmenu-gtk/dbusmenu-gtk.h>
 #include <sigc++/trackable.h>
 
+#include <functional>
 #include <set>
 #include <string_view>
 
@@ -23,10 +24,18 @@ struct ToolTip {
   Glib::ustring text;
 };
 
+class Host;
+
+using ItemOrderMap = std::unordered_map<std::string, int>;
+
 class Item : public sigc::trackable {
  public:
-  Item(const std::string&, const std::string&, const Json::Value&, const Bar&);
-  ~Item() = default;
+  Item(const std::string&, const std::string&, const Json::Value&, const Bar&,
+       const std::function<void(Item&)>&, const std::function<void(Item&)>&,
+       const std::function<void()>&, Host&, const ItemOrderMap&);
+  ~Item();
+
+  bool isReady() const;
 
   std::string bus_name;
   std::string object_path;
@@ -41,9 +50,12 @@ class Item : public sigc::trackable {
   std::string title;
   std::string icon_name;
   Glib::RefPtr<Gdk::Pixbuf> icon_pixmap;
+  bool has_custom_icon_ = false;
   Glib::RefPtr<Gtk::IconTheme> icon_theme;
   std::string overlay_icon_name;
+  Glib::RefPtr<Gdk::Pixbuf> overlay_icon_pixmap;
   std::string attention_icon_name;
+  Glib::RefPtr<Gdk::Pixbuf> attention_icon_pixmap;
   std::string attention_movie_name;
   std::string icon_theme_path;
   std::string menu;
@@ -56,12 +68,15 @@ class Item : public sigc::trackable {
    * while compliant SNI implementation would always reset the flag to desired value.
    */
   bool item_is_menu = true;
+  int order_ = -1;  // -1 means not set
 
  private:
   void onConfigure(GdkEventConfigure* ev);
   void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
   void setProperty(const Glib::ustring& name, Glib::VariantBase& value);
   void setStatus(const Glib::ustring& value);
+  void setReady();
+  void invalidate();
   void setCustomIcon(const std::string& id);
   void getUpdatedProperties();
   void processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& result);
@@ -69,8 +84,13 @@ class Item : public sigc::trackable {
                 const Glib::VariantContainerBase& arguments);
 
   void updateImage();
-  Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
+  static Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
   Glib::RefPtr<Gdk::Pixbuf> getIconPixbuf();
+  Glib::RefPtr<Gdk::Pixbuf> getAttentionIconPixbuf();
+  Glib::RefPtr<Gdk::Pixbuf> getOverlayIconPixbuf();
+  Glib::RefPtr<Gdk::Pixbuf> loadIconFromNameOrFile(const std::string& name, bool log_failure);
+  static Glib::RefPtr<Gdk::Pixbuf> overlayPixbufs(const Glib::RefPtr<Gdk::Pixbuf>&,
+                                                  const Glib::RefPtr<Gdk::Pixbuf>&);
   Glib::RefPtr<Gdk::Pixbuf> getIconByName(const std::string& name, int size);
   double getScaledIconSize();
   static void onMenuDestroyed(Item* self, GObject* old_menu_pointer);
@@ -86,12 +106,22 @@ class Item : public sigc::trackable {
   gdouble distance_scrolled_y_ = 0;
   // visibility of items with Status == Passive
   bool show_passive_ = false;
+  // hidden via config
+  bool is_hidden_ = false;
+  bool ready_ = false;
+  Glib::ustring status_ = "active";
 
   const Bar& bar_;
+  const std::function<void(Item&)> on_ready_;
+  const std::function<void(Item&)> on_invalidate_;
+  const std::function<void()> on_updated_;
 
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
   Glib::RefPtr<Gio::Cancellable> cancellable_;
   std::set<std::string_view> update_pending_;
+
+  Host& host_;
+  const ItemOrderMap& orders_;
 };
 
 }  // namespace waybar::modules::SNI

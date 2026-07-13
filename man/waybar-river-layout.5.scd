@@ -19,6 +19,10 @@ Addressed by *river/layout*
 	default: {} ++
 	The format, how information should be displayed. On {} data gets inserted.
 
+*format-icons*: ++
+	typeof: array ++
+	Based on the current layout, the corresponding icon gets selected.
+
 *rotate*: ++
 	typeof: integer ++
 	Positive value to rotate the text label (in 90 degree increments).
@@ -69,13 +73,36 @@ Addressed by *river/layout*
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
-# EXAMPLE
+# FORMAT REPLACEMENTS
+
+*{layout}*: Layout, as defined by your layout generator. By default this will be *rivertile(1)*
+
+*{icon}*: Icon, as defined in *format-icons*
+
+# EXAMPLES
+
+With layout name:
 
 ```
 "river/layout": {
-	"format": "{}",
+	"format": "{layout}",
 	"min-length": 4,
 	"align": "right"
+}
+```
+
+With icons, this sets icons for the 4 layouts available in rivertile:
+
+```
+"river/layout": {
+	"format": "{icon}",
+	"min-length": 3,
+	"format-icons": {
+		"left": "[]=",
+		"bottom": "TTT",
+		"top": "ꓕꓕꓕ",
+		"right": "=[]",
+	}
 }
 ```
 
@@ -83,7 +110,8 @@ Addressed by *river/layout*
 
 - *#layout*
 - *#layout.focused* Applied when the output this module's bar belongs to is focused.
+- *#layout.<layout>* Applied when the output this module's bar belongs uses this layout.
 
 # SEE ALSO
 
-waybar(5), river(1)
+waybar(5), river(1), rivertile(1)

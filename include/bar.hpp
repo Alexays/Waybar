@@ -14,6 +14,7 @@
 
 #include "AModule.hpp"
 #include "group.hpp"
+#include "util/kill_signal.hpp"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
 namespace waybar {
@@ -23,6 +24,8 @@ struct waybar_output {
   Glib::RefPtr<Gdk::Monitor> monitor;
   std::string name;
   std::string identifier;
+  int32_t width;
+  int32_t height;
 
   std::unique_ptr<struct zxdg_output_v1, decltype(&zxdg_output_v1_destroy)> xdg_output = {
       nullptr, &zxdg_output_v1_destroy};
@@ -61,18 +64,24 @@ class Bar : public sigc::trackable {
   static const std::string MODE_DEFAULT;
   static const std::string MODE_INVISIBLE;
 
-  Bar(struct waybar_output *w_output, const Json::Value &);
-  Bar(const Bar &) = delete;
+  Bar(struct waybar_output* w_output, const Json::Value&);
+  Bar(const Bar&) = delete;
   ~Bar();
 
-  void setMode(const std::string &mode);
+  void setMode(const std::string& mode);
   void setVisible(bool value);
   void toggle();
+  void show();
+  void hide();
   void handleSignal(int);
+  util::KillSignalAction getOnSigusr1Action();
+  util::KillSignalAction getOnSigusr2Action();
 
-  struct waybar_output *output;
+  void toggleSuspend(bool suspend);
+
+  struct waybar_output* output;
   Json::Value config;
-  struct wl_surface *surface;
+  struct wl_surface* surface;
   bool visible = true;
   Gtk::Window window;
   Gtk::Orientation orientation = Gtk::ORIENTATION_HORIZONTAL;
@@ -86,15 +95,16 @@ class Bar : public sigc::trackable {
 #endif
 
  private:
-  void onMap(GdkEventAny *);
+  void onMap(GdkEventAny*);
   auto setupWidgets() -> void;
-  void getModules(const Factory &, const std::string &, waybar::Group *);
-  void setupAltFormatKeyForModule(const std::string &module_name);
-  void setupAltFormatKeyForModuleList(const char *module_list_name);
-  void setMode(const bar_mode &);
+  void getModules(const Factory&, const std::string&, waybar::Group*);
+  void setupAltFormatKeyForModule(const std::string& module_name);
+  void setupAltFormatKeyForModuleList(const char* module_list_name);
+  void setMode(const bar_mode&);
   void setPassThrough(bool passthrough);
   void setPosition(Gtk::PositionType position);
-  void onConfigure(GdkEventConfigure *ev);
+  void forceLayerCommit();
+  void onConfigure(GdkEventConfigure* ev);
   void configureGlobalOffset(int width, int height);
   void onOutputGeometryChanged();
 
@@ -118,6 +128,13 @@ class Bar : public sigc::trackable {
   std::unique_ptr<BarIpcClient> _ipc_client;
 #endif
   std::vector<std::shared_ptr<waybar::AModule>> modules_all_;
+
+  waybar::util::KillSignalAction onSigusr1 = util::SIGNALACTION_DEFAULT_SIGUSR1;
+  waybar::util::KillSignalAction onSigusr2 = util::SIGNALACTION_DEFAULT_SIGUSR2;
+
+  /* Disconnected in ~Bar before the modules are destroyed (#5182). */
+  sigc::connection map_conn_;
+  sigc::connection unmap_conn_;
 };
 
 }  // namespace waybar

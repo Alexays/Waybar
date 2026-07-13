@@ -41,9 +41,11 @@ void Window::onCmd(const struct Ipc::ipc_response& res) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto payload = parser_.parse(res.payload);
     auto output = payload["output"].isString() ? payload["output"].asString() : "";
-    std::tie(app_nb_, floating_count_, windowId_, window_, app_id_, app_class_, shell_, layout_) =
-        getFocusedNode(payload["nodes"], output);
-    updateAppIconName(app_id_, app_class_);
+    std::tie(app_nb_, floating_count_, windowId_, window_, app_id_, app_class_, shell_, layout_,
+             marks_) = getFocusedNode(payload["nodes"], output);
+    // Do not resolve the app icon here: onCmd runs on the sway IPC worker thread and
+    // updateAppIconName() touches the global Gtk::IconTheme cache, which is not thread-safe.
+    // The icon is resolved in update() on the main thread instead (triggered by dp.emit()).
     dp.emit();
   } catch (const std::exception& e) {
     spdlog::error("Window: {}", e.what());
@@ -94,21 +96,24 @@ auto Window::update() -> void {
     old_app_id_ = app_id_;
   }
 
-  label_.set_markup(waybar::util::rewriteString(
+  setLabelMarkup(waybar::util::rewriteString(
       fmt::format(fmt::runtime(format_), fmt::arg("title", window_), fmt::arg("app_id", app_id_),
-                  fmt::arg("shell", shell_)),
+                  fmt::arg("shell", shell_), fmt::arg("marks", marks_)),
       config_["rewrite"]));
   if (tooltipEnabled()) {
-    label_.set_tooltip_text(window_);
+    setTooltipMarkup(Glib::Markup::escape_text(window_));
   }
 
+  // Resolve the app icon on the main thread to avoid racing with GTK draw on the
+  // global Gtk::IconTheme cache (see onCmd).
+  updateAppIconName(app_id_, app_class_);
   updateAppIcon();
 
   // Call parent update
   AAppIconLabel::update();
 }
 
-void Window::setClass(std::string classname, bool enable) {
+void Window::setClass(const std::string& classname, bool enable) {
   if (enable) {
     if (!bar_.window.get_style_context()->has_class(classname)) {
       bar_.window.get_style_context()->add_class(classname);
@@ -169,17 +174,31 @@ std::optional<std::reference_wrapper<const Json::Value>> getSingleChildNode(
   return {getSingleChildNode(child)};
 }
 
-std::tuple<std::string, std::string, std::string> getWindowInfo(const Json::Value& node) {
+std::tuple<std::string, std::string, std::string, std::string> getWindowInfo(
+    const Json::Value& node, bool showHidden) {
   const auto app_id = node["app_id"].isString() ? node["app_id"].asString()
                                                 : node["window_properties"]["instance"].asString();
   const auto app_class = node["window_properties"]["class"].isString()
                              ? node["window_properties"]["class"].asString()
                              : "";
   const auto shell = node["shell"].isString() ? node["shell"].asString() : "";
-  return {app_id, app_class, shell};
+  std::string marks = "";
+  if (node["marks"].isArray()) {
+    for (const auto& m : node["marks"]) {
+      if (!m.isString() || (!showHidden && m.asString().at(0) == '_')) {
+        continue;
+      }
+      if (!marks.empty()) {
+        marks.append(",");
+      }
+      marks.append(m.asString());
+    }
+  }
+  return {app_id, app_class, shell, marks};
 }
 
-std::tuple<std::size_t, int, int, std::string, std::string, std::string, std::string, std::string>
+std::tuple<std::size_t, int, int, std::string, std::string, std::string, std::string, std::string,
+           std::string>
 gfnWithWorkspace(const Json::Value& nodes, std::string& output, const Json::Value& config_,
                  const Bar& bar_, Json::Value& parentWorkspace,
                  const Json::Value& immediateParent) {
@@ -207,7 +226,8 @@ gfnWithWorkspace(const Json::Value& nodes, std::string& output, const Json::Valu
                 "",
                 "",
                 "",
-                node["layout"].asString()};
+                node["layout"].asString(),
+                ""};
       }
       parentWorkspace = node;
     } else if ((node["type"].asString() == "con" || node["type"].asString() == "floating_con") &&
@@ -215,7 +235,8 @@ gfnWithWorkspace(const Json::Value& nodes, std::string& output, const Json::Valu
       // found node
       spdlog::trace("actual output {}, output found {}, node (focused) found {}", bar_.output->name,
                     output, node["name"].asString());
-      const auto [app_id, app_class, shell] = getWindowInfo(node);
+      const auto [app_id, app_class, shell, marks] =
+          getWindowInfo(node, config_["show-hidden-marks"].asBool());
       int nb = node.size();
       int floating_count = 0;
       std::string workspace_layout = "";
@@ -232,20 +253,21 @@ gfnWithWorkspace(const Json::Value& nodes, std::string& output, const Json::Valu
               app_id,
               app_class,
               shell,
-              workspace_layout};
+              workspace_layout,
+              marks};
     }
 
     // iterate
-    auto [nb, f, id, name, app_id, app_class, shell, workspace_layout] =
+    auto [nb, f, id, name, app_id, app_class, shell, workspace_layout, marks] =
         gfnWithWorkspace(node["nodes"], output, config_, bar_, parentWorkspace, node);
-    auto [nb2, f2, id2, name2, app_id2, app_class2, shell2, workspace_layout2] =
+    auto [nb2, f2, id2, name2, app_id2, app_class2, shell2, workspace_layout2, marks2] =
         gfnWithWorkspace(node["floating_nodes"], output, config_, bar_, parentWorkspace, node);
 
     //    if ((id > 0 || ((id2 < 0 || name2.empty()) && id > -1)) && !name.empty()) {
     if ((id > 0) || (id2 < 0 && id > -1)) {
-      return {nb, f, id, name, app_id, app_class, shell, workspace_layout};
+      return {nb, f, id, name, app_id, app_class, shell, workspace_layout, marks};
     } else if (id2 > 0 && !name2.empty()) {
-      return {nb2, f2, id2, name2, app_id2, app_class, shell2, workspace_layout2};
+      return {nb2, f2, id2, name2, app_id2, app_class, shell2, workspace_layout2, marks2};
     }
   }
 
@@ -258,10 +280,12 @@ gfnWithWorkspace(const Json::Value& nodes, std::string& output, const Json::Valu
     std::string app_id = "";
     std::string app_class = "";
     std::string workspace_layout = "";
+    std::string marks = "";
     if (all_leaf_nodes.first == 1) {
       const auto single_child = getSingleChildNode(immediateParent);
       if (single_child.has_value()) {
-        std::tie(app_id, app_class, workspace_layout) = getWindowInfo(single_child.value());
+        std::tie(app_id, app_class, workspace_layout, marks) =
+            getWindowInfo(single_child.value(), config_["show-hidden-marks"].asBool());
       }
     }
     return {all_leaf_nodes.first,
@@ -273,13 +297,15 @@ gfnWithWorkspace(const Json::Value& nodes, std::string& output, const Json::Valu
             app_id,
             app_class,
             workspace_layout,
-            immediateParent["layout"].asString()};
+            immediateParent["layout"].asString(),
+            marks};
   }
 
-  return {0, 0, -1, "", "", "", "", ""};
+  return {0, 0, -1, "", "", "", "", "", ""};
 }
 
-std::tuple<std::size_t, int, int, std::string, std::string, std::string, std::string, std::string>
+std::tuple<std::size_t, int, int, std::string, std::string, std::string, std::string, std::string,
+           std::string>
 Window::getFocusedNode(const Json::Value& nodes, std::string& output) {
   Json::Value placeholder = Json::Value::null;
   return gfnWithWorkspace(nodes, output, config_, bar_, placeholder, placeholder);

@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <chrono>
 
-#include "gdkmm/cursor.h"
 #include "gdkmm/event.h"
 #include "gdkmm/types.h"
 #include "glibmm/fileutils.h"
@@ -62,7 +61,13 @@ long User::uptime_as_seconds() {
 
 #if HAVE_CPU_BSD
   struct timespec s_info;
-  if (0 == clock_gettime(CLOCK_UPTIME_PRECISE, &s_info)) {
+  int flags = 0;
+#ifndef __OpenBSD__
+  flags = CLOCK_UPTIME_PRECISE;
+#else
+  flags = CLOCK_UPTIME;
+#endif
+  if (0 == clock_gettime(flags, &s_info)) {
     uptime = s_info.tv_sec;
   }
 #endif

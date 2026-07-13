@@ -8,6 +8,9 @@ waybar - dwl tags module
 
 The *tags* module displays the current state of tags in dwl.
 
+Using this module requires patching dwl with the IPC patch
+<https://codeberg.org/dwl/dwl-patches/wiki/ipc>.
+
 # CONFIGURATION
 
 Addressed by *dwl/tags*
@@ -15,11 +18,17 @@ Addressed by *dwl/tags*
 *num-tags*: ++
 	typeof: uint ++
 	default: 9 ++
-	The number of tags that should be displayed. Max 32.
+	The number of tags that should be displayed. Max 32. This should match the
+	number of tags configured in dwl.
 
 *tag-labels*: ++
 	typeof: array ++
 	The label to display for each tag.
+
+*hide-vacant*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, tags without clients and that are not active will be hidden.
 
 *disable-click*: ++
 	typeof: bool ++
@@ -43,10 +52,12 @@ Addressed by *dwl/tags*
 
 - *#tags button*
 - *#tags button.occupied*
+- *#tags button.empty*
 - *#tags button.focused*
 - *#tags button.urgent*
+- *#tags button.output*
 
-Note that occupied/focused/urgent status may overlap. That is, a tag may be
+Note that occupied/focused/urgent/output status may overlap. That is, a tag may be
 both occupied and focused at the same time.
 
 # SEE ALSO

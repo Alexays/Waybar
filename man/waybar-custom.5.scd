@@ -35,15 +35,17 @@ Addressed by *custom/<name>*
 	See *return-type*
 
 *interval*: ++
-	typeof: integer ++
+	typeof: integer or float ++
 	The interval (in seconds) in which the information gets polled. ++
+	Minimum value is 0.001 (1ms). Values smaller than 1ms will be set to 1ms. ++
 	Use *once* if you want to execute the module only on startup. ++
 	You can update it manually with a signal. If no *interval* or *signal* is defined, it is assumed that the out script loops itself. ++
 	If a *signal* is defined then the script will run once on startup and will only update with a signal.
 
 *restart-interval*: ++
-	typeof: integer ++
+	typeof: integer or float ++
 	The restart interval (in seconds). ++
+	Minimum value is 0.001 (1ms). Values smaller than 1ms will be set to 1ms. ++
 	Can't be used with the *interval* option, so only with continuous scripts. ++
 	Once the script exits, it'll be re-executed after the *restart-interval*.
 
@@ -59,8 +61,11 @@ Addressed by *custom/<name>*
 	The format, how information should be displayed. On {text} data gets inserted.
 
 *format-icons*: ++
-	typeof: array ++
-	Based on the set percentage, the corresponding icon gets selected. The order is *low* to *high*.
+	typeof: array or object or string ++
+	If the type is an array, then based on the set percentage, the corresponding icon gets selected (the order is *low* to *high*). ++
+	If the type is an object, then the icon is selected according to the *alt* string from the output. ++
+	If the type is a string, it is pasted as is. ++
+	Arrays can be nested into objects: icons are then selected first according to *alt*, then percentage.
 
 *rotate*: ++
 	typeof: integer ++
@@ -143,16 +148,35 @@ Addressed by *custom/<name>*
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*image-path*: ++
+	typeof: string ++
+	Path to an image file to display in the module.
+
+*image-name*: ++
+	typeof: string ++
+	Name of a themed icon to display in the module.
+
+*icon-size*: ++
+	typeof: integer ++
+	The size (in pixels) of the image set via *image-path* or *image-name*.
+
 # RETURN-TYPE
 
 When *return-type* is set to *json*, Waybar expects the *exec*-script  to output its data in JSON format.
 This should look like this:
 
 ```
-{"text": "$text", "tooltip": "$tooltip", "class": "$class", "percentage": $percentage }
+{"text": "$text", "alt": "$alt", "tooltip": "$tooltip", "class": "$class", "percentage": $percentage }
 ```
 
+The whole JSON object must be printed on a single line. This can be achieved by
+piping the output of your script through *jq --unbuffered --compact-output*.
+
 The *class* parameter also accepts an array of strings.
+
+To have multiline tooltips, use *\\r* in your script to separate the lines. If
+using PowerShell for scripting, use the standard newline operator "\`n" in double
+quotes; *\\r* and *\\n* will not work.
 
 If nothing or an invalid option is specified, Waybar expects i3blocks style output. Values are *newline* separated.
 This should look like this:
@@ -165,11 +189,20 @@ $text\\n$tooltip\\n$class*
 
 # FORMAT REPLACEMENTS
 
+*{}*: Output of the script. Equivalent to *{text}*.
+
 *{text}*: Output of the script.
+
+*{alt}*: The *alt* value from a json return type.
 
 *{percentage}* Percentage which can be set via a json return type.
 
 *{icon}*: An icon from 'format-icons' according to percentage.
+
+The *{}* placeholder is special: it automatically displays the text output of your
+script, but it cannot be combined with other placeholders like *{icon}* in the same
+format string. To display both an icon and text, use *{icon}* together with *{text}*
+explicitly (e.g. *"format": "{icon} {text}"*).
 
 # EXAMPLES
 
@@ -232,7 +265,6 @@ $text\\n$tooltip\\n$class*
 ```
 "custom/pacman": {
 	"format": "{text}  ",
-	"interval": 3600,                     // every hour
 	"exec": "checkupdates | wc -l",       // # of updates
 	"exec-if": "exit 0",                  // always run; consider advanced run conditions
 	"on-click": "termite -e 'sudo pacman -Syu'; pkill -SIGRTMIN+8 waybar", // update system
@@ -240,10 +272,43 @@ $text\\n$tooltip\\n$class*
 }
 ```
 
-You can use the signal and update the number of available packages with *pkill -RTMIN+8 waybar*.
+Under the premise that interval is not defined, you can use the signal and update the number of available packages with *pkill -RTMIN+8 waybar*.
 
 # STYLE
 
 - *#custom-<name>*
 - *#custom-<name>.<class>*
 - *<class>* can be set by the script. For more information see *return-type*
+- *.flat* and *.text-button* are always applied to the module's label.
+- *.image-button* is always applied to the module's image (see *image-path*/*image-name*).
+
+# CONTINUOUS SCRIPTS
+
+The *exec* script may be continuous (i.e. contain some kind of infinite loop). The
+display is updated for each new line of data printed on stdout (following the chosen
+*return-type*). The *interval* option does not apply to a continuous script; use
+*restart-interval* instead to restart the script if it stops after some time.
+
+Be aware that some languages buffer their output. If your module displays nothing
+even though your script works as expected, the output may be held in a buffer. Look
+up how to flush the output buffer for your language of choice (for example, in Ruby
+call *$stdout.flush* after each print).
+
+# OUTPUT NAME
+
+The *exec* script is run with the *WAYBAR_OUTPUT_NAME* environment variable set to
+the name of the output (monitor) the bar is displayed on.
+
+# TROUBLESHOOTING
+
+*Self-looping module does not show up*
+
+If your module is self-looping and it does not even show up in the bar, check that:
+
+- Its configuration does *not* include an *interval* parameter.
+- Output to stdout is not buffered.
+
+*Custom json class not displayed*
+
+If a class set in your custom script is not picked up by *style.css*, ensure that
+the output carrying the most variables is emitted first.

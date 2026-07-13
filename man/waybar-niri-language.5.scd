@@ -21,6 +21,10 @@ Addressed by *niri/language*
 	typeof: string++
 	Provide an alternative name to display per language where <lang> is the language of your choosing. Can be passed multiple times with multiple languages as shown by the example below.
 
+*format-<lang>-<variant>* ++
+	typeof: string ++
+	Like *format-<lang>* but also matches the layout variant, taking precedence over *format-<lang>* when both the language and variant match.
+
 *menu*: ++
 	typeof: string ++
 	Action that popups the menu.
@@ -40,11 +44,11 @@ Addressed by *niri/language*
 
 # FORMAT REPLACEMENTS
 
-*{short}*: Short name of layout (e.g. "us"). Equals to {}.
+*{short}*: Short name of layout (e.g. "us").
 
 *{shortDescription}*: Short description of layout (e.g. "en").
 
-*{long}*: Long name of layout (e.g. "English (Dvorak)").
+*{long}*: Long name of layout (e.g. "English (Dvorak)"). Equals to {}.
 
 *{variant}*: Variant of layout (e.g. "dvorak").
 
@@ -52,8 +56,8 @@ Addressed by *niri/language*
 
 ```
 "niri/language": {
-	"format": "Lang: {long}"
-	"format-en": "AMERICA, HELL YEAH!"
+	"format": "Lang: {long}",
+	"format-en": "AMERICA, HELL YEAH!",
 	"format-tr": "As bayrakları"
 }
 ```
@@ -61,3 +65,12 @@ Addressed by *niri/language*
 # STYLE
 
 - *#language*
+
+Additionally, a CSS class matching the current layout's short name is added to the widget. This
+allows per-language styling, for example:
+
+```
+#language.us { color: #00ff00; }
+#language.de { color: #ff0000; }
+#language.fr { color: #0000ff; }
+```

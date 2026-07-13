@@ -19,7 +19,7 @@ the screen or playing audio.
 *icon-size*: ++
 	typeof: integer ++
 	default: 20 ++
-	The size of each privacy icon.
+	The size of each privacy icon. Set to *0* for auto size.
 
 *transition-duration*: ++
 	typeof: integer ++
@@ -28,7 +28,7 @@ the screen or playing audio.
 
 *modules* ++
 	typeof: array of objects ++
-	default: [{"type": "screenshare"}, {"type": "audio-in"}] ++
+	default: [{"type": "screenshare"}, {"type": "audio-in"}, {"type": "location"}] ++
 	Which privacy modules to monitor. See *MODULES CONFIGURATION* for++
 	more information.
 
@@ -37,12 +37,28 @@ the screen or playing audio.
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*ignore-monitor* ++
+	typeof: bool ++
+	default: true ++
+	Ignore streams with *stream.monitor* property.
+
+*ignore* ++
+	typeof: array of objects ++
+	default: [] ++
+	Additional streams to be ignored. See *IGNORE CONFIGURATION* for++
+	more information.
+
 # MODULES CONFIGURATION
 
 *type*: ++
 	typeof: string ++
-	values: "screenshare", "audio-in", "audio-out" ++
+	values: "screenshare", "audio-in", "audio-out", "location" ++
 	Specifies which module to use and configure.
+
+*icon-name*: ++
+	typeof: string ++
+	If set, changes the modules icon. Accepts any valid GTK icon name. ++
+	Note: the icon is only visible when the resource is actively in use; the item is hidden when idle.
 
 *tooltip*: ++
 	typeof: bool ++
@@ -53,6 +69,14 @@ the screen or playing audio.
 	typeof: integer ++
 	default: 24 ++
 	The size of each icon in the tooltip.
+
+# IGNORE CONFIGURATION
+
+*type*: ++
+	typeof: string
+
+*name*: ++
+	typeof: string
 
 # EXAMPLES
 
@@ -76,6 +100,21 @@ the screen or playing audio.
 			"type": "audio-in",
 			"tooltip": true,
 			"tooltip-icon-size": 24
+		},
+		{
+			"type": "location",
+			"icon-name": "location-services-active-symbolic"
+		}
+	],
+	"ignore-monitor": true,
+	"ignore": [
+		{
+			"type": "audio-in",
+			"name": "cava"
+		},
+		{
+			"type": "screenshare",
+			"name": "obs"
 		}
 	]
 },
@@ -88,3 +127,4 @@ the screen or playing audio.
 - *#privacy-item.screenshare*
 - *#privacy-item.audio-in*
 - *#privacy-item.audio-out*
+- *#privacy-item.location*

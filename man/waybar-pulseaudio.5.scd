@@ -97,12 +97,20 @@ Additionally, you can control the volume by scrolling *up* or *down* while the c
 
 *reverse-scrolling*: ++
 	typeof: bool ++
-	Option to reverse the scroll direction.
+	Option to reverse the scroll direction for touchpads.
+
+*reverse-mouse-scrolling*: ++
+	typeof: bool ++
+	Option to reverse the scroll direction for mice.
 
 *tooltip*: ++
 	typeof: bool ++
 	default: true ++
 	Option to disable tooltip on hover.
+
+*tooltip-format*: ++
+	typeof: string ++
+	The format of the tooltip shown on hover. When unset, the tooltip shows the current sink's description.
 
 *max-volume*: ++
 	typeof: integer ++
@@ -111,7 +119,11 @@ Additionally, you can control the volume by scrolling *up* or *down* while the c
 
 *ignored-sinks*: ++
 	typeof: array ++
-	Sinks in this list will not be shown as active sink by Waybar. Entries should be the sink's description field.
+	Sinks in this list will not be shown as active sink by Waybar. Entries should be the sink's description field. Use *pactl list sinks* to find the correct description.
+
+*sink-mapping*: ++
+	typeof: object ++
+	Sinks named by the values of this mapping will be considered to be the current sink instead of the sinks named by the respective keys.
 
 *menu*: ++
 	typeof: string ++
@@ -131,11 +143,20 @@ Additionally, you can control the volume by scrolling *up* or *down* while the c
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*target*: ++
+	typeof: string ++
+	default: sink ++
+	The audio target to control when scrolling. Can be either `sink` (output/speakers) or `source` (input/microphone).
+
 # FORMAT REPLACEMENTS
 
 *{desc}*: Pulseaudio port's description, for bluetooth it'll be the device name.
 
 *{volume}*: Volume in percentage.
+
+*{source_volume}*: Source (input/microphone) volume in percentage.
+
+*{source_desc}*: Source's description, for bluetooth it'll be the device name.
 
 *{icon}*: Icon, as defined in *format-icons*.
 
@@ -146,6 +167,8 @@ Additionally, you can control the volume by scrolling *up* or *down* while the c
 The following strings for *format-icons* are supported.
 
 - the device name
+
+The device name looks something like *alsa\_output.pci-0000\_00\_1f.3.analog-stereo*. You can find it with a PulseAudio frontend such as *pacmd list-sinks* or *pamixer --list-sinks*.
 
 If they are found in the current PulseAudio port name, the corresponding icons will be selected.
 
@@ -173,9 +196,9 @@ to be selected when the corresponding audio device is muted. This applies to *de
 	"format-icons": {
 		"alsa_output.pci-0000_00_1f.3.analog-stereo": "",
 		"alsa_output.pci-0000_00_1f.3.analog-stereo-muted": "",
-		"headphones": "",
-		"handsfree": "",
-		"headset": "",
+		"headphone": "",
+		"hands-free": "󰂑",
+		"headset": "󰂑",
 		"phone": "",
 		"phone-muted": "",
 		"portable": "",
@@ -192,3 +215,5 @@ to be selected when the corresponding audio device is muted. This applies to *de
 - *#pulseaudio*
 - *#pulseaudio.bluetooth*
 - *#pulseaudio.muted*
+- *#pulseaudio.sink-muted*
+- *#pulseaudio.source-muted*

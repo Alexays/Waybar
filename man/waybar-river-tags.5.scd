@@ -26,6 +26,14 @@ Addressed by *river/tags*
 	default: false ++
 	If set to false, you can left-click to set focused tag. Right-click to toggle tag focus. If set to true this behaviour is disabled.
 
+*set-tags*: ++
+	typeof: array ++
+	An array of tag bitmasks, one per tag button. Left-clicking a tag sets the focused tags to the corresponding bitmask instead of the single tag. Requires *disable-click* to be false.
+
+*toggle-tags*: ++
+	typeof: array ++
+	An array of tag bitmasks, one per tag button. Right-clicking a tag toggles the corresponding bitmask in the focused tags instead of the single tag. Requires *disable-click* to be false.
+
 *expand*: ++
 	typeof: bool ++
 	default: false ++
@@ -44,15 +52,36 @@ Addressed by *river/tags*
 }
 ```
 
+Sticky tag: this enables 5 tags and, to support a sticky tag (tag 32),
+*set-tags* is given bitmasks with the 32nd bit set so that tag stays selected
+whichever button is clicked.
+
+```
+"river/tags": {
+	"num-tags": 5,
+	"set-tags": [
+		2147483649,
+		2147483650,
+		2147483652,
+		2147483656,
+		2147483664
+	]
+}
+```
+
 # STYLE
 
 - *#tags button*
 - *#tags button.occupied*
 - *#tags button.focused*
 - *#tags button.urgent*
+- *#tags button.output*
+- *#tags button.tag-N*
 
-Note that occupied/focused/urgent status may overlap. That is, a tag may be
+Note that occupied/focused/urgent/output status may overlap. That is, a tag may be
 both occupied and focused at the same time.
+
+The *output* style is applied when the river output (e.g. monitor) of the current bar is focused.
 
 # SEE ALSO
 
