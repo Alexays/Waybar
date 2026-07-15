@@ -1,3 +1,5 @@
+#include <memory>
+
 #include "modules/cava/cavaRaw.hpp"
 #include "modules/cava/cava_backend.hpp"
 
@@ -6,24 +8,24 @@
 #endif
 
 namespace waybar::modules::cava {
-AModule* getModule(const std::string& id, const Json::Value& config, std::mutex& reap_mtx,
-                   std::list<pid_t>& reap) {
+inline std::unique_ptr<AModule> getModule(const std::string& id, const Json::Value& config,
+		                          std::mutex& reap_mtx, std::list<pid_t>& reap) {
   const std::shared_ptr<CavaBackend> backend_{waybar::modules::cava::CavaBackend::inst(config)};
-  switch (backend_->getPrm()->output) {
+  switch (backend_->getPrm().output) {
 #ifdef HAVE_LIBCAVAGLSL
     case ::cava::output_method::OUTPUT_SDL_GLSL:
-      return new waybar::modules::cava::CavaGLSL(id, config, reap_mtx, reap);
+      return std::make_unique<waybar::modules::cava::CavaGLSL>(id, config, reap_mtx, reap);
 #endif
     default:
-      return new waybar::modules::cava::Cava(id, config, reap_mtx, reap);
+      return std::make_unique<waybar::modules::cava::CavaRaw>(id, config, reap_mtx, reap);
   }
   throw std::runtime_error("Unknown module");
 };
 }  // namespace waybar::modules::cava
 
 extern "C" {
-waybar::AModule* new_cava(const std::string& id, const Json::Value& config, std::mutex& reap_mtx,
-                          std::list<pid_t>& reap) {
+std::unique_ptr<waybar::AModule> new_cava(const std::string& id, const Json::Value& config,
+		                         std::mutex& reap_mtx, std::list<pid_t>& reap) {
   return waybar::modules::cava::getModule(id, config, reap_mtx, reap);
 }
 }

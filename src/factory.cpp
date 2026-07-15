@@ -388,13 +388,15 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::Wireplumber(id, config_[name], reap_mtx, reap);
     }
 #endif
+#ifdef HAVE_LIBCAVA
     if (ref == "cava") {
-      AModule* (*constructor)(const std::string&, const Json::Value&, std::mutex&,
+      std::unique_ptr<AModule> (*constructor)(const std::string&, const Json::Value&, std::mutex&,
                               std::list<pid_t>&);
       void* symbol = get_symbol("waybar-module-cava.so", "new_cava");
       constructor = reinterpret_cast<decltype(constructor)>(symbol);
-      return constructor(id, config_[name], reap_mtx, reap);
+      return constructor(id, config_[name], reap_mtx, reap).release();
     }
+#endif
 #ifdef HAVE_SYSTEMD_MONITOR
     if (ref == "systemd-failed-units") {
       return new waybar::modules::SystemdFailedUnits(id, config_[name], reap_mtx, reap);

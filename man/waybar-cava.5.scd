@@ -6,10 +6,10 @@ waybar - cava module
 
 # DESCRIPTION
 
-*cava* module for karlstav/cava project. See it on github: https://github.com/karlstav/cava.
-
-Module supports two different frontends starting from the 0.15.0 release. The frontend that
-will be used is managed by the method parameter in the [output] section of the cava configuration file.
+The *cava* module integrates the *karlstav/cava* audio visualizer into Waybar.
+It supports two frontends: a text-based *raw* frontend and a GPU-based *GLSL*
+frontend. The active frontend is selected by the *method* option in the
+*[output]* section of the cava configuration file.
 
 # FILES
 
@@ -27,185 +27,186 @@ libcava lives in:
 # CONFIGURATION
 
 [- *Option*
-:- *Typeof*
-:- *Default*
-:- *Description*
+:[ *Type*
+:[ *Default*
+:[ *Description*
 |[ *cava_config*
 :[ string
 :[
-:< Path where cava configuration file is placed to
-|[ *method* \[output\]
-:[ string
-:[
-:< Manages which frontend Waybar cava module should use. Values: raw, sdl_glsl. Not a waybar JSON key: it is set through the *method* option in the *\[output\]* section of the cava configuration file (*cava_config*)
+:[ Path to the cava configuration file. When provided, cava settings are read from it first.
 |[ *framerate*
 :[ integer
 :[ 30
-:[ Frames per second. Is used as a replacement for *interval*
+:[ Target frames per second. Replaces the generic *interval* option.
 |[ *autosens*
 :[ integer
 :[ 1
-:[ Will attempt to decrease sensitivity if the bars peak
+:[ Automatically decrease sensitivity when the bars peak.
 |[ *sensitivity*
 :[ integer
 :[ 100
-:[ Manual sensitivity in %. If autosens is enabled, this will only be the initial value. 200 means double height. Accepts only non-negative values
+:[ Manual sensitivity in %. If *autosens* is enabled, this is only the initial value. 200 means double height. Accepts only non-negative values.
 |[ *bars*
 :[ integer
 :[ 12
-:[ The number of bars
+:[ The number of bars.
 |[ *lower_cutoff_freq*
 :[ long integer
 :[ 50
-:[ Lower cutoff frequencies for lowest bars the bandwidth of the visualizer
+:[ Lower cutoff frequency for the visualizer bandwidth.
 |[ *higher_cutoff_freq*
 :[ long integer
 :[ 10000
-:[ Higher cutoff frequencies for highest bars the bandwidth of the visualizer
+:[ Higher cutoff frequency for the visualizer bandwidth.
 |[ *sleep_timer*
 :[ integer
 :[ 5
-:[ Seconds with no input before cava main thread goes to sleep mode
+:[ Seconds of silence before cava enters sleep mode.
 |[ *hide_on_silence*
 :[ bool
 :[ false
-:[ Hides the widget if no input (after sleep_timer elapsed)
+:[ Hide the widget when silence lasts longer than *sleep_timer*.
 |[ *format_silent*
 :[ string
 :[
-:[ Widget's text after sleep_timer elapsed (hide_on_silence has to be false)
+:[ Text shown when the module is silent and *hide_on_silence* is false. **Raw frontend only.**
+|[ *format-icons*
+:[ array
+:[
+:[ Array of characters used to render bar levels in the raw frontend. The number of items determines the dynamic range.
 |[ *method* \[input\]
 :[ string
 :[ pulse
-:[ Audio capturing method. Possible methods are: pipewire, pulse, alsa, fifo, sndio or shmem
+:[ Audio capture backend. Supported values: pipewire, pulse, alsa, fifo, sndio, shmem.
 |[ *source*
 :[ string
 :[ auto
-:[ See cava configuration
+:[ Audio source identifier. See the cava documentation for details.
 |[ *sample_rate*
 :[ long integer
 :[ 44100
-:[ See cava configuration
+:[ See the cava documentation.
 |[ *sample_bits*
 :[ integer
 :[ 16
-:[ See cava configuration
+:[ See the cava documentation.
 |[ *stereo*
 :[ bool
 :[ true
-:[ Visual channels
+:[ Enable stereo visualization.
 |[ *reverse*
 :[ bool
 :[ false
-:[ Displays frequencies the other way around
+:[ Reverse the bar order (highest frequencies on the left).
 |[ *bar_delimiter*
 :[ integer
 :[ 0
-:[ Each bar is separated by a delimiter. Use decimal value in ascii table(i.e. 59 = ";"). 0 means no delimiter
+:[ Delimiter placed between bars in the raw output. Use a decimal ASCII value (e.g. 59 = ";"). 0 means no delimiter.
 |[ *monstercat*
 :[ bool
 :[ false
-:[ Disables or enables the so-called "Monstercat smoothing" with or without "waves"
+:[ Enable Monstercat smoothing.
 |[ *waves*
 :[ bool
 :[ false
-:[ Disables or enables the so-called "Monstercat smoothing" with or without "waves"
+:[ Enable the waves effect alongside Monstercat smoothing.
 |[ *noise_reduction*
 :[ double
 :[ 0.77
-:[ Fractional value between 0.0 - 1.0. The raw visualization is very noisy, this factor adjusts the integral and gravity filters to keep the signal smooth. Values near 1.0 will be very slow and smooth, near 0.0 will be fast but noisy
+:[ Smoothing factor between 0.0 and 1.0. Higher values produce slower, smoother animation; lower values are more reactive but noisy.
 |[ *gravity*
 :[ integer
 :[
-:[ Gravity smoothing filter. Higher values make the bars drop faster. Adjusted by *noise_reduction* when set
+:[ Gravity factor. Higher values make bars fall faster. When *noise_reduction* is set, this is derived automatically.
 |[ *integral*
 :[ integer
 :[
-:[ Integral smoothing filter. Higher values make the visualization smoother but less precise. Adjusted by *noise_reduction* when set
+:[ Integral smoothing factor. Higher values produce smoother but less precise animation. When *noise_reduction* is set, this is derived automatically.
 |[ *input_delay*
 :[ integer
 :[ 4
-:[ Sets the delay before fetching audio source thread start working. On author's machine, Waybar starts much faster than pipewire audio server, and without a little delay cava module fails because pipewire is not ready
-|[ *ascii_max_range*
-:[ integer
-:[ 7
-:[ It's impossible to set it directly. The value is dictated by the number of icons in the array *format-icons*
-|[ *data_format*
-:[ string
-:[ ascii
-:[ Raw data format. Can be 'binary' or 'ascii'
-|[ *raw_target*
-:[ string
-:[ /dev/stdout
-:[ Raw output target. A fifo will be created if target does not exist
-|[ *menu*
-:[ string
-:[
-:[ Action that popups the menu.
-|[ *menu-file*
-:[ string
-:[
-:[ Location of the menu descriptor file. There need to be an element of type GtkMenu with id *menu*
-|[ *menu-actions*
-:[ array
-:[
-:[ The actions corresponding to the buttons of the menu.
-|[ *bar_spacing*
-:[ integer
-:[
-:[ Bars' space between bars in number of characters
+:[ Delay in seconds before starting audio capture. Increase this if Waybar starts before the audio server (e.g. PipeWire).
 |[ *bar_width*
 :[ integer
 :[
-:[ Bars' width between bars in number of characters
+:[ Bar width in pixels. **Used by the GLSL frontend.**
+|[ *bar_spacing*
+:[ integer
+:[
+:[ Space between bars in pixels. **Used by the GLSL frontend.**
 |[ *bar_height*
 :[ integer
 :[
-:[ Useless. bar_height is only used for output in "noritake" format
-|[ *background*
+:[ Ignored by Waybar. Used only by cava's "noritake" output format.
+|[ *menu*
 :[ string
 :[
-:[ GLSL actual. Support hex code colors only. Must be within ''. Not a waybar JSON key: set it as *background* in the *\[color\]* section of the cava configuration file (*cava_config*)
-|[ *foreground*
+:[ Action that opens the menu.
+|[ *menu-file*
 :[ string
 :[
-:[ GLSL actual. Support hex code colors only. Must be within ''. Not a waybar JSON key: set it as *foreground* in the *\[color\]* section of the cava configuration file (*cava_config*)
-|[ *gradient*
-:[ integer
-:[ 0
-:[ GLSL actual. Gradient mode(0/1 - on/off)
-|[ *gradient_count*
-:[ integer
-:[ 0
-:[ GLSL actual. The count of colors for the gradient
-|[ *gradient_color_N*
-:[ string
+:[ Location of the menu descriptor file. There must be a GtkMenu element with id *menu*.
+|[ *menu-actions*
+:[ array
 :[
-:[ GLSL actual. N - the number of the gradient color between 1 and 8. Only hex defined colors are supported. Must be within ''
+:[ Actions corresponding to the buttons of the menu.
+|[ *method* \[output\]
+:[ string
+:[ raw
+:[ Cava output method. Set to *raw* for the text frontend or *sdl_glsl* for the GPU frontend. **This is set inside the *[output]* section of the cava configuration file, not in Waybar's JSON.**
 |[ *sdl_width*
 :[ integer
 :[
-:[ GLSL actual. Manages the width of the waybar cava GLSL frontend module
+:[ GLSL frontend width in pixels. **GLSL only.**
 |[ *sdl_height*
 :[ integer
 :[
-:[ GLSL actual. Manages the height of the waybar cava GLSL frontend module
+:[ GLSL frontend height in pixels. **GLSL only.**
+|[ *vertex_shader*
+:[ string
+:[
+:[ Path to the vertex shader. **GLSL only; set in the *[output]* section of the cava configuration file.**
+|[ *fragment_shader*
+:[ string
+:[
+:[ Path to the fragment shader. **GLSL only; set in the *[output]* section of the cava configuration file.**
 |[ *continuous_rendering*
 :[ integer
 :[ 0
-:[ GLSL actual. Keep rendering even if no audio. Recommended to set to 1. Not a waybar JSON key: set it as *continuous_rendering* in the *\[output\]* section of the cava configuration file (*cava_config*)
+:[ Continue rendering when silent. Set to 1 for smooth animation. **GLSL only; set in the *[output]* section of the cava configuration file.**
+|[ *background*
+:[ string
+:[
+:[ Background color as a '#RRGGBB' hex string (must be quoted). **GLSL only; set in the *[color]* section of the cava configuration file.**
+|[ *foreground*
+:[ string
+:[
+:[ Foreground color as a '#RRGGBB' hex string (must be quoted). **GLSL only; set in the *[color]* section of the cava configuration file.**
+|[ *gradient*
+:[ integer
+:[ 0
+:[ Enable gradient mode (0 = off, 1 = on). **GLSL only; set in the *[color]* section of the cava configuration file.**
+|[ *gradient_count*
+:[ integer
+:[ 0
+:[ Number of gradient colors (up to 8). **GLSL only; set in the *[color]* section of the cava configuration file.**
+|[ *gradient_color_N*
+:[ string
+:[
+:[ Gradient color N (1–8) as a '#RRGGBB' hex string (must be quoted). **GLSL only; set in the *[color]* section of the cava configuration file.**
 
-Configuration can be provided as:
-- The only cava configuration file which is provided through *cava_config*. The rest configuration can be skipped
-- Without cava configuration file. In such case cava should be configured through provided list of the configuration option
-- Mix. When provided both And cava configuration file And configuration options. In such case, waybar applies configuration file first and then overrides particular options by the provided list of configuration options
+Configuration can be provided in three ways:
+
+- **Cava config only**: set *cava_config* to a cava configuration file and omit all other options.
+- **Waybar JSON only**: leave out *cava_config* and set every option in Waybar's module configuration.
+- **Mixed**: provide a *cava_config* and also set specific options in Waybar's JSON. Waybar reads the file first, then overrides any values present in the JSON.
 
 # ACTIONS
 
 [- *String*
-:- *Action*
+:[ *Action*
 |[ *mode*
-:< Switch main cava thread and fetch audio source thread from/to pause/resume
+:[ Toggle pause/resume for the audio capture and output threads.
 
 # DEPENDENCIES
 
@@ -215,30 +216,31 @@ Configuration can be provided as:
 
 # SOLVING ISSUES
 
-. On start Waybar throws an exception "error while loading shared libraries: libcava.so: cannot open shared object file: No such file or directory".
-  It might happen when libcava for some reason hasn't been registered in the system. sudo ldconfig should help.
-  It might also happen when Waybar was installed into /usr/local while libcava lives elsewhere. In that case:
-   1. Drop the local cava library: sudo rm -rfv /usr/local/include/cava /usr/local/lib64/pkgconfig/cava.pc /usr/local/lib64/libcava.so
-   2. Set the prefix where Waybar should be installed: meson configure build -Dprefix="/usr"
-   3. Build Waybar: make
-   4. Install Waybar into the system: sudo meson install -C build
-. Waybar is starting but cava module doesn't react to the music
-   1. In such cases at first need to make sure usual cava application is working as well
-   2. If so, need to comment all configuration options. Uncomment cava_config and provide the path to the working cava config
-   3. You might set too huge or too small input_delay. Try to setup to 4 seconds, restart waybar, and check again 4 seconds past. Usual even on weak machines it should be enough
-   4. You might accidentally switch action mode to pause mode
+. At startup Waybar fails with *"error while loading shared libraries: libcava.so: cannot open shared object file: No such file or directory"*.
+  This happens when libcava has not been registered in the system library cache. Run *sudo ldconfig* to refresh the cache.
+  This can also occur when Waybar is installed under */usr/local* but libcava is elsewhere. To fix it:
+   1. Remove the local libcava installation: *sudo rm -rfv /usr/local/include/cava /usr/local/lib64/pkgconfig/cava.pc /usr/local/lib64/libcava.so*
+   2. Reconfigure Waybar to use the system prefix: *meson configure build -Dprefix="/usr"*
+   3. Rebuild Waybar: *ninja -C build*
+   4. Install Waybar: *sudo meson install -C build*
 
-# RISING ISSUES
+. Waybar starts but the cava module does not react to audio.
+   1. First, verify that standalone cava works correctly.
+   2. If it does, comment out all Waybar cava options, uncomment *cava_config*, and point it to the working cava configuration file.
+   3. The *input_delay* may be too large or too small. Try setting it to 4 seconds, restart Waybar, and check again after that delay. This is usually sufficient, even on slower machines.
+   4. You may have accidentally toggled pause mode via an action.
 
-For clear understanding: this module is a cava API's consumer. So for any bugs related to cava engine you should contact Cava upstream(https://github.com/karlstav/cava) ++
-with the one Exception. Cava upstream doesn't provide cava as a shared library. For that, this module author made a fork libcava(https://github.com/LukashonakV/cava). ++
-So the order is:
-. cava upstream
-. libcava upstream.
-In case when cava releases new version and you're wanna get it, it should be raised an issue to libcava(https://github.com/LukashonakV/cava) with title ++
-\[Bump\]x.x.x where x.x.x is cava release version.
+# REPORTING ISSUES
+
+This module is a consumer of the cava API. For bugs in the cava engine itself, please report them to [cava upstream](https://github.com/karlstav/cava) first.
+
+Upstream cava does not provide a shared library. The Waybar cava module uses [libcava](https://github.com/LukashonakV/cava), a fork maintained by the module author, to provide one. If the issue is specific to the shared library packaging, report it to libcava.
+
+When requesting a new upstream cava release to be packaged in libcava, open an issue at libcava with the title `[Bump] x.x.x`, where `x.x.x` is the desired cava version.
 
 # EXAMPLES
+
+## Raw frontend
 
 ```
 "cava": {
@@ -253,7 +255,6 @@ In case when cava releases new version and you're wanna get it, it should be rai
 	"source": "auto",
 	"stereo": true,
 	"reverse": false,
-	"bar_delimiter": 0,
 	"monstercat": false,
 	"waves": false,
 	"noise_reduction": 0.77,
@@ -263,39 +264,6 @@ In case when cava releases new version and you're wanna get it, it should be rai
 		"on-click-right": "mode"
 	}
 },
-```
-# STYLE
-
-- *#cava* Raw frontend widget
-- *#cava.silent* Applied after no sound has been detected for sleep_timer seconds
-- *#cava.updated* Applied when a new frame is shown
-- *#cavaGLSL* GLSL frontend widget (used instead of *#cava* when the cava *method* is *sdl_glsl*)
-- *#cavaGLSL.silent* Applied after no sound has been detected for sleep_timer seconds
-- *#cavaGLSL.updated* Applied when a new frame is shown
-# FRONTENDS
-
-## RAW
-The cava raw frontend uses ASCII characters to visualize incoming audio data. Each ASCII symbol position corresponds to the value of the audio power pulse.
-
-Under the hood:
-```
-. Incoming audio power pulse list is : 12684
-. Configured array of ASCII codes is: ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" ]. See `format-icons` https://github.com/Alexays/Waybar/wiki/Module:-Cava#example 
-```
-As a result cava frontend will give ▁▂▆█▄
-
-Examples:
-
-waybar config
-```
-"cava": {
-        "cava_config": "$XDG_CONFIG_HOME/cava/waybar_raw.conf",
-        "input_delay": 2,
-        "format-icons" : ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" ],
-        "actions": {
-                   "on-click-right": "mode"
-                   }
-        },
 ```
 
 waybar_raw.conf
@@ -366,6 +334,7 @@ sleep_timer = 5
 # For jack 'source' will be the name of the JACK server to connect to, e.g. 'foobar'. Default: 'default'.
 # README.md contains further information on how to setup CAVA for JACK.
 #
+
 
 # The options 'sample_rate', 'sample_bits', 'channels' and 'autoconnect' can be configured for some input methods:
 #   sample_rate: fifo, pipewire, sndio, oss
@@ -468,7 +437,7 @@ bar_delimiter = 0
 
 # Noise reduction, int 0 - 100. default 77
 # the raw visualization is very noisy, this factor adjusts the integral and gravity filters to keep the signal smooth
-# 100 will be very slow and smooth, 0 will be fast but noisy.
+# 100 will be very slow and smooth, 0 will be fast and noisy.
 
 
 [eq]
@@ -477,33 +446,32 @@ bar_delimiter = 0
 # Remember to uncomment more than one key! More keys = more precision.
 # Look at readme.md on github for further explanations and examples.
 ```
-## GLSL
-The Cava GLSL frontend delegates the visualization of incoming audio data to the GPU via OpenGL.
 
-There are some mandatory dependencies that need to be satisfied in order for Cava GLSL to be built and function properly:
+## GLSL frontend
 
-. epoxy library must be installed on the system
-. Vertex and fragment shaders from the original project must be used. They should be downloaded, and the file paths must be configured correctly in the Waybar Cava configuration:
-   1. cava shaders [cava shaders](https://github.com/karlstav/cava/tree/master/output/shaders)
-   2. libcava shaders [libcava shaders](https://github.com/LukashonakV/cava/tree/master/output/shaders)
-. It is highly recommended to have a separate cava configuration for the Waybar Cava GLSL module and to use this as the cava_config in the Waybar configuration.
-. It is common for cava configurations to be placed in the XDG_CONFIG_HOME directory, including shaders as well. Consider keeping them in the $XDG_CONFIG_HOME/cava/shaders folder.
+The GLSL frontend requires:
 
-Key configuration options:
+. The *epoxy* library.
+. Vertex and fragment shaders from the cava project. Download them and place under _$XDG_CONFIG_HOME/cava/shaders_, then reference them in the cava configuration:
+  1. [cava shaders](https://github.com/karlstav/cava/tree/master/output/shaders)
+  2. [libcava shaders](https://github.com/LukashonakV/cava/tree/master/output/shaders)
+. A separate cava configuration file is highly recommended.
 
-. bars. The more values the parameter has, the more interesting the visualization becomes.
-. method in output section must be set to sdl_glsl
-. sdl_width and sdl_height manage the size of the module. Adjust them according to your needs.
-. Shaders for sdl_glsl, located in $HOME/.config/cava/shaders. Example: "vertex_shader" = "pass_through.vert" "fragment_shader" = "spectrogram.frag"
-. Set continuous_rendering to 1 to enable smooth rendering; set it to 0 otherwise. It is recommended to keep it set to 1.
-. background, foreground, and gradient_color_N (where N is a number between 1 and 8) must be defined using hex code
+Key cava configuration options for GLSL:
+
+. *bars* — higher values produce more detailed visualization.
+. *method* in *[output]* must be set to *sdl_glsl*.
+. *sdl_width* and *sdl_height* control the module size.
+. *vertex_shader* and *fragment_shader* point to the shader files under _$HOME/.config/cava/shaders_.
+. *continuous_rendering* — set to 1 for smooth animation.
+. *background*, *foreground*, and *gradient_color_N* must use hex codes inside single quotes.
 
 Example:
 
 waybar config
 ```
 "cava": {
-        "cava_config": "$XDG_CONFIG_HOME/cava/waybar_cava#3.conf",
+        "cava_config": "$XDG_CONFIG_HOME/cava/waybar_cava.conf",
         "input_delay": 2,
         "actions": {
                    "on-click-right": "mode"
@@ -511,7 +479,7 @@ waybar config
         },
 ```
 
-waybar_raw.conf
+waybar_cava.conf
 ```
 ## Configuration file for CAVA.
 # Remove the ; to change parameters.
@@ -721,4 +689,21 @@ gradient_color_2 = '#45475A'
 # Look at readme.md on github for further explanations and examples.
 ```
 
-Different waybar_cava#N.conf see at [cava GLSL](https://github.com/Alexays/Waybar/wiki/Module:-Cava:-GLSL)
+More GLSL examples are available on the [cava GLSL wiki page](https://github.com/Alexays/Waybar/wiki/Module:-Cava:-GLSL).
+
+# STYLE
+
+- *#cava* Raw frontend widget
+- *#cava.silent* Applied after no sound has been detected for *sleep_timer* seconds
+- *#cava.updated* Applied when a new frame is shown
+- *#cavaGLSL* GLSL frontend widget (used instead of *#cava* when the cava *method* is *sdl_glsl*)
+- *#cavaGLSL.silent* Applied after no sound has been detected for *sleep_timer* seconds
+- *#cavaGLSL.updated* Applied when a new frame is shown
+
+# FRONTENDS
+
+## RAW
+The raw frontend maps each bar's amplitude to a character from *format-icons*. The final widget text is the concatenation of all characters, optionally separated by *bar_delimiter*. See the EXAMPLES section above for a complete configuration.
+
+## GLSL
+The GLSL frontend renders the visualization with OpenGL ES using user-provided shaders. It is selected by setting *method = sdl_glsl* in the cava configuration. See the EXAMPLES section above for a complete configuration.
