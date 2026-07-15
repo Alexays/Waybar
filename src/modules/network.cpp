@@ -1068,17 +1068,14 @@ void waybar::modules::Network::parseSignal(struct nlattr** bss) {
     // signalstrength in dBm from mBm
     signal_strength_dbm_ = nla_get_s32(bss[NL80211_BSS_SIGNAL_MBM]) / 100;
 
-
     // uses nmcli implementation for calculating strength
     // https://github.com/NetworkManager/NetworkManager/blob/23ffa5fc6e7acbd7a96138c6c18f478f5127177d/src/libnm-platform/wifi/nm-wifi-utils-nl80211.c#L411
 
     const int noise_floor_dbm = -90;
     const int signal_max_dbm = -20;
     signal_strength_dbm_ = CLAMP(signal_strength_dbm_, noise_floor_dbm, signal_max_dbm);
-    signal_strength_ = 100
-                        - (70
-                           * (((float) signal_max_dbm - (float) signal_strength_dbm_)
-                              / ((float) signal_max_dbm - (float) noise_floor_dbm)));
+    signal_strength_ = 100 - (70 * (((float)signal_max_dbm - (float)signal_strength_dbm_) /
+                                    ((float)signal_max_dbm - (float)noise_floor_dbm)));
 
     if (signal_strength_dbm_ >= -50) {
       signal_strength_app_ = "Great Connectivity";
