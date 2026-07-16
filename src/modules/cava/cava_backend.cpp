@@ -2,7 +2,22 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <stdexcept>
+
+namespace {
+struct CavaConfigGuard {
+  ::cava::config_params* prm;
+  bool released = false;
+  explicit CavaConfigGuard(::cava::config_params* p) : prm(p) {}
+  ~CavaConfigGuard() {
+    if (!released && prm) {
+      free_config(prm);
+    }
+  }
+  void release() { released = true; }
+};
+}  // namespace
 
 std::shared_ptr<waybar::modules::cava::CavaBackend> waybar::modules::cava::CavaBackend::inst(
     const Json::Value& config) {
@@ -12,69 +27,84 @@ std::shared_ptr<waybar::modules::cava::CavaBackend> waybar::modules::cava::CavaB
 }
 
 waybar::modules::cava::CavaBackend::CavaBackend(const Json::Value& config) : config_(config) {
-  // Load waybar module config
   loadConfig();
-  // Read audio source trough cava API. Cava orginizes this process via infinity loop
   read_thread_ = [this] {
-    try {
-      input_source_(&audio_data_);
-    } catch (const std::runtime_error& e) {
-      spdlog::warn("Cava backend. Read source error: {0}", e.what());
+    while (read_thread_.isRunning()) {
+      try {
+        if (input_source_) {
+          input_source_(&audio_data_);
+        }
+      } catch (const std::exception& e) {
+        spdlog::warn("Cava backend. Read source error: {0}", e.what());
+      }
+      if (!read_thread_.isRunning()) break;
+      read_thread_.sleep_for(fetch_input_delay_);
+      if (!read_thread_.isRunning()) break;
+      try {
+        loadConfig();
+      } catch (const std::exception& e) {
+        spdlog::error("{}", e.what());
+      }
     }
-    read_thread_.sleep_for(fetch_input_delay_);
-    // loadConfig() now throws on failure; contain it so a runtime config error
-    // logs instead of terminating the process (#4456).
-    try {
-      loadConfig();
-    } catch (const std::exception& e) {
-      spdlog::error("{}", e.what());
+    {
+      std::lock_guard<std::mutex> lk(read_thread_exit_mutex_);
+      read_thread_exited_ = true;
     }
+    read_thread_exit_cv_.notify_one();
   };
-  // Write outcoming data. Emit signals
   out_thread_ = [this] {
-    doUpdate(false);
-    out_thread_.sleep_for(frame_time_milsec_);
+    try {
+      doUpdate(false);
+    } catch (const std::exception& e) {
+      spdlog::error("Cava backend. Output thread error: {0}", e.what());
+    }
+    out_thread_.sleep_for(adaptive_delay_.current());
   };
 }
 
 waybar::modules::cava::CavaBackend::~CavaBackend() {
+  {
+    std::lock_guard<std::recursive_mutex> lock(state_mutex_);
+    shutdown_ = true;
+  }
+
+  pthread_mutex_lock(&audio_data_.lock);
+  audio_data_.terminate = 1;
+  pthread_mutex_unlock(&audio_data_.lock);
+
   out_thread_.stop();
   read_thread_.stop();
 
+  std::unique_lock<std::mutex> lk(read_thread_exit_mutex_);
+  if (!read_thread_exit_cv_.wait_for(lk, std::chrono::milliseconds(100),
+                                     [this] { return read_thread_exited_; })) {
+    spdlog::debug(
+        "Cava backend: read thread still blocked in input_source() on shutdown. "
+        "Proceeding with cleanup.");
+  }
+
+  std::lock_guard<std::recursive_mutex> lock(state_mutex_);
   freeBackend();
 }
 
-static bool upThreadDelay(std::chrono::milliseconds& delay, std::chrono::seconds& delta) {
-  if (delta == std::chrono::seconds{0}) {
-    delta += std::chrono::seconds{1};
-    delay += delta;
-    return true;
-  }
-  return false;
-}
-
-static bool downThreadDelay(std::chrono::milliseconds& delay, std::chrono::seconds& delta) {
-  if (delta > std::chrono::seconds{0}) {
-    delay -= delta;
-    delta -= std::chrono::seconds{1};
-    return true;
-  }
-  return false;
-}
-
-bool waybar::modules::cava::CavaBackend::isSilence() {
+bool waybar::modules::cava::CavaBackend::isSilent() {
+  pthread_mutex_lock(&audio_data_.lock);
+  bool silent = true;
   for (int i{0}; i < audio_data_.input_buffer_size; ++i) {
     if (audio_data_.cava_in[i]) {
-      return false;
+      silent = false;
+      break;
     }
   }
-
-  return true;
+  pthread_mutex_unlock(&audio_data_.lock);
+  return silent;
 }
 
-int waybar::modules::cava::CavaBackend::getAsciiRange() { return prm_.ascii_range; }
+int waybar::modules::cava::CavaBackend::getAsciiRange() const {
+  std::lock_guard<std::recursive_mutex> lock(state_mutex_);
+  return prm_.ascii_range;
+}
 
-// Process: execute cava
 void waybar::modules::cava::CavaBackend::invoke() {
   pthread_mutex_lock(&audio_data_.lock);
   ::cava::cava_execute(audio_data_.cava_in, audio_data_.samples_counter, audio_raw_.cava_out,
@@ -83,7 +113,6 @@ void waybar::modules::cava::CavaBackend::invoke() {
   pthread_mutex_unlock(&audio_data_.lock);
 }
 
-// Do transformation under raw data
 void waybar::modules::cava::CavaBackend::execute() {
   invoke();
   audio_raw_fetch(&audio_raw_, &prm_, &re_paint_, plan_);
@@ -99,183 +128,228 @@ void waybar::modules::cava::CavaBackend::execute() {
 }
 
 void waybar::modules::cava::CavaBackend::doPauseResume() {
+  std::lock_guard<std::recursive_mutex> lock(state_mutex_);
   pthread_mutex_lock(&audio_data_.lock);
   if (audio_data_.suspendFlag) {
     audio_data_.suspendFlag = false;
     pthread_cond_broadcast(&audio_data_.resumeCond);
-    downThreadDelay(frame_time_milsec_, suspend_silence_delay_);
+    adaptive_delay_.decrease();
   } else {
     audio_data_.suspendFlag = true;
-    upThreadDelay(frame_time_milsec_, suspend_silence_delay_);
+    adaptive_delay_.increase();
   }
   pthread_mutex_unlock(&audio_data_.lock);
-  Update();
+  update();
 }
 
-waybar::modules::cava::CavaBackend::type_signal_update
-waybar::modules::cava::CavaBackend::signal_update() {
+waybar::modules::cava::CavaBackend::SignalUpdate&
+waybar::modules::cava::CavaBackend::signalUpdate() {
   return m_signal_update_;
 }
 
-waybar::modules::cava::CavaBackend::type_signal_audio_raw_update
-waybar::modules::cava::CavaBackend::signal_audio_raw_update() {
+waybar::modules::cava::CavaBackend::SignalAudioRawUpdate&
+waybar::modules::cava::CavaBackend::signalAudioRawUpdate() {
   return m_signal_audio_raw_;
 }
 
-waybar::modules::cava::CavaBackend::type_signal_silence
-waybar::modules::cava::CavaBackend::signal_silence() {
+waybar::modules::cava::CavaBackend::SignalSilence&
+waybar::modules::cava::CavaBackend::signalSilence() {
   return m_signal_silence_;
 }
 
-void waybar::modules::cava::CavaBackend::Update() { doUpdate(true); }
+waybar::modules::cava::CavaBackend::SignalConfigChanged&
+waybar::modules::cava::CavaBackend::signalConfigChanged() {
+  return m_signal_config_changed_;
+}
+
+void waybar::modules::cava::CavaBackend::update() { doUpdate(true); }
 
 void waybar::modules::cava::CavaBackend::doUpdate(bool force) {
+  std::lock_guard<std::recursive_mutex> lock(state_mutex_);
+  if (!plan_ || !input_source_) return;
   if (audio_data_.suspendFlag && !force) return;
 
-  silence_ = isSilence();
+  silence_ = isSilent();
   if (!silence_) sleep_counter_ = 0;
 
   if (silence_ && prm_.sleep_timer != 0) {
     if (sleep_counter_ <=
-        (int)(std::chrono::milliseconds(prm_.sleep_timer * 1s) / frame_time_milsec_)) {
+        static_cast<int>(std::chrono::milliseconds(prm_.sleep_timer * std::chrono::seconds(1)) /
+              adaptive_delay_.current())) {
       ++sleep_counter_;
       silence_ = false;
     }
   }
 
   if (!silence_ || prm_.sleep_timer == 0) {
-    if (downThreadDelay(frame_time_milsec_, suspend_silence_delay_)) Update();
+    while (adaptive_delay_.decrease()) {}
     execute();
     if (re_paint_ == 1 || force || prm_.continuous_rendering) {
       m_signal_update_.emit(output_);
-      m_signal_audio_raw_.emit(audio_raw_);
+      m_signal_audio_raw_.emit(AudioRaw{audio_raw_});
     }
   } else {
-    if (upThreadDelay(frame_time_milsec_, suspend_silence_delay_)) Update();
+    while (adaptive_delay_.increase()) {}
     if (silence_ != silence_prev_ || force) m_signal_silence_.emit();
   }
   silence_prev_ = silence_;
 }
 
 void waybar::modules::cava::CavaBackend::freeBackend() {
-  if (plan_ != NULL) {
+  input_source_ = nullptr;
+
+  if (plan_ != nullptr) {
     cava_destroy(plan_);
-    plan_ = NULL;
+    plan_ = nullptr;
   }
 
-  audio_raw_clean(&audio_raw_);
+  if (audio_raw_initialized_) {
+    audio_raw_clean(&audio_raw_);
+    audio_raw_initialized_ = false;
+  }
   pthread_mutex_lock(&audio_data_.lock);
   audio_data_.terminate = 1;
   pthread_mutex_unlock(&audio_data_.lock);
   free_config(&prm_);
+  prm_ = {};
   free(audio_data_.source);
+  audio_data_.source = nullptr;
   free(audio_data_.cava_in);
+  audio_data_.cava_in = nullptr;
 }
 
 void waybar::modules::cava::CavaBackend::loadConfig() {
-  freeBackend();
-  // Load waybar module config
-  char cfgPath[PATH_MAX];
-  cfgPath[0] = '\0';
+  std::lock_guard<std::recursive_mutex> lock(state_mutex_);
+  if (shutdown_.load()) {
+    return;
+  }
 
-  if (config_["cava_config"].isString()) strcpy(cfgPath, config_["cava_config"].asString().data());
-  // Load cava config
+  const Json::Value& cfg = config_;
+
+  struct ::cava::config_params new_prm{};
+  CavaConfigGuard new_prm_guard(&new_prm);
+  std::vector<char> cfgPath(PATH_MAX, '\0');
+  if (cfg["cava_config"].isString()) {
+    const std::string& s = cfg["cava_config"].asString();
+    auto len = std::min(s.size(), static_cast<size_t>(PATH_MAX - 1));
+    std::copy_n(s.begin(), len, cfgPath.begin());
+    cfgPath[len] = '\0';
+  }
   error_.length = 0;
 
-  if (!load_config(cfgPath, &prm_, &error_)) {
-    // Throw, don't exit(): a bad config must disable only the cava module, not
-    // kill the whole bar (#4456). Caught by the factory (ctor) / read_thread_.
+  if (!load_config(cfgPath.data(), &new_prm, &error_)) {
     throw std::runtime_error(std::string{"cava backend: error loading config: "} + error_.message);
   }
 
-  // Override cava parameters by the user config
-  prm_.inAtty = 0;
-  auto const output{prm_.output};
-  // prm_.output = ::cava::output_method::OUTPUT_RAW;
-  if (prm_.data_format) free(prm_.data_format);
-  // Default to ascii for format-icons output; allow user override
-  prm_.data_format = strdup(
-      config_["data_format"].isString() ? config_["data_format"].asString().c_str() : "ascii");
-  if (config_["raw_target"].isString()) {
-    if (prm_.raw_target) free(prm_.raw_target);
-    prm_.raw_target = strdup(config_["raw_target"].asString().c_str());
+  new_prm.inAtty = 0;
+  auto const output{new_prm.output};
+  if (new_prm.data_format) free(new_prm.data_format);
+  new_prm.data_format = strdup(
+      cfg["data_format"].isString() ? cfg["data_format"].asString().c_str() : "ascii");
+  if (cfg["raw_target"].isString()) {
+    if (new_prm.raw_target) free(new_prm.raw_target);
+    new_prm.raw_target = strdup(cfg["raw_target"].asString().c_str());
   }
-  prm_.ascii_range = config_["format-icons"].size() - 1;
-
-  if (config_["bar_spacing"].isInt()) prm_.bar_spacing = config_["bar_spacing"].asInt();
-  if (config_["bar_width"].isInt()) prm_.bar_width = config_["bar_width"].asInt();
-  if (config_["bar_height"].isInt()) prm_.bar_height = config_["bar_height"].asInt();
-  prm_.orientation = ::cava::ORIENT_TOP;
-  prm_.xaxis = ::cava::xaxis_scale::NONE;
-  prm_.mono_opt = ::cava::AVERAGE;
-  prm_.autobars = 0;
-  if (config_["gravity"].isInt()) prm_.gravity = config_["gravity"].asInt();
-  if (config_["integral"].isInt()) prm_.integral = config_["integral"].asInt();
-
-  if (config_["framerate"].isInt()) prm_.framerate = config_["framerate"].asInt();
-  // Calculate delay for Update() thread
-  frame_time_milsec_ = std::chrono::milliseconds((int)(1e3 / prm_.framerate));
-  if (config_["autosens"].isInt()) prm_.autosens = config_["autosens"].asInt();
-  if (config_["sensitivity"].isInt()) prm_.sens = config_["sensitivity"].asInt();
-  if (config_["bars"].isInt()) prm_.fixedbars = config_["bars"].asInt();
-  if (config_["lower_cutoff_freq"].isNumeric())
-    prm_.lower_cut_off = config_["lower_cutoff_freq"].asLargestInt();
-  if (config_["higher_cutoff_freq"].isNumeric())
-    prm_.upper_cut_off = config_["higher_cutoff_freq"].asLargestInt();
-  if (config_["sleep_timer"].isInt()) prm_.sleep_timer = config_["sleep_timer"].asInt();
-  if (config_["method"].isString())
-    prm_.input = ::cava::input_method_by_name(config_["method"].asString().c_str());
-  if (config_["source"].isString()) {
-    if (prm_.audio_source) free(prm_.audio_source);
-    prm_.audio_source = strdup(config_["source"].asString().c_str());
-  }
-  if (config_["sample_rate"].isNumeric()) prm_.samplerate = config_["sample_rate"].asLargestInt();
-  if (config_["sample_bits"].isInt()) prm_.samplebits = config_["sample_bits"].asInt();
-  if (config_["stereo"].isBool()) prm_.stereo = config_["stereo"].asBool();
-  if (config_["reverse"].isBool()) prm_.reverse = config_["reverse"].asBool();
-  if (config_["bar_delimiter"].isInt()) prm_.bar_delim = config_["bar_delimiter"].asInt();
-  if (config_["monstercat"].isBool()) prm_.monstercat = config_["monstercat"].asBool();
-  if (config_["waves"].isBool()) prm_.waves = config_["waves"].asBool();
-  if (config_["noise_reduction"].isDouble())
-    prm_.noise_reduction = config_["noise_reduction"].asDouble();
-  if (config_["input_delay"].isInt())
-    fetch_input_delay_ = std::chrono::seconds(config_["input_delay"].asInt());
-  if (config_["gradient"].isInt()) prm_.gradient = config_["gradient"].asInt();
-  if (prm_.gradient == 0)
-    prm_.gradient_count = 0;
-  else if (config_["gradient_count"].isInt())
-    prm_.gradient_count = config_["gradient_count"].asInt();
-  if (config_["sdl_width"].isInt()) prm_.sdl_width = config_["sdl_width"].asInt();
-  if (config_["sdl_height"].isInt()) prm_.sdl_height = config_["sdl_height"].asInt();
-
-  audio_raw_.height = prm_.ascii_range;
-  audio_data_.format = -1;
-  audio_data_.rate = 0;
-  audio_data_.samples_counter = 0;
-  audio_data_.channels = 2;
-  audio_data_.IEEE_FLOAT = 0;
-  audio_data_.input_buffer_size = BUFFER_SIZE * audio_data_.channels;
-  audio_data_.cava_buffer_size = audio_data_.input_buffer_size * 8;
-  audio_data_.terminate = 0;
-  audio_data_.suspendFlag = false;
-  input_source_ = get_input(&audio_data_, &prm_);
-
-  if (!input_source_) {
-    throw std::runtime_error("cava backend: API didn't provide an input audio source");
+  {
+    auto icon_count = cfg["format-icons"].size();
+    new_prm.ascii_range = (icon_count > 0) ? static_cast<int>(icon_count) - 1 : 0;
   }
 
-  prm_.output = ::cava::output_method::OUTPUT_RAW;
+  if (cfg["bar_spacing"].isInt()) new_prm.bar_spacing = cfg["bar_spacing"].asInt();
+  if (cfg["bar_width"].isInt()) new_prm.bar_width = cfg["bar_width"].asInt();
+  if (cfg["bar_height"].isInt()) new_prm.bar_height = cfg["bar_height"].asInt();
+  new_prm.orientation = ::cava::ORIENT_TOP;
+  new_prm.xaxis = ::cava::xaxis_scale::NONE;
+  new_prm.mono_opt = ::cava::AVERAGE;
+  new_prm.autobars = 0;
+  if (cfg["gravity"].isInt()) new_prm.gravity = cfg["gravity"].asInt();
+  if (cfg["integral"].isInt()) new_prm.integral = cfg["integral"].asInt();
 
-  // Make cava parameters configuration
-  // Init cava plan, audio_raw structure
-  audio_raw_init(&audio_data_, &audio_raw_, &prm_, &plan_);
-  if (!plan_) spdlog::error("cava backend plan is not provided");
-  audio_raw_.previous_frame[0] = -1;  // For first Update() call need to rePaint text message
+  if (cfg["framerate"].isInt()) new_prm.framerate = cfg["framerate"].asInt();
+  if (cfg["autosens"].isInt()) new_prm.autosens = cfg["autosens"].asInt();
+  if (cfg["sensitivity"].isInt()) new_prm.sens = cfg["sensitivity"].asInt();
+  if (cfg["bars"].isInt()) new_prm.fixedbars = cfg["bars"].asInt();
+  if (cfg["lower_cutoff_freq"].isNumeric())
+    new_prm.lower_cut_off = cfg["lower_cutoff_freq"].asLargestInt();
+  if (cfg["higher_cutoff_freq"].isNumeric())
+    new_prm.upper_cut_off = cfg["higher_cutoff_freq"].asLargestInt();
+  if (cfg["sleep_timer"].isInt()) new_prm.sleep_timer = cfg["sleep_timer"].asInt();
+  if (cfg["method"].isString())
+    new_prm.input = ::cava::input_method_by_name(cfg["method"].asString().c_str());
+  if (cfg["source"].isString()) {
+    if (new_prm.audio_source) free(new_prm.audio_source);
+    new_prm.audio_source = strdup(cfg["source"].asString().c_str());
+  }
+  if (cfg["sample_rate"].isNumeric()) new_prm.samplerate = cfg["sample_rate"].asLargestInt();
+  if (cfg["sample_bits"].isInt()) new_prm.samplebits = cfg["sample_bits"].asInt();
+  if (cfg["stereo"].isBool()) new_prm.stereo = cfg["stereo"].asBool();
+  if (cfg["reverse"].isBool()) new_prm.reverse = cfg["reverse"].asBool();
+  if (cfg["bar_delimiter"].isInt()) new_prm.bar_delim = cfg["bar_delimiter"].asInt();
+  if (cfg["monstercat"].isBool()) new_prm.monstercat = cfg["monstercat"].asBool();
+  if (cfg["waves"].isBool()) new_prm.waves = cfg["waves"].asBool();
+  if (cfg["noise_reduction"].isDouble())
+    new_prm.noise_reduction = cfg["noise_reduction"].asDouble();
+  if (cfg["input_delay"].isInt())
+    fetch_input_delay_ = std::chrono::seconds(cfg["input_delay"].asInt());
+  if (cfg["gradient"].isInt()) new_prm.gradient = cfg["gradient"].asInt();
+  if (new_prm.gradient == 0)
+    new_prm.gradient_count = 0;
+  else if (cfg["gradient_count"].isInt())
+    new_prm.gradient_count = cfg["gradient_count"].asInt();
+  if (cfg["sdl_width"].isInt()) new_prm.sdl_width = cfg["sdl_width"].asInt();
+  if (cfg["sdl_height"].isInt()) new_prm.sdl_height = cfg["sdl_height"].asInt();
 
+  if (new_prm.framerate <= 0) {
+    throw std::runtime_error(std::string{"cava backend: framerate must be positive, got: "} +
+                             std::to_string(new_prm.framerate));
+  }
+
+  adaptive_delay_.reset(std::chrono::milliseconds(static_cast<int>(1e3 / new_prm.framerate)));
+  freeBackend();
+
+  try {
+    audio_raw_.height = new_prm.ascii_range;
+    audio_data_.format = -1;
+    audio_data_.rate = 0;
+    audio_data_.samples_counter = 0;
+    audio_data_.channels = 2;
+    audio_data_.IEEE_FLOAT = 0;
+    audio_data_.input_buffer_size = BUFFER_SIZE * audio_data_.channels;
+    audio_data_.cava_buffer_size = audio_data_.input_buffer_size * 8;
+    audio_data_.terminate = 0;
+    audio_data_.suspendFlag = false;
+
+    input_source_ = get_input(&audio_data_, &new_prm);
+    if (!input_source_) {
+      throw std::runtime_error("cava backend: API didn't provide an input audio source");
+    }
+
+    new_prm.output = ::cava::output_method::OUTPUT_RAW;
+
+    audio_raw_init(&audio_data_, &audio_raw_, &new_prm, &plan_);
+    if (!plan_) {
+      throw std::runtime_error("cava backend plan is not provided");
+    }
+    audio_raw_.previous_frame[0] = -1;
+    audio_raw_initialized_ = true;
+  } catch (...) {
+    freeBackend();
+    throw;
+  }
+
+  prm_ = new_prm;
+  new_prm_guard.release();
   prm_.output = output;
+
+  m_signal_config_changed_.emit();
 }
 
-const struct ::cava::config_params* waybar::modules::cava::CavaBackend::getPrm() { return &prm_; }
-std::chrono::milliseconds waybar::modules::cava::CavaBackend::getFrameTimeMilsec() {
-  return frame_time_milsec_;
-};
+const ::cava::config_params& waybar::modules::cava::CavaBackend::getPrm() const {
+  std::lock_guard<std::recursive_mutex> lock(state_mutex_);
+  return prm_;
+}
+
+std::chrono::milliseconds waybar::modules::cava::CavaBackend::getFrameTimeMilsec() const {
+  std::lock_guard<std::recursive_mutex> lock(state_mutex_);
+  return adaptive_delay_.current();
+}
