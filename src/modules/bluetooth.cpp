@@ -213,8 +213,6 @@ waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& 
 #ifdef WANT_RFKILL
   rfkill_.on_update.connect(sigc::hide(sigc::mem_fun(*this, &Bluetooth::update)));
 #endif
-
-  dp.emit();
 }
 
 auto waybar::modules::Bluetooth::update() -> void {

@@ -29,7 +29,6 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
   }
 
   IPC::getInstance().registerForIPC("monitor", this);
-  dp.emit();
 }
 
 Workspaces::~Workspaces() {

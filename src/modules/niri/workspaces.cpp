@@ -82,8 +82,6 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
     window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
   }
-
-  dp.emit();
 }
 
 Workspaces::~Workspaces() { gIPC->unregisterForIPC(this); }

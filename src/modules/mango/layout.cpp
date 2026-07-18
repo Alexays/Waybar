@@ -7,7 +7,6 @@ namespace waybar::modules::mango {
 Layout::Layout(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "layout", id, "{}", 0, false), bar_(bar) {
   IPC::getInstance().registerForIPC("monitor", this);
-  dp.emit();
 }
 
 Layout::~Layout() { IPC::getInstance().unregisterForIPC(this); }

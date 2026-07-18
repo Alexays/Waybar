@@ -88,8 +88,6 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
     throw std::runtime_error("Neither system nor user status is requested.");
 
   updateData();
-  /* Always update for the first time. */
-  dp.emit();
 }
 
 auto SystemdFailedUnits::notify_cb(const Glib::ustring& sender_name,

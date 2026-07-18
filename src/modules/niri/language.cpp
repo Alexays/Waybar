@@ -18,7 +18,6 @@ Language::Language(const std::string& id, const Bar& bar, const Json::Value& con
   gIPC->registerForIPC("KeyboardLayoutSwitched", this);
 
   updateFromIPC();
-  dp.emit();
 }
 
 Language::~Language() {
