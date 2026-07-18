@@ -120,9 +120,15 @@ bool waybar::modules::Backlight::handleScroll(GdkEventScroll* e) {
   if (config_["min-brightness"].isDouble()) {
     min_brightness = config_["min-brightness"].asDouble();
   }
-  if (backend.get_scaled_brightness(preferred_device_) <= min_brightness &&
-      ct == util::ChangeType::Decrease) {
-    return true;
+  if (ct == util::ChangeType::Decrease) {
+    const double current = backend.get_scaled_brightness(preferred_device_);
+    if (current <= min_brightness) {
+      return true;
+    }
+    if (current - step < min_brightness) {
+      backend.set_scaled_brightness(preferred_device_, static_cast<int>(std::round(min_brightness)));
+      return true;
+    }
   }
   backend.set_brightness(preferred_device_, ct, step);
 
