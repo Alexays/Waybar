@@ -1067,18 +1067,15 @@ void waybar::modules::Network::parseSignal(struct nlattr** bss) {
   if (bss[NL80211_BSS_SIGNAL_MBM] != nullptr) {
     // signalstrength in dBm from mBm
     signal_strength_dbm_ = nla_get_s32(bss[NL80211_BSS_SIGNAL_MBM]) / 100;
-    // WiFi-hardware usually operates in the range -90 to -30dBm.
 
-    // If a signal is too strong, it can overwhelm receiving circuity that is designed
-    // to pick up and process a certain signal level. The following percentage is scaled to
-    // punish signals that are too strong (>= -45dBm) or too weak (<= -45 dBm).
-    const int hardwareOptimum = -45;
-    const int hardwareMin = -90;
-    const int strength =
-        100 -
-        ((abs(signal_strength_dbm_ - hardwareOptimum) / double{hardwareOptimum - hardwareMin}) *
-         100);
-    signal_strength_ = std::clamp(strength, 0, 100);
+    // uses nmcli implementation for calculating strength
+    // https://github.com/NetworkManager/NetworkManager/blob/23ffa5fc6e7acbd7a96138c6c18f478f5127177d/src/libnm-platform/wifi/nm-wifi-utils-nl80211.c#L411
+
+    const int noise_floor_dbm = -90;
+    const int signal_max_dbm = -20;
+    signal_strength_dbm_ = CLAMP(signal_strength_dbm_, noise_floor_dbm, signal_max_dbm);
+    signal_strength_ = 100 - (70 * (((float)signal_max_dbm - (float)signal_strength_dbm_) /
+                                    ((float)signal_max_dbm - (float)noise_floor_dbm)));
 
     if (signal_strength_dbm_ >= -50) {
       signal_strength_app_ = "Great Connectivity";
