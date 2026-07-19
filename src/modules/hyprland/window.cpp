@@ -32,8 +32,6 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
   m_ipc.registerForIPC("changefloatingmode", this);
   m_ipc.registerForIPC("fullscreen", this);
   windowIpcUniqueLock.unlock();
-
-  dp.emit();
 }
 
 Window::~Window() {

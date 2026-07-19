@@ -104,7 +104,6 @@ Inhibitor::Inhibitor(const std::string& id, const Bar& bar, const Json::Value& c
       inhibitors_(::getInhibitors(config)) {
   event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
   event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &Inhibitor::handleToggle));
-  dp.emit();
 }
 
 Inhibitor::~Inhibitor() {
