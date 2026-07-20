@@ -5,12 +5,12 @@
 #include <fstream>
 #include <unordered_map>
 
-#include "ALabel.hpp"
+#include "AIconLabel.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
-class Memory : public ALabel {
+class Memory : public AIconLabel {
  public:
   Memory(const std::string&, const Json::Value&);
   virtual ~Memory() = default;

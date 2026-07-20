@@ -4,12 +4,12 @@
 
 #include <memory>
 
-#include "ALabel.hpp"
+#include "AIconLabel.hpp"
 #include "bar.hpp"
 
 namespace waybar::modules {
 
-class Inhibitor : public ALabel {
+class Inhibitor : public AIconLabel {
  public:
   Inhibitor(const std::string&, const waybar::Bar&, const Json::Value&);
   virtual ~Inhibitor();

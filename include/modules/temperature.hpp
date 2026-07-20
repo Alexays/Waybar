@@ -4,12 +4,12 @@
 
 #include <fstream>
 
-#include "ALabel.hpp"
+#include "AIconLabel.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
-class Temperature : public ALabel {
+class Temperature : public AIconLabel {
  public:
   Temperature(const std::string&, const Json::Value&);
   virtual ~Temperature() = default;
