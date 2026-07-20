@@ -42,6 +42,26 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
   }
   label_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(label_);
+  if (tooltipEnabled()) {
+    // Keep dynamic tooltip contents out of GtkWidget's tooltip-markup property.
+    // Setting that property queues a display-wide tooltip query, which restarts
+    // GTK's hover delay when modules update faster than the delay can expire.
+    label_.set_has_tooltip(true);
+    label_.signal_query_tooltip().connect(
+        [this](int, int, bool, const Glib::RefPtr<Gtk::Tooltip>& tooltip) {
+          if (!last_tooltip_markup_.has_value() || last_tooltip_markup_->empty()) {
+            active_tooltip_.reset();
+            return false;
+          }
+          active_tooltip_ = tooltip;
+          tooltip->set_markup(*last_tooltip_markup_);
+          return true;
+        });
+    event_box_.signal_leave_notify_event().connect([this](GdkEventCrossing*) {
+      active_tooltip_.reset();
+      return false;
+    });
+  }
   if (config_["max-length"].isUInt()) {
     label_.set_max_width_chars(config_["max-length"].asInt());
     label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
@@ -162,8 +182,10 @@ bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
     return false;
   }
 
-  label_.set_tooltip_markup(markup);
   last_tooltip_markup_ = markup.raw();
+  if (active_tooltip_) {
+    active_tooltip_->set_markup(markup);
+  }
   return true;
 }
 
