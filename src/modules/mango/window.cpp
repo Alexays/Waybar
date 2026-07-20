@@ -10,7 +10,6 @@ namespace waybar::modules::mango {
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     : AAppIconLabel(config, "window", id, "{title}", 0, true), bar_(bar) {
   IPC::getInstance().registerForIPC("monitor", this);
-  dp.emit();
 }
 
 Window::~Window() { IPC::getInstance().unregisterForIPC(this); }

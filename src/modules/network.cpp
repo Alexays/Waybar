@@ -140,7 +140,6 @@ waybar::modules::Network::Network(const std::string& id, const Json::Value& conf
   createEventSocket();
   createInfoSocket();
 
-  dp.emit();
   // Ask for a dump of interfaces and then addresses to populate our
   // information. First the interface dump, and once done, the callback
   // will be called again which will ask for addresses dump.

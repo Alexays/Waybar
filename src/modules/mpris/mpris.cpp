@@ -177,9 +177,6 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
       thread_.sleep_for(interval_);
     };
   }
-
-  // trigger initial update
-  dp.emit();
 }
 
 Mpris::~Mpris() {

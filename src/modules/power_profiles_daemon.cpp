@@ -44,8 +44,6 @@ PowerProfilesDaemon::PowerProfilesDaemon(const std::string& id, const Json::Valu
   Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SYSTEM, "net.hadess.PowerProfiles",
                                    "/net/hadess/PowerProfiles", "net.hadess.PowerProfiles",
                                    sigc::mem_fun(*this, &PowerProfilesDaemon::busConnectedCb));
-  // Schedule update to set the initial visibility
-  dp.emit();
 }
 
 void PowerProfilesDaemon::busConnectedCb(Glib::RefPtr<Gio::AsyncResult>& r) {

@@ -117,8 +117,6 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, Gtk::Orientat
   geoclue_backend = util::GeoClueBackend::GeoClueBackend::getInstance();
   geoclue_backend->in_use_changed_signal_event.connect(
       sigc::mem_fun(*this, &Privacy::onGeoCluePrivacyNodesChanged));
-
-  dp.emit();
 }
 
 void Privacy::onPWPrivacyNodesChanged() {

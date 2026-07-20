@@ -624,6 +624,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
             spdlog::error("{}: {}", ref, e.what());
           }
         });
+        module->dp.emit();
       } catch (const std::exception& e) {
         spdlog::warn("module {}: {}", name.asString(), e.what());
       }
