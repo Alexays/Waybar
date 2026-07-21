@@ -337,6 +337,14 @@ if true
         'src/modules/hyprland/windowcount.cpp',
         'src/modules/hyprland/workspace.cpp',
         'src/modules/hyprland/workspaces.cpp',
+        'src/modules/hyprland/workbar/module.cpp',
+        'src/modules/hyprland/workbar/widget.cpp',
+        'src/modules/hyprland/workbar/workspace_button.cpp',
+        'src/modules/hyprland/workbar/model.cpp',
+        'src/modules/hyprland/workbar/backend.cpp',
+        'src/modules/hyprland/workbar/window_icon.cpp',
+        'src/modules/hyprland/workbar/workspace_number.cpp',
+        'src/modules/hyprland/workbar/drag_state.cpp',
         'src/modules/hyprland/windowcreationpayload.cpp',
     )
     man_files += files(
@@ -344,6 +352,7 @@ if true
         'man/waybar-hyprland-submap.5.scd',
         'man/waybar-hyprland-window.5.scd',
         'man/waybar-hyprland-workspaces.5.scd',
+        'man/waybar-hyprland-workbar.5.scd',
     )
 endif
 
