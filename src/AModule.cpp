@@ -12,9 +12,12 @@
 namespace waybar {
 
 AModule::AModule(const Json::Value& config, const std::string& name, const std::string& id,
-                 bool enable_click, bool enable_scroll)
+                 std::mutex& reap_mtx, std::list<pid_t>& reap, bool enable_click,
+                 bool enable_scroll)
     : name_(name),
       config_(config),
+      reap_mtx(reap_mtx),
+      reap(reap),
       isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true},
       isExpand{config_["expand"].isBool() ? config_["expand"].asBool() : false},
       distance_scrolled_y_(0.0),
@@ -116,7 +119,8 @@ AModule::~AModule() {
 auto AModule::update() -> void {
   // Run user-provided update handler if configured
   if (config_["on-update"].isString()) {
-    pid_children_.push_back(util::command::forkExec(config_["on-update"].asString()));
+    pid_children_.push_back(
+        util::command::forkExec(config_["on-update"].asString(), this->reap_mtx, this->reap));
   }
   signal_updated.emit(this);
 }
@@ -255,7 +259,7 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
         cmd = format;
       }
     }
-    pid_children_.push_back(util::command::forkExec(cmd));
+    pid_children_.push_back(util::command::forkExec(cmd, this->reap_mtx, this->reap));
   }
   dp.emit();
   return true;
@@ -340,7 +344,8 @@ bool AModule::handleScroll(GdkEventScroll* e) {
   this->AModule::doAction(eventName);
   // Second call user scripts
   if (config_[eventName].isString())
-    pid_children_.push_back(util::command::forkExec(config_[eventName].asString()));
+    pid_children_.push_back(
+        util::command::forkExec(config_[eventName].asString(), this->reap_mtx, this->reap));
 
   dp.emit();
   return true;

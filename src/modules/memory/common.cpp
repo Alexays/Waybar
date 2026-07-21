@@ -11,8 +11,9 @@ const std::unordered_map<std::string, float> kUnits = {
     {"GiB", 1024.0 * 1024.0},   {"TB", 1e12 / 1024.0},   {"TiB", 1024.0 * 1024.0 * 1024.0}};
 }
 
-waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config)
-    : ALabel(config, "memory", id, "{}%", 30) {
+waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config,
+                                std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "memory", id, "{}%", reap_mtx, reap, 30) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);

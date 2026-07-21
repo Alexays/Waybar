@@ -9,11 +9,20 @@
 #include "config.hpp"
 
 namespace waybar {
+struct GtkMenuEventData {
+  std::mutex& reap_mtx;
+  std::list<pid_t> reap;
+  const char* menuActionItem;
+};
+
+void fake_gfree(void* freeable) {
+  delete freeable;
+}
 
 ALabel::ALabel(const Json::Value& config, const std::string& name, const std::string& id,
-               const std::string& format, uint16_t interval, bool ellipsize, bool enable_click,
-               bool enable_scroll)
-    : AModule(config, name, id,
+               const std::string& format, std::mutex& reap_mtx, std::list<pid_t>& reap,
+               uint16_t interval, bool ellipsize, bool enable_click, bool enable_scroll)
+    : AModule(config, name, id, reap_mtx, reap,
               config["format-alt"].isString() || config["menu"].isString() || enable_click,
               enable_scroll),
       format_(config_["format"].isString() ? config_["format"].asString() : format),
@@ -123,9 +132,10 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
         }
         submenus_[key] = GTK_MENU_ITEM(item);
         menuActionsMap_[key] = it->asString();
+        GtkMenuEventData* data = new GtkMenuEventData{reap_mtx, reap,
+		                                      menuActionsMap_[key].c_str()};
         g_signal_connect_data(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
-                              g_strdup(menuActionsMap_[key].c_str()), (GClosureNotify)g_free,
-                              (GConnectFlags)0);
+                         (gpointer)data, (GClosureNotify)fake_gfree, (GConnectFlags)0);
       }
       g_object_unref(builder);
     } catch (std::runtime_error& e) {
@@ -280,7 +290,9 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
 }
 
 void ALabel::handleGtkMenuEvent(GtkMenuItem* /*menuitem*/, gpointer data) {
-  waybar::util::command::forkExec((char*)data, "GtkMenu");
+  GtkMenuEventData* unpacked = (GtkMenuEventData*)data;
+  waybar::util::command::forkExec(unpacked->menuActionItem, "GtkMenu", unpacked->reap_mtx,
+                                  unpacked->reap);
 }
 
 std::string ALabel::getState(uint8_t value, bool lesser) {

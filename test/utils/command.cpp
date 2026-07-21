@@ -44,7 +44,8 @@ TEST_CASE("command::execNoRead returns 127 when shell exec fails", "[util][comma
 }
 
 TEST_CASE("command::forkExec child exits 127 when shell exec fails", "[util][command]") {
-  const auto pid = waybar::util::command::forkExec("echo should-not-run", "test-output");
+  const auto pid =
+      waybar::util::command::forkExec("echo should-not-run", "test-output", reap_mtx, reap);
   REQUIRE(pid > 0);
 
   int status = -1;

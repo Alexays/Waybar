@@ -21,8 +21,11 @@ uint32_t WorkspaceManager::workspace_global_id = 0;
 std::map<std::string, std::string> Workspace::icon_map_;
 
 WorkspaceManager::WorkspaceManager(const std::string& id, const waybar::Bar& bar,
-                                   const Json::Value& config)
-    : waybar::AModule(config, "workspaces", id, false, false), bar_(bar), box_(bar.orientation, 0) {
+                                   const Json::Value& config, std::mutex& reap_mtx,
+                                   std::list<pid_t>& reap)
+    : waybar::AModule(config, "workspaces", id, reap_mtx, reap, false, false),
+      bar_(bar),
+      box_(bar.orientation, 0) {
   add_registry_listener(this);
 
   // parse configuration

@@ -8,8 +8,9 @@
 
 namespace waybar::modules::mango {
 
-Language::Language(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "language", id, "{}", 0, false), bar_(bar), rxkb_ctx_(nullptr) {
+Language::Language(const std::string& id, const Bar& bar, const Json::Value& config,
+		   std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "language", id, "{}", reap_mtx, reap, 0, false), bar_(bar), rxkb_ctx_(nullptr) {
   rxkb_ctx_ = rxkb_context_new(RXKB_CONTEXT_LOAD_EXOTIC_RULES);
   if (rxkb_ctx_) {
     rxkb_context_parse_default_ruleset(rxkb_ctx_);

@@ -13,7 +13,7 @@ namespace waybar::modules::mango {
 
 class Window : public AAppIconLabel, public EventHandler {
  public:
-  Window(const std::string&, const Bar&, const Json::Value&);
+  Window(const std::string&, const Bar&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   ~Window() override;
   void update() override;
 

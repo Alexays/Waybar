@@ -12,7 +12,8 @@ namespace waybar::modules::river {
 
 class Window : public waybar::ALabel {
  public:
-  Window(const std::string&, const waybar::Bar&, const Json::Value&);
+  Window(const std::string&, const waybar::Bar&, const Json::Value&, std::mutex&,
+         std::list<pid_t>&);
   virtual ~Window();
 
   // Handlers for wayland events

@@ -16,7 +16,7 @@ namespace waybar::modules::SNI {
 
 class Tray : public AModule {
  public:
-  Tray(const std::string&, const Bar&, const Json::Value&);
+  Tray(const std::string&, const Bar&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   ~Tray() override = default;
   auto update() -> void override;
 
