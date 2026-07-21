@@ -102,6 +102,14 @@ libcava lives in:
 :[ integer
 :[ 0
 :[ Delimiter placed between bars in the raw output. Use a decimal ASCII value (e.g. 59 = ";"). 0 means no delimiter.
+|[ *data_format*
+:[ string
+:[ ascii
+:[ Raw data format. Can be 'binary' or 'ascii'. **Raw frontend only.**
+|[ *raw_target*
+:[ string
+:[
+:[ Raw output target. A fifo will be created if target does not exist. **Raw frontend only.**
 |[ *monstercat*
 :[ bool
 :[ false
@@ -114,14 +122,6 @@ libcava lives in:
 :[ double
 :[ 0.77
 :[ Smoothing factor between 0.0 and 1.0. Higher values produce slower, smoother animation; lower values are more reactive but noisy.
-|[ *gravity*
-:[ integer
-:[
-:[ Gravity factor. Higher values make bars fall faster. When *noise_reduction* is set, this is derived automatically.
-|[ *integral*
-:[ integer
-:[
-:[ Integral smoothing factor. Higher values produce smoother but less precise animation. When *noise_reduction* is set, this is derived automatically.
 |[ *input_delay*
 :[ integer
 :[ 4
@@ -162,6 +162,14 @@ libcava lives in:
 :[ integer
 :[
 :[ GLSL frontend height in pixels. **GLSL only.**
+|[ *min-length*
+:[ integer
+:[
+:[ Requested width of the GLSL widget in pixels. If not set, falls back to *max-length*, then *sdl_width*. **GLSL only.**
+|[ *max-length*
+:[ integer
+:[
+:[ Fallback width of the GLSL widget if *min-length* is not set. **GLSL only.**
 |[ *vertex_shader*
 :[ string
 :[
@@ -185,11 +193,11 @@ libcava lives in:
 |[ *gradient*
 :[ integer
 :[ 0
-:[ Enable gradient mode (0 = off, 1 = on). **GLSL only; set in the *[color]* section of the cava configuration file.**
+:[ Enable gradient mode (0 = off, 1 = on). **GLSL only.** Can also be set in the *[color]* section of the cava configuration file.
 |[ *gradient_count*
 :[ integer
 :[ 0
-:[ Number of gradient colors (up to 8). **GLSL only; set in the *[color]* section of the cava configuration file.**
+:[ Number of gradient colors (up to 8). **GLSL only.** Can also be set in the *[color]* section of the cava configuration file.
 |[ *gradient_color_N*
 :[ string
 :[
@@ -625,7 +633,7 @@ vertex_shader = pass_through.vert
 fragment_shader = bar_spectrum.frag
 
 ; for glsl output mode, keep rendering even if no audio
-continuous_rendering = 1;
+continuous_rendering = 1
 
 # disable console blank (screen saver) in tty
 # (Not supported on FreeBSD)

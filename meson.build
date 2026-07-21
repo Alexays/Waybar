@@ -538,7 +538,7 @@ else
 endif
 
 cava = dependency('libcava',
-                  version : '>=0.10.7',
+                  version : '>=1.0.0',
                   required: get_option('cava'),
                   fallback : ['libcava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')
