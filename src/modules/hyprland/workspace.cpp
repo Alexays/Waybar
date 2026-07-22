@@ -8,6 +8,7 @@
 #include <set>
 #include <string>
 #include <utility>
+#include <gtkmm/eventbox.h>
 
 #include "modules/hyprland/workspaces.hpp"
 #include "util/command.hpp"
@@ -527,7 +528,7 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
     }
   }
 
-  // Build a list of windows to display, removing duplicates by window_class
+  // Build a list of windows to display
   // and respecting max-icons limit
   std::vector<const WindowRepr*> windowsToShow;
   std::set<std::string> seenClasses;
@@ -536,11 +537,10 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
     if (shouldSkipWindow(window_repr)) {
       return;
     }
-    // Deduplicate by window_class
-    if (seenClasses.find(window_repr.window_class) != seenClasses.end()) {
-      return;
+    if (m_workspaceManager.uniqueIcons()) {
+      if (seenClasses.find(window_repr.window_class) != seenClasses.end()) return;
+      seenClasses.insert(window_repr.window_class);
     }
-    seenClasses.insert(window_repr.window_class);
     windowsToShow.push_back(&window_repr);
   };
 
@@ -579,16 +579,9 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
     window_box->set_tooltip_markup(window_repr->window_title);
 
-    auto button = Gtk::manage(new Gtk::Button());
-    button->set_relief(Gtk::RELIEF_NONE);
-    button->add(*window_box);
-    button->get_style_context()->add_class("taskbar-window");
+    window_box->get_style_context()->add_class("taskbar-window");
     if (window_repr->isActive) {
-      button->get_style_context()->add_class("active");
-    }
-    if (m_workspaceManager.onClickWindow() != "") {
-      button->signal_button_press_event().connect(
-          sigc::bind(sigc::mem_fun(*this, &Workspace::handleClick), window_repr->address), false);
+      window_box->get_style_context()->add_class("active");
     }
 
     auto text_before = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatBefore()),
@@ -613,8 +606,19 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
       window_box->pack_start(*window_label_after, true, true);
     }
 
-    m_content.pack_start(*button, true, false);
-    button->show_all();
+    Gtk::Widget* taskbar_item;
+    if (m_workspaceManager.onClickWindow() != "") {
+      auto event_box = Gtk::manage(new Gtk::EventBox());
+      event_box->add(*window_box);
+      event_box->add_events(Gdk::BUTTON_PRESS_MASK);
+      event_box->signal_button_press_event().connect(
+          sigc::bind(sigc::mem_fun(*this, &Workspace::handleClick), window_repr->address), false);
+      taskbar_item = event_box;
+    } else {
+      taskbar_item = window_box;
+    }
+    m_content.pack_start(*taskbar_item, true, false);
+    taskbar_item->show_all();
   }
 
   auto formatAfter = m_workspaceManager.formatAfter();
@@ -631,13 +635,17 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
 
 bool Workspace::handleClick(const GdkEventButton* event_button, WindowAddress const& addr) const {
   if (event_button->type == GDK_BUTTON_PRESS) {
-    std::string command = std::regex_replace(m_workspaceManager.onClickWindow(),
-                                             std::regex("\\{address\\}"), "0x" + addr);
-    command = std::regex_replace(command, std::regex("\\{button\\}"),
-                                 std::to_string(event_button->button));
-    auto res = util::command::execNoRead(command);
-    if (res.exit_code != 0) {
-      spdlog::error("Failed to execute {}: {}", command, res.out);
+    if (m_workspaceManager.onClickWindow() != "") {
+      std::string command = std::regex_replace(m_workspaceManager.onClickWindow(),
+                                               std::regex("\\{address\\}"), "0x" + addr);
+      command = std::regex_replace(command, std::regex("\\{button\\}"),
+                                   std::to_string(event_button->button));
+      auto pid = util::command::forkExec(command);
+      if (pid < 0) {
+        spdlog::error("Failed to fork for command: {}", command);
+      }
+    } else {
+      util::command::forkExec("hyprctl dispatch focuswindow address:0x" + addr);
     }
   }
   return true;
