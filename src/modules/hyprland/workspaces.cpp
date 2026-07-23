@@ -682,7 +682,7 @@ auto Workspaces::populateSortByConfig(const Json::Value& config) -> void {
   if (configSortBy.isString()) {
     auto sortByStr = configSortBy.asString();
     try {
-      m_sortBy = m_enumParser.parseStringToEnum(sortByStr, m_sortMap);
+      m_sortBy = waybar::util::parseStringToEnum<SortMethod>(sortByStr, m_sortMap);
     } catch (const std::invalid_argument& e) {
       m_sortBy = SortMethod::DEFAULT;
       spdlog::warn(
@@ -806,7 +806,7 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value& config) -> vo
     auto posStr = workspaceTaskbar["active-window-position"].asString();
     try {
       m_activeWindowPosition =
-          m_activeWindowEnumParser.parseStringToEnum(posStr, m_activeWindowPositionMap);
+        util::parseStringToEnum<ActiveWindowPosition>(posStr, m_activeWindowPositionMap);
     } catch (const std::invalid_argument& e) {
       spdlog::warn(
           "Invalid string representation for active-window-position. Falling back to 'none'.");
