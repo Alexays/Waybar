@@ -39,6 +39,10 @@ struct TaskInfo {
   bool fullscreen = false;
   bool urgent = false;
   std::string workspace;
+  // Whether this window's workspace is the one currently displayed on its
+  // output. Always true when "all-outputs" is false, since the tree walk filters
+  // non-visible workspaces out in that case.
+  bool workspace_visible = false;
 };
 
 class Taskbar;
@@ -128,6 +132,7 @@ class Task {
   bool fullscreen_ = false;
   bool urgent_ = false;
   std::string workspace_;
+  bool workspace_visible_ = false;
 };
 
 using TaskPtr = std::unique_ptr<Task>;

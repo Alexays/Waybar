@@ -213,6 +213,18 @@ Invalid expressions (e.g., mismatched parentheses) are skipped.
 - *#taskbar button.active*
 - *#taskbar button.fullscreen*
 - *#taskbar button.urgent*
+- *#taskbar button.visible*
+
+The *visible* class is set when the window's workspace is the one currently
+displayed on its output. With *all-outputs* set to false every listed window is
+on the current workspace, so the class is always present; it is chiefly useful
+together with *all-outputs* to de-emphasise windows you are not looking at:
+
+```
+#taskbar button:not(.visible) {
+	opacity: 0.5;
+}
+```
 
 # Bar state style
 
