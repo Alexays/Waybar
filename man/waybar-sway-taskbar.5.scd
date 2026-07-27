@@ -9,6 +9,12 @@ waybar - sway taskbar module
 The *taskbar* module displays the currently open applications. This version
 sources its data from the sway IPC protocol and requires running under sway.
 
+Its configuration is a superset of the *wlr/taskbar* module's, and with default
+settings it lists the same applications, so it can be used as a drop-in
+replacement. Reading the IPC tree rather than the *wlr-foreign-toplevel*
+protocol additionally makes windows on non-displayed workspaces available; see
+*all-workspaces*.
+
 # CONFIGURATION
 
 Addressed by *sway/taskbar*
@@ -16,9 +22,17 @@ Addressed by *sway/taskbar*
 *all-outputs*: ++
 	typeof: bool ++
 	default: false ++
-	If set to false, applications on the bar's current output and current
-	workspace are shown. Otherwise, all applications on all outputs and
-	workspaces are shown.
+	If set to false, only applications on the bar's current output are shown.
+	Otherwise, applications on all outputs are shown. Also supplies the default
+	for *all-workspaces*.
+
+*all-workspaces*: ++
+	typeof: bool ++
+	default: value of *all-outputs* ++
+	If set to false, only applications on the workspace currently displayed on
+	their output are shown. Otherwise, applications on all workspaces are shown.
+	When left unset it follows *all-outputs*, which reproduces the behaviour of
+	the *wlr/taskbar* module.
 
 *bar-css-states*: ++
 	typeof: bool ++
@@ -216,9 +230,9 @@ Invalid expressions (e.g., mismatched parentheses) are skipped.
 - *#taskbar button.visible*
 
 The *visible* class is set when the window's workspace is the one currently
-displayed on its output. With *all-outputs* set to false every listed window is
-on the current workspace, so the class is always present; it is chiefly useful
-together with *all-outputs* to de-emphasise windows you are not looking at:
+displayed on its output. With *all-workspaces* set to false every listed window
+is on a displayed workspace, so the class is always present; it is chiefly useful
+together with *all-workspaces* to de-emphasise windows you are not looking at:
 
 ```
 #taskbar button:not(.visible) {

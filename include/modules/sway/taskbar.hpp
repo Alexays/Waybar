@@ -40,8 +40,8 @@ struct TaskInfo {
   bool urgent = false;
   std::string workspace;
   // Whether this window's workspace is the one currently displayed on its
-  // output. Always true when "all-outputs" is false, since the tree walk filters
-  // non-visible workspaces out in that case.
+  // output. Always true when "all-workspaces" is false, since the tree walk
+  // filters non-visible workspaces out in that case.
   bool workspace_visible = false;
 };
 
@@ -160,6 +160,7 @@ class Taskbar : public waybar::AModule {
   void onCmd(const struct Ipc::ipc_response&);
 
   bool allOutputs() const;
+  bool allWorkspaces() const;
   void recordUserOrder();
   std::size_t taskAppIdCount(std::string_view app_id) const;
   std::size_t taskTitleCount(std::string_view title) const;
