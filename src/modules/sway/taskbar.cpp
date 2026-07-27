@@ -100,6 +100,7 @@ void walk_tree(const Json::Value& node, std::string output, std::string output_c
       info.fullscreen = node["fullscreen_mode"].asInt() != 0;
       info.urgent = node["urgent"].asBool();
       info.workspace = workspace;
+      info.workspace_visible = workspace_visible;
       windows.push_back(std::move(info));
     }
     return;
@@ -277,6 +278,7 @@ void Task::setData(const TaskInfo& info) {
   fullscreen_ = info.fullscreen;
   urgent_ = info.urgent;
   workspace_ = info.workspace;
+  workspace_visible_ = info.workspace_visible;
 
   if (!identity_changed) {
     return;
@@ -429,6 +431,11 @@ void Task::update() {
     style->add_class("urgent");
   else
     style->remove_class("urgent");
+
+  if (workspace_visible_)
+    style->add_class("visible");
+  else
+    style->remove_class("visible");
 
   if (button_visible_ && active_only_) {
     if (active_)
