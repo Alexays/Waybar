@@ -161,6 +161,7 @@ void TreeWalker::collect(const Json::Value& node, const Ancestry& state) {
     info.urgent = node["urgent"].asBool();
     info.workspace = state.workspace;
     info.workspace_visible = state.workspace_visible;
+    info.current_output = state.output == bar_output_;
     result_.windows.push_back(std::move(info));
   }
 }
@@ -328,6 +329,7 @@ void Task::setData(const TaskInfo& info) {
   urgent_ = info.urgent;
   workspace_ = info.workspace;
   workspace_visible_ = info.workspace_visible;
+  current_output_ = info.current_output;
 
   if (!identity_changed) {
     return;
@@ -485,6 +487,11 @@ void Task::update() {
     style->add_class("visible");
   else
     style->remove_class("visible");
+
+  if (current_output_)
+    style->add_class("current_output");
+  else
+    style->remove_class("current_output");
 
   if (button_visible_ && active_only_) {
     if (active_)
