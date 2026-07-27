@@ -70,7 +70,7 @@ bool is_leaf_view(const Json::Value& node) {
 // is "visible" when its name matches its output's `current_workspace` — GET_TREE
 // workspace nodes have no `visible` field (unlike GET_WORKSPACES).
 void walk_tree(const Json::Value& node, std::string output, std::string output_current_ws,
-               std::string workspace, bool workspace_visible, bool all_outputs,
+               std::string workspace, bool workspace_visible, bool all_outputs, bool all_workspaces,
                const std::string& bar_output, const std::map<std::string, std::string>& replace_map,
                std::vector<TaskInfo>& windows, std::string& focused_workspace) {
   const auto type = node["type"].asString();
@@ -91,7 +91,7 @@ void walk_tree(const Json::Value& node, std::string output, std::string output_c
       focused_workspace = workspace;
     }
 
-    if (all_outputs || (output == bar_output && workspace_visible)) {
+    if ((all_outputs || output == bar_output) && (all_workspaces || workspace_visible)) {
       TaskInfo info;
       info.id = node["id"].asInt64();
       info.title = node["name"].isString() ? node["name"].asString() : "";
@@ -108,11 +108,11 @@ void walk_tree(const Json::Value& node, std::string output, std::string output_c
 
   for (const auto& child : node["nodes"]) {
     walk_tree(child, output, output_current_ws, workspace, workspace_visible, all_outputs,
-              bar_output, replace_map, windows, focused_workspace);
+              all_workspaces, bar_output, replace_map, windows, focused_workspace);
   }
   for (const auto& child : node["floating_nodes"]) {
     walk_tree(child, output, output_current_ws, workspace, workspace_visible, all_outputs,
-              bar_output, replace_map, windows, focused_workspace);
+              all_workspaces, bar_output, replace_map, windows, focused_workspace);
   }
 }
 
@@ -564,8 +564,8 @@ void Taskbar::onCmd(const struct Ipc::ipc_response& res) {
 
     std::vector<TaskInfo> windows;
     std::string focused_workspace;
-    walk_tree(payload, "", "", "", false, allOutputs(), bar_.output->name, app_ids_replace_map_,
-              windows, focused_workspace);
+    walk_tree(payload, "", "", "", false, allOutputs(), allWorkspaces(), bar_.output->name,
+              app_ids_replace_map_, windows, focused_workspace);
 
     {
       std::lock_guard<std::mutex> lock(mutex_);
@@ -796,6 +796,13 @@ void Taskbar::recordUserOrder() {
 
 bool Taskbar::allOutputs() const {
   return config_["all-outputs"].isBool() && config_["all-outputs"].asBool();
+}
+
+// Defaults to "all-outputs" so that setting only "all-outputs" matches
+// wlr/taskbar, which this module can stand in for.
+bool Taskbar::allWorkspaces() const {
+  const auto& value = config_["all-workspaces"];
+  return value.isBool() ? value.asBool() : allOutputs();
 }
 
 Ipc& Taskbar::ipc() { return ipc_; }
