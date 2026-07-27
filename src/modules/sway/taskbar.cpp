@@ -63,56 +63,105 @@ bool is_leaf_view(const Json::Value& node) {
          node["floating_nodes"].empty();
 }
 
-// Recursively walks the sway node tree (as returned by GET_TREE), collecting
-// every leaf view into `windows` and tracking which workspace is currently
-// globally focused. `output`/`workspace`/`workspace_visible` describe the
-// nearest ancestor output/workspace at each point in the recursion. A workspace
-// is "visible" when its name matches its output's `current_workspace` — GET_TREE
-// workspace nodes have no `visible` field (unlike GET_WORKSPACES).
-void walk_tree(const Json::Value& node, std::string output, std::string output_current_ws,
-               std::string workspace, bool workspace_visible, bool all_outputs, bool all_workspaces,
-               const std::string& bar_output, const std::map<std::string, std::string>& replace_map,
-               std::vector<TaskInfo>& windows, std::string& focused_workspace) {
+// Everything Taskbar takes from one GET_TREE response.
+struct TreeSnapshot {
+  std::vector<TaskInfo> windows;
+  std::string focused_workspace;
+};
+
+// Implementation detail of walk_tree() below; single-use, one per response.
+//
+// Deliberately knows nothing about Taskbar: it runs on the Ipc worker thread and
+// so must not reach main-thread state.
+class TreeWalker {
+ public:
+  TreeWalker(bool all_outputs, bool all_workspaces, std::string_view bar_output,
+             const std::map<std::string, std::string>& replace_map)
+      : all_outputs_(all_outputs),
+        all_workspaces_(all_workspaces),
+        bar_output_(bar_output),
+        replace_map_(replace_map) {}
+
+  TreeSnapshot run(const Json::Value& root) {
+    walk(root, Ancestry{});
+    return std::move(result_);
+  }
+
+ private:
+  // The nearest ancestor output and workspace at a point in the recursion. A
+  // workspace is "visible" when its name matches its output's
+  // `current_workspace` — GET_TREE workspace nodes have no `visible` field
+  // (unlike GET_WORKSPACES).
+  struct Ancestry {
+    std::string output;
+    std::string output_current_ws;
+    std::string workspace;
+    bool workspace_visible = false;
+  };
+
+  void walk(const Json::Value& node, Ancestry state);
+  void collect(const Json::Value& node, const Ancestry& state);
+
+  const bool all_outputs_;
+  const bool all_workspaces_;
+  const std::string_view bar_output_;
+  const std::map<std::string, std::string>& replace_map_;
+  TreeSnapshot result_;
+};
+
+// Recursively walks the sway node tree (as returned by GET_TREE), collecting the
+// leaf views the caller is configured to show and tracking which workspace is
+// currently globally focused.
+TreeSnapshot walk_tree(const Json::Value& root, bool all_outputs, bool all_workspaces,
+                       std::string_view bar_output,
+                       const std::map<std::string, std::string>& replace_map) {
+  return TreeWalker(all_outputs, all_workspaces, bar_output, replace_map).run(root);
+}
+
+void TreeWalker::walk(const Json::Value& node, Ancestry state) {
   const auto type = node["type"].asString();
   if (type == "output") {
-    output = node["name"].asString();
-    output_current_ws =
+    state.output = node["name"].asString();
+    state.output_current_ws =
         node["current_workspace"].isString() ? node["current_workspace"].asString() : "";
   } else if (type == "workspace") {
-    workspace = node["name"].asString();
-    workspace_visible = workspace == output_current_ws;
+    state.workspace = node["name"].asString();
+    state.workspace_visible = state.workspace == state.output_current_ws;
     if (node["focused"].asBool()) {
-      focused_workspace = workspace;
+      result_.focused_workspace = state.workspace;
     }
   }
 
   if (is_leaf_view(node)) {
-    if (node["focused"].asBool()) {
-      focused_workspace = workspace;
-    }
-
-    if ((all_outputs || output == bar_output) && (all_workspaces || workspace_visible)) {
-      TaskInfo info;
-      info.id = node["id"].asInt64();
-      info.title = node["name"].isString() ? node["name"].asString() : "";
-      std::tie(info.app_id, info.app_class) = resolve_app_id(node, replace_map);
-      info.active = node["focused"].asBool();
-      info.fullscreen = node["fullscreen_mode"].asInt() != 0;
-      info.urgent = node["urgent"].asBool();
-      info.workspace = workspace;
-      info.workspace_visible = workspace_visible;
-      windows.push_back(std::move(info));
-    }
+    collect(node, state);
     return;
   }
 
   for (const auto& child : node["nodes"]) {
-    walk_tree(child, output, output_current_ws, workspace, workspace_visible, all_outputs,
-              all_workspaces, bar_output, replace_map, windows, focused_workspace);
+    walk(child, state);
   }
   for (const auto& child : node["floating_nodes"]) {
-    walk_tree(child, output, output_current_ws, workspace, workspace_visible, all_outputs,
-              all_workspaces, bar_output, replace_map, windows, focused_workspace);
+    walk(child, state);
+  }
+}
+
+void TreeWalker::collect(const Json::Value& node, const Ancestry& state) {
+  if (node["focused"].asBool()) {
+    result_.focused_workspace = state.workspace;
+  }
+
+  if ((all_outputs_ || state.output == bar_output_) &&
+      (all_workspaces_ || state.workspace_visible)) {
+    TaskInfo info;
+    info.id = node["id"].asInt64();
+    info.title = node["name"].isString() ? node["name"].asString() : "";
+    std::tie(info.app_id, info.app_class) = resolve_app_id(node, replace_map_);
+    info.active = node["focused"].asBool();
+    info.fullscreen = node["fullscreen_mode"].asInt() != 0;
+    info.urgent = node["urgent"].asBool();
+    info.workspace = state.workspace;
+    info.workspace_visible = state.workspace_visible;
+    result_.windows.push_back(std::move(info));
   }
 }
 
@@ -562,15 +611,13 @@ void Taskbar::onCmd(const struct Ipc::ipc_response& res) {
     // blocks behind a full tree parse.
     auto payload = parser_.parse(res.payload);
 
-    std::vector<TaskInfo> windows;
-    std::string focused_workspace;
-    walk_tree(payload, "", "", "", false, allOutputs(), allWorkspaces(), bar_.output->name,
-              app_ids_replace_map_, windows, focused_workspace);
+    auto snapshot =
+        walk_tree(payload, allOutputs(), allWorkspaces(), bar_.output->name, app_ids_replace_map_);
 
     {
       std::lock_guard<std::mutex> lock(mutex_);
-      windows_ = std::move(windows);
-      current_workspace_ = std::move(focused_workspace);
+      windows_ = std::move(snapshot.windows);
+      current_workspace_ = std::move(snapshot.focused_workspace);
     }
     dp.emit();
   } catch (const std::exception& e) {
