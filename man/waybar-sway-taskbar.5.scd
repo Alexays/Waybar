@@ -225,6 +225,7 @@ Invalid expressions (e.g., mismatched parentheses) are skipped.
 - *#taskbar.empty*
 - *#taskbar button*
 - *#taskbar button.active*
+- *#taskbar button.current_output*
 - *#taskbar button.fullscreen*
 - *#taskbar button.urgent*
 - *#taskbar button.visible*
@@ -236,6 +237,17 @@ together with *all-workspaces* to de-emphasise windows you are not looking at:
 
 ```
 #taskbar button:not(.visible) {
+	opacity: 0.5;
+}
+```
+
+The *current_output* class is set when the window is on the same output as the
+bar. With *all-outputs* set to false every listed window is on the bar's output,
+so the class is always present; it is chiefly useful together with *all-outputs*
+to distinguish windows living on other monitors.
+
+```
+#taskbar button:not(.current_output) {
 	opacity: 0.5;
 }
 ```

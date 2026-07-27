@@ -43,6 +43,10 @@ struct TaskInfo {
   // output. Always true when "all-workspaces" is false, since the tree walk
   // filters non-visible workspaces out in that case.
   bool workspace_visible = false;
+  // Whether this window is on the same output as the bar. Always true when
+  // "all-outputs" is false, since the tree walk filters other outputs out in
+  // that case.
+  bool current_output = false;
 };
 
 class Taskbar;
@@ -63,6 +67,7 @@ class Task {
   bool fullscreen() const { return fullscreen_; }
   bool urgent() const { return urgent_; }
   std::string workspace() const { return workspace_; }
+  bool current_output() const { return current_output_; }
   /* Whether the button is packed into the taskbar box. */
   bool visible() const { return button_visible_; }
   /* Whether the button is packed *and* actually rendered: with "active-only"
@@ -133,6 +138,7 @@ class Task {
   bool urgent_ = false;
   std::string workspace_;
   bool workspace_visible_ = false;
+  bool current_output_ = false;
 };
 
 using TaskPtr = std::unique_ptr<Task>;
