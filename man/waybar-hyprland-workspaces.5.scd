@@ -196,6 +196,20 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	If set to special-centered, workspaces will sort by default with special workspaces in the center.
 	If none of those, workspaces will sort with default behavior.
 
+*window-sort-by*: ++
+	typeof: string ++
+	default: "insertion" ++
+	Controls the order of the windows *within* a workspace. Applies both to the *{windows}* replacement and to *workspace-taskbar*.
+	If set to insertion, windows appear in the order Hyprland created them. This is the historical behavior.
+	If set to position, windows appear in on-screen layout order: left to right, then top to bottom. Floating windows are ordered inline with tiled ones.
+	If set to position-floating-last, the same as position, except floating windows are placed after all tiled ones.
+	When combined with *workspace-taskbar*'s *active-window-position*, windows are sorted by position first and the active window is then moved to the requested end, so both options apply.
+
+*window-sort-interval*: ++
+	typeof: integer ++
+	default: 500 ++
+	How often, in milliseconds, to check for changes in window positions. Only used when *window-sort-by* orders by position. Hyprland emits no event when windows are rearranged within a workspace (for example *layoutmsg swapcol*, *movewindow*, or a drag-move), so this is polled. A redraw only happens when a position actually changed. Values below 50 are clamped.
+
 *tooltip*: ++
 	typeof: bool ++
 	default: true ++

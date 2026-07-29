@@ -1,5 +1,6 @@
 #include "modules/hyprland/workspaces.hpp"
 
+#include <glibmm/main.h>
 #include <json/value.h>
 #include <spdlog/spdlog.h>
 
@@ -31,6 +32,12 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
   setCurrentMonitorId();
   init();
   registerIpc();
+
+  // Only worth polling if this module actually renders windows.
+  if (sortsWindowsByPosition() && (m_withWindows || m_enableTaskbar)) {
+    m_windowPositionPoll = Glib::signal_timeout().connect(
+        sigc::mem_fun(*this, &Workspaces::checkWindowPositions), m_windowSortInterval);
+  }
 }
 
 Workspaces::~Workspaces() {
@@ -41,6 +48,9 @@ Workspaces::~Workspaces() {
   // Runs on the main thread, same as where the timer is armed.
   if (m_debounceTimer.connected()) {
     m_debounceTimer.disconnect();
+  }
+  if (m_windowPositionPoll.connected()) {
+    m_windowPositionPoll.disconnect();
   }
   m_ipc.unregisterForIPC(this);
   // wait for possible event handler to finish
@@ -610,7 +620,7 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
   const auto& configFormat = config["format"];
   m_formatBefore = configFormat.isString() ? configFormat.asString() : "{name}";
   m_withIcon = m_formatBefore.find("{icon}") != std::string::npos;
-  auto withWindows = m_formatBefore.find("{windows}") != std::string::npos;
+  m_withWindows = m_formatBefore.find("{windows}") != std::string::npos;
 
   if (m_withIcon && m_iconsMap.empty()) {
     populateIconsMap(config["format-icons"]);
@@ -637,6 +647,7 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
 
   m_persistentWorkspaceConfig = config.get("persistent-workspaces", Json::Value());
   populateSortByConfig(config);
+  populateWindowSortByConfig(config);
   populateIgnoreWorkspacesConfig(config);
   populateFormatWindowSeparatorConfig(config);
 
@@ -652,7 +663,7 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
   populateWindowRewriteConfig(config);
   populateMaxWindowsConfig(config);
 
-  if (withWindows) {
+  if (m_withWindows) {
     populateWorkspaceTaskbarConfig(config);
   }
   if (m_enableTaskbar) {
@@ -688,6 +699,24 @@ auto Workspaces::populateSortByConfig(const Json::Value& config) -> void {
       spdlog::warn(
           "Invalid string representation for sort-by. Falling back to default sort method.");
     }
+  }
+}
+
+auto Workspaces::populateWindowSortByConfig(const Json::Value& config) -> void {
+  const auto& configWindowSortBy = config["window-sort-by"];
+  if (configWindowSortBy.isString()) {
+    auto windowSortByStr = configWindowSortBy.asString();
+    try {
+      m_windowSortBy = m_windowSortEnumParser.parseStringToEnum(windowSortByStr, m_windowSortMap);
+    } catch (const std::invalid_argument& e) {
+      m_windowSortBy = WindowSortMethod::INSERTION;
+      spdlog::warn("Invalid string representation for window-sort-by. Falling back to insertion.");
+    }
+  }
+
+  const auto& configInterval = config["window-sort-interval"];
+  if (configInterval.isInt()) {
+    m_windowSortInterval = std::max(configInterval.asInt(), 50);
   }
 }
 
@@ -1101,6 +1130,10 @@ void Workspaces::updateWorkspaceStates() {
   std::string currentWorkspaceName =
       currentWorkspace.isMember("name") ? currentWorkspace["name"].asString() : "";
 
+  if (sortsWindowsByPosition()) {
+    m_lastWindowPositions = queryWindowPositions();
+  }
+
   for (auto& workspace : m_workspaces) {
     bool isActiveByName =
         !currentWorkspaceName.empty() && workspace->name() == currentWorkspaceName;
@@ -1127,8 +1160,53 @@ void Workspaces::updateWorkspaceStates() {
     if (updatedWorkspace != updatedWorkspaces.end()) {
       workspace->setOutput((*updatedWorkspace)["monitor"].asString());
     }
+    if (sortsWindowsByPosition()) {
+      workspace->sortWindowsByPosition(m_lastWindowPositions,
+                                       m_windowSortBy == WindowSortMethod::POSITION_FLOATING_LAST);
+      // Sorting rewrites the order active-window-position established, so re-apply it on top.
+      // Skipped until an active window is known, so this never clears the active flag.
+      if (m_activeWindowPosition != ActiveWindowPosition::NONE &&
+          !m_currentActiveWindowAddress.empty()) {
+        workspace->setActiveWindow(m_currentActiveWindowAddress);
+      }
+    }
     workspace->update(workspaceIcon, workspaceTooltip);
   }
+}
+
+WindowPositions Workspaces::queryWindowPositions() const {
+  WindowPositions positions;
+  for (const auto& client : m_ipc.getSocket1JsonReply("clients")) {
+    const auto& at = client["at"];
+    if (!at.isArray() || at.size() < 2) {
+      continue;
+    }
+    auto address = client["address"].asString();
+    if (address.starts_with("0x")) {
+      address = address.substr(2);
+    }
+    positions.emplace(std::move(address), WindowPosition{.floating = client["floating"].asBool(),
+                                                         .x = at[0].asInt(),
+                                                         .y = at[1].asInt()});
+  }
+  return positions;
+}
+
+// Hyprland emits no event when windows are rearranged within a workspace, so poll for it.
+// Redraw only when something actually moved, which keeps an idle desktop free of updates.
+bool Workspaces::checkWindowPositions() {
+  try {
+    auto positions = queryWindowPositions();
+    if (positions != m_lastWindowPositions) {
+      m_lastWindowPositions = std::move(positions);
+      dp.emit();
+    }
+  } catch (const std::exception& e) {
+    // Hyprland may be gone while this bar is still shutting down; keep the timer alive rather
+    // than letting the exception escape into the GLib main loop.
+    spdlog::debug("Failed to poll window positions: {}", e.what());
+  }
+  return true;
 }
 
 int Workspaces::windowRewritePriorityFunction(std::string const& window_rule) {
