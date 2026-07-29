@@ -92,6 +92,7 @@ class Workspaces : public AModule, public EventHandler {
   static auto populateBoolConfig(const Json::Value& config, const std::string& key, bool& member)
       -> void;
   auto populateSortByConfig(const Json::Value& config) -> void;
+  auto populateWindowSortByConfig(const Json::Value& config) -> void;
   auto populateIgnoreWorkspacesConfig(const Json::Value& config) -> void;
   auto populateFormatWindowSeparatorConfig(const Json::Value& config) -> void;
   auto populateWindowRewriteConfig(const Json::Value& config) -> void;
@@ -142,6 +143,12 @@ class Workspaces : public AModule, public EventHandler {
   void updateWorkspaceStates();
   bool updateWindowsToCreate();
 
+  // Window position sorting. Hyprland emits no event when windows are rearranged within a
+  // workspace (layoutmsg swapcol, movewindow, drag-moves), so this has to be polled.
+  WindowPositions queryWindowPositions() const;
+  bool checkWindowPositions();
+  bool sortsWindowsByPosition() const { return m_windowSortBy != WindowSortMethod::INSERTION; }
+
   void extendOrphans(int workspaceId, Json::Value const& clientsJson);
   void registerOrphanWindow(WindowCreationPayload create_window_payload);
 
@@ -175,6 +182,19 @@ class Workspaces : public AModule, public EventHandler {
                                                  {"SPECIAL-CENTERED", SortMethod::SPECIAL_CENTERED},
                                                  {"DEFAULT", SortMethod::DEFAULT}};
 
+  // How the windows *within* a workspace are ordered. INSERTION is Hyprland's creation order,
+  // the historical behaviour; the POSITION variants follow the on-screen layout.
+  enum class WindowSortMethod { INSERTION, POSITION, POSITION_FLOATING_LAST };
+  util::EnumParser<WindowSortMethod> m_windowSortEnumParser;
+  WindowSortMethod m_windowSortBy = WindowSortMethod::INSERTION;
+  std::map<std::string, WindowSortMethod> m_windowSortMap = {
+      {"INSERTION", WindowSortMethod::INSERTION},
+      {"POSITION", WindowSortMethod::POSITION},
+      {"POSITION-FLOATING-LAST", WindowSortMethod::POSITION_FLOATING_LAST}};
+  int m_windowSortInterval = 500;
+  WindowPositions m_lastWindowPositions;
+  sigc::connection m_windowPositionPoll;
+
   std::string m_formatBefore;
   std::string m_formatAfter;
 
@@ -188,6 +208,7 @@ class Workspaces : public AModule, public EventHandler {
   std::string m_windowRewriteGroupFormat = "{icon}×{count}";
 
   bool m_withIcon;
+  bool m_withWindows = false;
   uint64_t m_monitorId;
   int m_activeWorkspaceId;
   std::string m_activeSpecialWorkspaceName;

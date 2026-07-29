@@ -25,6 +25,19 @@ using WindowAddress = std::string;
 
 namespace waybar::modules::hyprland {
 
+// Where a window sits in the layout, as reported by the "clients" IPC reply.
+struct WindowPosition {
+  bool floating = false;
+  int x = 0;
+  int y = 0;
+
+  bool operator==(const WindowPosition& other) const = default;
+};
+
+// Keyed by address with the "0x" prefix stripped, to match WindowRepr::address
+// (see WindowCreationPayload::clearAddr).
+using WindowPositions = std::map<WindowAddress, WindowPosition>;
+
 class Workspaces;
 class Workspace {
  public:
@@ -69,6 +82,7 @@ class Workspace {
   };
   void insertWindow(WindowCreationPayload create_window_payload);
   void initializeWindowMap(const Json::Value& clients_data);
+  void sortWindowsByPosition(WindowPositions const& positions, bool floating_last);
   void setActiveWindow(WindowAddress const& addr);
 
   bool onWindowOpened(WindowCreationPayload const& create_window_payload);

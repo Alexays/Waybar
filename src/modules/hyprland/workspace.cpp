@@ -4,9 +4,11 @@
 
 #include <algorithm>
 #include <cctype>
+#include <climits>
 #include <memory>
 #include <set>
 #include <string>
+#include <tuple>
 #include <utility>
 
 #include "modules/hyprland/workspaces.hpp"
@@ -237,6 +239,24 @@ void Workspace::initializeWindowMap(const Json::Value& clients_data) {
       insertWindow({client});
     }
   }
+}
+
+// Order the windows the way they are laid out on screen: left to right, then top to bottom.
+// Hyprland reports windows in creation order, which under a tiling layout says nothing about
+// where they actually are.
+void Workspace::sortWindowsByPosition(WindowPositions const& positions, bool floating_last) {
+  // A window with no reported position (opened between the query and this call) sorts last and,
+  // thanks to stable_sort, keeps its insertion order relative to other such windows.
+  static constexpr WindowPosition UNKNOWN{.floating = true, .x = INT_MAX, .y = INT_MAX};
+
+  auto key = [&positions, floating_last](const WindowRepr& window) {
+    auto it = positions.find(window.address);
+    const WindowPosition& position = it == positions.end() ? UNKNOWN : it->second;
+    return std::tuple{floating_last && position.floating, position.x, position.y};
+  };
+
+  std::ranges::stable_sort(
+      m_windowMap, [&key](const auto& lhs, const auto& rhs) { return key(lhs) < key(rhs); });
 }
 
 void Workspace::setActiveWindow(WindowAddress const& addr) {
