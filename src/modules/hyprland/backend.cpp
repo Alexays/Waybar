@@ -10,11 +10,13 @@
 #include <unistd.h>
 
 #include <array>
+#include <cctype>
 #include <cerrno>
 #include <cstring>
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <string_view>
 
 #include "util/scoped_fd.hpp"
 
@@ -292,48 +294,58 @@ Json::Value IPC::getSocket1JsonReply(const std::string& rq) {
   return parser_.parse(reply);
 }
 
+std::optional<bool> IPC::parseConfigProvider(const std::string& systemInfo) {
+  // Hyprland reports which config manager it actually loaded in "systeminfo",
+  // as a "configProvider: lua" / "configProvider: legacy" line. That is the
+  // authoritative signal: the version alone is not enough, because Hyprland
+  // only uses the Lua manager when the config file name ends in ".lua", so a
+  // >= 0.54 instance started with a traditional hyprland.conf still speaks the
+  // legacy dispatch protocol.
+  static constexpr std::string_view key = "configProvider:";
+
+  const size_t keyPos = systemInfo.find(key);
+  if (keyPos == std::string::npos) {
+    return std::nullopt;
+  }
+
+  size_t valuePos = systemInfo.find_first_not_of(" \t", keyPos + key.size());
+  if (valuePos == std::string::npos) {
+    return false;
+  }
+
+  const size_t end = systemInfo.find_first_of("\r\n", valuePos);
+  std::string provider = systemInfo.substr(valuePos, end - valuePos);
+  while (!provider.empty() && std::isspace(static_cast<unsigned char>(provider.back()))) {
+    provider.pop_back();
+  }
+
+  spdlog::debug("Hyprland IPC: systeminfo reports configProvider '{}'", provider);
+  return provider == "lua";
+}
+
+std::optional<bool> IPC::luaProtocolFromSystemInfo() {
+  try {
+    return parseConfigProvider(getSocket1Reply("systeminfo"));
+  } catch (const std::exception& e) {
+    spdlog::warn("Hyprland IPC: could not read configProvider from systeminfo ({})", e.what());
+    return std::nullopt;
+  }
+}
+
 bool IPC::isLuaProtocol() {
   if (s_luaProtocolDetected_.has_value()) {
     return *s_luaProtocolDetected_;
   }
 
-  // Detect the Lua-based dispatch protocol (Hyprland >= 0.54) via the read-only
-  // "version" query. This MUST have no side effects: an earlier probe issued a real
-  // "dispatch workspace __waybar_probe__", which on Hyprland < 0.54 actually switched
-  // the user to a junk workspace named __waybar_probe__ on the first click/scroll.
-  bool luaProto = false;
-  try {
-    util::JsonParser parser;
-    const Json::Value ver = parser.parse(getSocket1Reply("j/version"));
-
-    // Prefer the numeric "version" field ("0.54.0"); fall back to the "tag" field
-    // ("v0.54.0" or "v0.54.0-16-gdeadbee"), which is present on all releases.
-    std::string versionStr = ver["version"].asString();
-    if (versionStr.empty()) {
-      versionStr = ver["tag"].asString();
-    }
-
-    const size_t firstDigit = versionStr.find_first_of("0123456789");
-    if (firstDigit != std::string::npos) {
-      // std::stoi parses the leading integer and stops at the first non-digit, so it
-      // tolerates the trailing ".patch-commits-ghash" suffix on the tag.
-      const int major = std::stoi(versionStr.substr(firstDigit));
-      int minor = 0;
-      const size_t dot = versionStr.find('.', firstDigit);
-      if (dot != std::string::npos && dot + 1 < versionStr.size()) {
-        minor = std::stoi(versionStr.substr(dot + 1));
-      }
-      luaProto = major > 0 || (major == 0 && minor >= 54);
-    } else {
-      spdlog::warn("Hyprland IPC: could not parse version '{}', assuming legacy protocol",
-                   versionStr);
-    }
-  } catch (const std::exception& e) {
-    spdlog::warn("Hyprland IPC: version detection failed ({}), assuming legacy protocol", e.what());
-  }
+  // configProvider landed together with the Lua config manager in 0.55, so its
+  // absence means the instance predates Lua support entirely and necessarily
+  // speaks the legacy protocol. That makes the field sufficient on its own, and
+  // it is read-only, so detection has none of the side effects of an actual
+  // dispatch probe.
+  const bool luaProto = luaProtocolFromSystemInfo().value_or(false);
 
   if (luaProto) {
-    spdlog::info("Hyprland IPC: detected Lua-based dispatch protocol (Hyprland >= 0.54)");
+    spdlog::info("Hyprland IPC: detected Lua-based dispatch protocol");
   } else {
     spdlog::info("Hyprland IPC: detected legacy dispatch protocol");
   }
