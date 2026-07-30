@@ -44,9 +44,6 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
   ipc->register_handler("window-rules/list-outputs", handler);
   ipc->register_handler("window-rules/list-wsets", handler);
   ipc->register_handler("window-rules/get-focused-output", handler);
-
-  // initial render
-  dp.emit();
 }
 
 Workspaces::~Workspaces() { ipc->unregister_handler(handler); }

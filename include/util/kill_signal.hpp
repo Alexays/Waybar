@@ -13,14 +13,14 @@ enum class KillSignalAction : std::uint8_t {
   HIDE,
   NOOP,
 };
-const std::map<std::string, KillSignalAction> userKillSignalActions = {
+inline const std::map<std::string, KillSignalAction> userKillSignalActions = {
     {"TOGGLE", KillSignalAction::TOGGLE},
     {"RELOAD", KillSignalAction::RELOAD},
     {"SHOW", KillSignalAction::SHOW},
     {"HIDE", KillSignalAction::HIDE},
     {"NOOP", KillSignalAction::NOOP}};
 
-const KillSignalAction SIGNALACTION_DEFAULT_SIGUSR1 = KillSignalAction::TOGGLE;
-const KillSignalAction SIGNALACTION_DEFAULT_SIGUSR2 = KillSignalAction::RELOAD;
+inline const KillSignalAction SIGNALACTION_DEFAULT_SIGUSR1 = KillSignalAction::TOGGLE;
+inline const KillSignalAction SIGNALACTION_DEFAULT_SIGUSR2 = KillSignalAction::RELOAD;
 
 };  // namespace waybar::util

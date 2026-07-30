@@ -17,8 +17,6 @@ waybar::modules::Backlight::Backlight(const std::string& id, const Json::Value& 
     : ALabel(config, "backlight", id, "{percent}%", 2),
       preferred_device_(config["device"].isString() ? config["device"].asString() : ""),
       backend(interval_, [this] { dp.emit(); }) {
-  dp.emit();
-
   // Set up scroll handler
   event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
   event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Backlight::handleScroll));

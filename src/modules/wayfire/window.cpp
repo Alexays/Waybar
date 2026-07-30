@@ -20,8 +20,6 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
   ipc->register_handler("view-app-id-changed", handler);
 
   ipc->register_handler("window-rules/get-focused-view", handler);
-
-  dp.emit();
 }
 
 Window::~Window() { ipc->unregister_handler(handler); }

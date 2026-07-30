@@ -103,6 +103,7 @@ auto waybar::modules::IdleInhibitor::update() -> void {
 }
 
 auto waybar::modules::IdleInhibitor::refresh(int sig) -> void {
+#ifdef SIGRTMIN
   if (config_["signal"].isInt() && sig == SIGRTMIN + config_["signal"].asInt()) {
     toggleStatus();
 
@@ -111,6 +112,7 @@ auto waybar::modules::IdleInhibitor::refresh(int sig) -> void {
       module->update();
     }
   }
+#endif
 }
 
 void waybar::modules::IdleInhibitor::toggleStatus(int force_status) {

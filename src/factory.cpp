@@ -372,7 +372,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     }
 #endif
     if (ref == "cava") {
-      return waybar::modules::cava::getModule(id, config_[name]);
+      return waybar::modules::cava::getModule(id, config_[name]).release();
     }
 #ifdef HAVE_SYSTEMD_MONITOR
     if (ref == "systemd-failed-units") {

@@ -17,7 +17,6 @@ Language::Language(const std::string& id, const Bar& bar, const Json::Value& con
 
   IPC::getInstance().registerForIPC("monitor", this);
   updateFromIPC();
-  dp.emit();
 }
 
 Language::~Language() {

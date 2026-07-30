@@ -22,7 +22,7 @@ waybar::modules::CustomGraph::CustomGraph(const std::string& name, const std::st
   if (config.isNull()) {
     spdlog::warn("There is no configuration for 'custom-graph/{}', element will be hidden", name);
   }
-  dp.emit();
+
   if (!config_["signal"].empty() && config_["interval"].empty() &&
       config_["restart-interval"].empty()) {
     waitingWorker();

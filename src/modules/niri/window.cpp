@@ -18,8 +18,6 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
   gIPC->registerForIPC("WindowClosed", this);
   gIPC->registerForIPC("WindowFocusChanged", this);
   gIPC->registerForIPC("WindowLayoutsChanged", this);
-
-  dp.emit();
 }
 
 Window::~Window() { gIPC->unregisterForIPC(this); }
