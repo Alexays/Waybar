@@ -167,9 +167,8 @@ class Workspaces : public AModule, public EventHandler {
   std::map<WindowAddress, WindowRepr, std::less<>> m_orphanWindowMap;
 
   enum class SortMethod { ID, NAME, NUMBER, SPECIAL_CENTERED, DEFAULT };
-  util::EnumParser<SortMethod> m_enumParser;
   SortMethod m_sortBy = SortMethod::DEFAULT;
-  std::map<std::string, SortMethod> m_sortMap = {{"ID", SortMethod::ID},
+  static inline const std::map<std::string, SortMethod> m_sortMap = {{"ID", SortMethod::ID},
                                                  {"NAME", SortMethod::NAME},
                                                  {"NUMBER", SortMethod::NUMBER},
                                                  {"SPECIAL-CENTERED", SortMethod::SPECIAL_CENTERED},
@@ -207,9 +206,8 @@ class Workspaces : public AModule, public EventHandler {
   int m_taskbarMaxIcons = 0;  // 0 means unlimited
   Gtk::Orientation m_taskbarOrientation = Gtk::ORIENTATION_HORIZONTAL;
   bool m_taskbarReverseDirection = false;
-  util::EnumParser<ActiveWindowPosition> m_activeWindowEnumParser;
   ActiveWindowPosition m_activeWindowPosition = ActiveWindowPosition::NONE;
-  std::map<std::string, ActiveWindowPosition> m_activeWindowPositionMap = {
+  static inline std::map<std::string, ActiveWindowPosition> m_activeWindowPositionMap = {
       {"NONE", ActiveWindowPosition::NONE},
       {"FIRST", ActiveWindowPosition::FIRST},
       {"LAST", ActiveWindowPosition::LAST},
