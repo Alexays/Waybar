@@ -91,7 +91,7 @@ If none of the sorting options are enabled, workspaces keep their output/index o
 	typeof: bool ++
 	default: false ++
 	Enables this module to consume all left over space dynamically.
-	
+
 *workspace-taskbar*: ++
 	typeof: object ++
 	Contains settings for the workspace taskbar, which displays app icons within each workspace.
@@ -105,6 +105,21 @@ If none of the sorting options are enabled, workspaces keep their output/index o
 		typeof: int ++
 		default: 16 ++
 		Size of the icons in the workspace taskbar.
+
+	*column*: ++
+		typeof: bool ++
+		default: false ++
+		Enables the column mode in the workspace taskbar.
+
+	*count*: ++
+		typeof: bool ++
+		default: true ++
+		show window counter label in the column mode.
+
+	*hide-format*: ++
+		typeof: bool ++
+		default: false ++
+		hide formated information in taskbar mode.
 
 *ignore-workspaces*: ++
 	typeof: array ++
@@ -186,9 +201,13 @@ Additional to workspace name matching, the following *format-icons* can be set.
     "workspace-taskbar": {
         "enable": true,
         "icon-size": 18
+		"column": true,
+		"count": true,
+		"hide-format": false,
     }
 }
 ```
+
 
 # Style
 
@@ -205,3 +224,15 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *#workspaces button .niri-taskbar-btn*: The icon buttons within the taskbar.
 - *#workspaces button .niri-taskbar-btn.focused*: The taskbar icon button of the
   currently focused window.
+- *#workspaces .taskbar-counter*: the window counter label when *column* mode is enabled and a column contains multiple windows.
+
+```
+#workspaces .taskbar-counter {
+	background-color: #1e94c3;
+    border-radius: 8px;
+	font-size: 14px;
+	margin-top: 14px;
+	margin-left: -18px;
+	margin-right: 5px;
+}
+```
