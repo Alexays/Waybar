@@ -10,8 +10,9 @@ namespace waybar {
 class AAppIconLabel : public AIconLabel {
  public:
   AAppIconLabel(const Json::Value& config, const std::string& name, const std::string& id,
-                const std::string& format, uint16_t interval = 0, bool ellipsize = false,
-                bool enable_click = false, bool enable_scroll = false);
+                const std::string& format, std::mutex& reap_mtx, std::list<pid_t>& reap,
+                uint16_t interval = 0, bool ellipsize = false, bool enable_click = false,
+                bool enable_scroll = false);
   virtual ~AAppIconLabel() = default;
   auto update() -> void override;
 

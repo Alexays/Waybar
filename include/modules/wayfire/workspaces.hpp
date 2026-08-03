@@ -25,7 +25,8 @@ class Workspaces : public AModule {
   auto update_box() -> void;
 
  public:
-  Workspaces(const std::string& id, const Bar& bar, const Json::Value& config);
+  Workspaces(const std::string& id, const Bar& bar, const Json::Value& config, std::mutex&,
+             std::list<pid_t>&);
   ~Workspaces() override;
 };
 

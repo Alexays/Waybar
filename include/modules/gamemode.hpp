@@ -17,7 +17,7 @@ namespace waybar::modules {
 
 class Gamemode : public AModule {
  public:
-  Gamemode(const std::string&, const Json::Value&);
+  Gamemode(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~Gamemode();
   auto update() -> void override;
 
