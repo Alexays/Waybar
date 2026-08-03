@@ -6,7 +6,7 @@ waybar - temperature module
 
 # DESCRIPTION
 
-The *temperature* module displays the current temperature from a thermal zone.
+The *temperature* module displays the current temperature, fan, and power from sensors in hwmon or thermal zone.
 
 # CONFIGURATION
 
@@ -18,7 +18,7 @@ Addressed by *temperature*
 
 *hwmon-path*: ++
 	typeof: string ++
-	The temperature path to use, e.g. */sys/class/hwmon/hwmon2/temp1_input* instead of one in */sys/class/thermal/*.
+	The sensor path to use, e.g. */sys/class/hwmon/hwmon2/temp1_input* instead of one in */sys/class/thermal/*.
 	This can also be an array of strings. In this case, waybar will check each item in the array and use the first valid one.
 	This is suitable if you want to share the same configuration file among different machines with different hardware configurations.
 
@@ -35,7 +35,7 @@ Addressed by *temperature*
 
 *input-filename*: ++
 	typeof: string ++
-	The temperature filename of your *hwmon-path-abs* (also used by *hwmon-by-name*), e.g. *temp1_input*
+	The sensor filename of your *hwmon-path-abs* (also used by *hwmon-by-name*), e.g. *temp1_input*
 
 *hwmon-by-name*: ++
 	typeof: string ++
@@ -55,18 +55,29 @@ Addressed by *temperature*
 	default: 10 ++
 	The interval in which the information gets polled.
 
+*type*: ++
+	typeof: string ++
+	default: temperature ++
+	Type of the sensor. Can be one of: temperature, fan, power. Indicates how readings are interpreted.
+
 *format-warning*: ++
 	typeof: string ++
-	The format to use when temperature is considered warning
+	The format to use when reading is considered warning
 
 *format-critical*: ++
 	typeof: string ++
-	The format to use when temperature is considered critical
+	The format to use when reading is considered critical
 
 *format*: ++
 	typeof: string  ++
 	default: {temperatureC}°C ++
-	The format (Celsius/Fahrenheit/Kelvin) in which the temperature should be displayed.
+	The format in which the reading should be displayed. Depending on the type, accepted formats are:
+	- `temperatureC` for temperature in Celcius,
+	- `temperatureF` for temperature in Fahrenheit,
+	- `temperatureK` for temperature in Kelvin,
+	- `fan` for fan speed in RPM,
+	- `power` for power draw in Watts.
+	If a format specifier that is not relevant to the sensor type is used, value will be always 0. For example, if sensor type is `temperature` then `{fan}` and `{power}` format strings will always resolve to `0`.
 
 *format-icons*: ++
 	typeof: array ++
@@ -158,6 +169,10 @@ Addressed by *temperature*
 
 *{icon}*: Icon, as selected from *format-icons* based on the current temperature.
 
+*{fan}*: Fan speed in RPM.
+
+*{power}*: Power in Watts.
+
 # EXAMPLES
 
 ```
@@ -166,8 +181,32 @@ Addressed by *temperature*
 	// "hwmon-path": ["/sys/class/hwmon/hwmon2/temp1_input", "/sys/class/thermal/thermal_zone0/temp"],
 	// "critical-threshold": 80,
 	// "format-critical": "{temperatureC}°C ",
+	// "type": "temperature",
 	"format": "{temperatureC}°C "
 }
+```
+
+```
+"temperature#cpufan1": {
+	"hwmon-path-abs": "/sys/devices/platform/thinkpad_hwmon/hwmon",
+	"input-filename": "fan1_input",
+	"type": "fan",
+	"critical-threshold": 5000,
+	"interval": 3,
+	"format": "{icon}  {fan}",
+	"format-icons": [""],
+},
+```
+
+```
+"temperature#gpupower": {
+	"hwmon-path-abs": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0/0000:02:00.0/0000:03:00.0/hwmon",
+	"input-filename": "power1_average",
+	"type": "power",
+	"critical-threshold": 375,
+	"interval": 3,
+	"format": "{power}W",
+},
 ```
 
 # STYLE
