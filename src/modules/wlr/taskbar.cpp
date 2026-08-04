@@ -541,11 +541,11 @@ bool Task::handle_clicked(GdkEventButton* bt) {
   else if (action == "close")
     close();
   else if (action == "unminimize") {
-      set_minimize_hint();
-      minimize(false);
+    set_minimize_hint();
+    minimize(false);
   } else if (action == "minimize-only") {
-      set_minimize_hint();
-      minimize(true);
+    set_minimize_hint();
+    minimize(true);
   } else
     spdlog::warn("Unknown action {}", action);
 
@@ -555,17 +555,16 @@ bool Task::handle_clicked(GdkEventButton* bt) {
 
 bool Task::handle_scroll(GdkEventScroll* e) {
   std::string action;
-  
-  if ((e->direction == GDK_SCROLL_UP || (e->direction == GDK_SCROLL_SMOOTH && e->delta_y < 0)) && 
+
+  if ((e->direction == GDK_SCROLL_UP || (e->direction == GDK_SCROLL_SMOOTH && e->delta_y < 0)) &&
       config_["on-scroll-up"].isString()) {
     action = config_["on-scroll-up"].asString();
-  } 
-  else if ((e->direction == GDK_SCROLL_DOWN || (e->direction == GDK_SCROLL_SMOOTH && e->delta_y > 0)) && 
-           config_["on-scroll-down"].isString()) {
+  } else if ((e->direction == GDK_SCROLL_DOWN ||
+              (e->direction == GDK_SCROLL_SMOOTH && e->delta_y > 0)) &&
+             config_["on-scroll-down"].isString()) {
     action = config_["on-scroll-down"].asString();
   }
-  if (action.empty())
-    return false;
+  if (action.empty()) return false;
 
   if (action == "activate")
     activate();
@@ -587,11 +586,11 @@ bool Task::handle_scroll(GdkEventScroll* e) {
   else if (action == "close")
     close();
   else if (action == "unminimize") {
-      set_minimize_hint();
-      minimize(false);
+    set_minimize_hint();
+    minimize(false);
   } else if (action == "minimize-only") {
-      set_minimize_hint();
-      minimize(true);
+    set_minimize_hint();
+    minimize(true);
   } else
     spdlog::warn("Unknown action {}", action);
 
@@ -772,10 +771,11 @@ Taskbar::Taskbar(const std::string& id, const waybar::Bar& bar, const Json::Valu
   // commands (issue #3284). Values that are not built-in actions are left alone
   // and still run as user shell commands.
   const auto is_builtin_action = [](const std::string& v) {
-    return v == "activate" || v == "minimize" || v == "minimize-only" || v == "unminimize" || v == "minimize-raise" || v == "maximize" ||
-           v == "fullscreen" || v == "close";
+    return v == "activate" || v == "minimize" || v == "minimize-only" || v == "unminimize" ||
+           v == "minimize-raise" || v == "maximize" || v == "fullscreen" || v == "close";
   };
-  for (const auto* event : {"on-click", "on-click-middle", "on-click-right", "on-scroll-up", "on-scroll-down"}) {
+  for (const auto* event :
+       {"on-click", "on-click-middle", "on-click-right", "on-scroll-up", "on-scroll-down"}) {
     if (config_[event].isString() && is_builtin_action(config_[event].asString())) {
       eventActionMap_.insert({event, config_[event].asString()});
     }
