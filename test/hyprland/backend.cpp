@@ -21,9 +21,8 @@ class IPCTestHelper : public hyprland::IPC {
   static void resetLuaProtocolDetection() { s_luaProtocolDetected_.reset(); }
   static void setLuaProtocolDetected(bool value) { s_luaProtocolDetected_ = value; }
   using hyprland::IPC::buildLuaDispatch;
+  using hyprland::IPC::isLuaConfigProvider;
   using hyprland::IPC::isLuaProtocol;
-  using hyprland::IPC::luaProtocolFromSystemInfo;
-  using hyprland::IPC::parseConfigProvider;
 };
 
 // Trimmed but otherwise verbatim "systeminfo" reply from Hyprland 0.56.1.
@@ -214,15 +213,15 @@ TEST_CASE("dispatch throws when Hyprland is not running", "[dispatch]") {
   CHECK_THROWS(hyprland::IPC::dispatch("workspace", "1"));
 }
 
-TEST_CASE("parseConfigProvider reads the config manager Hyprland loaded", "[parseConfigProvider]") {
+TEST_CASE("isLuaConfigProvider reads the config manager Hyprland loaded", "[isLuaConfigProvider]") {
   SECTION("realistic systeminfo reply reports the Lua manager") {
-    REQUIRE(IPCTestHelper::parseConfigProvider(kSystemInfoLua) == true);
+    REQUIRE(IPCTestHelper::isLuaConfigProvider(kSystemInfoLua) == true);
   }
 
-  SECTION("lua") { REQUIRE(IPCTestHelper::parseConfigProvider("configProvider: lua\n") == true); }
+  SECTION("lua") { REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider: lua\n") == true); }
 
   SECTION("legacy") {
-    REQUIRE(IPCTestHelper::parseConfigProvider("configProvider: legacy\n") == false);
+    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider: legacy\n") == false);
   }
 
   // A >= 0.54 instance started with a traditional hyprland.conf keeps the
@@ -231,54 +230,55 @@ TEST_CASE("parseConfigProvider reads the config manager Hyprland loaded", "[pars
     std::string info{kSystemInfoLua};
     info.replace(info.find("configProvider: lua"), std::strlen("configProvider: lua"),
                  "configProvider: legacy");
-    REQUIRE(IPCTestHelper::parseConfigProvider(info) == false);
+    REQUIRE(IPCTestHelper::isLuaConfigProvider(info) == false);
   }
 
   SECTION("an unrecognised manager is not treated as Lua") {
-    REQUIRE(IPCTestHelper::parseConfigProvider("configProvider: something-else\n") == false);
+    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider: something-else\n") == false);
   }
+
+  // The field ships together with the Lua config manager (0.55), so replies
+  // without it come from instances that only speak the legacy protocol.
+  SECTION("absent field means a pre-Lua instance, hence legacy") {
+    REQUIRE(IPCTestHelper::isLuaConfigProvider("Hyprland 0.41.2\nTag: v0.41.2\n") == false);
+  }
+
+  SECTION("empty reply") { REQUIRE(IPCTestHelper::isLuaConfigProvider("") == false); }
 }
 
-TEST_CASE("parseConfigProvider tolerates formatting variations", "[parseConfigProvider]") {
+TEST_CASE("isLuaConfigProvider tolerates formatting variations", "[isLuaConfigProvider]") {
   SECTION("tab separator") {
-    REQUIRE(IPCTestHelper::parseConfigProvider("configProvider:\tlua\n") == true);
+    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider:\tlua\n") == true);
   }
 
   SECTION("extra spaces") {
-    REQUIRE(IPCTestHelper::parseConfigProvider("configProvider:    lua\n") == true);
+    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider:    lua\n") == true);
   }
 
   SECTION("CRLF line ending") {
-    REQUIRE(IPCTestHelper::parseConfigProvider("configProvider: lua\r\n") == true);
+    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider: lua\r\n") == true);
   }
 
   SECTION("last line without a trailing newline") {
-    REQUIRE(IPCTestHelper::parseConfigProvider("plugins:\nconfigProvider: lua") == true);
+    REQUIRE(IPCTestHelper::isLuaConfigProvider("plugins:\nconfigProvider: lua") == true);
   }
 
   SECTION("empty value is not Lua") {
-    REQUIRE(IPCTestHelper::parseConfigProvider("configProvider:\n") == false);
+    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider:\n") == false);
   }
 }
 
-TEST_CASE("parseConfigProvider returns nullopt when the field is absent", "[parseConfigProvider]") {
-  // Hyprland versions predating the Lua config manager do not report the field;
-  // callers must fall back to version detection rather than assume legacy here.
-  SECTION("older systeminfo reply") {
-    REQUIRE(IPCTestHelper::parseConfigProvider("Hyprland 0.41.2\nTag: v0.41.2\n") == std::nullopt);
-  }
-
-  SECTION("empty reply") { REQUIRE(IPCTestHelper::parseConfigProvider("") == std::nullopt); }
-}
-
-TEST_CASE("luaProtocolFromSystemInfo returns nullopt when Hyprland is not running",
-          "[luaProtocolFromSystemInfo]") {
-  // getSocket1Reply throws; detection must degrade to the version fallback
-  // instead of propagating and breaking the click.
+TEST_CASE("isLuaProtocol assumes legacy when Hyprland is not reachable", "[isLuaProtocol]") {
+  // getSocket1Reply throws; detection must degrade to legacy instead of
+  // propagating and breaking the click.
   unsetenv("HYPRLAND_INSTANCE_SIGNATURE");
   IPCTestHelper::resetSocketFolder();
+  IPCTestHelper::resetLuaProtocolDetection();
 
-  REQUIRE(IPCTestHelper::luaProtocolFromSystemInfo() == std::nullopt);
+  REQUIRE(IPCTestHelper::isLuaProtocol() == false);
+
+  // Cleanup: drop the cached result so other tests aren't affected
+  IPCTestHelper::resetLuaProtocolDetection();
 }
 
 TEST_CASE("isLuaProtocol uses cached value and avoids socket call",

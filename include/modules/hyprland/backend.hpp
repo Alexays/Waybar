@@ -50,14 +50,10 @@ class IPC {
   /// Resolved once from the config manager it reports, then cached.
   static bool isLuaProtocol();
 
-  /// Ask Hyprland which config manager it loaded, via the "systeminfo" reply.
-  /// Returns nullopt when the query fails or the field is not reported.
-  static std::optional<bool> luaProtocolFromSystemInfo();
-
-  /// Extract the "configProvider:" field from a "systeminfo" reply.
-  /// Returns true for the Lua manager, false for anything else, and nullopt
-  /// when the field is absent, as on versions predating the Lua config manager.
-  static std::optional<bool> parseConfigProvider(const std::string& systemInfo);
+  /// Whether a "systeminfo" reply reports the Lua config manager. An absent
+  /// "configProvider:" field means the instance predates the Lua config
+  /// manager (< 0.55) and therefore speaks the legacy protocol.
+  static bool isLuaConfigProvider(const std::string& systemInfo);
 
   static std::optional<bool> s_luaProtocolDetected_;  // cached detection result
 

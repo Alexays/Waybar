@@ -10,7 +10,6 @@
 #include <unistd.h>
 
 #include <array>
-#include <cctype>
 #include <cerrno>
 #include <cstring>
 #include <filesystem>
@@ -19,6 +18,7 @@
 #include <string_view>
 
 #include "util/scoped_fd.hpp"
+#include "util/string.hpp"
 
 namespace waybar::modules::hyprland {
 
@@ -294,42 +294,29 @@ Json::Value IPC::getSocket1JsonReply(const std::string& rq) {
   return parser_.parse(reply);
 }
 
-std::optional<bool> IPC::parseConfigProvider(const std::string& systemInfo) {
+bool IPC::isLuaConfigProvider(const std::string& systemInfo) {
   // Hyprland reports which config manager it actually loaded in "systeminfo",
   // as a "configProvider: lua" / "configProvider: legacy" line. That is the
   // authoritative signal: the version alone is not enough, because Hyprland
   // only uses the Lua manager when the config file name ends in ".lua", so a
   // >= 0.54 instance started with a traditional hyprland.conf still speaks the
-  // legacy dispatch protocol.
+  // legacy dispatch protocol. The field landed together with the Lua config
+  // manager in 0.55, so its absence means the instance predates Lua support
+  // entirely and necessarily speaks the legacy protocol.
   static constexpr std::string_view key = "configProvider:";
 
   const size_t keyPos = systemInfo.find(key);
   if (keyPos == std::string::npos) {
-    return std::nullopt;
-  }
-
-  size_t valuePos = systemInfo.find_first_not_of(" \t", keyPos + key.size());
-  if (valuePos == std::string::npos) {
     return false;
   }
 
-  const size_t end = systemInfo.find_first_of("\r\n", valuePos);
-  std::string provider = systemInfo.substr(valuePos, end - valuePos);
-  while (!provider.empty() && std::isspace(static_cast<unsigned char>(provider.back()))) {
-    provider.pop_back();
-  }
+  const size_t valuePos = keyPos + key.size();
+  const size_t lineEnd = systemInfo.find('\n', valuePos);
+  const std::string value = lineEnd == std::string::npos
+                                ? systemInfo.substr(valuePos)
+                                : systemInfo.substr(valuePos, lineEnd - valuePos);
 
-  spdlog::debug("Hyprland IPC: systeminfo reports configProvider '{}'", provider);
-  return provider == "lua";
-}
-
-std::optional<bool> IPC::luaProtocolFromSystemInfo() {
-  try {
-    return parseConfigProvider(getSocket1Reply("systeminfo"));
-  } catch (const std::exception& e) {
-    spdlog::warn("Hyprland IPC: could not read configProvider from systeminfo ({})", e.what());
-    return std::nullopt;
-  }
+  return trim(value) == "lua";
 }
 
 bool IPC::isLuaProtocol() {
@@ -337,12 +324,15 @@ bool IPC::isLuaProtocol() {
     return *s_luaProtocolDetected_;
   }
 
-  // configProvider landed together with the Lua config manager in 0.55, so its
-  // absence means the instance predates Lua support entirely and necessarily
-  // speaks the legacy protocol. That makes the field sufficient on its own, and
-  // it is read-only, so detection has none of the side effects of an actual
-  // dispatch probe.
-  const bool luaProto = luaProtocolFromSystemInfo().value_or(false);
+  // The query is read-only, so detection has none of the side effects of an
+  // actual dispatch probe.
+  bool luaProto = false;
+  try {
+    luaProto = isLuaConfigProvider(getSocket1Reply("systeminfo"));
+  } catch (const std::exception& e) {
+    spdlog::warn("Hyprland IPC: could not read systeminfo ({}), assuming legacy protocol",
+                 e.what());
+  }
 
   if (luaProto) {
     spdlog::info("Hyprland IPC: detected Lua-based dispatch protocol");
