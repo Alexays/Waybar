@@ -100,6 +100,10 @@ class Workspace {
   Gtk::Label m_labelBefore;
   Gtk::Label m_labelAfter;
 
+  // Signature of the last taskbar render, used to skip redundant rebuilds that
+  // otherwise leak GtkCssStaticStyle on every refresh (Alexays/Waybar#5186).
+  std::string m_lastTaskbarSignature;
+
   bool isEmpty() const;
   void updateTaskbar(const std::string& workspace_icon);
   bool handleClick(const GdkEventButton* event_button, WindowAddress const& addr) const;
