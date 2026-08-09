@@ -220,16 +220,18 @@ TEST_CASE("isLuaConfigProvider reads the config manager Hyprland loaded", "[isLu
 
   SECTION("lua") { REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider: lua\n") == true); }
 
-  SECTION("legacy") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider: legacy\n") == false);
+  // "hyprlang" is what Hyprland actually emits for the legacy manager, per
+  // Config::typeToString in src/config/ConfigManager.cpp.
+  SECTION("hyprlang") {
+    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider: hyprlang\n") == false);
   }
 
-  // A >= 0.54 instance started with a traditional hyprland.conf keeps the
+  // A >= 0.55 instance started with a traditional hyprland.conf keeps the
   // legacy parser, which is exactly the case the version heuristic got wrong.
   SECTION("legacy manager inside a full reply") {
     std::string info{kSystemInfoLua};
     info.replace(info.find("configProvider: lua"), std::strlen("configProvider: lua"),
-                 "configProvider: legacy");
+                 "configProvider: hyprlang");
     REQUIRE(IPCTestHelper::isLuaConfigProvider(info) == false);
   }
 

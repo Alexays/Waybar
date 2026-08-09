@@ -296,7 +296,7 @@ Json::Value IPC::getSocket1JsonReply(const std::string& rq) {
 
 bool IPC::isLuaConfigProvider(const std::string& systemInfo) {
   // Hyprland reports which config manager it actually loaded in "systeminfo",
-  // as a "configProvider: lua" / "configProvider: legacy" line. That is the
+  // as a "configProvider: lua" / "configProvider: hyprlang" line. That is the
   // authoritative signal: the version alone is not enough, because Hyprland
   // only uses the Lua manager when the config file name ends in ".lua", so a
   // >= 0.54 instance started with a traditional hyprland.conf still speaks the
