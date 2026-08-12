@@ -92,6 +92,7 @@ class Workspaces : public AModule, public EventHandler {
   static auto populateBoolConfig(const Json::Value& config, const std::string& key, bool& member)
       -> void;
   auto populateSortByConfig(const Json::Value& config) -> void;
+  auto populateActiveByConfig(const Json::Value& config) -> void;
   auto populateIgnoreWorkspacesConfig(const Json::Value& config) -> void;
   auto populateFormatWindowSeparatorConfig(const Json::Value& config) -> void;
   auto populateWindowRewriteConfig(const Json::Value& config) -> void;
@@ -174,6 +175,13 @@ class Workspaces : public AModule, public EventHandler {
                                                  {"NUMBER", SortMethod::NUMBER},
                                                  {"SPECIAL-CENTERED", SortMethod::SPECIAL_CENTERED},
                                                  {"DEFAULT", SortMethod::DEFAULT}};
+  
+  enum class ActiveMethod { ID, NAME, DEFAULT };
+  ActiveMethod m_activeBy = ActiveMethod::DEFAULT;
+  static inline const std::map<std::string, ActiveMethod> m_activeMap = {{"ID", ActiveMethod::ID},
+                                                 {"NAME", ActiveMethod::NAME},
+                                                 {"DEFAULT", ActiveMethod::DEFAULT}
+                                                };
 
   std::string m_formatBefore;
   std::string m_formatAfter;
