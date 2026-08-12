@@ -119,6 +119,15 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, Gtk::Orientat
       sigc::mem_fun(*this, &Privacy::onGeoCluePrivacyNodesChanged));
 }
 
+Privacy::~Privacy() {
+  // Both timeouts are attached to the global main context, which outlives this
+  // module when the bar is reloaded. sigc::connection's destructor does not
+  // disconnect, and the members are torn down after the backends they use, so a
+  // pending timeout would dispatch onto freed memory.
+  geoclue_timeout_conn.disconnect();
+  visibility_conn.disconnect();
+}
+
 void Privacy::onPWPrivacyNodesChanged() {
   mutex_.lock();
   nodes_audio_out.clear();
