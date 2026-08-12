@@ -108,6 +108,7 @@ class Workspaces : public AModule, public EventHandler {
                           Json::Value const& clientsData = Json::Value::nullRef);
   void onWorkspaceMoved(std::string const& payload);
   void onWorkspaceRenamed(std::string const& payload);
+  void onWorkspaceIdChanged(std::string const& payload);
   static std::optional<int> parseWorkspaceId(std::string const& workspaceIdStr);
 
   // monitor events
