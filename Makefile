@@ -27,5 +27,10 @@ test-detailed:
 	meson test -C build --verbose --print-errorlogs --test-args='--reporter console -s'
 .PHONY: test-detailed
 
+format:
+	git diff --name-only --diff-filter=ACMR | \
+		grep -E '\.(c|h|cpp|hpp)$$' | \
+		xargs -r clang-format -i
+
 clean:
 	rm -rf build

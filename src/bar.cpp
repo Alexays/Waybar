@@ -296,13 +296,12 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   }
 #endif
 
-  waybar::util::EnumParser<util::KillSignalAction> m_signalActionEnumParser;
   const auto& configSigusr1 = config["on-sigusr1"];
   if (configSigusr1.isString()) {
     auto strSigusr1 = configSigusr1.asString();
     try {
       onSigusr1 =
-          m_signalActionEnumParser.parseStringToEnum(strSigusr1, util::userKillSignalActions);
+        util::parseStringToEnum<util::KillSignalAction>(strSigusr1, util::userKillSignalActions);
     } catch (const std::invalid_argument& e) {
       onSigusr1 = util::SIGNALACTION_DEFAULT_SIGUSR1;
       spdlog::warn(
@@ -314,7 +313,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     auto strSigusr2 = configSigusr2.asString();
     try {
       onSigusr2 =
-          m_signalActionEnumParser.parseStringToEnum(strSigusr2, util::userKillSignalActions);
+        util::parseStringToEnum<util::KillSignalAction>(strSigusr2, util::userKillSignalActions);
     } catch (const std::invalid_argument& e) {
       onSigusr2 = util::SIGNALACTION_DEFAULT_SIGUSR2;
       spdlog::warn(

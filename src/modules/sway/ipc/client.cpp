@@ -193,6 +193,13 @@ void Ipc::sendCmd(uint32_t type, const std::string& payload) {
 
 void Ipc::subscribe(const std::string& payload) {
   auto res = Ipc::send(fd_event_, IPC_SUBSCRIBE, payload);
+  // Events subscribed to by a previous subscribe() call may arrive on the
+  // socket before the reply to this one; deliver them and keep reading until
+  // the subscribe reply is found.
+  while ((res.type >> 31) != 0U) {
+    signal_event.emit(res);
+    res = Ipc::recv(fd_event_);
+  }
   if (res.payload != "{\"success\": true}") {
     throw std::runtime_error("Unable to subscribe ipc event");
   }

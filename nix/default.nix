@@ -6,13 +6,13 @@
 }:
 let
   libcava = rec {
-    version = "0.10.7";
+    version = "1.0.0";
     src = pkgs.fetchFromGitHub {
       owner = "LukashonakV";
       repo = "cava";
       # NOTE: Needs to match the cava.wrap
       tag = "${version}";
-      hash = "sha256-zkyj1vBzHtoypX4Bxdh1Vmwh967DKKxN751v79hzmgQ=";
+      hash = "sha256-0r5aAmTs+FcmS501tNYKxG9H+Pq6i32BDRBEjWW6M74=";
     };
   };
 in
