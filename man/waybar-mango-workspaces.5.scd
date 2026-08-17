@@ -53,6 +53,10 @@ Addressed by *mango/workspaces*
 	default: "OVERVIEW" ++
 	Label shown on the overview button when the overview is active.
 
+*num-tags*: ++
+	typeof: uint ++
+	The number of tags that should be displayed.
+
 *expand*: ++
 	typeof: bool ++
 	default: false ++
