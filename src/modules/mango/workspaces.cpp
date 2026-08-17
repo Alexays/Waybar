@@ -55,6 +55,7 @@ void Workspaces::doUpdate() {
   const auto& tags = monitor["tags"];
 
   bool overview_mode = false;
+
   if (monitor.isMember("active_tags") && monitor["active_tags"].isArray()) {
     const auto& active_tags = monitor["active_tags"];
     if (active_tags.size() == 1 && active_tags[0].asInt() == 0) {
@@ -90,9 +91,9 @@ void Workspaces::doUpdate() {
 
     for (auto btn_it = buttons_.begin(); btn_it != buttons_.end();) {
       uint64_t id = btn_it->first;
-      bool found = std::any_of(tags.begin(), tags.end(), [id](const Json::Value& tag) {
-        return tag["index"].asUInt64() == id;
-      });
+
+      bool found = std::ranges::any_of(
+          tags, [id](const Json::Value& tag) { return tag["index"].asUInt64() == id; });
 
       if (!found) {
         box_.remove(btn_it->second);
@@ -102,20 +103,17 @@ void Workspaces::doUpdate() {
       }
     }
 
+    uint64_t num_tags =
+        config_["num-tags"].isUInt64() ? config_["num-tags"].asUInt64() : tags.size();
+
     for (const auto& tag : tags) {
       uint64_t idx = tag["index"].asUInt64();
+
+      if (idx > num_tags) break;
+
       auto btn_it = buttons_.find(idx);
       Gtk::Button& button = (btn_it == buttons_.end()) ? addButton(idx) : btn_it->second;
       updateButtonState(button, tag, monitor);
-    }
-
-    std::vector<uint64_t> indices;
-    for (const auto& tag : tags) indices.push_back(tag["index"].asUInt64());
-    std::sort(indices.begin(), indices.end());
-    int pos = 0;
-    for (uint64_t idx : indices) {
-      box_.reorder_child(buttons_[idx], pos + 1);
-      pos++;
     }
   }
 }
