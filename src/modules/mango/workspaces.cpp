@@ -103,17 +103,27 @@ void Workspaces::doUpdate() {
       }
     }
 
-    uint64_t num_tags =
-        config_["num-tags"].isUInt64() ? config_["num-tags"].asUInt64() : tags.size();
+    const auto num_tags = std::min<uint64_t>(
+        config_["num-tags"].isUInt64() ? config_["num-tags"].asUInt64() : tags.size(), tags.size());
 
-    for (const auto& tag : tags) {
-      uint64_t idx = tag["index"].asUInt64();
+    std::vector<const Json::Value*> ordered_tags;
+    ordered_tags.reserve(num_tags);
 
-      if (idx > num_tags) break;
+    for (Json::ArrayIndex i = 0; i < num_tags; ++i) {
+      const auto& tag = tags[i];
+      ordered_tags.push_back(&tag);
+    }
+
+    std::ranges::sort(ordered_tags, [](const Json::Value* a, const Json::Value* b) {
+      return (*a)["index"].asUInt64() < (*b)["index"].asUInt64();
+    });
+
+    for (const auto* tag : ordered_tags) {
+      uint64_t idx = (*tag)["index"].asUInt64();
 
       auto btn_it = buttons_.find(idx);
       Gtk::Button& button = (btn_it == buttons_.end()) ? addButton(idx) : btn_it->second;
-      updateButtonState(button, tag, monitor);
+      updateButtonState(button, *tag, monitor);
     }
   }
 }
