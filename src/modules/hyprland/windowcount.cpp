@@ -22,7 +22,6 @@ WindowCount::WindowCount(const std::string& id, const Bar& bar, const Json::Valu
 
   queryActiveWorkspace();
   update();
-  dp.emit();
 
   // register for hyprland ipc
   m_ipc.registerForIPC("fullscreen", this);

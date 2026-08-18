@@ -18,8 +18,6 @@ waybar::modules::Backlight::Backlight(const std::string& id, const Json::Value& 
     : ALabel(config, "backlight", id, "{percent}%", reap_mtx, reap, 2),
       preferred_device_(config["device"].isString() ? config["device"].asString() : ""),
       backend(interval_, [this] { dp.emit(); }) {
-  dp.emit();
-
   // Set up scroll handler
   event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
   event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Backlight::handleScroll));
@@ -121,9 +119,16 @@ bool waybar::modules::Backlight::handleScroll(GdkEventScroll* e) {
   if (config_["min-brightness"].isDouble()) {
     min_brightness = config_["min-brightness"].asDouble();
   }
-  if (backend.get_scaled_brightness(preferred_device_) <= min_brightness &&
-      ct == util::ChangeType::Decrease) {
-    return true;
+  if (ct == util::ChangeType::Decrease) {
+    const double current = backend.get_scaled_brightness(preferred_device_);
+    if (current <= min_brightness) {
+      return true;
+    }
+    if (current - step < min_brightness) {
+      backend.set_scaled_brightness(preferred_device_,
+                                    static_cast<int>(std::round(min_brightness)));
+      return true;
+    }
   }
   backend.set_brightness(preferred_device_, ct, step);
 

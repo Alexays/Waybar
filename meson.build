@@ -185,7 +185,6 @@ src_files = files(
     'src/config.cpp',
     'src/group.cpp',
     'src/util/portal.cpp',
-    'src/util/enum.cpp',
     'src/util/prepare_for_sleep.cpp',
     'src/util/ustring_clen.cpp',
     'src/util/sanitize_str.cpp',
@@ -555,7 +554,7 @@ else
 endif
 
 cava = dependency('libcava',
-                  version : '>=0.10.7',
+                  version : '>=1.0.0',
                   required: get_option('cava'),
                   fallback : ['libcava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')

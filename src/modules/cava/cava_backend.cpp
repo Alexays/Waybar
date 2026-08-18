@@ -262,8 +262,6 @@ void waybar::modules::cava::CavaBackend::loadConfig() {
   new_prm.xaxis = ::cava::xaxis_scale::NONE;
   new_prm.mono_opt = ::cava::AVERAGE;
   new_prm.autobars = 0;
-  if (cfg["gravity"].isInt()) new_prm.gravity = cfg["gravity"].asInt();
-  if (cfg["integral"].isInt()) new_prm.integral = cfg["integral"].asInt();
 
   if (cfg["framerate"].isInt()) new_prm.framerate = cfg["framerate"].asInt();
   if (cfg["autosens"].isInt()) new_prm.autosens = cfg["autosens"].asInt();

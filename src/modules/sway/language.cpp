@@ -43,7 +43,6 @@ Language::Language(const std::string& id, const Json::Value& config, std::mutex&
       spdlog::error("Language: {}", e.what());
     }
   });
-  dp.emit();
 }
 
 void Language::onCmd(const struct Ipc::ipc_response& res) {

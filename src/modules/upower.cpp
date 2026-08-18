@@ -81,8 +81,6 @@ UPower::UPower(const std::string& id, const Json::Value& config, std::mutex& rea
 
   resetDevices();
   setDisplayDevice();
-  // Update the widget
-  dp.emit();
 }
 
 UPower::~UPower() {

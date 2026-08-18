@@ -17,7 +17,6 @@ Mode::Mode(const std::string& id, const Json::Value& config, std::mutex& reap_mt
       spdlog::error("Mode: {}", e.what());
     }
   });
-  dp.emit();
 }
 
 void Mode::onEvent(const struct Ipc::ipc_response& res) {

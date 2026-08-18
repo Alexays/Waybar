@@ -61,6 +61,7 @@ class Workspace {
   void setUrgent(bool value = true) { m_isUrgent = value; };
   void setVisible(bool value = true) { m_isVisible = value; };
   void setWindows(uint value) { m_windows = value; };
+  void setId(int value) { m_id = value; };
   void setName(std::string const& value) { m_name = value; };
   void setOutput(std::string const& value) { m_output = value; };
   bool containsWindow(WindowAddress const& addr) const {

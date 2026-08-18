@@ -8,7 +8,6 @@ Keymode::Keymode(const std::string& id, const Bar& bar, const Json::Value& confi
 		 std::list<pid_t>& reap)
     : ALabel(config, "keymode", id, "{}", reap_mtx, reap, 0, false), bar_(bar) {
   IPC::getInstance().registerForIPC("monitor", this);
-  dp.emit();
 }
 
 Keymode::~Keymode() { IPC::getInstance().unregisterForIPC(this); }

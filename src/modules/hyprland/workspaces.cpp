@@ -56,8 +56,8 @@ void Workspaces::init() {
   if (m_scrollEventConnection_.connected()) {
     m_scrollEventConnection_.disconnect();
   }
-  bool hasScrollConfig = config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString();
-  if (barScroll() || hasScrollConfig) {
+
+  if (barScroll()) {
     auto& window = const_cast<Bar&>(m_bar).window;
     window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     m_scrollEventConnection_ =
@@ -313,6 +313,8 @@ void Workspaces::onEvent(const std::string& ev) {
       onSpecialWorkspaceActivated(payload);
     } else if (eventName == "destroyworkspacev2") {
       onWorkspaceDestroyed(payload);
+    } else if (eventName == "changeworkspaceid") {
+      onWorkspaceIdChanged(payload);
     } else if (eventName == "createworkspacev2") {
       onWorkspaceCreated(payload);
     } else if (eventName == "focusedmonv2") {
@@ -448,6 +450,35 @@ void Workspaces::onWorkspaceRenamed(std::string const& payload) {
     }
   }
   sortWorkspaces();
+}
+
+void Workspaces::onWorkspaceIdChanged(std::string const& payload) {
+  spdlog::debug("Workspace ID changed: {}", payload);
+
+  const auto [oldIdStr, newIdStr] = splitDoublePayload(payload);
+
+  const auto oldId = parseWorkspaceId(oldIdStr);
+  const auto newId = parseWorkspaceId(newIdStr);
+
+  if (!oldId.has_value() || !newId.has_value()) {
+    spdlog::warn("Invalid workspace ID change payload: {}", payload);
+    return;
+  }
+
+  for (auto& workspace : m_workspaces) {
+    if (workspace->id() == *oldId) {
+      spdlog::debug("Changing workspace ID from {} to {}", *oldId, *newId);
+      workspace->setId(*newId);
+      break;
+    }
+  }
+
+  if (m_activeWorkspaceId == *oldId) {
+    m_activeWorkspaceId = *newId;
+  }
+
+  sortWorkspaces();
+  updateWindowCount();
 }
 
 void Workspaces::onMonitorFocused(std::string const& payload) {
@@ -683,7 +714,7 @@ auto Workspaces::populateSortByConfig(const Json::Value& config) -> void {
   if (configSortBy.isString()) {
     auto sortByStr = configSortBy.asString();
     try {
-      m_sortBy = m_enumParser.parseStringToEnum(sortByStr, m_sortMap);
+      m_sortBy = waybar::util::parseStringToEnum<SortMethod>(sortByStr, m_sortMap);
     } catch (const std::invalid_argument& e) {
       m_sortBy = SortMethod::DEFAULT;
       spdlog::warn(
@@ -807,7 +838,7 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value& config) -> vo
     auto posStr = workspaceTaskbar["active-window-position"].asString();
     try {
       m_activeWindowPosition =
-          m_activeWindowEnumParser.parseStringToEnum(posStr, m_activeWindowPositionMap);
+        util::parseStringToEnum<ActiveWindowPosition>(posStr, m_activeWindowPositionMap);
     } catch (const std::invalid_argument& e) {
       spdlog::warn(
           "Invalid string representation for active-window-position. Falling back to 'none'.");
@@ -828,6 +859,7 @@ auto Workspaces::registerIpc() -> void {
   m_ipc.registerForIPC("createworkspacev2", this);
   m_ipc.registerForIPC("destroyworkspacev2", this);
   m_ipc.registerForIPC("focusedmonv2", this);
+  m_ipc.registerForIPC("changeworkspaceid", this);
   m_ipc.registerForIPC("moveworkspacev2", this);
   m_ipc.registerForIPC("renameworkspace", this);
   m_ipc.registerForIPC("openwindow", this);

@@ -11,7 +11,6 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config,
                std::mutex& reap_mtx, std::list<pid_t>& reap)
     : AAppIconLabel(config, "window", id, "{title}", reap_mtx, reap, 0, true), bar_(bar) {
   IPC::getInstance().registerForIPC("monitor", this);
-  dp.emit();
 }
 
 Window::~Window() { IPC::getInstance().unregisterForIPC(this); }

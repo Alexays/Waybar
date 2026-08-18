@@ -50,7 +50,6 @@ Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config, std
     box_.set_spacing(config_["spacing"].asUInt());
   }
   nb_hosts_ += 1;
-  dp.emit();
 }
 
 void Tray::checkIgnoreList(std::unique_ptr<Item>* item_ptr) {
