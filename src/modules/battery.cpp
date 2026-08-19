@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdio>
 #include <string>
+#include <system_error>
 
 #include "util/command.hpp"
 #if defined(__FreeBSD__)
@@ -160,7 +161,7 @@ void waybar::modules::Battery::refreshBatteries() {
         adapter_ = node.path();
       }
     }
-  } catch (fs::filesystem_error& e) {
+  } catch (const std::system_error& e) {
     spdlog::warn("Battery directory tracking failed: {}", e.what());
   }
   if (warnFirstTime_ && batteries_.empty()) {
