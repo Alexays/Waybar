@@ -9,8 +9,9 @@
 
 namespace waybar::modules {
 
-CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& config)
-    : AModule(config, name, id, true, true) {
+CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& config,
+           std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : AModule(config, name, id, reap_mtx, reap, true, true) {
   const auto dynlib_path = config_["module_path"].asString();
   if (dynlib_path.empty()) {
     throw std::runtime_error{"Missing or empty 'module_path' in module config"};

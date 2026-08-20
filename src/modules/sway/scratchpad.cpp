@@ -5,9 +5,11 @@
 #include <string>
 
 namespace waybar::modules::sway {
-Scratchpad::Scratchpad(const std::string& id, const Json::Value& config)
+Scratchpad::Scratchpad(const std::string& id, const Json::Value& config, std::mutex& reap_mtx,
+                       std::list<pid_t>& reap)
     : ALabel(config, "scratchpad", id,
-             config["format"].isString() ? config["format"].asString() : "{icon} {count}"),
+             config["format"].isString() ? config["format"].asString() : "{icon} {count}", reap_mtx,
+             reap),
       tooltip_format_(config_["tooltip-format"].isString() ? config_["tooltip-format"].asString()
                                                            : "{app}: {title}"),
       show_empty_(config_["show-empty"].isBool() ? config_["show-empty"].asBool() : false),

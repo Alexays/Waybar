@@ -174,8 +174,9 @@ auto hasUserDescriptionDescriptor(GList* objects, const std::string& char_path,
 
 }  // namespace
 
-waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& config)
-    : ALabel(config, "bluetooth", id, " {status}", 10),
+waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& config,
+                                      std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "bluetooth", id, " {status}", reap_mtx, reap, 10),
 #ifdef WANT_RFKILL
       rfkill_{RFKILL_TYPE_BLUETOOTH},
 #endif

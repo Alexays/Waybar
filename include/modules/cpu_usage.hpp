@@ -16,7 +16,7 @@ namespace waybar::modules {
 
 class CpuUsage : public ALabel {
  public:
-  CpuUsage(const std::string&, const Json::Value&);
+  CpuUsage(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~CpuUsage() = default;
   auto update() -> void override;
 

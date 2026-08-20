@@ -14,7 +14,7 @@ namespace waybar::modules {
 
 class Wwan : public ALabel {
  public:
-  Wwan(const std::string&, const Json::Value&);
+  Wwan(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~Wwan();
   auto update() -> void override;
 
