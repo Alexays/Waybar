@@ -63,6 +63,11 @@ WorkspaceManager::WorkspaceManager(const std::string& id, const waybar::Bar& bar
   }
   box_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(box_);
+  if (!config_["disable-scroll"].asBool() && config_["enable-bar-scroll"].asBool()) {
+    auto& window = const_cast<Bar&>(bar_).window;
+    window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+    window.signal_scroll_event().connect(sigc::mem_fun(*this, &WorkspaceManager::handleScroll));
+  }
 
   spdlog::debug("[ext/workspaces]: Workspace manager created");
 }
