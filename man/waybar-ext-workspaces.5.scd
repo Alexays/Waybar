@@ -54,6 +54,11 @@ Addressed by *ext/workspaces*
 	default: false ++
 	If set to true only active or urgent workspaces will be shown.
 
+*disable-scroll*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, scrolling is disabled for this module.
+
 *ignore-hidden*: ++
 	typeof: bool ++
 	default: true ++

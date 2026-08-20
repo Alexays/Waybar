@@ -22,7 +22,9 @@ std::map<std::string, std::string> Workspace::icon_map_;
 
 WorkspaceManager::WorkspaceManager(const std::string& id, const waybar::Bar& bar,
                                    const Json::Value& config)
-    : waybar::AModule(config, "workspaces", id, false, false), bar_(bar), box_(bar.orientation, 0) {
+    : waybar::AModule(config, "workspaces", id, false, !config["disable-scroll"].asBool()),
+      bar_(bar),
+      box_(bar.orientation, 0) {
   add_registry_listener(this);
 
   // parse configuration
@@ -145,6 +147,46 @@ void WorkspaceManager::handle_finished() {
 
 void WorkspaceManager::commit() const {
   if (ext_manager_) ext_workspace_manager_v1_commit(ext_manager_);
+}
+
+bool WorkspaceManager::handleScroll(GdkEventScroll* e) {
+  if (gdk_event_get_pointer_emulated(reinterpret_cast<GdkEvent*>(e)) != 0) {
+    return false;
+  }
+
+  const auto dir = getScrollDir(e);
+  if (dir == SCROLL_DIR::NONE) {
+    return true;
+  }
+
+  auto active = std::find_if(workspaces_.begin(), workspaces_.end(), [](const auto& workspace) {
+    return workspace->is_active() && workspace->button().get_visible();
+  });
+  if (active == workspaces_.end()) {
+    return true;
+  }
+
+  auto target = active;
+  do {
+    if (dir == SCROLL_DIR::DOWN || dir == SCROLL_DIR::RIGHT) {
+      ++target;
+      if (target == workspaces_.end()) {
+        target = workspaces_.begin();
+      }
+    } else {
+      if (target == workspaces_.begin()) {
+        target = workspaces_.end();
+      }
+      --target;
+    }
+  } while (target != active && !(*target)->button().get_visible());
+
+  if (target != active) {
+    ext_workspace_handle_v1_activate((*target)->handle());
+    commit();
+  }
+
+  return true;
 }
 
 void WorkspaceManager::update() {
