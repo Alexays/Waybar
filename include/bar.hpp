@@ -76,6 +76,7 @@ class Bar : public sigc::trackable {
   void handleSignal(int);
   util::KillSignalAction getOnSigusr1Action();
   util::KillSignalAction getOnSigusr2Action();
+  int getAvailableWidthForLeftModule(const AModule* module) const;
 
   void toggleSuspend(bool suspend);
 
