@@ -171,7 +171,8 @@ void Language::initLanguage() {
   try {
     auto searcher = kbName.empty()
                         ? inputDevices
-                        : inputDevices.substr(inputDevices.find(kbName) + kbName.length());
+                        : inputDevices.substr(inputDevices.find(std::format("\t{}\n", kbName)) +
+                                              kbName.length() + 2);
     searcher = searcher.substr(searcher.find("keymap:") + 8);
     searcher = searcher.substr(0, searcher.find_first_of("\n\t"));
 
