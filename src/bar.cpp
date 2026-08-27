@@ -9,6 +9,7 @@
 #include "client.hpp"
 #include "factory.hpp"
 #include "group.hpp"
+#include "util/command.hpp"
 #include "util/enum.hpp"
 #include "util/hosts_check.hpp"
 #include "util/kill_signal.hpp"
@@ -227,6 +228,10 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   }
 
   window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Bar::onConfigure));
+  if (config["on-mouse-exit"].isString()) {
+    window.add_events(Gdk::LEAVE_NOTIFY_MASK);
+    window.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Bar::handleMouseLeave));
+  }
   output->monitor->property_geometry().signal_changed().connect(
       sigc::mem_fun(*this, &Bar::onOutputGeometryChanged));
 
@@ -301,7 +306,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     auto strSigusr1 = configSigusr1.asString();
     try {
       onSigusr1 =
-        util::parseStringToEnum<util::KillSignalAction>(strSigusr1, util::userKillSignalActions);
+          util::parseStringToEnum<util::KillSignalAction>(strSigusr1, util::userKillSignalActions);
     } catch (const std::invalid_argument& e) {
       onSigusr1 = util::SIGNALACTION_DEFAULT_SIGUSR1;
       spdlog::warn(
@@ -313,7 +318,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     auto strSigusr2 = configSigusr2.asString();
     try {
       onSigusr2 =
-        util::parseStringToEnum<util::KillSignalAction>(strSigusr2, util::userKillSignalActions);
+          util::parseStringToEnum<util::KillSignalAction>(strSigusr2, util::userKillSignalActions);
     } catch (const std::invalid_argument& e) {
       onSigusr2 = util::SIGNALACTION_DEFAULT_SIGUSR2;
       spdlog::warn(
@@ -675,6 +680,15 @@ auto waybar::Bar::setupWidgets() -> void {
   for (auto const& module : modules_right_) {
     right_.pack_end(*module, module->expandEnabled(), module->expandEnabled());
   }
+}
+
+bool waybar::Bar::handleMouseLeave(GdkEventCrossing* event) {
+  if (event->detail == GDK_NOTIFY_INFERIOR) {
+    return false;
+  }
+
+  util::command::forkExec(config["on-mouse-exit"].asString());
+  return false;
 }
 
 void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
