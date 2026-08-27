@@ -15,7 +15,6 @@
 #include <limits>
 #include <stdexcept>
 #include <string_view>
-#include <thread>
 #include <utility>
 
 #include "modules/sway/ipc/ipc.hpp"
@@ -52,19 +51,15 @@ Ipc::~Ipc() {
   // Signal the worker before stopping it so an in-flight recv/reconnect bails
   // out instead of trying to reconnect to a socket we're tearing down.
   running_ = false;
-  thread_.stop();
 
-  if (fd_ > 0) {
-    // To fail the IPC header
-    if (write(fd_, "close-sway-ipc", 14) == -1) {
-      spdlog::error("Failed to close sway IPC");
-    }
+  if (fd_event_ >= 0) {
+    ::shutdown(fd_event_, SHUT_RDWR);
   }
-  if (fd_event_ > 0) {
-    if (write(fd_event_, "close-sway-ipc", 14) == -1) {
-      spdlog::error("Failed to close sway IPC event handler");
-    }
+  if (fd_ >= 0) {
+    ::shutdown(fd_, SHUT_RDWR);
   }
+
+  thread_.stop();
 }
 
 void Ipc::setWorker(std::function<void()>&& func) { thread_ = std::move(func); }
@@ -213,8 +208,10 @@ void Ipc::reconnectEvent() {
   // same events, backing off between attempts so we don't busy-loop and peg a
   // CPU while sway is unavailable or keeps dropping us.
   while (running_) {
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    if (!running_) {
+    // Back off on the worker's own condvar rather than an uninterruptible
+    // sleep, so teardown wakes us right away instead of waiting it out.
+    thread_.sleep_for(std::chrono::seconds(2));
+    if (!running_ || !thread_.isRunning()) {
       return;
     }
     try {
