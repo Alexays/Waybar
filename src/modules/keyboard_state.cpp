@@ -201,6 +201,7 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
     std::string dev_path = devices_path_ + ep->d_name;
     tryAddDevice(dev_path);
   }
+  closedir(dev_dir);
 
   if (libinput_devices_.empty()) {
     throw errno_error(errno, "Failed to find keyboard device");
