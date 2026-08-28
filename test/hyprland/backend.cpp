@@ -4,8 +4,6 @@
 #include <catch2/catch.hpp>
 #endif
 
-#include <cstring>
-#include <optional>
 #include <string>
 #include <system_error>
 
@@ -18,29 +16,8 @@ namespace {
 class IPCTestHelper : public hyprland::IPC {
  public:
   static void resetSocketFolder() { socketFolder_.clear(); }
-  static void resetLuaProtocolDetection() { s_luaProtocolDetected_.reset(); }
-  static void setLuaProtocolDetected(bool value) { s_luaProtocolDetected_ = value; }
   using hyprland::IPC::buildLuaDispatch;
-  using hyprland::IPC::isLuaConfigProvider;
-  using hyprland::IPC::isLuaProtocol;
 };
-
-// Trimmed but otherwise verbatim "systeminfo" reply from Hyprland 0.56.1.
-constexpr auto kSystemInfoLua = R"(
-Hyprland 0.56.1 built from branch v0.56.1 at commit deadbeef clean.
-Date: Mon Jul 27 16:33:49 2026
-Tag: v0.56.1, commits: 7643
-
-Libraries:
-Hyprutils: built against 0.14.0, system has 0.14.0
-
-os-release: Fedora Linux 43
-
-plugins:
-  no plugins loaded
-
-configProvider: lua
-)";
 
 std::size_t countOpenFds() {
 #if defined(__linux__)
@@ -177,129 +154,34 @@ TEST_CASE("buildLuaDispatch workspace", "[buildLuaDispatch]") {
 }
 
 TEST_CASE("buildLuaDispatch focusworkspaceoncurrentmonitor", "[buildLuaDispatch]") {
-  auto result =
-      IPCTestHelper::buildLuaDispatch("focusworkspaceoncurrentmonitor", "3");
-  REQUIRE(
-      result ==
-      "/dispatch hl.dsp.focus({ workspace = \"3\", on_current_monitor = true })");
+  auto result = IPCTestHelper::buildLuaDispatch("focusworkspaceoncurrentmonitor", "3");
+  REQUIRE(result == "/dispatch hl.dsp.focus({ workspace = \"3\", on_current_monitor = true })");
 }
 
 TEST_CASE("buildLuaDispatch togglespecialworkspace", "[buildLuaDispatch]") {
   SECTION("with name") {
-    auto result =
-        IPCTestHelper::buildLuaDispatch("togglespecialworkspace", "scratchpad");
-    REQUIRE(result ==
-            "/dispatch hl.dsp.workspace.toggle_special(\"scratchpad\")");
+    auto result = IPCTestHelper::buildLuaDispatch("togglespecialworkspace", "scratchpad");
+    REQUIRE(result == "/dispatch hl.dsp.workspace.toggle_special(\"scratchpad\")");
   }
   SECTION("empty arg") {
-    auto result =
-        IPCTestHelper::buildLuaDispatch("togglespecialworkspace", "");
+    auto result = IPCTestHelper::buildLuaDispatch("togglespecialworkspace", "");
     REQUIRE(result == "/dispatch hl.dsp.workspace.toggle_special()");
   }
 }
 
 TEST_CASE("buildLuaDispatch unknown dispatcher fallback", "[buildLuaDispatch]") {
-  auto result =
-      IPCTestHelper::buildLuaDispatch("unknown_dispatcher", "some_arg");
-  REQUIRE(result ==
-          "/dispatch hl.dsp.unknown_dispatcher(\"some_arg\")");
+  auto result = IPCTestHelper::buildLuaDispatch("unknown_dispatcher", "some_arg");
+  REQUIRE(result == "/dispatch hl.dsp.unknown_dispatcher(\"some_arg\")");
+}
+
+TEST_CASE("buildLuaDispatch escapes quotes and backslashes", "[buildLuaDispatch]") {
+  auto result = IPCTestHelper::buildLuaDispatch("workspace", "name:foo\"bar\\baz");
+  REQUIRE(result == R"(/dispatch hl.dsp.focus({ workspace = "name:foo\"bar\\baz" }))");
 }
 
 TEST_CASE("dispatch throws when Hyprland is not running", "[dispatch]") {
   unsetenv("HYPRLAND_INSTANCE_SIGNATURE");
   IPCTestHelper::resetSocketFolder();
-  IPCTestHelper::resetLuaProtocolDetection();
 
   CHECK_THROWS(hyprland::IPC::dispatch("workspace", "1"));
-}
-
-TEST_CASE("isLuaConfigProvider reads the config manager Hyprland loaded", "[isLuaConfigProvider]") {
-  SECTION("realistic systeminfo reply reports the Lua manager") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider(kSystemInfoLua) == true);
-  }
-
-  SECTION("lua") { REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider: lua\n") == true); }
-
-  // "hyprlang" is what Hyprland actually emits for the legacy manager, per
-  // Config::typeToString in src/config/ConfigManager.cpp.
-  SECTION("hyprlang") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider: hyprlang\n") == false);
-  }
-
-  // A >= 0.55 instance started with a traditional hyprland.conf keeps the
-  // legacy parser, which is exactly the case the version heuristic got wrong.
-  SECTION("legacy manager inside a full reply") {
-    std::string info{kSystemInfoLua};
-    info.replace(info.find("configProvider: lua"), std::strlen("configProvider: lua"),
-                 "configProvider: hyprlang");
-    REQUIRE(IPCTestHelper::isLuaConfigProvider(info) == false);
-  }
-
-  SECTION("an unrecognised manager is not treated as Lua") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider: something-else\n") == false);
-  }
-
-  // The field ships together with the Lua config manager (0.55), so replies
-  // without it come from instances that only speak the legacy protocol.
-  SECTION("absent field means a pre-Lua instance, hence legacy") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider("Hyprland 0.41.2\nTag: v0.41.2\n") == false);
-  }
-
-  SECTION("empty reply") { REQUIRE(IPCTestHelper::isLuaConfigProvider("") == false); }
-}
-
-TEST_CASE("isLuaConfigProvider tolerates formatting variations", "[isLuaConfigProvider]") {
-  SECTION("tab separator") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider:\tlua\n") == true);
-  }
-
-  SECTION("extra spaces") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider:    lua\n") == true);
-  }
-
-  SECTION("CRLF line ending") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider: lua\r\n") == true);
-  }
-
-  SECTION("last line without a trailing newline") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider("plugins:\nconfigProvider: lua") == true);
-  }
-
-  SECTION("empty value is not Lua") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider:\n") == false);
-  }
-}
-
-TEST_CASE("isLuaProtocol assumes legacy when Hyprland is not reachable", "[isLuaProtocol]") {
-  // getSocket1Reply throws; detection must degrade to legacy instead of
-  // propagating and breaking the click.
-  unsetenv("HYPRLAND_INSTANCE_SIGNATURE");
-  IPCTestHelper::resetSocketFolder();
-  IPCTestHelper::resetLuaProtocolDetection();
-
-  REQUIRE(IPCTestHelper::isLuaProtocol() == false);
-
-  // Cleanup: drop the cached result so other tests aren't affected
-  IPCTestHelper::resetLuaProtocolDetection();
-}
-
-TEST_CASE("isLuaProtocol uses cached value and avoids socket call",
-          "[isLuaProtocol]") {
-  unsetenv("HYPRLAND_INSTANCE_SIGNATURE");
-  IPCTestHelper::resetSocketFolder();
-
-  SECTION("cached false") {
-    IPCTestHelper::setLuaProtocolDetected(false);
-    // Should return false without throwing (no socket call needed)
-    REQUIRE(IPCTestHelper::isLuaProtocol() == false);
-  }
-
-  SECTION("cached true") {
-    IPCTestHelper::setLuaProtocolDetected(true);
-    // Should return true without throwing (no socket call needed)
-    REQUIRE(IPCTestHelper::isLuaProtocol() == true);
-  }
-
-  // Cleanup: reset detection so other tests aren't affected
-  IPCTestHelper::resetLuaProtocolDetection();
 }
