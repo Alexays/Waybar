@@ -188,8 +188,9 @@ Task::Task(const waybar::Bar& bar, const Json::Value& config, Taskbar* tbar,
       config_["on-click-right"].isString()) {
   }
 
-  button.add_events(Gdk::BUTTON_PRESS_MASK);
+  button.add_events(Gdk::BUTTON_PRESS_MASK | Gdk::SCROLL_MASK);
   button.signal_button_release_event().connect(sigc::mem_fun(*this, &Task::handle_clicked), false);
+  button.signal_scroll_event().connect(sigc::mem_fun(*this, &Task::handle_scroll), false);
 
   button.signal_motion_notify_event().connect(sigc::mem_fun(*this, &Task::handle_motion_notify),
                                               false);
@@ -548,10 +549,60 @@ bool Task::handle_clicked(GdkEventButton* bt) {
     fullscreen(!fullscreen());
   else if (action == "close")
     close();
-  else
+  else if (action == "unminimize") {
+    set_minimize_hint();
+    minimize(false);
+  } else if (action == "minimize-only") {
+    set_minimize_hint();
+    minimize(true);
+  } else
     spdlog::warn("Unknown action {}", action);
 
   drag_start_button = -1;
+  return true;
+}
+
+bool Task::handle_scroll(GdkEventScroll* e) {
+  std::string action;
+
+  if ((e->direction == GDK_SCROLL_UP || (e->direction == GDK_SCROLL_SMOOTH && e->delta_y < 0)) &&
+      config_["on-scroll-up"].isString()) {
+    action = config_["on-scroll-up"].asString();
+  } else if ((e->direction == GDK_SCROLL_DOWN ||
+              (e->direction == GDK_SCROLL_SMOOTH && e->delta_y > 0)) &&
+             config_["on-scroll-down"].isString()) {
+    action = config_["on-scroll-down"].asString();
+  }
+  if (action.empty()) return false;
+
+  if (action == "activate")
+    activate();
+  else if (action == "minimize") {
+    set_minimize_hint();
+    minimize(!minimized());
+  } else if (action == "minimize-raise") {
+    set_minimize_hint();
+    if (minimized())
+      minimize(false);
+    else if (active())
+      minimize(true);
+    else
+      activate();
+  } else if (action == "maximize")
+    maximize(!maximized());
+  else if (action == "fullscreen")
+    fullscreen(!fullscreen());
+  else if (action == "close")
+    close();
+  else if (action == "unminimize") {
+    set_minimize_hint();
+    minimize(false);
+  } else if (action == "minimize-only") {
+    set_minimize_hint();
+    minimize(true);
+  } else
+    spdlog::warn("Unknown action {}", action);
+
   return true;
 }
 
@@ -729,10 +780,11 @@ Taskbar::Taskbar(const std::string& id, const waybar::Bar& bar, const Json::Valu
   // commands (issue #3284). Values that are not built-in actions are left alone
   // and still run as user shell commands.
   const auto is_builtin_action = [](const std::string& v) {
-    return v == "activate" || v == "minimize" || v == "minimize-raise" || v == "maximize" ||
-           v == "fullscreen" || v == "close";
+    return v == "activate" || v == "minimize" || v == "minimize-only" || v == "unminimize" ||
+           v == "minimize-raise" || v == "maximize" || v == "fullscreen" || v == "close";
   };
-  for (const auto* event : {"on-click", "on-click-middle", "on-click-right"}) {
+  for (const auto* event :
+       {"on-click", "on-click-middle", "on-click-right", "on-scroll-up", "on-scroll-down"}) {
     if (config_[event].isString() && is_builtin_action(config_[event].asString())) {
       eventActionMap_.insert({event, config_[event].asString()});
     }
