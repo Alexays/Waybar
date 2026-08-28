@@ -126,17 +126,15 @@ void Language::onEvent(const std::string& ev) {
     spdlog::warn("hyprland language received malformed event payload: {}", ev);
     return;
   }
-  // Last comma before variants parenthesis, eg:
+  // Both halves of "<keyboard>,<layout>" may contain commas of their own: the
+  // keyboard in its vendor string, the layout inside its variant parentheses, eg
   // activelayout>>micro-star-int'l-co.,-ltd.-msi-gk50-elite-gaming-keyboard,English (US, intl.,
   // with dead keys)
-  std::string beforeParenthesis;
-  auto parenthesisPos = payload.find_last_of('(');
-  if (parenthesisPos == std::string::npos) {
-    beforeParenthesis = payload;
-  } else {
-    beforeParenthesis = payload.substr(0, parenthesisPos);
-  }
-  const auto layoutSeparator = beforeParenthesis.find_last_of(',');
+  // The separator is therefore the last comma outside parentheses. Splitting on
+  // the last '(' instead would assume every bracket belongs to the layout, but
+  // keyboard names carry them too, eg "ite-tech.-inc.-ite-device(8910)-keyboard",
+  // which left no comma to find and dropped the event entirely (#4586).
+  const auto layoutSeparator = rfindOutsideParens(payload, ',');
   if (layoutSeparator == std::string::npos) {
     spdlog::warn("hyprland language received malformed layout payload: {}", ev);
     return;
