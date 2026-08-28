@@ -12,7 +12,7 @@ namespace waybar::modules {
 
 class Memory : public ALabel {
  public:
-  Memory(const std::string&, const Json::Value&);
+  Memory(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~Memory() = default;
   auto update() -> void override;
 

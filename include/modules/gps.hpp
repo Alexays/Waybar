@@ -16,7 +16,7 @@ namespace waybar::modules {
 
 class Gps : public ALabel {
  public:
-  Gps(const std::string&, const Json::Value&);
+  Gps(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~Gps();
   auto update() -> void override;
 
