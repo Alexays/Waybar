@@ -105,13 +105,32 @@ void Workspace::update(const Json::Value& data, const std::vector<Json::Value>& 
   const auto& taskbar_cfg = cfg["workspace-taskbar"];
   if (taskbar_cfg.isObject() && taskbar_cfg["enable"].asBool()) {
     std::vector<Json::Value> my_windows;
+
+
+    // Static memory matrix: maps workspace IDs to a inner map of [column_index -> last_focused_window_id]
+    // This allows the taskbar to remember which window was active in each column even when unfocused.
+    static std::map<uint64_t, std::map<int, uint64_t>> workspace_memories;
+    // Fetch the specific column-focus memory bucket for the current workspace
+    auto& last_focused_in_col = workspace_memories[id_];
+
+
     for (const auto& win : all_windows) {
       if (win["workspace_id"].asUInt64() == id_) {
         my_windows.push_back(win);
+        const auto& layout = win["layout"];
+        // If this window is currently focused, update our column memory tracking
+        if (layout.isObject() && layout["pos_in_scrolling_layout"].isArray()) {
+          int col = layout["pos_in_scrolling_layout"][0].asInt();
+          if (win["is_focused"].asBool()) {
+            last_focused_in_col[col]=win["id"].asUInt64();
+          }
+        }
       }
     }
 
-    std::sort(my_windows.begin(), my_windows.end(), [](const Json::Value& a, const Json::Value& b) {
+
+    const bool enable_column = taskbar_cfg["column"].isBool() ? taskbar_cfg["column"].asBool() : false;
+    std::sort(my_windows.begin(), my_windows.end(), [&last_focused_in_col, enable_column](const Json::Value& a, const Json::Value& b) {
       const auto& la = a["layout"];
       const auto& lb = b["layout"];
       const bool ha = la.isObject() && la["pos_in_scrolling_layout"].isArray();
@@ -122,12 +141,15 @@ void Workspace::update(const Json::Value& data, const std::vector<Json::Value>& 
       const int col_a = la["pos_in_scrolling_layout"][0].asInt();
       const int col_b = lb["pos_in_scrolling_layout"][0].asInt();
       if (col_a != col_b) return col_a < col_b;
+      // the last focused window in this column to the front.
+      if (enable_column && last_focused_in_col.count(col_a) && last_focused_in_col[col_a] == a["id"].asUInt64()) return true;
+      if (enable_column && last_focused_in_col.count(col_a) && last_focused_in_col[col_a] == b["id"].asUInt64()) return false;
       return la["pos_in_scrolling_layout"][1].asInt() < lb["pos_in_scrolling_layout"][1].asInt();
     });
 
     rebuildTaskbar(my_windows);
     taskbar_box_.show();
-    label_.hide();
+    if (taskbar_cfg["hide-format"].asBool() ? taskbar_cfg["column"].asBool() : false)  label_.hide();
   } else {
     for (auto* child : taskbar_box_.get_children()) {
       taskbar_box_.remove(*child);
@@ -145,12 +167,47 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
 
   const auto& taskbar_cfg = manager_.config()["workspace-taskbar"];
   const int icon_size = taskbar_cfg["icon-size"].isInt() ? taskbar_cfg["icon-size"].asInt() : 16;
+  // Feature switches: column folding and folded window counters
+  const bool enable_column = taskbar_cfg["column"].isBool() ? taskbar_cfg["column"].asBool() : false;
+  const bool enable_count  = taskbar_cfg["count"].isBool()  ? taskbar_cfg["count"].asBool()  : true;
 
+  // Track the scrolling layout column index
+  int col = 0;
+  int col_count = 0;
   for (const auto& win : my_windows) {
     const auto win_id = win["id"].asUInt64();
     const std::string app_id = win["app_id"].isString() ? win["app_id"].asString() : "";
     const std::string title = win["title"].isString() ? win["title"].asString() : app_id;
     const bool is_focused = win["is_focused"].asBool();
+
+
+    // ── Column Folding Logic ────────────────────────────────────────────────
+    // If column mode is enabled and the current window belongs to the same column,
+    // fold it underneath the first window (the "cover" window).
+    if (enable_column && col == win["layout"]["pos_in_scrolling_layout"][0].asInt() && col != 0) {
+      col_count=col_count+1;
+      if(&win == &my_windows.back()) {
+        auto* count_lbl = Gtk::make_managed<Gtk::Label>(std::to_string(col_count));
+        count_lbl->get_style_context()->add_class("taskbar-counter");
+        taskbar_box_.pack_start(*count_lbl, false, false, 0);
+        count_lbl->show();
+      }
+      continue;
+    }
+
+
+    // ── Counter Flush Logic ─────────────────────────────────────────────────
+    // Before moving to a brand new column, check if the previous column had
+    // multiple windows folded. If so, append the counter badge now.
+    if(enable_column && enable_count && col_count>1) {
+      auto* count_lbl = Gtk::make_managed<Gtk::Label>(std::to_string(col_count));
+      count_lbl->get_style_context()->add_class("taskbar-counter");
+      taskbar_box_.pack_start(*count_lbl, false, false, 0);
+      count_lbl->show();
+    }
+    // Reset track parameters for the newly encountered column
+    col=win["layout"]["pos_in_scrolling_layout"][0].asInt();
+    col_count=1;
 
     auto* btn = Gtk::make_managed<Gtk::Button>();
     btn->set_relief(Gtk::RELIEF_NONE);
@@ -213,26 +270,26 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
 Glib::RefPtr<Gdk::Pixbuf> Workspace::loadIcon(const std::string& app_id, int size) {
     if (app_id.empty()) return {};
     auto app_info = Gio::DesktopAppInfo::create(app_id + ".desktop");
-        
+
     if (app_info) {
         auto icon = app_info->get_icon();
         if (icon) {
           auto theme = Gtk::IconTheme::get_default();
           auto icon_info = theme->lookup_icon(icon, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
-        
+
           if (icon_info) {
               try {
-                  
-                  return icon_info.load_icon(); 
+
+                  return icon_info.load_icon();
               } catch (...) {
-                
+
               }
           }
       }
     }
 
     auto theme = Gtk::IconTheme::get_default();
-    
+
     auto tryLoad = [&](const std::string& name) -> Glib::RefPtr<Gdk::Pixbuf> {
         if (!theme->has_icon(name)) return {};
         try {
