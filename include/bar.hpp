@@ -96,6 +96,7 @@ class Bar : public sigc::trackable {
 
  private:
   void onMap(GdkEventAny*);
+  bool handleMouseLeave(GdkEventCrossing*);
   auto setupWidgets() -> void;
   void getModules(const Factory&, const std::string&, waybar::Group*);
   void setupAltFormatKeyForModule(const std::string& module_name);
