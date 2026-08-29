@@ -373,6 +373,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *#workspaces*
 - *#workspaces button*
 - *#workspaces button.active*
+- *#workspaces button.visible*
 - *#workspaces button.empty*
 - *#workspaces button.visible*
 - *#workspaces button.persistent*
