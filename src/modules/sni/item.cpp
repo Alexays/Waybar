@@ -40,6 +40,7 @@ namespace waybar::modules::SNI {
 
 static const Glib::ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
 static const unsigned UPDATE_DEBOUNCE_TIME = 10;
+static const char DBUSMENU_INTERFACE[] = "com.canonical.dbusmenu";
 
 Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar,
            const std::function<void(Item&)>& on_ready,
@@ -237,7 +238,7 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       }
     } else if (name == "Menu") {
       menu = get_variant<std::string>(value);
-      makeMenu();
+      validateMenu();
     } else if (name == "ItemIsMenu") {
       item_is_menu = get_variant<bool>(value);
     }
@@ -571,8 +572,33 @@ void Item::onMenuDestroyed(Item* self, GObject* old_menu_pointer) {
   }
 }
 
+void Item::validateMenu() {
+  has_dbus_menu_ = false;
+  if (menu.empty() || !proxy_) {
+    return;
+  }
+
+  auto parameters =
+      Glib::VariantContainerBase(g_variant_new("(ss)", DBUSMENU_INTERFACE, "Version"));
+  proxy_->get_connection()->call(menu, "org.freedesktop.DBus.Properties", "Get", parameters,
+                                 sigc::bind(sigc::mem_fun(*this, &Item::menuProbeReady), menu),
+                                 cancellable_, bus_name);
+}
+
+void Item::menuProbeReady(Glib::RefPtr<Gio::AsyncResult>& result, const std::string& menu_path) {
+  if (menu != menu_path) {
+    return;
+  }
+
+  try {
+    proxy_->get_connection()->call_finish(result);
+    has_dbus_menu_ = true;
+  } catch (const Glib::Error&) {
+  }
+}
+
 void Item::makeMenu() {
-  if (gtk_menu == nullptr && !menu.empty()) {
+  if (gtk_menu == nullptr && has_dbus_menu_) {
     dbus_menu = dbusmenu_gtkmenu_new(bus_name.data(), menu.data());
     if (dbus_menu != nullptr) {
       g_object_ref_sink(G_OBJECT(dbus_menu));

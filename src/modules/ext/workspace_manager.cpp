@@ -284,8 +284,7 @@ bool WorkspaceGroup::has_workspace(const ext_workspace_handle_v1* workspace) {
 
 void WorkspaceGroup::handle_capabilities(uint32_t capabilities) {
   spdlog::debug("[ext/workspaces]:     Capabilities for workspace group {}:", id_);
-  if ((capabilities & EXT_WORKSPACE_GROUP_HANDLE_V1_GROUP_CAPABILITIES_CREATE_WORKSPACE) ==
-      capabilities) {
+  if (capabilities & EXT_WORKSPACE_GROUP_HANDLE_V1_GROUP_CAPABILITIES_CREATE_WORKSPACE) {
     spdlog::debug("[ext/workspaces]:     - create-workspace");
   }
 }
@@ -436,16 +435,16 @@ void Workspace::handle_state(uint32_t state) { state_ = state; }
 
 void Workspace::handle_capabilities(uint32_t capabilities) {
   spdlog::debug("[ext/workspaces]:     Capabilities for workspace {}:", id_);
-  if ((capabilities & EXT_WORKSPACE_HANDLE_V1_WORKSPACE_CAPABILITIES_ACTIVATE) == capabilities) {
+  if (capabilities & EXT_WORKSPACE_HANDLE_V1_WORKSPACE_CAPABILITIES_ACTIVATE) {
     spdlog::debug("[ext/workspaces]:     - activate");
   }
-  if ((capabilities & EXT_WORKSPACE_HANDLE_V1_WORKSPACE_CAPABILITIES_DEACTIVATE) == capabilities) {
+  if (capabilities & EXT_WORKSPACE_HANDLE_V1_WORKSPACE_CAPABILITIES_DEACTIVATE) {
     spdlog::debug("[ext/workspaces]:     - deactivate");
   }
-  if ((capabilities & EXT_WORKSPACE_HANDLE_V1_WORKSPACE_CAPABILITIES_REMOVE) == capabilities) {
+  if (capabilities & EXT_WORKSPACE_HANDLE_V1_WORKSPACE_CAPABILITIES_REMOVE) {
     spdlog::debug("[ext/workspaces]:     - remove");
   }
-  if ((capabilities & EXT_WORKSPACE_HANDLE_V1_WORKSPACE_CAPABILITIES_ASSIGN) == capabilities) {
+  if (capabilities & EXT_WORKSPACE_HANDLE_V1_WORKSPACE_CAPABILITIES_ASSIGN) {
     spdlog::debug("[ext/workspaces]:     - assign");
   }
 }

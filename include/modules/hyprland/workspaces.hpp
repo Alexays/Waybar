@@ -108,6 +108,7 @@ class Workspaces : public AModule, public EventHandler {
                           Json::Value const& clientsData = Json::Value::nullRef);
   void onWorkspaceMoved(std::string const& payload);
   void onWorkspaceRenamed(std::string const& payload);
+  void onWorkspaceIdChanged(std::string const& payload);
   static std::optional<int> parseWorkspaceId(std::string const& workspaceIdStr);
 
   // monitor events
@@ -168,11 +169,12 @@ class Workspaces : public AModule, public EventHandler {
 
   enum class SortMethod { ID, NAME, NUMBER, SPECIAL_CENTERED, DEFAULT };
   SortMethod m_sortBy = SortMethod::DEFAULT;
-  static inline const std::map<std::string, SortMethod> m_sortMap = {{"ID", SortMethod::ID},
-                                                 {"NAME", SortMethod::NAME},
-                                                 {"NUMBER", SortMethod::NUMBER},
-                                                 {"SPECIAL-CENTERED", SortMethod::SPECIAL_CENTERED},
-                                                 {"DEFAULT", SortMethod::DEFAULT}};
+  static inline const std::map<std::string, SortMethod> m_sortMap = {
+      {"ID", SortMethod::ID},
+      {"NAME", SortMethod::NAME},
+      {"NUMBER", SortMethod::NUMBER},
+      {"SPECIAL-CENTERED", SortMethod::SPECIAL_CENTERED},
+      {"DEFAULT", SortMethod::DEFAULT}};
 
   std::string m_formatBefore;
   std::string m_formatAfter;

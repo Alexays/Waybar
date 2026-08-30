@@ -824,7 +824,7 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
 
   if (newVol != volume_) {
     if (mixer_api_ == nullptr) return true;
-    GVariant* variant = g_variant_new_double(newVol);
+    GVariant* variant = g_variant_ref_sink(g_variant_new_double(newVol));
     gboolean ret;
     g_signal_emit_by_name(mixer_api_, "set-volume", node_id_, variant, &ret);
     g_variant_unref(variant);

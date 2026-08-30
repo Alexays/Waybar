@@ -200,6 +200,15 @@ Task::Task(const waybar::Bar& bar, const Json::Value& config, Taskbar* tbar,
   button.signal_drag_data_get().connect(sigc::mem_fun(*this, &Task::handle_drag_data_get), false);
   button.signal_drag_data_received().connect(sigc::mem_fun(*this, &Task::handle_drag_data_received),
                                              false);
+
+  /* Re-rasterize the icon if the bar ends up on an output with a different scale
+   * than the one GTK guessed while the widget was not yet realized. */
+  icon_.property_scale_factor().signal_changed().connect([this] {
+    if (!with_icon_) return;
+    int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
+    spdlog::debug("Task ({}) scale factor changed, reloading icon", id_);
+    if (tbar_->icon_loader().image_load_icon(icon_, app_info_, icon_size)) icon_.show();
+  });
 }
 
 Task::~Task() {

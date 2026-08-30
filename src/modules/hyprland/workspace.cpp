@@ -527,35 +527,36 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
     }
   }
 
-  // Build a list of windows to display, removing duplicates by window_class
-  // and respecting max-icons limit
+  // Build a list of windows to display. Duplicate window classes are only
+  // collapsed to make room for the max-icons limit, so with the limit unset
+  // every window is shown.
+  int maxIcons = m_workspaceManager.taskbarMaxIcons();
+  const bool deduplicate = maxIcons > 0;
+
   std::vector<const WindowRepr*> windowsToShow;
   std::set<std::string> seenClasses;
 
-  auto addWindowIfUnique = [&](const WindowRepr& window_repr) {
+  auto addWindow = [&](const WindowRepr& window_repr) {
     if (shouldSkipWindow(window_repr)) {
       return;
     }
-    // Deduplicate by window_class
-    if (seenClasses.find(window_repr.window_class) != seenClasses.end()) {
+    if (deduplicate && !seenClasses.insert(window_repr.window_class).second) {
       return;
     }
-    seenClasses.insert(window_repr.window_class);
     windowsToShow.push_back(&window_repr);
   };
 
   if (m_workspaceManager.taskbarReverseDirection()) {
     for (auto it = m_windowMap.rbegin(); it != m_windowMap.rend(); ++it) {
-      addWindowIfUnique(*it);
+      addWindow(*it);
     }
   } else {
     for (const auto& window_repr : m_windowMap) {
-      addWindowIfUnique(window_repr);
+      addWindow(window_repr);
     }
   }
 
   // Apply max-icons limit if configured
-  int maxIcons = m_workspaceManager.taskbarMaxIcons();
   if (maxIcons > 0 && static_cast<int>(windowsToShow.size()) > maxIcons) {
     windowsToShow.resize(maxIcons);
   }

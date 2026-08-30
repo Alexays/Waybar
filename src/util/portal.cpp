@@ -35,17 +35,36 @@ auto fmt::formatter<waybar::Appearance>::format(waybar::Appearance c, format_con
 
 waybar::Portal::Portal()
     : Gio::DBus::Proxy(Gio::DBus::Connection::get_sync(Gio::DBus::BusType::BUS_TYPE_SESSION),
-                       PORTAL_BUS_NAME, PORTAL_OBJ_PATH, PORTAL_INTERFACE),
+                       PORTAL_BUS_NAME, PORTAL_OBJ_PATH, PORTAL_INTERFACE,
+                       Glib::RefPtr<Gio::DBus::InterfaceInfo>(),
+                       Gio::DBus::PROXY_FLAGS_DO_NOT_AUTO_START),
       currentMode(Appearance::UNKNOWN) {
+  // Without DO_NOT_AUTO_START the proxy asks the bus to spawn the portal and
+  // waits for it, so a slow portal delays the whole bar. Watch for the name
+  // instead, which also covers a portal that only shows up later.
+  // (A lambda, not sigc::mem_fun: Gio::DBus::Proxy is a private base here, so
+  // sigc::trackable is not accessible.)
+  connect_property_changed("g-name-owner", [this]() { refreshAppearance(); });
   refreshAppearance();
 };
 
 void waybar::Portal::refreshAppearance() {
+  if (get_name_owner().empty()) {
+    // Nothing is serving the portal yet; the g-name-owner handler will call us
+    // back if something does.
+    return;
+  }
   auto params = Glib::Variant<std::tuple<Glib::ustring, Glib::ustring>>::create(
       {PORTAL_NAMESPACE, PORTAL_KEY});
+  call(
+      std::string(PORTAL_INTERFACE) + ".Read",
+      [this](Glib::RefPtr<Gio::AsyncResult>& result) { onAppearanceReceived(result); }, params);
+}
+
+void waybar::Portal::onAppearanceReceived(Glib::RefPtr<Gio::AsyncResult>& result) {
   Glib::VariantBase response;
   try {
-    response = call_sync(std::string(PORTAL_INTERFACE) + ".Read", params);
+    response = call_finish(result);
   } catch (const Glib::Error& e) {
     spdlog::info("Unable to receive desktop appearance: {}", std::string(e.what()));
     return;

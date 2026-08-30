@@ -30,10 +30,11 @@ struct res {
 inline std::string read(FILE* fp) {
   std::array<char, 128> buffer = {0};
   std::string output;
-  while (feof(fp) == 0) {
-    if (fgets(buffer.data(), 128, fp) != nullptr) {
-      output += buffer.data();
-    }
+  while (fgets(buffer.data(), buffer.size(), fp) != nullptr) {
+    output += buffer.data();
+  }
+  if (ferror(fp) != 0) {
+    spdlog::error("Error reading command output: {}", strerror(errno));
   }
 
   // Remove last newline

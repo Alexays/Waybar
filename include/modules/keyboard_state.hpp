@@ -41,7 +41,8 @@ class KeyboardState : public AModule {
 
   struct libinput* libinput_;
   std::unordered_map<std::string, struct libinput_device*> libinput_devices_;
-  std::mutex devices_mutex_;  // protects libinput_devices_
+  std::mutex devices_mutex_;  // protects libinput_devices_ and libinput_ context (libinput is not
+                              // thread-safe)
   std::set<int> binding_keys;
 
   util::SleeperThread libinput_thread_, hotplug_thread_;
