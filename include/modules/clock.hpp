@@ -9,6 +9,7 @@ namespace waybar::modules {
 const std::string kCldPlaceholder{"calendar"};
 const std::string kTZPlaceholder{"tz_list"};
 const std::string kOrdPlaceholder{"ordinal_date"};
+const std::string kMonthPlaceholder{"month_name"};
 
 enum class CldMode { MONTH, YEAR };
 enum class WS { LEFT, RIGHT, HIDDEN };
@@ -67,11 +68,16 @@ class Clock final : public ALabel {
   std::string tzText_{""};                      // time zones text to print
   std::string tzTooltipFormat_{""};             // optional timezone tooltip format
   util::SleeperThread thread_;
-
+ 
   // ordinal date in tooltip
   const bool ordInTooltip_;
   std::string ordText_{""};
+
+  const bool monInTooltip_;  // month in tooltip
+  std::string monText_{""};                     // month text to print
+
   auto get_ordinal_date(const date::year_month_day& today) -> std::string;
+  auto get_month_name(const date::year_month& ym) -> std::string;
 
   auto getTZtext(date::sys_seconds now) -> std::string;
   auto first_day_of_week() -> date::weekday;
