@@ -110,6 +110,12 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     } else {
       box.pack_start(revealer);
     }
+
+    revealer.property_child_revealed().signal_changed().connect([this]() {
+      if (revealer.get_child_revealed()) {
+        event_box_.trigger_tooltip_query();
+      }
+    });
   }
 
   event_box_.add(box);
