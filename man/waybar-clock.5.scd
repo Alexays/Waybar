@@ -100,6 +100,10 @@ $XDG_CONFIG_HOME/waybar/config ++
 :[ string
 :[ same as format
 :[ Tooltip on hover
+|[ *month_name*
+:[ string
+:[ Placeholder
+:[ This is intended to add an ability to use a modifier %OB as chrono does not support them, in calendar
 |[ *menu*
 :[ string
 :[
