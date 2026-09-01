@@ -593,6 +593,9 @@ void Item::menuProbeReady(Glib::RefPtr<Gio::AsyncResult>& result, const std::str
   try {
     proxy_->get_connection()->call_finish(result);
     has_dbus_menu_ = true;
+    // Dbusmenu synchronizes its layout asynchronously. Create the GTK menu as soon as the probe
+    // succeeds so it has time to populate before the first click.
+    makeMenu();
   } catch (const Glib::Error&) {
   }
 }
