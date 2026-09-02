@@ -30,14 +30,17 @@ Host::Host(std::size_t id, const Json::Value& config, const Bar& bar,
       on_reorder_(on_reorder),
       on_update_(on_update) {
   auto orders = config["orders"];
-  if (!orders.isNull()) {
+  if (orders.isObject()) {
     for (auto itr = orders.begin(); itr != orders.end(); ++itr) {
-      auto key = itr.name();
-      auto& value = *itr;
-      assert(value.isInt());
-
-      orders_[key] = value.asInt();
+      const auto& value = *itr;
+      if (!value.isInt()) {
+        spdlog::warn("tray: ignoring order for '{}': expected an integer", itr.name());
+        continue;
+      }
+      orders_[itr.name()] = value.asInt();
     }
+  } else if (!orders.isNull()) {
+    spdlog::warn("tray: ignoring 'orders': expected an object");
   }
 }
 
