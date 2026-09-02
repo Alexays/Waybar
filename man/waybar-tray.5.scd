@@ -51,9 +51,34 @@ Addressed by *tray*
 
 *orders*: ++
 	typeof: object ++
-	Orders for items to be placed in tray. When not set, orders are controlled by DBus. ++
+	Explicit order values for items in the tray. ++
 	Key: name of item. ++
-	Value: integer, higher value means to place this item to the right.
+	Value: integer, higher value means to place this item to the right. ++
+	Items without an entry default to 0, so a negative value places an item
+	left of all unconfigured ones and a positive value places it right of
+	them.
+
+# ITEM KEYS AND DEFAULT ORDER
+
+An item is addressed by its key in *orders* and *icons*. The key is the
+item's SNI *Id*, except for Chrome-based applications, whose *Id* is not
+unique -- those are addressed by their tooltip text, lowercased.
+
+Since neither is visible anywhere in the UI, waybar logs the key of every
+item it registers on startup:
+
+```
+[info] tray: item key 'nm-applet'
+[info] tray: item key 'Rocket.Chat_status_icon_1'
+```
+
+Run waybar from a terminal to see them.
+
+Items that no entry in *orders* applies to are placed in alphabetical
+order of their key, after those with a negative order value and before
+those with a positive one. Ordering therefore does not depend on the
+order in which applications register on D-Bus, which is racy and differs
+between restarts and between outputs of the same bar.
 
 Note: custom *icons* only work with actual image files, not font-based icons. They
 might not work for some Electron apps (see https://github.com/electron/electron/issues/40936).
