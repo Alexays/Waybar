@@ -2,7 +2,7 @@
 
 namespace waybar::util::PipewireBackend {
 
-std::string PrivacyNodeInfo::getName() {
+std::string PWPrivacyNodeInfo::getName() {
   const std::vector<std::string*> names{&application_name, &node_name};
   std::string name = "Unknown Application";
   for (const auto& item : names) {
@@ -15,7 +15,7 @@ std::string PrivacyNodeInfo::getName() {
   return name;
 }
 
-std::string PrivacyNodeInfo::getIconName() {
+std::string PWPrivacyNodeInfo::getIconName() {
   const std::vector<std::string*> names{&application_icon_name, &pipewire_access_portal_app_id,
                                         &application_name, &node_name};
   std::string name = "application-x-executable-symbolic";
@@ -27,12 +27,12 @@ std::string PrivacyNodeInfo::getIconName() {
   return name;
 }
 
-void PrivacyNodeInfo::handleProxyEventDestroy() {
+void PWPrivacyNodeInfo::handleProxyEventDestroy() {
   spa_hook_remove(&proxy_listener);
   spa_hook_remove(&object_listener);
 }
 
-void PrivacyNodeInfo::handleNodeEventInfo(const struct pw_node_info* info) {
+void PWPrivacyNodeInfo::handleNodeEventInfo(const struct pw_node_info* info) {
   state = info->state;
 
   const struct spa_dict_item* item;

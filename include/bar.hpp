@@ -24,6 +24,8 @@ struct waybar_output {
   Glib::RefPtr<Gdk::Monitor> monitor;
   std::string name;
   std::string identifier;
+  int32_t width;
+  int32_t height;
 
   std::unique_ptr<struct zxdg_output_v1, decltype(&zxdg_output_v1_destroy)> xdg_output = {
       nullptr, &zxdg_output_v1_destroy};
@@ -75,6 +77,8 @@ class Bar : public sigc::trackable {
   util::KillSignalAction getOnSigusr1Action();
   util::KillSignalAction getOnSigusr2Action();
 
+  void toggleSuspend(bool suspend);
+
   struct waybar_output* output;
   Json::Value config;
   struct wl_surface* surface;
@@ -99,6 +103,7 @@ class Bar : public sigc::trackable {
   void setMode(const bar_mode&);
   void setPassThrough(bool passthrough);
   void setPosition(Gtk::PositionType position);
+  void forceLayerCommit();
   void onConfigure(GdkEventConfigure* ev);
   void configureGlobalOffset(int width, int height);
   void onOutputGeometryChanged();
@@ -126,6 +131,10 @@ class Bar : public sigc::trackable {
 
   waybar::util::KillSignalAction onSigusr1 = util::SIGNALACTION_DEFAULT_SIGUSR1;
   waybar::util::KillSignalAction onSigusr2 = util::SIGNALACTION_DEFAULT_SIGUSR2;
+
+  /* Disconnected in ~Bar before the modules are destroyed (#5182). */
+  sigc::connection map_conn_;
+  sigc::connection unmap_conn_;
 };
 
 }  // namespace waybar

@@ -37,6 +37,19 @@ Waybar config to enable the module:
 ```
 
 
+# DEVELOPING CFFI MODULES
+
+CFFI modules require a handful of functions and constants to be defined with C
+linkage. The way to achieve this depends on the programming language being used
+(search for FFI / Foreign Function Interface for that language).
+
+The complete list of symbols to define can be found in the header file shipped with
+Waybar at *resources/custom_modules/cffi_example/waybar_cffi_module.h*, and a full
+example written in C is provided in *resources/custom_modules/cffi_example/*.
+
+Language bindings exist for several languages, including Rust (the *waybar-cffi*
+crate) and Zig.
+
 # STYLE
 
 The classes and IDs are managed by the cffi dynamic library.

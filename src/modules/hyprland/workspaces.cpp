@@ -37,6 +37,11 @@ Workspaces::~Workspaces() {
   if (m_scrollEventConnection_.connected()) {
     m_scrollEventConnection_.disconnect();
   }
+  // Cancel any pending debounce timeout so it cannot fire on a freed `this`.
+  // Runs on the main thread, same as where the timer is armed.
+  if (m_debounceTimer.connected()) {
+    m_debounceTimer.disconnect();
+  }
   m_ipc.unregisterForIPC(this);
   // wait for possible event handler to finish
   std::lock_guard<std::mutex> lg(m_mutex);
@@ -50,6 +55,7 @@ void Workspaces::init() {
   if (m_scrollEventConnection_.connected()) {
     m_scrollEventConnection_.disconnect();
   }
+
   if (barScroll()) {
     auto& window = const_cast<Bar&>(m_bar).window;
     window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
@@ -78,18 +84,13 @@ Json::Value Workspaces::createMonitorWorkspaceData(std::string const& name,
 
 void Workspaces::createWorkspace(Json::Value const& workspace_data,
                                  Json::Value const& clients_data) {
-  auto workspaceName = workspace_data["name"].asString();
   auto workspaceId = workspace_data["id"].asInt();
-  spdlog::debug("Creating workspace {}", workspaceName);
+  spdlog::debug("Creating workspace {}", workspaceId);
 
   // avoid recreating existing workspaces
-  auto workspace = std::ranges::find_if(m_workspaces, [&](std::unique_ptr<Workspace> const& w) {
-    if (workspaceId > 0) {
-      return w->id() == workspaceId;
-    }
-    return (workspaceName.starts_with("special:") && workspaceName.substr(8) == w->name()) ||
-           workspaceName == w->name();
-  });
+  auto workspace = std::ranges::find_if(
+      m_workspaces,
+      [workspaceId](std::unique_ptr<Workspace> const& w) { return workspaceId == w->id(); });
 
   if (workspace != m_workspaces.end()) {
     // don't recreate workspace, but update persistency if necessary
@@ -97,14 +98,14 @@ void Workspaces::createWorkspace(Json::Value const& workspace_data,
 
     const auto* k = "persistent-rule";
     if (std::ranges::find(keys, k) != keys.end()) {
-      spdlog::debug("Set dynamic persistency of workspace {} to: {}", workspaceName,
+      spdlog::debug("Set dynamic persistency of workspace {} to: {}", workspaceId,
                     workspace_data[k].asBool() ? "true" : "false");
       (*workspace)->setPersistentRule(workspace_data[k].asBool());
     }
 
     k = "persistent-config";
     if (std::ranges::find(keys, k) != keys.end()) {
-      spdlog::debug("Set config persistency of workspace {} to: {}", workspaceName,
+      spdlog::debug("Set config persistency of workspace {} to: {}", workspaceId,
                     workspace_data[k].asBool() ? "true" : "false");
       (*workspace)->setPersistentConfig(workspace_data[k].asBool());
     }
@@ -220,8 +221,6 @@ void Workspaces::initializeWorkspaces() {
     // a persistent workspace config is defined, so use that instead of workspace rules
     loadPersistentWorkspacesFromConfig(clientsJson);
   }
-  // load Hyprland's workspace rules
-  loadPersistentWorkspacesFromWorkspaceRules(clientsJson);
 }
 
 bool isDoubleSpecial(std::string const& workspace_name) {
@@ -296,87 +295,54 @@ void Workspaces::loadPersistentWorkspacesFromConfig(Json::Value const& clientsJs
   }
 }
 
-void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value& clientsJson) {
-  spdlog::info("Loading persistent workspaces from Hyprland workspace rules");
-
-  auto const workspaceRules = m_ipc.getSocket1JsonReply("workspacerules");
-  for (Json::Value const& rule : workspaceRules) {
-    if (!rule["workspaceString"].isString()) {
-      spdlog::warn("Workspace rules: invalid workspaceString, skipping: {}", rule);
-      continue;
-    }
-    if (!rule["persistent"].asBool()) {
-      continue;
-    }
-    auto workspace = rule.isMember("defaultName") ? rule["defaultName"].asString()
-                                                  : rule["workspaceString"].asString();
-
-    // There could be persistent special workspaces, only show those when show-special is enabled.
-    if (workspace.starts_with("special:") && !showSpecial()) {
-      continue;
-    }
-
-    // The prefix "name:" cause mismatches with workspace names taken anywhere else.
-    if (workspace.starts_with("name:")) {
-      workspace = workspace.substr(5);
-    }
-    auto const& monitor = rule["monitor"].asString();
-    // create this workspace persistently if:
-    // 1. the allOutputs config option is enabled
-    // 2. the rule's monitor is the current monitor
-    // 3. no monitor is specified in the rule => assume it needs to be persistent on every monitor
-    if (allOutputs() || m_bar.output->name == monitor || monitor.empty()) {
-      // => persistent workspace should be shown on this monitor
-      auto workspaceData = createMonitorWorkspaceData(workspace, m_bar.output->name);
-      workspaceData["persistent-rule"] = true;
-      m_workspacesToCreate.emplace_back(workspaceData, clientsJson);
-    } else {
-      // This can be any workspace selector.
-      m_workspacesToRemove.emplace_back(workspace);
-    }
-  }
-}
-
 void Workspaces::onEvent(const std::string& ev) {
-  std::lock_guard<std::mutex> lock(m_mutex);
-  const auto separator = ev.find(">>");
-  if (separator == std::string::npos) {
-    spdlog::warn("Malformed Hyprland workspace event: {}", ev);
-    return;
-  }
-  std::string eventName = ev.substr(0, separator);
-  std::string payload = ev.substr(separator + 2);
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    const auto separator = ev.find(">>");
+    if (separator == std::string::npos) {
+      spdlog::warn("Malformed Hyprland workspace event: {}", ev);
+      return;
+    }
+    std::string eventName = ev.substr(0, separator);
+    std::string payload = ev.substr(separator + 2);
 
-  if (eventName == "workspacev2") {
-    onWorkspaceActivated(payload);
-  } else if (eventName == "activespecial") {
-    onSpecialWorkspaceActivated(payload);
-  } else if (eventName == "destroyworkspacev2") {
-    onWorkspaceDestroyed(payload);
-  } else if (eventName == "createworkspacev2") {
-    onWorkspaceCreated(payload);
-  } else if (eventName == "focusedmonv2") {
-    onMonitorFocused(payload);
-  } else if (eventName == "moveworkspacev2") {
-    onWorkspaceMoved(payload);
-  } else if (eventName == "openwindow") {
-    onWindowOpened(payload);
-  } else if (eventName == "closewindow") {
-    onWindowClosed(payload);
-  } else if (eventName == "movewindowv2") {
-    onWindowMoved(payload);
-  } else if (eventName == "urgent") {
-    setUrgentWorkspace(payload);
-  } else if (eventName == "renameworkspace") {
-    onWorkspaceRenamed(payload);
-  } else if (eventName == "windowtitlev2") {
-    onWindowTitleEvent(payload);
-  } else if (eventName == "activewindowv2") {
-    onActiveWindowChanged(payload);
-  } else if (eventName == "configreloaded") {
-    onConfigReloaded();
+    if (eventName == "workspacev2") {
+      onWorkspaceActivated(payload);
+    } else if (eventName == "activespecial") {
+      onSpecialWorkspaceActivated(payload);
+    } else if (eventName == "destroyworkspacev2") {
+      onWorkspaceDestroyed(payload);
+    } else if (eventName == "changeworkspaceid") {
+      onWorkspaceIdChanged(payload);
+    } else if (eventName == "createworkspacev2") {
+      onWorkspaceCreated(payload);
+    } else if (eventName == "focusedmonv2") {
+      onMonitorFocused(payload);
+    } else if (eventName == "moveworkspacev2") {
+      onWorkspaceMoved(payload);
+    } else if (eventName == "openwindow") {
+      onWindowOpened(payload);
+    } else if (eventName == "closewindow") {
+      onWindowClosed(payload);
+    } else if (eventName == "movewindowv2") {
+      onWindowMoved(payload);
+    } else if (eventName == "urgent") {
+      setUrgentWorkspace(payload);
+    } else if (eventName == "renameworkspace") {
+      onWorkspaceRenamed(payload);
+    } else if (eventName == "windowtitlev2") {
+      onWindowTitleEvent(payload);
+    } else if (eventName == "activewindowv2") {
+      onActiveWindowChanged(payload);
+    } else if (eventName == "configreloaded") {
+      onConfigReloaded();
+    }
   }
 
+  // Notify the main thread. dp (Glib::Dispatcher) is the only thread-safe way to
+  // hand off to the GTK main loop; GLib timer state must never be touched from the
+  // IPC listener thread. The debounce timer is owned entirely by the main-thread
+  // update() path (see Workspaces::update).
   dp.emit();
 }
 
@@ -483,6 +449,35 @@ void Workspaces::onWorkspaceRenamed(std::string const& payload) {
     }
   }
   sortWorkspaces();
+}
+
+void Workspaces::onWorkspaceIdChanged(std::string const& payload) {
+  spdlog::debug("Workspace ID changed: {}", payload);
+
+  const auto [oldIdStr, newIdStr] = splitDoublePayload(payload);
+
+  const auto oldId = parseWorkspaceId(oldIdStr);
+  const auto newId = parseWorkspaceId(newIdStr);
+
+  if (!oldId.has_value() || !newId.has_value()) {
+    spdlog::warn("Invalid workspace ID change payload: {}", payload);
+    return;
+  }
+
+  for (auto& workspace : m_workspaces) {
+    if (workspace->id() == *oldId) {
+      spdlog::debug("Changing workspace ID from {} to {}", *oldId, *newId);
+      workspace->setId(*newId);
+      break;
+    }
+  }
+
+  if (m_activeWorkspaceId == *oldId) {
+    m_activeWorkspaceId = *newId;
+  }
+
+  sortWorkspaces();
+  updateWindowCount();
 }
 
 void Workspaces::onMonitorFocused(std::string const& payload) {
@@ -652,19 +647,41 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
     populateIconsMap(config["format-icons"]);
   }
 
+  m_withTooltip = tooltipEnabled();
+  if (m_withTooltip && m_tooltipMap.empty()) {
+    const Json::Value& tooltipFormats = config["tooltips"];
+    for (const auto& name : tooltipFormats.getMemberNames()) {
+      m_tooltipMap.emplace(name, tooltipFormats[name].asString());
+    }
+    m_tooltipMap.emplace("", "");
+  }
+
   populateBoolConfig(config, "all-outputs", m_allOutputs);
   populateBoolConfig(config, "show-special", m_showSpecial);
   populateBoolConfig(config, "special-visible-only", m_specialVisibleOnly);
   populateBoolConfig(config, "persistent-only", m_persistentOnly);
   populateBoolConfig(config, "active-only", m_activeOnly);
+  populateBoolConfig(config, "hide-active", m_hideActive);
   populateBoolConfig(config, "move-to-monitor", m_moveToMonitor);
+  populateBoolConfig(config, "unique-icons", m_uniqueIcons);
   populateBoolConfig(config, "enable-bar-scroll", m_barScroll);
 
   m_persistentWorkspaceConfig = config.get("persistent-workspaces", Json::Value());
   populateSortByConfig(config);
   populateIgnoreWorkspacesConfig(config);
   populateFormatWindowSeparatorConfig(config);
+
+  const auto& groupThreshold = config["window-rewrite-group-threshold"];
+  if (groupThreshold.isInt()) {
+    m_windowRewriteGroupThreshold = groupThreshold.asInt();
+  }
+  const auto& groupFormat = config["window-rewrite-group-format"];
+  if (groupFormat.isString()) {
+    m_windowRewriteGroupFormat = groupFormat.asString();
+  }
+
   populateWindowRewriteConfig(config);
+  populateMaxWindowsConfig(config);
 
   if (withWindows) {
     populateWorkspaceTaskbarConfig(config);
@@ -696,7 +713,7 @@ auto Workspaces::populateSortByConfig(const Json::Value& config) -> void {
   if (configSortBy.isString()) {
     auto sortByStr = configSortBy.asString();
     try {
-      m_sortBy = m_enumParser.parseStringToEnum(sortByStr, m_sortMap);
+      m_sortBy = waybar::util::parseStringToEnum<SortMethod>(sortByStr, m_sortMap);
     } catch (const std::invalid_argument& e) {
       m_sortBy = SortMethod::DEFAULT;
       spdlog::warn(
@@ -746,6 +763,15 @@ auto Workspaces::populateWindowRewriteConfig(const Json::Value& config) -> void 
       [this](std::string& window_rule) { return windowRewritePriorityFunction(window_rule); });
 }
 
+auto Workspaces::populateMaxWindowsConfig(const Json::Value& config) -> void {
+  if (config["max-windows"].isInt()) {
+    m_maxWindows = config["max-windows"].asInt();
+    if (m_maxWindows < 0) {
+      m_maxWindows = 0;
+    }
+  }
+}
+
 auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value& config) -> void {
   const auto& workspaceTaskbar = config["workspace-taskbar"];
   if (!workspaceTaskbar.isObject()) {
@@ -784,6 +810,9 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value& config) -> vo
   if (workspaceTaskbar["icon-size"].isInt()) {
     m_taskbarIconSize = workspaceTaskbar["icon-size"].asInt();
   }
+  if (workspaceTaskbar["max-icons"].isInt()) {
+    m_taskbarMaxIcons = workspaceTaskbar["max-icons"].asInt();
+  }
   if (workspaceTaskbar["orientation"].isString() &&
       toLower(workspaceTaskbar["orientation"].asString()) == "vertical") {
     m_taskbarOrientation = Gtk::ORIENTATION_VERTICAL;
@@ -808,7 +837,7 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value& config) -> vo
     auto posStr = workspaceTaskbar["active-window-position"].asString();
     try {
       m_activeWindowPosition =
-          m_activeWindowEnumParser.parseStringToEnum(posStr, m_activeWindowPositionMap);
+        util::parseStringToEnum<ActiveWindowPosition>(posStr, m_activeWindowPositionMap);
     } catch (const std::invalid_argument& e) {
       spdlog::warn(
           "Invalid string representation for active-window-position. Falling back to 'none'.");
@@ -829,6 +858,7 @@ auto Workspaces::registerIpc() -> void {
   m_ipc.registerForIPC("createworkspacev2", this);
   m_ipc.registerForIPC("destroyworkspacev2", this);
   m_ipc.registerForIPC("focusedmonv2", this);
+  m_ipc.registerForIPC("changeworkspaceid", this);
   m_ipc.registerForIPC("moveworkspacev2", this);
   m_ipc.registerForIPC("renameworkspace", this);
   m_ipc.registerForIPC("openwindow", this);
@@ -1036,17 +1066,27 @@ void Workspaces::setUrgentWorkspace(std::string const& windowaddress) {
 }
 
 auto Workspaces::update() -> void {
-  doUpdate();
-  AModule::update();
+  // Debounce rapid events (e.g. out-of-order create/destroy workspace events from
+  // Hyprland) to prevent workspace button flicker. This runs on the GTK main thread
+  // (invoked via the dp dispatcher), so arming/disconnecting the GLib timer here is
+  // thread-safe. Each event re-arms the timer, coalescing bursts into one refresh.
+  if (m_debounceTimer.connected()) {
+    m_debounceTimer.disconnect();
+  }
+  m_debounceTimer = Glib::signal_timeout().connect(
+      [this]() {
+        doUpdate();
+        AModule::update();
+        return false;
+      },
+      7);
 }
 
 void Workspaces::updateWindowCount() {
   const Json::Value workspacesJson = m_ipc.getSocket1JsonReply("workspaces");
   for (auto const& workspace : m_workspaces) {
-    auto workspaceJson = std::ranges::find_if(workspacesJson, [&](Json::Value const& x) {
-      return x["name"].asString() == workspace->name() ||
-             (workspace->isSpecial() && x["name"].asString() == "special:" + workspace->name());
-    });
+    auto workspaceJson = std::ranges::find_if(
+        workspacesJson, [&](Json::Value const& x) { return x["id"].asInt() == workspace->id(); });
     uint32_t count = 0;
     if (workspaceJson != workspacesJson.end()) {
       try {
@@ -1107,17 +1147,19 @@ void Workspaces::updateWorkspaceStates() {
                           visibleWorkspaces.end());
     std::string& workspaceIcon = m_iconsMap[""];
     if (m_withIcon) {
-      workspaceIcon = workspace->selectIcon(m_iconsMap);
+      workspaceIcon = workspace->selectString(m_iconsMap);
+    }
+    std::string& workspaceTooltip = m_tooltipMap[""];
+    if (m_withTooltip) {
+      workspaceTooltip = workspace->selectString(m_tooltipMap);
     }
     auto updatedWorkspace = std::ranges::find_if(updatedWorkspaces, [&workspace](const auto& w) {
-      auto wNameRaw = w["name"].asString();
-      auto wName = wNameRaw.starts_with("special:") ? wNameRaw.substr(8) : wNameRaw;
-      return wName == workspace->name();
+      return w["id"].asInt() == workspace->id();
     });
     if (updatedWorkspace != updatedWorkspaces.end()) {
       workspace->setOutput((*updatedWorkspace)["monitor"].asString());
     }
-    workspace->update(workspaceIcon);
+    workspace->update(workspaceIcon, workspaceTooltip);
   }
 }
 
@@ -1188,6 +1230,12 @@ bool Workspaces::handleScroll(GdkEventScroll* e) {
   if (gdk_event_get_pointer_emulated((GdkEvent*)e)) {
     return false;
   }
+
+  // Check for custom scroll commands first; delegate to base class
+  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
+    return AModule::handleScroll(e);
+  }
+
   auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {
     return true;
@@ -1195,15 +1243,15 @@ bool Workspaces::handleScroll(GdkEventScroll* e) {
 
   if (dir == SCROLL_DIR::DOWN || dir == SCROLL_DIR::RIGHT) {
     if (allOutputs()) {
-      m_ipc.getSocket1Reply("dispatch workspace e+1");
+      IPC::dispatch("workspace", "e+1");
     } else {
-      m_ipc.getSocket1Reply("dispatch workspace m+1");
+      IPC::dispatch("workspace", "m+1");
     }
   } else if (dir == SCROLL_DIR::UP || dir == SCROLL_DIR::LEFT) {
     if (allOutputs()) {
-      m_ipc.getSocket1Reply("dispatch workspace e-1");
+      IPC::dispatch("workspace", "e-1");
     } else {
-      m_ipc.getSocket1Reply("dispatch workspace m-1");
+      IPC::dispatch("workspace", "m-1");
     }
   }
 

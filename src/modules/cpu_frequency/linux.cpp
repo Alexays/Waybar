@@ -23,23 +23,21 @@ std::vector<float> waybar::modules::CpuFrequency::parseCpuFrequencies() {
 
   if (frequencies.size() <= 0) {
     std::string cpufreq_dir = "/sys/devices/system/cpu/cpufreq";
-    if (std::filesystem::exists(cpufreq_dir)) {
+    try {
       std::vector<std::string> frequency_files = {"/cpuinfo_min_freq", "/cpuinfo_max_freq"};
       for (auto& p : std::filesystem::directory_iterator(cpufreq_dir)) {
         for (const auto& freq_file : frequency_files) {
           std::string freq_file_path = p.path().string() + freq_file;
-          if (std::filesystem::exists(freq_file_path)) {
-            std::string freq_value;
-            std::ifstream freq(freq_file_path);
-            if (freq.is_open()) {
-              getline(freq, freq_value);
-              float frequency = std::strtol(freq_value.c_str(), nullptr, 10);
-              frequencies.push_back(frequency / 1000);
-              freq.close();
-            }
+          std::string freq_value;
+          std::ifstream freq(freq_file_path);
+          if (freq.is_open()) {
+            getline(freq, freq_value);
+            float frequency = std::strtol(freq_value.c_str(), nullptr, 10);
+            frequencies.push_back(frequency / 1000);
           }
         }
       }
+    } catch (const std::filesystem::filesystem_error&) {
     }
   }
 

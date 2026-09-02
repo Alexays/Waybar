@@ -6,13 +6,16 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cassert>
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <unordered_map>
 
 #include "gdk/gdk.h"
+#include "modules/sni/host.hpp"
 #include "modules/sni/icon_manager.hpp"
-#include "util/format.hpp"
+#include "util/format.hpp"  // IWYU pragma: keep
 #include "util/gtk_icon.hpp"
 
 template <>
@@ -37,10 +40,12 @@ namespace waybar::modules::SNI {
 
 static const Glib::ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
 static const unsigned UPDATE_DEBOUNCE_TIME = 10;
+static const char DBUSMENU_INTERFACE[] = "com.canonical.dbusmenu";
 
 Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar,
            const std::function<void(Item&)>& on_ready,
-           const std::function<void(Item&)>& on_invalidate, const std::function<void()>& on_updated)
+           const std::function<void(Item&)>& on_invalidate, const std::function<void()>& on_updated,
+           Host& host)
     : bus_name(bn),
       object_path(op),
       icon_size(16),
@@ -49,7 +54,8 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
       bar_(bar),
       on_ready_(on_ready),
       on_invalidate_(on_invalidate),
-      on_updated_(on_updated) {
+      on_updated_(on_updated),
+      host_(host) {
   if (config["icon-size"].isUInt()) {
     icon_size = config["icon-size"].asUInt();
   }
@@ -174,6 +180,7 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
        * I still haven't found a way for it to pick from theme automatically, although
        * it might be my theme.
        */
+      std::string icon_id = id;
       if (id == "chrome_status_icon_1") {
         Glib::VariantBase value;
         this->proxy_->get_cached_property(value, "ToolTip");
@@ -182,17 +189,23 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
           // The tooltip often carries a changing status suffix, e.g.
           // "Rocket.Chat: 3 unread messages". Strip everything from the first
           // ':' onwards so the key stays stable across status changes.
-          std::string key = tooltip.text.lowercase();
-          const auto colon = key.find(':');
+          icon_id = tooltip.text.lowercase();
+          const auto colon = icon_id.find(':');
           if (colon != std::string::npos) {
-            key.erase(colon);
+            icon_id.erase(colon);
           }
-          while (!key.empty() && key.back() == ' ') key.pop_back();
-          sort_key = key;
-          setCustomIcon(sort_key);
+          while (!icon_id.empty() && icon_id.back() == ' ') icon_id.pop_back();
+          sort_key = icon_id;
+          setCustomIcon(icon_id);
         }
       } else {
-        setCustomIcon(id);
+        setCustomIcon(icon_id);
+      }
+
+      // Check if this item should be hidden
+      if (IconManager::instance().isHidden(icon_id)) {
+        spdlog::debug("Hiding tray item with ID: {}", icon_id);
+        is_hidden_ = true;
       }
       if (sort_key != old_sort_key) {
         spdlog::info("tray: item key='{}' (use this value in tray.order-left / tray.order-right)",
@@ -206,9 +219,17 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
     } else if (name == "Status") {
       setStatus(get_variant<Glib::ustring>(value));
     } else if (name == "IconName") {
-      icon_name = get_variant<std::string>(value);
+      if (has_custom_icon_) {
+        spdlog::trace("Item '{}': ignoring IconName update, custom icon is set", id);
+      } else {
+        icon_name = get_variant<std::string>(value);
+      }
     } else if (name == "IconPixmap") {
-      icon_pixmap = this->extractPixBuf(value.gobj());
+      if (has_custom_icon_) {
+        spdlog::trace("Item '{}': ignoring IconPixmap update, custom icon is set", id);
+      } else {
+        icon_pixmap = this->extractPixBuf(value.gobj());
+      }
     } else if (name == "OverlayIconName") {
       overlay_icon_name = get_variant<std::string>(value);
     } else if (name == "OverlayIconPixmap") {
@@ -231,7 +252,7 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       }
     } else if (name == "Menu") {
       menu = get_variant<std::string>(value);
-      makeMenu();
+      validateMenu();
     } else if (name == "ItemIsMenu") {
       item_is_menu = get_variant<bool>(value);
     }
@@ -246,7 +267,7 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
 
 void Item::setStatus(const Glib::ustring& value) {
   status_ = value.lowercase();
-  event_box.set_visible(show_passive_ || status_.compare("passive") != 0);
+  event_box.set_visible(!is_hidden_ && (show_passive_ || status_.compare("passive") != 0));
 
   auto style = event_box.get_style_context();
   for (const auto& class_name : style->list_classes()) {
@@ -279,6 +300,13 @@ void Item::invalidate() {
 void Item::setCustomIcon(const std::string& id) {
   spdlog::debug("SNI tray id: {}", id);
 
+  if (!order_resolved_) {
+    order_resolved_ = true;
+    order_ = host_.resolveOrder(id);
+    spdlog::debug("reordering tray item {}, order: {}", id, order_);
+    host_.reorderItems();
+  }
+
   std::string custom_icon = IconManager::instance().getIconForApp(id);
   if (!custom_icon.empty()) {
     if (std::filesystem::exists(custom_icon)) {
@@ -286,11 +314,13 @@ void Item::setCustomIcon(const std::string& id) {
         Glib::RefPtr<Gdk::Pixbuf> custom_pixbuf = Gdk::Pixbuf::create_from_file(custom_icon);
         icon_name = "";  // icon_name has priority over pixmap
         icon_pixmap = custom_pixbuf;
+        has_custom_icon_ = true;
       } catch (const Glib::Error& e) {
         spdlog::error("Failed to load custom icon {}: {}", custom_icon, e.what());
       }
     } else {  // if file doesn't exist it's most likely an icon_name
       icon_name = custom_icon;
+      has_custom_icon_ = true;
     }
   }
 }
@@ -552,12 +582,46 @@ void Item::onMenuDestroyed(Item* self, GObject* old_menu_pointer) {
   }
 }
 
+void Item::validateMenu() {
+  has_dbus_menu_ = false;
+  if (menu.empty() || !proxy_) {
+    return;
+  }
+
+  auto parameters =
+      Glib::VariantContainerBase(g_variant_new("(ss)", DBUSMENU_INTERFACE, "Version"));
+  proxy_->get_connection()->call(menu, "org.freedesktop.DBus.Properties", "Get", parameters,
+                                 sigc::bind(sigc::mem_fun(*this, &Item::menuProbeReady), menu),
+                                 cancellable_, bus_name);
+}
+
+void Item::menuProbeReady(Glib::RefPtr<Gio::AsyncResult>& result, const std::string& menu_path) {
+  if (menu != menu_path) {
+    return;
+  }
+
+  try {
+    proxy_->get_connection()->call_finish(result);
+    has_dbus_menu_ = true;
+  } catch (const Glib::Error&) {
+  }
+}
+
 void Item::makeMenu() {
-  if (gtk_menu == nullptr && !menu.empty()) {
+  if (gtk_menu == nullptr && has_dbus_menu_) {
     dbus_menu = dbusmenu_gtkmenu_new(bus_name.data(), menu.data());
     if (dbus_menu != nullptr) {
       g_object_ref_sink(G_OBJECT(dbus_menu));
       g_object_weak_ref(G_OBJECT(dbus_menu), (GWeakNotify)onMenuDestroyed, this);
+      // Provide an accel group to the dbusmenu client. Without one, items that export menu
+      // accelerators (e.g. Mattermost) trigger gtk_widget_set_accel_path() with a NULL accel group,
+      // which raises a Gtk-CRITICAL and corrupts menu state (or aborts under fatal-criticals).
+      DbusmenuGtkClient* client = dbusmenu_gtkmenu_get_client(DBUSMENU_GTKMENU(dbus_menu));
+      if (client != nullptr) {
+        GtkAccelGroup* accel_group = gtk_accel_group_new();
+        dbusmenu_gtkclient_set_accel_group(client, accel_group);
+        g_object_unref(accel_group);
+      }
       gtk_menu = Glib::wrap(GTK_MENU(dbus_menu));
       gtk_menu->attach_to_widget(event_box);
     }

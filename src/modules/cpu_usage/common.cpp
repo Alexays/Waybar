@@ -38,23 +38,18 @@ auto waybar::modules::CpuUsage::update() -> void {
     store.push_back(fmt::arg("icon", getIcon(total_usage, icons)));
     std::vector<std::string> arg_names;
     arg_names.reserve(cpu_usage.size() * 2);
+    std::string all_icons;
     for (size_t i = 1; i < cpu_usage.size(); ++i) {
       auto core_i = i - 1;
       arg_names.push_back(fmt::format("usage{}", core_i));
       store.push_back(fmt::arg(arg_names.back().c_str(), cpu_usage[i]));
+      auto core_icon = getIcon(cpu_usage[i], icons);
+      all_icons += core_icon;
       arg_names.push_back(fmt::format("icon{}", core_i));
-      store.push_back(fmt::arg(arg_names.back().c_str(), getIcon(cpu_usage[i], icons)));
+      store.push_back(fmt::arg(arg_names.back().c_str(), core_icon));
     }
-    label_.set_markup(fmt::vformat(format, store));
-
-    if (tooltipEnabled()) {
-      if (config_["tooltip-format"].isString()) {
-        tooltip = config_["tooltip-format"].asString();
-        label_.set_tooltip_markup(fmt::vformat(tooltip, store));
-      } else {
-        label_.set_tooltip_markup(tooltip);
-      }
-    }
+    store.push_back(fmt::arg("icons", all_icons));
+    updateLabelAndTooltip(format, tooltip, store);
   }
 
   // Call parent update

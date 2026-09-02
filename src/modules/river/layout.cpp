@@ -151,7 +151,9 @@ void Layout::handle_name(const char* name) {
     }
 
     label_.get_style_context()->add_class(name);
-    label_.set_markup(fmt::format(fmt::runtime(format_), Glib::Markup::escape_text(name).raw()));
+    label_.set_markup(fmt::format(fmt::runtime(format_),
+                                  fmt::arg("layout", Glib::Markup::escape_text(name).raw()),
+                                  fmt::arg("icon", getIcon(0, name))));
     label_.show();
   }
   name_ = name;

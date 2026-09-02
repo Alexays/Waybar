@@ -24,11 +24,15 @@ struct ToolTip {
   Glib::ustring text;
 };
 
+class Host;
+
+using ItemOrderMap = std::unordered_map<std::string, int>;
+
 class Item : public sigc::trackable {
  public:
   Item(const std::string&, const std::string&, const Json::Value&, const Bar&,
        const std::function<void(Item&)>&, const std::function<void(Item&)>&,
-       const std::function<void()>&);
+       const std::function<void()>&, Host&);
   ~Item();
 
   bool isReady() const;
@@ -42,11 +46,14 @@ class Item : public sigc::trackable {
   Gtk::EventBox event_box;
   std::string category;
   std::string id;
+  // Stable key used for ordering: the SNI Id, or the tooltip text stripped of
+  // its status suffix for Chrome-based items whose Id is not unique.
   std::string sort_key;
 
   std::string title;
   std::string icon_name;
   Glib::RefPtr<Gdk::Pixbuf> icon_pixmap;
+  bool has_custom_icon_ = false;
   Glib::RefPtr<Gtk::IconTheme> icon_theme;
   std::string overlay_icon_name;
   Glib::RefPtr<Gdk::Pixbuf> overlay_icon_pixmap;
@@ -64,6 +71,8 @@ class Item : public sigc::trackable {
    * while compliant SNI implementation would always reset the flag to desired value.
    */
   bool item_is_menu = true;
+  int order_ = 0;  // resolved from the *orders* / *order-left* / *order-right* config
+  bool order_resolved_ = false;
 
  private:
   void onConfigure(GdkEventConfigure* ev);
@@ -89,6 +98,8 @@ class Item : public sigc::trackable {
   Glib::RefPtr<Gdk::Pixbuf> getIconByName(const std::string& name, int size);
   double getScaledIconSize();
   static void onMenuDestroyed(Item* self, GObject* old_menu_pointer);
+  void validateMenu();
+  void menuProbeReady(Glib::RefPtr<Gio::AsyncResult>& result, const std::string& menu_path);
   void makeMenu();
   bool handleClick(GdkEventButton* const& /*ev*/);
   bool handleScroll(GdkEventScroll* const&);
@@ -101,6 +112,8 @@ class Item : public sigc::trackable {
   gdouble distance_scrolled_y_ = 0;
   // visibility of items with Status == Passive
   bool show_passive_ = false;
+  // hidden via config
+  bool is_hidden_ = false;
   bool ready_ = false;
   Glib::ustring status_ = "active";
 
@@ -111,7 +124,10 @@ class Item : public sigc::trackable {
 
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
   Glib::RefPtr<Gio::Cancellable> cancellable_;
+  bool has_dbus_menu_ = false;
   std::set<std::string_view> update_pending_;
+
+  Host& host_;
 };
 
 }  // namespace waybar::modules::SNI

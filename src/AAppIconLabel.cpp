@@ -33,21 +33,21 @@ std::string toLowerCase(const std::string& input) {
 
 std::optional<std::string> getFileBySuffix(const std::string& dir, const std::string& suffix,
                                            bool check_lower_case) {
-  if (!std::filesystem::exists(dir)) {
-    return {};
-  }
-  for (const auto& entry : std::filesystem::recursive_directory_iterator(dir)) {
-    if (entry.is_regular_file()) {
-      std::string filename = entry.path().filename().string();
-      if (filename.size() < suffix.size()) {
-        continue;
-      }
-      if ((filename.compare(filename.size() - suffix.size(), suffix.size(), suffix) == 0) ||
-          (check_lower_case && filename.compare(filename.size() - suffix.size(), suffix.size(),
-                                                toLowerCase(suffix)) == 0)) {
-        return entry.path().string();
+  try {
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(dir)) {
+      if (entry.is_regular_file()) {
+        std::string filename = entry.path().filename().string();
+        if (filename.size() < suffix.size()) {
+          continue;
+        }
+        if ((filename.compare(filename.size() - suffix.size(), suffix.size(), suffix) == 0) ||
+            (check_lower_case && filename.compare(filename.size() - suffix.size(), suffix.size(),
+                                                  toLowerCase(suffix)) == 0)) {
+          return entry.path().string();
+        }
       }
     }
+  } catch (const std::filesystem::filesystem_error&) {
   }
 
   return {};

@@ -1,15 +1,13 @@
 #pragma once
 
 #include <sigc++/sigc++.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
 
-#include <cstring>
-#include <memory>
+#include <atomic>
+#include <cstdint>
+#include <functional>
 #include <mutex>
-#include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "ipc.hpp"
 #include "util/SafeSignal.hpp"
@@ -41,10 +39,19 @@ class Ipc {
   static inline const std::string ipc_magic_ = "i3-ipc";
   static inline const size_t ipc_header_size_ = ipc_magic_.size() + 8;
 
-  const std::string getSocketPath() const;
-  int open(const std::string&) const;
+  static std::string getSocketPath();
+  static int open(const std::string&);
+
   struct ipc_response send(int fd, uint32_t type, const std::string& payload = "");
   struct ipc_response recv(int fd);
+
+  // Re-establish the event socket and re-subscribe after sway drops us, backing
+  // off between attempts so we don't busy-loop while sway is unavailable.
+  void reconnectEvent();
+
+  std::string socketPath_;
+  std::vector<std::string> subscribed_events_;
+  std::atomic<bool> running_{true};
 
   util::ScopedFd fd_;
   util::ScopedFd fd_event_;

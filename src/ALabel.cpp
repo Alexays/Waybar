@@ -25,8 +25,15 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
                     ? std::chrono::milliseconds::max()
                     : std::chrono::milliseconds(
                           (config_["interval"].isNumeric()
-                               ? std::max(1L,  // Minimum 1ms due to millisecond precision
-                                          static_cast<long>(config_["interval"].asDouble() * 1000))
+                               ? (config_["interval"].asDouble() > 0
+                                      // Minimum 1ms due to millisecond precision
+                                      ? std::max(1L, static_cast<long>(
+                                                         config_["interval"].asDouble() * 1000))
+                                      // Only modules with no periodic default use 0 as an
+                                      // event-driven sentinel. Periodic modules fall back to their
+                                      // default interval so interval:0 cannot busy-loop or hit
+                                      // modulo-by-zero clock code.
+                                      : (interval == 0 ? 0L : 1000L * static_cast<long>(interval)))
                                : 1000 * (long)interval))),
       default_format_(format_) {
   label_.set_name(name);
@@ -35,6 +42,26 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
   }
   label_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(label_);
+  if (tooltipEnabled()) {
+    // Keep dynamic tooltip contents out of GtkWidget's tooltip-markup property.
+    // Setting that property queues a display-wide tooltip query, which restarts
+    // GTK's hover delay when modules update faster than the delay can expire.
+    label_.set_has_tooltip(true);
+    label_.signal_query_tooltip().connect(
+        [this](int, int, bool, const Glib::RefPtr<Gtk::Tooltip>& tooltip) {
+          if (!last_tooltip_markup_.has_value() || last_tooltip_markup_->empty()) {
+            active_tooltip_.reset();
+            return false;
+          }
+          active_tooltip_ = tooltip;
+          tooltip->set_markup(*last_tooltip_markup_);
+          return true;
+        });
+    event_box_.signal_leave_notify_event().connect([this](GdkEventCrossing*) {
+      active_tooltip_.reset();
+      return false;
+    });
+  }
   if (config_["max-length"].isUInt()) {
     label_.set_max_width_chars(config_["max-length"].asInt());
     label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
@@ -116,8 +143,9 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
         }
         submenus_[key] = GTK_MENU_ITEM(item);
         menuActionsMap_[key] = it->asString();
-        g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
-                         (gpointer)menuActionsMap_[key].c_str());
+        g_signal_connect_data(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
+                              g_strdup(menuActionsMap_[key].c_str()), (GClosureNotify)g_free,
+                              (GConnectFlags)0);
       }
       g_object_unref(builder);
     } catch (std::runtime_error& e) {
@@ -139,6 +167,47 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
 
 auto ALabel::update() -> void { AModule::update(); }
 
+bool ALabel::setLabelMarkup(const Glib::ustring& markup) {
+  if (last_label_markup_ == markup.raw()) {
+    return false;
+  }
+
+  label_.set_markup(markup);
+  last_label_markup_ = markup.raw();
+  return true;
+}
+
+bool ALabel::pointerOverModule() const {
+  auto gdk_window = event_box_.get_window();
+  if (!gdk_window || !event_box_.get_mapped()) {
+    return false;
+  }
+  int x = 0;
+  int y = 0;
+  Gdk::ModifierType mask;
+  gdk_window->get_device_position(gdk_window->get_display()->get_default_seat()->get_pointer(), x,
+                                  y, mask);
+  return x >= 0 && y >= 0 && x < gdk_window->get_width() && y < gdk_window->get_height();
+}
+
+bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
+  if (last_tooltip_markup_ == markup.raw()) {
+    return false;
+  }
+
+  last_tooltip_markup_ = markup.raw();
+  if (active_tooltip_) {
+    // leave-notify is not always delivered when the pointer moves between
+    // adjacent modules, so active_tooltip_ may belong to another module.
+    if (pointerOverModule()) {
+      active_tooltip_->set_markup(markup);
+    } else {
+      active_tooltip_.reset();
+    }
+  }
+  return true;
+}
+
 std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_t max) {
   auto format_icons = config_["format-icons"];
   if (format_icons.isObject()) {
@@ -150,7 +219,28 @@ std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    if (size != 0U) {
+    if (size != 0U && format_icons[0].isObject()) {
+      std::string last_icon;
+      for (const auto& threshold : format_icons) {
+        if (!threshold.isObject() || !threshold["icon"].isString() || !threshold["max"].isUInt()) {
+          static bool warned = false;
+          if (!warned) {
+            spdlog::warn(
+                "format-icons: skipping invalid threshold object, expected {\"icon\": \"...\", "
+                "\"max\": N}");
+            warned = true;
+          }
+          continue;
+        }
+        last_icon = threshold["icon"].asString();
+        if (percentage <= threshold["max"].asUInt()) {
+          return last_icon;
+        }
+      }
+      if (!last_icon.empty()) {
+        return last_icon;
+      }
+    } else if (size != 0U) {
       auto divisor = std::max(1U, (max == 0 ? 100U : static_cast<unsigned>(max)) / size);
       auto idx = std::clamp(percentage / divisor, 0U, size - 1);
       format_icons = format_icons[idx];
@@ -177,7 +267,28 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    if (size != 0U) {
+    if (size != 0U && format_icons[0].isObject()) {
+      std::string last_icon;
+      for (const auto& threshold : format_icons) {
+        if (!threshold.isObject() || !threshold["icon"].isString() || !threshold["max"].isUInt()) {
+          static bool warned = false;
+          if (!warned) {
+            spdlog::warn(
+                "format-icons: skipping invalid threshold object, expected {\"icon\": \"...\", "
+                "\"max\": N}");
+            warned = true;
+          }
+          continue;
+        }
+        last_icon = threshold["icon"].asString();
+        if (percentage <= threshold["max"].asUInt()) {
+          return last_icon;
+        }
+      }
+      if (!last_icon.empty()) {
+        return last_icon;
+      }
+    } else if (size != 0U) {
       auto divisor = std::max(1U, (max == 0 ? 100U : static_cast<unsigned>(max)) / size);
       auto idx = std::clamp(percentage / divisor, 0U, size - 1);
       format_icons = format_icons[idx];
@@ -189,6 +300,10 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
   return "";
 }
 
+void ALabel::copyToClipboard(const std::string& literal) {
+  Gtk::Clipboard::get()->set_text(literal);
+}
+
 bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
   if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
     alt_ = !alt_;
@@ -197,6 +312,10 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
     } else {
       format_ = default_format_;
     }
+  }
+
+  if (config_["on-click-copy"].isBool() && config_["on-click-copy"].asBool()) {
+    copyToClipboard(label_.get_text());
   }
   return AModule::handleToggle(e);
 }

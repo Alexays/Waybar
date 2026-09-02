@@ -3,6 +3,8 @@
 #include <iomanip>
 #include <regex>
 #include <sstream>
+#include <stdexcept>
+#include <system_error>
 namespace fs = std::filesystem;
 
 struct TransformResult {
@@ -12,11 +14,12 @@ struct TransformResult {
 
 TransformResult transform_8bit_to_hex(const std::string& file_path) {
   std::ifstream f(file_path, std::ios::in | std::ios::binary);
-  const auto size = fs::file_size(file_path);
-  std::string result(size, '\0');
-  if (!f.is_open() || !f.good()) {
+  std::error_code ec;
+  const auto size = fs::file_size(file_path, ec);
+  if (ec || !f.is_open() || !f.good()) {
     throw std::runtime_error("Cannot open file: " + file_path);
   }
+  std::string result(size, '\0');
 
   if (size == 0) {
     return {.css = result, .was_transformed = false};

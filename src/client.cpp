@@ -3,10 +3,12 @@
 #include <gtk-layer-shell.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <iostream>
 #include <utility>
 
 #include "gtkmm/icontheme.h"
+#include "ext-idle-notify-v1-client-protocol.h"
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "util/clara.hpp"
 #include "util/format.hpp"
@@ -39,6 +41,12 @@ void waybar::Client::handleGlobal(void* data, struct wl_registry* registry, uint
 
     client->idle_inhibit_manager = static_cast<struct zwp_idle_inhibit_manager_v1*>(
         wl_registry_bind(registry, name, &zwp_idle_inhibit_manager_v1_interface, 1));
+  } else if (strcmp(interface, ext_idle_notifier_v1_interface.name) == 0) {
+    // Bind version 2 if available (for get_input_idle_notification), otherwise version 1
+    auto bind_version = std::min(version, 2u);
+    client->idle_notifier = static_cast<struct ext_idle_notifier_v1 *>(
+        wl_registry_bind(registry, name, &ext_idle_notifier_v1_interface, bind_version));
+    spdlog::debug("Bound ext-idle-notifier-v1 at version {}", bind_version);
   }
 }
 
@@ -50,7 +58,7 @@ void waybar::Client::handleGlobalRemove(void* data, struct wl_registry* /*regist
 void waybar::Client::handleOutput(struct waybar_output& output) {
   static const struct zxdg_output_v1_listener xdgOutputListener = {
       .logical_position = [](void*, struct zxdg_output_v1*, int32_t, int32_t) {},
-      .logical_size = [](void*, struct zxdg_output_v1*, int32_t, int32_t) {},
+      .logical_size = &handleOutputLogicalSize,
       .done = &handleOutputDone,
       .name = &handleOutputName,
       .description = &handleOutputDescription,
@@ -71,7 +79,19 @@ struct waybar::waybar_output& waybar::Client::getOutput(void* addr) {
 }
 
 std::vector<Json::Value> waybar::Client::getOutputConfigs(struct waybar_output& output) {
-  return config.getOutputConfigs(output.name, output.identifier);
+  return config.getOutputConfigs(output.name, output.identifier, output.width, output.height);
+}
+
+void waybar::Client::handleOutputLogicalSize(void* data, struct zxdg_output_v1* object,
+                                             int32_t width, int32_t height) {
+  auto client = waybar::Client::inst();
+  try {
+    auto& output = client->getOutput(data);
+    output.width = width;
+    output.height = height;
+  } catch (const std::exception& e) {
+    std::cerr << e.what() << std::endl;
+  }
 }
 
 void waybar::Client::handleOutputDone(void* data, struct zxdg_output_v1* /*xdg_output*/) {
@@ -91,16 +111,38 @@ void waybar::Client::handleOutputDone(void* data, struct zxdg_output_v1* /*xdg_o
       output.xdg_output.reset();
       spdlog::debug("Output detection done: {} ({})", output.name, output.identifier);
 
-      auto configs = client->getOutputConfigs(output);
-      if (!configs.empty()) {
-        for (const auto& config : configs) {
-          client->bars.emplace_back(std::make_unique<Bar>(&output, config));
-        }
+      client->pending_outputs_.push_back(&output);
+
+      if (!client->bars_scheduled_) {
+        client->bars_scheduled_ = true;
+
+        Glib::signal_idle().connect_once([client]() {
+          client->createBarsBatch();
+        }, Glib::PRIORITY_HIGH_IDLE);
       }
     }
   } catch (const std::exception& e) {
     spdlog::warn("caught exception in zxdg_output_v1_listener::done: {}", e.what());
   }
+}
+
+void waybar::Client::createBarsBatch() {
+  pending_outputs_.remove_if([this](auto* output) { return std::none_of(outputs_.begin(), outputs_.end(), [&output](const auto& o) { return &o == output; }); });
+  for (auto* output : pending_outputs_) {
+    try {
+      auto configs = getOutputConfigs(*output);
+      if (!configs.empty()) {
+        for (const auto& config : configs) {
+          bars.emplace_back(std::make_unique<Bar>(output, config));
+        }
+      }
+    } catch (const std::exception& e) {
+      spdlog::warn("Error creating bar: {}", e.what());
+    }
+  }
+
+  pending_outputs_.clear();
+  bars_scheduled_ = false;
 }
 
 void waybar::Client::handleOutputName(void* data, struct zxdg_output_v1* /*xdg_output*/,
@@ -169,7 +211,7 @@ const std::string waybar::Client::getStyle(const std::string& style,
 
   if (style.empty()) {
     std::vector<std::string> search_files;
-    switch (appearance.value_or(portal->getAppearance())) {
+    switch (appearance.value_or(portal ? portal->getAppearance() : waybar::Appearance::UNKNOWN)) {
       case waybar::Appearance::LIGHT:
         search_files.emplace_back("style-light.css");
         gtk_settings->property_gtk_application_prefer_dark_theme() = false;
@@ -244,6 +286,15 @@ void waybar::Client::bindInterfaces() {
   // Clear stale outputs from previous run
   outputs_.clear();
 
+  // Also drop any batch state that was left pending from the previous run. On
+  // reload the GApplication is swapped but the default main context (and its
+  // queued PRIORITY_HIGH_IDLE createBarsBatch source) survives; pending_outputs_
+  // would then hold dangling waybar_output* into the just-cleared outputs_ list,
+  // which createBarsBatch's address comparison can mis-match if the freed slot is
+  // reused. Reset so the next run schedules its batch from a clean state (#4129).
+  pending_outputs_.clear();
+  bars_scheduled_ = false;
+
   // add existing outputs and subscribe to updates
   for (auto i = 0; i < gdk_display->get_n_monitors(); ++i) {
     auto monitor = gdk_display->get_monitor(i);
@@ -302,15 +353,26 @@ int waybar::Client::main(int argc, char* argv[]) {
   wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
   config.load(config_opt);
   if (!portal) {
-    portal = std::make_unique<waybar::Portal>();
+    try {
+      portal = std::make_unique<waybar::Portal>();
+    } catch (const Glib::Error& e) {
+      spdlog::warn(
+          "Failed to connect to the desktop portal, light/dark theme detection disabled: {}",
+          std::string(e.what()));
+    } catch (...) {
+      spdlog::warn("Failed to connect to the desktop portal, light/dark theme detection disabled");
+    }
   }
   m_cssFile = getStyle(style_opt);
   setupCss(m_cssFile);
-  m_cssReloadHelper = std::make_unique<CssReloadHelper>(m_cssFile, [&]() { setupCss(m_cssFile); });
-  portal->signal_appearance_changed().connect([&](waybar::Appearance appearance) {
-    auto css_file = getStyle(style_opt, appearance);
-    setupCss(css_file);
-  });
+  m_cssReloadHelper = std::make_unique<CssReloadHelper>(m_cssFile, [&](const std::string& css_file) { setupCss(css_file); });
+  if (portal) {
+    portal->signal_appearance_changed().connect([&](waybar::Appearance appearance) {
+      auto css_file = getStyle(style_opt, appearance);
+      m_cssReloadHelper->changeCssFile(css_file);
+      setupCss(css_file);
+    });
+  }
 
   auto m_config = config.getConfig();
   if (m_config.isObject() && m_config["reload_style_on_change"].asBool()) {
@@ -335,5 +397,7 @@ int waybar::Client::main(int argc, char* argv[]) {
 void waybar::Client::reset() {
   gtk_app->quit();
   // delete signal handler for css changes
-  portal->signal_appearance_changed().clear();
+  if (portal) {
+    portal->signal_appearance_changed().clear();
+  }
 }

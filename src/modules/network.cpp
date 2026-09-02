@@ -8,6 +8,7 @@
 
 #include <cassert>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <optional>
 #include <sstream>
@@ -83,6 +84,24 @@ waybar::modules::Network::readBandwidthUsage() {
   return {{receivedBytes, transmittedBytes}};
 }
 
+uint32_t waybar::modules::Network::readLinkSpeed() const {
+  auto path = fmt::format("/sys/class/net/{}/speed", ifname_);
+  std::ifstream sysfs_speed(path);
+
+  if (!sysfs_speed) return 0;
+
+  // Read into a signed type: /sys/class/net/<if>/speed reports -1 when there is
+  // no carrier. Extracting -1 into an unsigned type would wrap to a huge value
+  // (and would not set failbit), so use a signed type and validate the result.
+  int64_t speed = 0;
+  sysfs_speed >> speed;
+
+  if (sysfs_speed.fail() || speed < 0)  // read fails on incompatible devices
+    return 0;
+
+  return static_cast<uint32_t>(speed);
+}
+
 waybar::modules::Network::Network(const std::string& id, const Json::Value& config)
     : ALabel(config, "network", id, DEFAULT_FORMAT, 60) {
   // Start with some "text" in the module's label_. update() will then
@@ -121,7 +140,6 @@ waybar::modules::Network::Network(const std::string& id, const Json::Value& conf
   createEventSocket();
   createInfoSocket();
 
-  dp.emit();
   // Ask for a dump of interfaces and then addresses to populate our
   // information. First the interface dump, and once done, the callback
   // will be called again which will ask for addresses dump.
@@ -145,6 +163,10 @@ waybar::modules::Network::~Network() {
     nl_close(sock_);
     nl_socket_free(sock_);
   }
+  if (station_sock_ != nullptr) {
+    nl_close(station_sock_);
+    nl_socket_free(station_sock_);
+  }
 }
 
 void waybar::modules::Network::createEventSocket() {
@@ -160,6 +182,12 @@ void waybar::modules::Network::createEventSocket() {
   if (nl_socket_set_nonblocking(ev_sock_)) {
     throw std::runtime_error("Can't set non-blocking on network socket");
   }
+  // Enlarge the socket receive buffer so that a burst of link/address/route
+  // change notifications (e.g. a router reboot or a PPPoE redial) is less likely
+  // to overflow it and make the kernel drop messages (ENOBUFS). Overruns are
+  // still handled in worker() by resynchronising the state, but a larger buffer
+  // avoids most of them. The kernel caps the request at net.core.rmem_max.
+  nl_socket_set_buffer_size(ev_sock_, 1024 * 1024, 0);
   nl_socket_add_memberships(ev_sock_, RTNLGRP_LINK, RTNLGRP_IPV4_IFADDR, RTNLGRP_IPV6_IFADDR, 0);
   if (!config_["interface"].isString()) {
     nl_socket_add_memberships(ev_sock_, RTNLGRP_IPV4_ROUTE, RTNLGRP_IPV6_ROUTE, 0);
@@ -203,6 +231,16 @@ void waybar::modules::Network::createInfoSocket() {
   if (nl80211_id_ < 0) {
     spdlog::warn("Can't resolve nl80211 interface");
   }
+
+  // Create and configure the station_sock_ for NL80211_CMD_GET_STATION
+  station_sock_ = nl_socket_alloc();
+  if (genl_connect(station_sock_) != 0) {
+    throw std::runtime_error("Can't connect to station netlink socket");
+  }
+  if (nl_socket_modify_cb(station_sock_, NL_CB_VALID, NL_CB_CUSTOM, handleStationGet, this) < 0) {
+    throw std::runtime_error("Can't set station callback");
+  }
+  // nl80211_id_ is already resolved from the sock_ setup
 }
 
 void waybar::modules::Network::worker() {
@@ -244,6 +282,27 @@ void waybar::modules::Network::worker() {
               rc = 0;
               break;
             }
+            if (rc == -NLE_NOMEM || errno == ENOBUFS) {
+              // The kernel dropped multicast notifications because our receive
+              // buffer overflowed. This happens during a burst of
+              // link/address/route changes such as a router reboot or a PPPoE
+              // redial. We have lost track of the current state -- in
+              // particular the RTM_NEWADDR carrying the interface's new IP
+              // address may have been dropped -- so request a fresh dump to
+              // resynchronise. Without this the address (cleared by the
+              // preceding RTM_DELADDR) would stay blank until Waybar is
+              // restarted, because nothing else re-queries it (#5122).
+              spdlog::warn("network: netlink receive buffer overrun, resyncing state");
+              want_link_dump_ = true;
+              want_addr_dump_ = true;
+              if (!config_["interface"].isString()) {
+                want_route_dump_ = true;
+              }
+              askForStateDump();
+              // Keep draining; the next recv proceeds normally now that the
+              // overrun has been reported.
+              continue;
+            }
           }
           if (rc < 0) {
             spdlog::error("nl_recvmsgs_default error: {}", nl_geterror(-rc));
@@ -259,6 +318,19 @@ void waybar::modules::Network::worker() {
   };
 }
 
+bool waybar::modules::Network::isWireless() const {
+  // The rfkill switch we monitor (and thus the "disabled" state) only applies
+  // to wireless radios. An interface is wireless if the kernel exposes an
+  // 802.11 phy (cfg80211/mac80211) or a legacy "wireless" node for it in sysfs.
+  if (ifname_.empty()) {
+    return false;
+  }
+  const auto base = "/sys/class/net/" + ifname_;
+  std::error_code ec;
+  return std::filesystem::exists(base + "/phy80211", ec) ||
+         std::filesystem::exists(base + "/wireless", ec);
+}
+
 const std::string waybar::modules::Network::getNetworkState() const {
   if (ifid_ == -1 || !carrier_) {
 #ifdef WANT_RFKILL
@@ -266,7 +338,14 @@ const std::string waybar::modules::Network::getNetworkState() const {
     if (config_["rfkill"].isBool()) {
       display_rfkill = config_["rfkill"].asBool();
     }
-    if (rfkill_.getState() && display_rfkill) return "disabled";
+    // The rfkill switch is for wireless (WLAN) radios only, so it must not mask
+    // a wired interface that merely lost its carrier (e.g. an unplugged ethernet
+    // cable): such an interface has to report "disconnected", not "disabled",
+    // otherwise cable-unplug detection breaks on ethernet modules (#4364).
+    // Only honor rfkill when there is no interface or the interface is wireless.
+    if (rfkill_.getState() && display_rfkill && (ifname_.empty() || isWireless())) {
+      return "disabled";
+    }
 #endif
     return "disconnected";
   }
@@ -315,19 +394,27 @@ auto waybar::modules::Network::update() -> void {
     elapsed_seconds = std::chrono::duration<double>(interval_).count();
   }
 
+  link_speed_ = readLinkSpeed();
+  auto threshold_state = getState(signal_strength_);
+
   if (!alt_) {
     auto state = getNetworkState();
     if (!state_.empty() && label_.get_style_context()->has_class(state_)) {
       label_.get_style_context()->remove_class(state_);
     }
-    if (config_["format-" + state].isString()) {
+    if (!threshold_state.empty() && config_["format-" + state + "-" + threshold_state].isString()) {
+      default_format_ = config_["format-" + state + "-" + threshold_state].asString();
+    } else if (config_["format-" + state].isString()) {
       default_format_ = config_["format-" + state].asString();
     } else if (config_["format"].isString()) {
       default_format_ = config_["format"].asString();
     } else {
       default_format_ = DEFAULT_FORMAT;
     }
-    if (config_["tooltip-format-" + state].isString()) {
+    if (!threshold_state.empty() &&
+        config_["tooltip-format-" + state + "-" + threshold_state].isString()) {
+      tooltip_format = config_["tooltip-format-" + state + "-" + threshold_state].asString();
+    } else if (config_["tooltip-format-" + state].isString()) {
       tooltip_format = config_["tooltip-format-" + state].asString();
     }
     if (!label_.get_style_context()->has_class(state)) {
@@ -336,7 +423,6 @@ auto waybar::modules::Network::update() -> void {
     format_ = default_format_;
     state_ = state;
   }
-  getState(signal_strength_);
 
   std::string final_ipaddr_;
   if (addr_pref_ == ip_addr_pref::IPV4) {
@@ -350,28 +436,48 @@ auto waybar::modules::Network::update() -> void {
     final_ipaddr_ += ipaddr6_;
   }
 
-  auto text = fmt::format(
-      fmt::runtime(format_), fmt::arg("essid", essid_), fmt::arg("bssid", bssid_),
-      fmt::arg("signaldBm", signal_strength_dbm_), fmt::arg("signalStrength", signal_strength_),
-      fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
-      fmt::arg("netmask", netmask_), fmt::arg("netmask6", netmask6_),
-      fmt::arg("ipaddr", final_ipaddr_), fmt::arg("gwaddr", gwaddr_), fmt::arg("cidr", cidr_),
-      fmt::arg("cidr6", cidr6_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
-      fmt::arg("icon", getIcon(signal_strength_, state_)),
-      fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / elapsed_seconds, "b/s")),
-      fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / elapsed_seconds, "b/s")),
+  fmt::dynamic_format_arg_store<fmt::format_context> store;
+  store.push_back(fmt::arg("essid", essid_));
+  store.push_back(fmt::arg("bssid", bssid_));
+  store.push_back(fmt::arg("signaldBm", signal_strength_dbm_));
+  store.push_back(fmt::arg("signalStrength", signal_strength_));
+  store.push_back(fmt::arg("signalStrengthApp", signal_strength_app_));
+  store.push_back(fmt::arg("ifname", ifname_));
+  store.push_back(fmt::arg("netmask", netmask_));
+  store.push_back(fmt::arg("netmask6", netmask6_));
+  store.push_back(fmt::arg("ipaddr", final_ipaddr_));
+  store.push_back(fmt::arg("gwaddr", gwaddr_));
+  store.push_back(fmt::arg("cidr", cidr_));
+  store.push_back(fmt::arg("cidr6", cidr6_));
+  store.push_back(fmt::arg("frequency", fmt::format("{:.1f}", frequency_)));
+  store.push_back(fmt::arg("icon", getIcon(signal_strength_, state_)));
+  store.push_back(
+      fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / elapsed_seconds, "b/s")));
+  store.push_back(
+      fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / elapsed_seconds, "b/s")));
+  store.push_back(
       fmt::arg("bandwidthTotalBits",
-               pow_format((bandwidth_up + bandwidth_down) * 8ull / elapsed_seconds, "b/s")),
-      fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / elapsed_seconds, "o/s")),
-      fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / elapsed_seconds, "o/s")),
-      fmt::arg("bandwidthTotalOctets",
-               pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "o/s")),
-      fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / elapsed_seconds, "B/s")),
-      fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / elapsed_seconds, "B/s")),
-      fmt::arg("bandwidthTotalBytes",
-               pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "B/s")));
-  if (text.compare(label_.get_label()) != 0) {
-    label_.set_markup(text);
+               pow_format((bandwidth_up + bandwidth_down) * 8ull / elapsed_seconds, "b/s")));
+  store.push_back(
+      fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / elapsed_seconds, "o/s")));
+  store.push_back(fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / elapsed_seconds, "o/s")));
+  store.push_back(fmt::arg("bandwidthTotalOctets",
+                           pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "o/s")));
+  store.push_back(
+      fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / elapsed_seconds, "B/s")));
+  store.push_back(fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / elapsed_seconds, "B/s")));
+  store.push_back(fmt::arg("bandwidthDownBytesCompact",
+                           pow_format(bandwidth_down / elapsed_seconds, "B", false, false, 2)));
+  store.push_back(fmt::arg("bandwidthUpBytesCompact",
+                           pow_format(bandwidth_up / elapsed_seconds, "B", false, false, 2)));
+  store.push_back(fmt::arg("bandwidthTotalBytes",
+                           pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "B/s")));
+  store.push_back(fmt::arg("rxBitrate", pow_format(rx_bitrate_, "b/s")));
+  store.push_back(fmt::arg("txBitrate", pow_format(tx_bitrate_, "b/s")));
+  store.push_back(fmt::arg("linkSpeed", pow_format(link_speed_ * 1000000ull, "b/s", false, true)));
+
+  auto text = fmt::vformat(format_, store);
+  if (setLabelMarkup(text)) {
     if (text.empty()) {
       event_box_.hide();
     } else {
@@ -383,31 +489,9 @@ auto waybar::modules::Network::update() -> void {
       tooltip_format = config_["tooltip-format"].asString();
     }
     if (!tooltip_format.empty()) {
-      auto tooltip_text = fmt::format(
-          fmt::runtime(tooltip_format), fmt::arg("essid", essid_), fmt::arg("bssid", bssid_),
-          fmt::arg("signaldBm", signal_strength_dbm_), fmt::arg("signalStrength", signal_strength_),
-          fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
-          fmt::arg("netmask", netmask_), fmt::arg("netmask6", netmask6_),
-          fmt::arg("ipaddr", final_ipaddr_), fmt::arg("gwaddr", gwaddr_), fmt::arg("cidr", cidr_),
-          fmt::arg("cidr6", cidr6_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
-          fmt::arg("icon", getIcon(signal_strength_, state_)),
-          fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / elapsed_seconds, "b/s")),
-          fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / elapsed_seconds, "b/s")),
-          fmt::arg("bandwidthTotalBits",
-                   pow_format((bandwidth_up + bandwidth_down) * 8ull / elapsed_seconds, "b/s")),
-          fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / elapsed_seconds, "o/s")),
-          fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / elapsed_seconds, "o/s")),
-          fmt::arg("bandwidthTotalOctets",
-                   pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "o/s")),
-          fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / elapsed_seconds, "B/s")),
-          fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / elapsed_seconds, "B/s")),
-          fmt::arg("bandwidthTotalBytes",
-                   pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "B/s")));
-      if (label_.get_tooltip_text() != tooltip_text) {
-        label_.set_tooltip_markup(tooltip_text);
-      }
-    } else if (label_.get_tooltip_text() != text) {
-      label_.set_tooltip_markup(text);
+      setTooltipMarkup(fmt::vformat(tooltip_format, store));
+    } else {
+      setTooltipMarkup(text);
     }
   }
 
@@ -494,7 +578,10 @@ void waybar::modules::Network::clearIface() {
   signal_strength_dbm_ = 0;
   signal_strength_ = 0;
   signal_strength_app_.clear();
+  link_speed_ = 0;
   frequency_ = 0.0;
+  rx_bitrate_ = 0;
+  tx_bitrate_ = 0;
 }
 
 int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
@@ -911,6 +998,51 @@ int waybar::modules::Network::handleScan(struct nl_msg* msg, void* data) {
   return NL_OK;
 }
 
+int waybar::modules::Network::handleStationGet(struct nl_msg* msg, void* data) {
+  auto net = static_cast<waybar::modules::Network*>(data);
+  auto gnlh = static_cast<genlmsghdr*>(nlmsg_data(nlmsg_hdr(msg)));
+  struct nlattr* tb[NL80211_ATTR_MAX + 1];
+
+  if (nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0), genlmsg_attrlen(gnlh, 0),
+                nullptr) < 0) {
+    return NL_SKIP;
+  }
+
+  if (tb[NL80211_ATTR_STA_INFO] == nullptr) {
+    return NL_SKIP;
+  }
+
+  struct nlattr* sinfo[NL80211_STA_INFO_MAX + 1];
+  if (nla_parse_nested(sinfo, NL80211_STA_INFO_MAX, tb[NL80211_ATTR_STA_INFO], nullptr) != 0) {
+    return NL_SKIP;
+  }
+
+  if (sinfo[NL80211_STA_INFO_TX_BITRATE] != nullptr) {
+    struct nlattr* tx_br_info[NL80211_RATE_INFO_MAX + 1];
+    if (nla_parse_nested(tx_br_info, NL80211_RATE_INFO_MAX, sinfo[NL80211_STA_INFO_TX_BITRATE],
+                         nullptr) == 0) {
+      if (tx_br_info[NL80211_RATE_INFO_BITRATE32] != nullptr) {
+        net->tx_bitrate_ = nla_get_u32(tx_br_info[NL80211_RATE_INFO_BITRATE32]) * pow(10, 5);
+      } else if (tx_br_info[NL80211_RATE_INFO_BITRATE] != nullptr) {
+        net->tx_bitrate_ = nla_get_u16(tx_br_info[NL80211_RATE_INFO_BITRATE]) * pow(10, 5);
+      }
+    }
+  }
+
+  if (sinfo[NL80211_STA_INFO_RX_BITRATE] != nullptr) {
+    struct nlattr* rx_br_info[NL80211_RATE_INFO_MAX + 1];
+    if (nla_parse_nested(rx_br_info, NL80211_RATE_INFO_MAX, sinfo[NL80211_STA_INFO_RX_BITRATE],
+                         nullptr) == 0) {
+      if (rx_br_info[NL80211_RATE_INFO_BITRATE32] != nullptr) {
+        net->rx_bitrate_ = nla_get_u32(rx_br_info[NL80211_RATE_INFO_BITRATE32]) * pow(10, 5);
+      } else if (rx_br_info[NL80211_RATE_INFO_BITRATE] != nullptr) {
+        net->rx_bitrate_ = nla_get_u16(rx_br_info[NL80211_RATE_INFO_BITRATE]) * pow(10, 5);
+      }
+    }
+  }
+  return NL_OK;
+}
+
 void waybar::modules::Network::parseEssid(struct nlattr** bss) {
   if (bss[NL80211_BSS_INFORMATION_ELEMENTS] != nullptr) {
     auto ies = static_cast<char*>(nla_data(bss[NL80211_BSS_INFORMATION_ELEMENTS]));
@@ -934,18 +1066,15 @@ void waybar::modules::Network::parseSignal(struct nlattr** bss) {
   if (bss[NL80211_BSS_SIGNAL_MBM] != nullptr) {
     // signalstrength in dBm from mBm
     signal_strength_dbm_ = nla_get_s32(bss[NL80211_BSS_SIGNAL_MBM]) / 100;
-    // WiFi-hardware usually operates in the range -90 to -30dBm.
 
-    // If a signal is too strong, it can overwhelm receiving circuity that is designed
-    // to pick up and process a certain signal level. The following percentage is scaled to
-    // punish signals that are too strong (>= -45dBm) or too weak (<= -45 dBm).
-    const int hardwareOptimum = -45;
-    const int hardwareMin = -90;
-    const int strength =
-        100 -
-        ((abs(signal_strength_dbm_ - hardwareOptimum) / double{hardwareOptimum - hardwareMin}) *
-         100);
-    signal_strength_ = std::clamp(strength, 0, 100);
+    // uses nmcli implementation for calculating strength
+    // https://github.com/NetworkManager/NetworkManager/blob/23ffa5fc6e7acbd7a96138c6c18f478f5127177d/src/libnm-platform/wifi/nm-wifi-utils-nl80211.c#L411
+
+    const int noise_floor_dbm = -90;
+    const int signal_max_dbm = -20;
+    signal_strength_dbm_ = CLAMP(signal_strength_dbm_, noise_floor_dbm, signal_max_dbm);
+    signal_strength_ = 100 - (70 * (((float)signal_max_dbm - (float)signal_strength_dbm_) /
+                                    ((float)signal_max_dbm - (float)noise_floor_dbm)));
 
     if (signal_strength_dbm_ >= -50) {
       signal_strength_app_ = "Great Connectivity";
@@ -1010,5 +1139,38 @@ auto waybar::modules::Network::getInfo() -> void {
     nlmsg_free(nl_msg);
     return;
   }
-  nl_send_sync(sock_, nl_msg);
+  int err = nl_send_sync(sock_, nl_msg);
+  if (err < 0) {
+    spdlog::warn("nl80211: nl_send_sync get_scan error {}", err);
+    // Proceeding here as get_scan might not be essential if we already have ifid_
+  }
+
+  // If connected to an AP, try to get station data for bitrate
+  if (ifid_ > 0 && !bssid_.empty() && nl80211_id_ >= 0) {
+    nl_msg = nlmsg_alloc();
+    if (nl_msg == nullptr) {
+      return;
+    }
+
+    // Convert BSSID string to uint8_t array
+    uint8_t bssid_mac[ETH_ALEN];
+    if (sscanf(bssid_.c_str(), "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &bssid_mac[0], &bssid_mac[1],
+               &bssid_mac[2], &bssid_mac[3], &bssid_mac[4], &bssid_mac[5]) == ETH_ALEN) {
+      if (genlmsg_put(nl_msg, NL_AUTO_PORT, NL_AUTO_SEQ, nl80211_id_, 0, 0, /* No DUMP flag */
+                      NL80211_CMD_GET_STATION, 0) == nullptr ||
+          nla_put_u32(nl_msg, NL80211_ATTR_IFINDEX, ifid_) < 0 ||
+          nla_put(nl_msg, NL80211_ATTR_MAC, ETH_ALEN, bssid_mac) < 0) {
+        nlmsg_free(nl_msg);
+        return;
+      }
+      // Use station_sock_ for NL80211_CMD_GET_STATION
+      err = nl_send_sync(station_sock_, nl_msg);
+      if (err < 0) {
+        spdlog::warn("nl80211: nl_send_sync get_station error {}", err);
+      }
+    } else {
+      spdlog::warn("nl80211: Failed to parse BSSID string: {}", bssid_);
+      nlmsg_free(nl_msg);
+    }
+  }
 }

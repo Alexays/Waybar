@@ -15,6 +15,11 @@ The *backlight* module displays the current backlight level.
 	default: 2 ++
 	The interval in which information gets polled.
 
+*device*: ++
+	typeof: string ++
+	The name of the preferred backlight device to display. If left empty, a device will be chosen automatically. ++
+	Both screen backlights (the udev *backlight* subsystem) and keyboard backlights (LEDs in the udev *leds* subsystem, e.g. *white:kbd_backlight*) are supported; name such an LED here to control it. When left empty, a screen backlight is always preferred for automatic selection.
+
 *format*: ++
 	typeof: string ++
 	default: {percent}% ++
@@ -74,7 +79,13 @@ The *backlight* module displays the current backlight level.
 
 *reverse-scrolling*: ++
 	typeof: bool ++
-	Option to reverse the scroll direction.
+	default: false ++
+	Option to reverse the scroll direction for devices other than a mouse (touchpad, trackpad, etc).
+
+*reverse-mouse-scrolling*: ++
+	typeof: bool ++
+	default: false ++
+	Option to reverse the scroll direction for mice.
 
 *scroll-step*: ++
 	typeof: float ++
@@ -85,6 +96,15 @@ The *backlight* module displays the current backlight level.
 	typeof: double ++
 	default: 0.0 ++
 	The minimum brightness of the backlight.
+
+*tooltip*: ++
+	typeof: bool ++
+	default: true ++
+	Option to disable tooltip on hover.
+
+*tooltip-format*: ++
+	typeof: string ++
+	Text to be displayed in the tooltip.
 
 *menu*: ++
 	typeof: string ++
@@ -103,6 +123,16 @@ The *backlight* module displays the current backlight level.
 	typeof: bool ++
 	default: false ++
 	Enables this module to consume all left over space dynamically.
+
+# FORMAT REPLACEMENTS
+
+*{percent}*: The current brightness in percent.
+
+*{percent_exp}*: The current brightness in percent, adjusted with a power curve to better match perceived brightness.
+
+*{icon}*: The icon from *format-icons* chosen according to *{percent}*.
+
+*{icon_exp}*: The icon from *format-icons* chosen according to *{percent_exp}*.
 
 # EXAMPLE:
 

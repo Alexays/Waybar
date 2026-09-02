@@ -19,38 +19,36 @@ auto format_as(enum mpd_idle val) {
 
 namespace waybar::modules::detail {
 
-#define IDLE_RUN_NOIDLE_AND_CMD(...)                                      \
-  if (idle_connection_.connected()) {                                     \
-    idle_connection_.disconnect();                                        \
-    auto conn = ctx_->connection().get();                                 \
-    if (!mpd_run_noidle(conn)) {                                          \
-      if (mpd_connection_get_error(conn) != MPD_ERROR_SUCCESS) {          \
-        spdlog::error("mpd: Idle: failed to unregister for IDLE events"); \
-        ctx_->checkErrors(conn);                                          \
-      }                                                                   \
-    }                                                                     \
-    __VA_ARGS__;                                                          \
+#define RUN_NOIDLE_AND_CMD(STATE, ...)                                     \
+  if (idle_connection_.connected()) {                                      \
+    idle_connection_.disconnect();                                         \
+    auto conn = ctx_->connection().get();                                  \
+    if (!mpd_run_noidle(conn)) {                                           \
+      if (mpd_connection_get_error(conn) != MPD_ERROR_SUCCESS) {           \
+        spdlog::error("mpd: STATE: failed to unregister for IDLE events"); \
+        ctx_->checkErrors(conn);                                           \
+      }                                                                    \
+    }                                                                      \
+    __VA_ARGS__;                                                           \
   }
 
 void Idle::play() {
-  IDLE_RUN_NOIDLE_AND_CMD(mpd_run_play(conn));
+  RUN_NOIDLE_AND_CMD(Idle, mpd_run_play(conn));
 
   ctx_->setState(std::make_unique<Playing>(ctx_));
 }
 
 void Idle::pause() {
-  IDLE_RUN_NOIDLE_AND_CMD(mpd_run_pause(conn, true));
+  RUN_NOIDLE_AND_CMD(Idle, mpd_run_pause(conn, true));
 
   ctx_->setState(std::make_unique<Paused>(ctx_));
 }
 
 void Idle::stop() {
-  IDLE_RUN_NOIDLE_AND_CMD(mpd_run_stop(conn));
+  RUN_NOIDLE_AND_CMD(Idle, mpd_run_stop(conn));
 
   ctx_->setState(std::make_unique<Stopped>(ctx_));
 }
-
-#undef IDLE_RUN_NOIDLE_AND_CMD
 
 void Idle::update() noexcept {
   // This is intentionally blank.
@@ -60,16 +58,21 @@ void Idle::entry() noexcept {
   auto conn = ctx_->connection().get();
   assert(conn != nullptr);
 
-  if (!mpd_send_idle_mask(
-          conn, static_cast<mpd_idle>(MPD_IDLE_PLAYER | MPD_IDLE_OPTIONS | MPD_IDLE_QUEUE))) {
-    ctx_->checkErrors(conn);
-    spdlog::error("mpd: Idle: failed to register for IDLE events");
-  } else {
-    spdlog::debug("mpd: Idle: watching FD");
-    sigc::slot<bool, Glib::IOCondition const&> idle_slot = sigc::mem_fun(*this, &Idle::on_io);
-    idle_connection_ =
-        Glib::signal_io().connect(idle_slot, mpd_connection_get_fd(conn),
-                                  Glib::IO_IN | Glib::IO_PRI | Glib::IO_ERR | Glib::IO_HUP);
+  try {
+    if (!mpd_send_idle_mask(
+            conn, static_cast<mpd_idle>(MPD_IDLE_PLAYER | MPD_IDLE_OPTIONS | MPD_IDLE_QUEUE))) {
+      ctx_->checkErrors(conn);
+      spdlog::error("mpd: Idle: failed to register for IDLE events");
+    } else {
+      spdlog::debug("mpd: Idle: watching FD");
+      sigc::slot<bool, Glib::IOCondition const&> idle_slot = sigc::mem_fun(*this, &Idle::on_io);
+      idle_connection_ =
+          Glib::signal_io().connect(idle_slot, mpd_connection_get_fd(conn),
+                                    Glib::IO_IN | Glib::IO_PRI | Glib::IO_ERR | Glib::IO_HUP);
+    }
+  } catch (std::exception const& e) {
+    spdlog::warn("mpd: Idle: error: {}", e.what());
+    ctx_->setState(std::make_unique<Disconnected>(ctx_));
   }
 }
 
@@ -97,19 +100,16 @@ bool Idle::on_io(Glib::IOCondition const&) {
   }
 
   ctx_->fetchState();
+  ctx_->emit();
   mpd_state state = ctx_->state();
 
   if (state == MPD_STATE_STOP) {
-    ctx_->emit();
     ctx_->setState(std::make_unique<Stopped>(ctx_));
   } else if (state == MPD_STATE_PLAY) {
-    ctx_->emit();
     ctx_->setState(std::make_unique<Playing>(ctx_));
   } else if (state == MPD_STATE_PAUSE) {
-    ctx_->emit();
     ctx_->setState(std::make_unique<Paused>(ctx_));
   } else {
-    ctx_->emit();
     // self transition
     ctx_->setState(std::make_unique<Idle>(ctx_));
   }
@@ -118,15 +118,53 @@ bool Idle::on_io(Glib::IOCondition const&) {
 }
 
 void Playing::entry() noexcept {
-  sigc::slot<bool> timer_slot = sigc::mem_fun(*this, &Playing::on_timer);
-  timer_connection_ = Glib::signal_timeout().connect_seconds(timer_slot, 1);
-  spdlog::debug("mpd: Playing: enabled 1 second periodic timer.");
+  timer();
+  spdlog::debug("mpd: Playing: enabled {}ms periodic timer.", ctx_->playing_interval());
+  // NB: idle() may transition to Disconnected (destroying *this) on error, so it
+  // must be the last statement here — do not access members after this call.
+  idle();
 }
 
 void Playing::exit() noexcept {
+  if (idle_connection_.connected()) {
+    idle_connection_.disconnect();
+    spdlog::debug("mpd: Playing: unwatching FD");
+  }
+
   if (timer_connection_.connected()) {
     timer_connection_.disconnect();
-    spdlog::debug("mpd: Playing: disabled 1 second periodic timer.");
+    spdlog::debug("mpd: Playing: disabled {}ms periodic timer.", ctx_->playing_interval());
+  }
+}
+
+void Playing::timer() noexcept {
+  if (timer_connection_.connected()) {
+    timer_connection_.disconnect();
+  }
+
+  sigc::slot<bool> timer_slot = sigc::mem_fun(*this, &Playing::on_timer);
+  timer_connection_ = Glib::signal_timeout().connect(timer_slot, ctx_->playing_interval());
+}
+
+void Playing::idle() noexcept {
+  auto conn = ctx_->connection().get();
+  assert(conn != nullptr);
+
+  try {
+    if (!mpd_send_idle_mask(
+            conn, static_cast<mpd_idle>(MPD_IDLE_PLAYER | MPD_IDLE_OPTIONS | MPD_IDLE_QUEUE))) {
+      ctx_->checkErrors(conn);
+      spdlog::error("mpd: Playing: failed to register for IDLE events");
+    } else if (!idle_connection_.connected()) {
+      spdlog::trace("mpd: Playing: watching FD");
+      sigc::slot<bool, Glib::IOCondition const&> idle_slot = sigc::mem_fun(*this, &Playing::on_io);
+      idle_connection_ =
+          Glib::signal_io().connect(idle_slot, mpd_connection_get_fd(conn),
+                                    Glib::IO_IN | Glib::IO_PRI | Glib::IO_ERR | Glib::IO_HUP);
+    }
+  } catch (std::exception const& e) {
+    spdlog::warn("mpd: Playing: error: {}", e.what());
+    ctx_->setState(std::make_unique<Disconnected>(ctx_));
   }
 }
 
@@ -141,9 +179,12 @@ bool Playing::on_timer() {
       return false;
     }
 
+    RUN_NOIDLE_AND_CMD(Playing);
+
     ctx_->fetchState();
 
     if (!ctx_->is_playing()) {
+      ctx_->emit();
       if (ctx_->is_paused()) {
         ctx_->setState(std::make_unique<Paused>(ctx_));
       } else {
@@ -152,8 +193,51 @@ bool Playing::on_timer() {
       return false;
     }
 
-    ctx_->queryMPD();
     ctx_->emit();
+
+    idle();
+  } catch (std::exception const& e) {
+    spdlog::warn("mpd: Playing: error: {}", e.what());
+    ctx_->setState(std::make_unique<Disconnected>(ctx_));
+    return false;
+  }
+
+  return true;
+}
+
+bool Playing::on_io(Glib::IOCondition const&) {
+  auto conn = ctx_->connection().get();
+
+  // callback should do this:
+  enum mpd_idle events = mpd_recv_idle(conn, /* ignore_timeout?= */ false);
+  spdlog::debug("mpd: Playing: recv_idle events -> {}", events);
+
+  mpd_response_finish(conn);
+  try {
+    ctx_->checkErrors(conn);
+
+    ctx_->fetchState();
+
+    if (!ctx_->is_playing()) {
+      ctx_->emit();
+      if (ctx_->is_paused()) {
+        ctx_->setState(std::make_unique<Paused>(ctx_));
+      } else {
+        ctx_->setState(std::make_unique<Stopped>(ctx_));
+      }
+      return false;
+    }
+
+    ctx_->emit();
+
+    if (!mpd_send_idle_mask(
+            conn, static_cast<mpd_idle>(MPD_IDLE_PLAYER | MPD_IDLE_OPTIONS | MPD_IDLE_QUEUE))) {
+      ctx_->checkErrors(conn);
+      spdlog::error("mpd: Playing: failed to register for IDLE events");
+    }
+
+    // Defer the next timer
+    timer();
   } catch (std::exception const& e) {
     spdlog::warn("mpd: Playing: error: {}", e.what());
     ctx_->setState(std::make_unique<Disconnected>(ctx_));
@@ -164,21 +248,23 @@ bool Playing::on_timer() {
 }
 
 void Playing::stop() {
-  if (timer_connection_.connected()) {
-    timer_connection_.disconnect();
+  RUN_NOIDLE_AND_CMD(
+      Playing, if (timer_connection_.connected()) {
+        timer_connection_.disconnect();
 
-    mpd_run_stop(ctx_->connection().get());
-  }
+        mpd_run_stop(ctx_->connection().get());
+      });
 
   ctx_->setState(std::make_unique<Stopped>(ctx_));
 }
 
 void Playing::pause() {
-  if (timer_connection_.connected()) {
-    timer_connection_.disconnect();
+  RUN_NOIDLE_AND_CMD(
+      Playing, if (timer_connection_.connected()) {
+        timer_connection_.disconnect();
 
-    mpd_run_pause(ctx_->connection().get(), true);
-  }
+        mpd_run_pause(ctx_->connection().get(), true);
+      });
 
   ctx_->setState(std::make_unique<Paused>(ctx_));
 }
@@ -212,7 +298,6 @@ bool Paused::on_timer() {
     }
 
     ctx_->fetchState();
-
     ctx_->emit();
 
     if (ctx_->is_paused()) {
@@ -283,7 +368,6 @@ bool Stopped::on_timer() {
     }
 
     ctx_->fetchState();
-
     ctx_->emit();
 
     if (ctx_->is_stopped()) {
@@ -387,4 +471,5 @@ bool Disconnected::on_timer() {
 
 void Disconnected::update() noexcept { ctx_->do_update(); }
 
+#undef RUN_NOIDLE_AND_CMD
 }  // namespace waybar::modules::detail

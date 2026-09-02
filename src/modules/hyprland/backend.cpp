@@ -13,13 +13,17 @@
 #include <cerrno>
 #include <cstring>
 #include <filesystem>
+#include <optional>
 #include <string>
+#include <string_view>
 
 #include "util/scoped_fd.hpp"
+#include "util/string.hpp"
 
 namespace waybar::modules::hyprland {
 
 std::filesystem::path IPC::socketFolder_;
+std::optional<bool> IPC::s_luaProtocolDetected_;
 
 std::filesystem::path IPC::getSocketFolder(const char* instanceSig) {
   static std::mutex folderMutex;
@@ -288,6 +292,100 @@ Json::Value IPC::getSocket1JsonReply(const std::string& rq) {
   }
 
   return parser_.parse(reply);
+}
+
+bool IPC::isLuaConfigProvider(const std::string& systemInfo) {
+  // Hyprland reports which config manager it actually loaded in "systeminfo",
+  // as a "configProvider: lua" / "configProvider: hyprlang" line. That is the
+  // authoritative signal: the version alone is not enough, because Hyprland
+  // only uses the Lua manager when the config file name ends in ".lua", so a
+  // >= 0.54 instance started with a traditional hyprland.conf still speaks the
+  // legacy dispatch protocol. The field landed together with the Lua config
+  // manager in 0.55, so its absence means the instance predates Lua support
+  // entirely and necessarily speaks the legacy protocol.
+  static constexpr std::string_view key = "configProvider:";
+
+  const size_t keyPos = systemInfo.find(key);
+  if (keyPos == std::string::npos) {
+    return false;
+  }
+
+  const size_t valuePos = keyPos + key.size();
+  const size_t lineEnd = systemInfo.find('\n', valuePos);
+  const std::string value = lineEnd == std::string::npos
+                                ? systemInfo.substr(valuePos)
+                                : systemInfo.substr(valuePos, lineEnd - valuePos);
+
+  return trim(value) == "lua";
+}
+
+bool IPC::isLuaProtocol() {
+  if (s_luaProtocolDetected_.has_value()) {
+    return *s_luaProtocolDetected_;
+  }
+
+  // The query is read-only, so detection has none of the side effects of an
+  // actual dispatch probe.
+  bool luaProto = false;
+  try {
+    luaProto = isLuaConfigProvider(getSocket1Reply("systeminfo"));
+  } catch (const std::exception& e) {
+    spdlog::warn("Hyprland IPC: could not read systeminfo ({}), assuming legacy protocol",
+                 e.what());
+  }
+
+  if (luaProto) {
+    spdlog::info("Hyprland IPC: detected Lua-based dispatch protocol");
+  } else {
+    spdlog::info("Hyprland IPC: detected legacy dispatch protocol");
+  }
+
+  s_luaProtocolDetected_ = luaProto;
+  return luaProto;
+}
+
+std::string IPC::buildLuaDispatch(const std::string& dispatcher, const std::string& arg) {
+  // Map old-style dispatchers to the new Lua hl.dsp API.
+  //
+  // Old format:  dispatch workspace 1
+  // New format:  /dispatch hl.dsp.focus({ workspace = "1" })
+  //
+  // Old format:  dispatch focusworkspaceoncurrentmonitor 2
+  // New format:  /dispatch hl.dsp.focus({ workspace = "2", on_current_monitor = true })
+  //
+  // Old format:  dispatch togglespecialworkspace name
+  // New format:  /dispatch hl.dsp.workspace.toggle_special("name")
+
+  if (dispatcher == "workspace") {
+    return "/dispatch hl.dsp.focus({ workspace = \"" + arg + "\" })";
+  }
+  if (dispatcher == "focusworkspaceoncurrentmonitor") {
+    return "/dispatch hl.dsp.focus({ workspace = \"" + arg + "\", on_current_monitor = true })";
+  }
+  if (dispatcher == "togglespecialworkspace") {
+    if (arg.empty()) {
+      return "/dispatch hl.dsp.workspace.toggle_special()";
+    }
+    return "/dispatch hl.dsp.workspace.toggle_special(\"" + arg + "\")";
+  }
+
+  // Fallback for any other dispatcher: try the old format wrapped in dispatch().
+  // This may not work for all dispatchers, but it's a reasonable default.
+  spdlog::warn("Hyprland IPC: unknown dispatcher '{}' in Lua mode, attempting generic format",
+               dispatcher);
+  return "/dispatch hl.dsp." + dispatcher + "(\"" + arg + "\")";
+}
+
+std::string IPC::dispatch(const std::string& dispatcher, const std::string& arg) {
+  if (isLuaProtocol()) {
+    return getSocket1Reply(buildLuaDispatch(dispatcher, arg));
+  }
+  // Legacy format: "dispatch <dispatcher> <arg>"
+  std::string cmd = "dispatch " + dispatcher;
+  if (!arg.empty()) {
+    cmd += " " + arg;
+  }
+  return getSocket1Reply(cmd);
 }
 
 }  // namespace waybar::modules::hyprland

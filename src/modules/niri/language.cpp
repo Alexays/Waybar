@@ -18,7 +18,6 @@ Language::Language(const std::string& id, const Bar& bar, const Json::Value& con
   gIPC->registerForIPC("KeyboardLayoutSwitched", this);
 
   updateFromIPC();
-  dp.emit();
 }
 
 Language::~Language() {
@@ -85,7 +84,7 @@ void Language::doUpdate() {
 
   spdlog::debug("niri language formatted layout name {}", layoutName);
 
-  if (!format_.empty()) {
+  if (!layoutName.empty()) {
     label_.show();
     label_.set_markup(layoutName);
   } else {

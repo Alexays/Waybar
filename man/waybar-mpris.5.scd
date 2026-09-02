@@ -26,7 +26,7 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *format*: ++
 	typeof: string ++
-	default: {player} ({status}) {dynamic} ++
+	default: {player} ({status}): {dynamic} ++
 	The text format.
 
 *format-[status]*: ++
@@ -40,7 +40,7 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *tooltip-format*: ++
 	typeof: string ++
-	default: {player} ({status}) {dynamic} ++
+	default: {player} ({status}): {dynamic} ++
 	The tooltip text format.
 
 *tooltip-format-[status]*: ++
@@ -140,6 +140,21 @@ The *mpris* module displays currently playing media via libplayerctl.
 	default: next track ++
 	Overwrite default action toggles.
 
+*on-click-backward*: ++
+	typeof: string ++
+	default: previous track ++
+	Overwrite the default action for the backward mouse button (button 8).
+
+*on-click-forward*: ++
+	typeof: string ++
+	default: next track ++
+	Overwrite the default action for the forward mouse button (button 9).
+
+*prefer-album-artist*: ++
+	typeof: bool ++
+	default: false ++
+	When true, use the album artist instead of the track artist for the _{artist}_ and _{dynamic}_ tags, falling back to the track artist when no album artist is available.
+
 *player-icons*: ++
 	typeof: map[string]string ++
 	Allows setting _{player_icon}_ based on player-name property.
@@ -167,6 +182,8 @@ The *mpris* module displays currently playing media via libplayerctl.
 *{title}*: The title of the current track
 
 *{length}*: Length of the track, formatted as HH:MM:SS
+
+*{position}*: Current playback position of the track, formatted as HH:MM:SS
 
 *{dynamic}*: Use _{artist}_, _{album}_, _{title}_ and _{length}_, automatically omit++
 	empty values

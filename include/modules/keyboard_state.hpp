@@ -36,13 +36,13 @@ class KeyboardState : public AModule {
   std::string capslock_format_;
   std::string scrolllock_format_;
   const std::chrono::seconds interval_;
-  std::string icon_locked_;
-  std::string icon_unlocked_;
+  std::unordered_map<std::string, std::vector<std::string>> key_icon_states_;
   std::string devices_path_;
 
   struct libinput* libinput_;
   std::unordered_map<std::string, struct libinput_device*> libinput_devices_;
-  std::mutex devices_mutex_;  // protects libinput_devices_
+  std::mutex devices_mutex_;  // protects libinput_devices_ and libinput_ context (libinput is not
+                              // thread-safe)
   std::set<int> binding_keys;
 
   util::SleeperThread libinput_thread_, hotplug_thread_;

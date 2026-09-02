@@ -8,14 +8,27 @@ waybar - dwl window module
 
 The *window* module displays the title of the currently focused window in DWL
 
+Using this module requires patching dwl with the IPC patch
+<https://codeberg.org/dwl/dwl-patches/wiki/ipc>.
+
 # CONFIGURATION
 
 Addressed by *dwl/window*
 
 *format*: ++
 	typeof: string ++
-	default: {title} ++
+	default: {} ++
 	The format, how information should be displayed.
+
+*hide-empty*: ++
+	typeof: bool ++
+	default: false ++
+	Option to hide the module when the content would be empty.
+
+*hide-inactive*: ++
+	typeof: bool ++
+	default: false ++
+	Option to hide the module when the window is unfocused.
 
 *rotate*: ++
 	typeof: integer ++
@@ -108,6 +121,10 @@ Regular expression and replacement follow ECMA-script rules.
 If no expression matches, the format output is left unchanged.
 
 Invalid expressions (e.g., mismatched parentheses) are skipped.
+
+# STYLE
+
+- *#window.active*
 
 # EXAMPLES
 

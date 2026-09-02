@@ -6,11 +6,6 @@
 #include "util/audio_backend.hpp"
 namespace waybar::modules {
 
-enum class PulseaudioSliderTarget {
-  Sink,
-  Source,
-};
-
 class PulseaudioSlider : public ASlider {
  public:
   PulseaudioSlider(const std::string&, const Json::Value&);
@@ -21,7 +16,15 @@ class PulseaudioSlider : public ASlider {
 
  private:
   std::shared_ptr<util::AudioBackend> backend = nullptr;
-  PulseaudioSliderTarget target = PulseaudioSliderTarget::Sink;
+  util::PulseaudioTarget target = util::PulseaudioTarget::Sink;
+
+  bool zero_on_mute = true;
+  bool unmute_on_volume_change = true;
+  // zero_on_mute and unmute_on_volume_change default to true
+  // in order to maintain previous behaviour when using a
+  // config in which these values are undefined
+
+  bool previously_muted = false;
 };
 
 }  // namespace waybar::modules

@@ -5,7 +5,7 @@
 namespace waybar::util::PipewireBackend {
 
 static void getNodeInfo(void* data_, const struct pw_node_info* info) {
-  auto* pNodeInfo = static_cast<PrivacyNodeInfo*>(data_);
+  auto* pNodeInfo = static_cast<PWPrivacyNodeInfo*>(data_);
   pNodeInfo->handleNodeEventInfo(info);
 
   static_cast<PipewireBackend*>(pNodeInfo->data)->privacy_nodes_changed_signal_event.emit();
@@ -17,7 +17,7 @@ static const struct pw_node_events NODE_EVENTS = {
 };
 
 static void proxyDestroy(void* data) {
-  static_cast<PrivacyNodeInfo*>(data)->handleProxyEventDestroy();
+  static_cast<PWPrivacyNodeInfo*>(data)->handleProxyEventDestroy();
 }
 
 static const struct pw_proxy_events PROXY_EVENTS = {
@@ -127,12 +127,13 @@ void PipewireBackend::handleRegistryEventGlobal(uint32_t id, uint32_t permission
     return;
   }
 
-  auto* proxy = (pw_proxy*)pw_registry_bind(registry_, id, type, version, sizeof(PrivacyNodeInfo));
+  auto* proxy =
+      (pw_proxy*)pw_registry_bind(registry_, id, type, version, sizeof(PWPrivacyNodeInfo));
 
   if (proxy == nullptr) return;
 
-  auto* pNodeInfo = (PrivacyNodeInfo*)pw_proxy_get_user_data(proxy);
-  new (pNodeInfo) PrivacyNodeInfo{};
+  auto* pNodeInfo = (PWPrivacyNodeInfo*)pw_proxy_get_user_data(proxy);
+  new (pNodeInfo) PWPrivacyNodeInfo{};
   pNodeInfo->id = id;
   pNodeInfo->data = this;
   pNodeInfo->type = mediaType;
@@ -152,7 +153,7 @@ void PipewireBackend::handleRegistryEventGlobalRemove(uint32_t id) {
   mutex_.lock();
   auto iter = privacy_nodes.find(id);
   if (iter != privacy_nodes.end()) {
-    privacy_nodes[id]->~PrivacyNodeInfo();
+    privacy_nodes[id]->~PWPrivacyNodeInfo();
     privacy_nodes.erase(id);
   }
   mutex_.unlock();

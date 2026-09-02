@@ -17,8 +17,6 @@ waybar::modules::Backlight::Backlight(const std::string& id, const Json::Value& 
     : ALabel(config, "backlight", id, "{percent}%", 2),
       preferred_device_(config["device"].isString() ? config["device"].asString() : ""),
       backend(interval_, [this] { dp.emit(); }) {
-  dp.emit();
-
   // Set up scroll handler
   event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
   event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Backlight::handleScroll));
@@ -36,8 +34,14 @@ auto waybar::modules::Backlight::update() -> void {
 
     if (best->get_powered()) {
       event_box_.show();
+
       const uint8_t percent =
           best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
+
+      const uint8_t percent_exp =
+          best->get_max() == 0
+              ? 100
+              : roundf(powf((float)best->get_actual() / best->get_max(), 1.0f / 2.718f) * 100);
 
       // Get the state and apply state-specific format if available
       auto state = getState(percent);
@@ -49,22 +53,10 @@ auto waybar::modules::Backlight::update() -> void {
         }
       }
 
-      std::string desc = fmt::format(fmt::runtime(current_format), fmt::arg("percent", percent),
-                                     fmt::arg("icon", getIcon(percent)));
-      label_.set_markup(desc);
-      if (tooltipEnabled()) {
-        std::string tooltip_format;
-        if (config_["tooltip-format"].isString()) {
-          tooltip_format = config_["tooltip-format"].asString();
-        }
-        if (!tooltip_format.empty()) {
-          label_.set_tooltip_markup(fmt::format(fmt::runtime(tooltip_format),
-                                                fmt::arg("percent", percent),
-                                                fmt::arg("icon", getIcon(percent))));
-        } else {
-          label_.set_tooltip_markup(desc);
-        }
-      }
+      updateLabelAndTooltip(current_format, current_format, fmt::arg("percent", percent),
+                            fmt::arg("percent_exp", percent_exp),
+                            fmt::arg("icon", getIcon(percent)),
+                            fmt::arg("icon_exp", getIcon(percent_exp)));
     } else {
       event_box_.hide();
     }
@@ -126,9 +118,16 @@ bool waybar::modules::Backlight::handleScroll(GdkEventScroll* e) {
   if (config_["min-brightness"].isDouble()) {
     min_brightness = config_["min-brightness"].asDouble();
   }
-  if (backend.get_scaled_brightness(preferred_device_) <= min_brightness &&
-      ct == util::ChangeType::Decrease) {
-    return true;
+  if (ct == util::ChangeType::Decrease) {
+    const double current = backend.get_scaled_brightness(preferred_device_);
+    if (current <= min_brightness) {
+      return true;
+    }
+    if (current - step < min_brightness) {
+      backend.set_scaled_brightness(preferred_device_,
+                                    static_cast<int>(std::round(min_brightness)));
+      return true;
+    }
   }
   backend.set_brightness(preferred_device_, ct, step);
 

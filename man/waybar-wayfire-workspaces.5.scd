@@ -14,17 +14,27 @@ Addressed by *wayfire/workspaces*
 
 *format*: ++
 	typeof: string ++
-	default: {value} ++
+	default: {index} ++
 	The format, how information should be displayed.
 
 *format-icons*: ++
-	typeof: array ++
+	typeof: object ++
 	Based on the workspace name, index and state, the corresponding icon gets selected. See *icons*.
 
 *disable-click*: ++
 	typeof: bool ++
 	default: false ++
 	If set to false, you can click to change workspace. If set to true this behaviour is disabled.
+
+*disable-scroll*: ++
+	typeof: bool ++
+	default: false ++
+	If set to false, you can scroll to cycle through workspaces. If set to true this behaviour is disabled.
+
+*enable-bar-scroll*: ++
+	typeof: bool ++
+	default: false ++
+	If set to false, you can't scroll to cycle through workspaces from the entire bar. If set to true this behaviour is enabled.
 
 *disable-markup*: ++
 	typeof: bool ++

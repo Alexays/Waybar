@@ -17,8 +17,7 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
   gIPC->registerForIPC("WindowOpenedOrChanged", this);
   gIPC->registerForIPC("WindowClosed", this);
   gIPC->registerForIPC("WindowFocusChanged", this);
-
-  dp.emit();
+  gIPC->registerForIPC("WindowLayoutsChanged", this);
 }
 
 Window::~Window() { gIPC->unregisterForIPC(this); }
@@ -54,20 +53,30 @@ void Window::doUpdate() {
   if (it != windows.cend()) {
     const auto& window = *it;
 
+    auto max_col = -1;
+    for (const auto &win : windows) {
+      if (win["workspace_id"].asUInt64() != window["workspace_id"].asUInt64()) {
+        continue;
+      }
+      const auto col = win["layout"]["pos_in_scrolling_layout"][0].asInt64();
+      if (col > max_col) max_col = col;
+    }
     const auto title = window["title"].asString();
     const auto appId = window["app_id"].asString();
+    const auto col = window["layout"]["pos_in_scrolling_layout"][0].asInt64();
     const auto sanitizedTitle = waybar::util::sanitize_string(title);
     const auto sanitizedAppId = waybar::util::sanitize_string(appId);
 
     label_.show();
     label_.set_markup(waybar::util::rewriteString(
         fmt::format(fmt::runtime(format_), fmt::arg("title", sanitizedTitle),
-                    fmt::arg("app_id", sanitizedAppId)),
+                    fmt::arg("app_id", sanitizedAppId), fmt::arg("col", col),
+                    fmt::arg("max_col", max_col)),
         config_["rewrite"]));
 
     updateAppIconName(appId, "");
 
-    if (tooltipEnabled()) label_.set_tooltip_markup(title);
+    if (tooltipEnabled()) label_.set_tooltip_markup(sanitizedTitle);
 
     const auto id = window["id"].asUInt64();
     const auto workspaceId = window["workspace_id"].asUInt64();
@@ -82,7 +91,16 @@ void Window::doUpdate() {
       oldAppId_ = appId;
     }
   } else {
-    label_.hide();
+    if (config_["show-empty"].asBool()) {
+      label_.show();
+      label_.set_markup(waybar::util::rewriteString(
+          fmt::format(fmt::runtime(format_), fmt::arg("title", ""), fmt::arg("app_id", ""),
+                      fmt::arg("col", -1), fmt::arg("max_col", -1)),
+          config_["rewrite"]));
+    } else {
+      label_.hide();
+    }
+
     updateAppIconName("", "");
     setClass("solo", false);
     if (!oldAppId_.empty()) setClass(oldAppId_, false);

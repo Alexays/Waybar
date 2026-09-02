@@ -15,7 +15,7 @@ Addressed by *hyprland/submap*
 *format*: ++
 	typeof: string ++
 	default: {} ++
-	The format, how information should be displayed. On {} the currently active submap is displayed.
+	The format, how information should be displayed. This format supports two placeholders: *{submap}* for the currently active submap name and *{icon}* for the icon associated with the submap.
 
 *rotate*: ++
 	typeof: integer ++
@@ -80,6 +80,10 @@ Addressed by *hyprland/submap*
 	default: Default ++
 	Option to set the submap name to display when not in an active submap.
 
+*icons*: ++
+	typeof: object ++
+	Based on the submap name, the corresponding icon will be selected from this map and made available as the *{icon}* placeholder in the format string. The keys are submap names, and the values are the icons or strings to display for those submaps.
+
 *menu*: ++
 	typeof: string ++
 	Action that popups the menu.
@@ -103,9 +107,13 @@ Addressed by *hyprland/submap*
 
 ```
 "hyprland/submap": {
-	"format": "✌️ {}",
+	"format": "{icon} {submap}",
 	"max-length": 8,
-	"tooltip": false
+	"tooltip": false,
+	"icons": {
+		"resize": "",
+		"pause": "",
+	}
 }
 ```
 

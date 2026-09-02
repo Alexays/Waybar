@@ -84,6 +84,11 @@ Addressed by *memory*
 	default: true ++
 	Option to disable tooltip on hover.
 
+*tooltip-format*: ++
+	typeof: string ++
+	default: {used:0.1f}GiB used ++
+	The format of the tooltip shown on hover. Supports the same replacements as *format*.
+
 *menu*: ++
 	typeof: string ++
 	Action that popups the menu.

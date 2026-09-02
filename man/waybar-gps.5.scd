@@ -26,7 +26,7 @@ libgps lives in:
 
 *format*: ++
 	typeof: string ++
-	default: {glyph} ++
+	default: {mode} ++
 	The text format.
 
 *tooltip*: ++
@@ -36,7 +36,7 @@ libgps lives in:
 
 *tooltip-format*: ++
 	typeof: string ++
-	default: Games running: {glyph} ++
+	default: The value of *format* ++
 	The text format of the tooltip.
 
 *interval*: ++
@@ -93,10 +93,10 @@ libgps lives in:
 "gps": {
 	"format": "{mode}",
 	"format-disabled": "", // an empty format will hide the module
-	"format-no-fix": "No fix",
+	"format-fix-none": "No fix",
 	"format-fix-3d": "{status}",
 	"tooltip-format": "{mode}",
-	"tooltip-format-no-fix": "{satellites_visible} satellites visible",
+	"tooltip-format-fix-none": "{satellites_visible} satellites visible",
 	"tooltip-format-fix-2d": "{satellites_used}/{satellites_visible} satellites used",
 	"tooltip-format-fix-3d": "Altitude: {altitude_hae}m",
 	"hide-disconnected": false
@@ -106,6 +106,7 @@ libgps lives in:
 
 - *#gps*
 - *#gps.disabled* Applied when GPS is disabled.
+- *#gps.disconnected* Applied when no GPS receiver is present.
 - *#gps.fix-none* Applied when GPS is present, but there is no fix.
 - *#gps.fix-2d* Applied when there is a 2D fix.
 - *#gps.fix-3d* Applied when there is a 3D fix.

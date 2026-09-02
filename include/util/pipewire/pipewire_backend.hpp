@@ -29,7 +29,7 @@ class PipewireBackend {
  public:
   sigc::signal<void> privacy_nodes_changed_signal_event;
 
-  std::unordered_map<uint32_t, PrivacyNodeInfo*> privacy_nodes;
+  std::unordered_map<uint32_t, PWPrivacyNodeInfo*> privacy_nodes;
   std::mutex mutex_;
 
   static std::shared_ptr<PipewireBackend> getInstance();

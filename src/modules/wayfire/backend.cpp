@@ -168,25 +168,29 @@ auto IPC::start() -> void {
   send("window-rules/get-focused-output", {});
 
   std::thread([self = shared_from_this()] {
-    auto sock = connect();
+    try {
+      auto sock = connect();
 
-    {
-      Json::Value json;
-      json["method"] = "window-rules/events/watch";
+      {
+        Json::Value json;
+        json["method"] = "window-rules/events/watch";
 
-      pack_and_write(sock, Json::writeString(self->writer_builder, json));
-      if (self->receive(sock)["result"] != "ok") {
-        spdlog::error(
-            "Wayfire IPC: method \"window-rules/events/watch\""
-            " have failed");
-        return;
+        pack_and_write(sock, Json::writeString(self->writer_builder, json));
+        if (self->receive(sock)["result"] != "ok") {
+          spdlog::error(
+              "Wayfire IPC: method \"window-rules/events/watch\""
+              " have failed");
+          return;
+        }
       }
-    }
 
-    while (auto json = self->receive(sock)) {
-      auto ev = json["event"].asString();
-      spdlog::debug("Wayfire IPC: received event \"{}\"", ev);
-      self->root_event_handler(ev, json);
+      while (auto json = self->receive(sock)) {
+        auto ev = json["event"].asString();
+        spdlog::debug("Wayfire IPC: received event \"{}\"", ev);
+        self->root_event_handler(ev, json);
+      }
+    } catch (const std::exception& e) {
+      spdlog::error("Wayfire IPC event thread stopped: {}", e.what());
     }
   }).detach();
 }
@@ -347,10 +351,13 @@ auto IPC::update_state_handler(const std::string& event, const Json::Value& data
 
   if (event == "output-wset-changed") {
     // data: { event, new-wset: wset.name, output: id, new-wset-data: wset, output-data: output }
-    auto& output = state.outputs.at(data["output-data"]["name"].asString());
-    auto wset_idx = data["new-wset-data"]["index"].asUInt();
-    state.wsets.at(wset_idx).output = output;
-    output.wset_idx = wset_idx;
+    try {
+	  auto& output = state.outputs.at(data["output-data"]["name"].asString());
+	  auto wset_idx = data["new-wset-data"]["index"].asUInt();
+	  state.wsets.at(wset_idx).output = output;
+	  output.wset_idx = wset_idx;
+	} catch (const std::exception&) {
+	} 
     return;
   }
 

@@ -25,8 +25,8 @@ $XDG_CONFIG_HOME/waybar/config
 :[ Message displayed on the bar. {icon} and {profile} are respectively substituted with the icon representing the active profile and its full name.
 |[ *tooltip-format*
 :[ string
-:[ "Power profile: {profile}\\nDriver: {driver}"
-:[ Messaged displayed in the module tooltip. {icon} and {profile} are respectively substituted with the icon representing the active profile and its full name.
+:[ "Power profile: {profile}\\nCPU driver: {cpu_driver}\\nPlatform driver: {platform_driver}"
+:[ Messaged displayed in the module tooltip. {icon} and {profile} are respectively substituted with the icon representing the active profile and its full name. {cpu_driver} and {platform_driver} are substituted with the CPU and platform drivers reported by recent power-profiles-daemon versions. {driver} is kept for backward compatibility: it resolves to the legacy single driver on older daemons and falls back to the CPU driver on recent ones.
 |[ *tooltip*
 :[ bool
 :[ true
@@ -44,6 +44,18 @@ $XDG_CONFIG_HOME/waybar/config
 
 
 
+# FORMAT REPLACEMENTS
+
+*{profile}*: Active profile full name.
+
+*{icon}*: Icon (from *format-icons*) representing the active profile.
+
+*{cpu_driver}*: The CPU driver reported by recent power-profiles-daemon versions. *(tooltip)*
+
+*{platform_driver}*: The platform driver reported by recent power-profiles-daemon versions. *(tooltip)*
+
+*{driver}*: Kept for backward compatibility: resolves to the legacy single driver on older daemons and falls back to the CPU driver on recent ones. *(tooltip)*
+
 # CONFIGURATION EXAMPLES
 
 Compact display (default config):
@@ -51,7 +63,7 @@ Compact display (default config):
 ```
 "power-profiles-daemon": {
   "format": "{icon}",
-  "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+  "tooltip-format": "Power profile: {profile}\nCPU driver: {cpu_driver}\nPlatform driver: {platform_driver}",
   "tooltip": true,
   "format-icons": {
     "default": "",
@@ -67,7 +79,7 @@ Display the full profile name:
 ```
 "power-profiles-daemon": {
   "format": "{icon}   {profile}",
-  "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+  "tooltip-format": "Power profile: {profile}\nCPU driver: {cpu_driver}\nPlatform driver: {platform_driver}",
   "tooltip": true,
   "format-icons": {
     "default": "",
@@ -77,3 +89,12 @@ Display the full profile name:
   }
 }
 ```
+
+# STYLE
+
+- *#power-profiles-daemon*
+- *#power-profiles-daemon.performance* Applied when the *performance* profile is active.
+- *#power-profiles-daemon.balanced* Applied when the *balanced* profile is active.
+- *#power-profiles-daemon.power-saver* Applied when the *power-saver* profile is active.
+
+*Note*: the module applies a CSS class equal to the name of the active profile, so any additional profile exposed by power-profiles-daemon can be styled by its name.

@@ -38,6 +38,7 @@ class Mpris : public ALabel {
 
     std::optional<std::string> artist;
     std::optional<std::string> album;
+    std::optional<std::string> album_artist;
     std::optional<std::string> title;
     std::optional<std::string> length;    // as HH:MM:SS
     std::optional<std::string> position;  // same format
@@ -75,6 +76,8 @@ class Mpris : public ALabel {
 
   std::string player_;
   std::vector<std::string> ignored_players_;
+
+  bool prefer_album_artist_;
 
   PlayerctlPlayerManager* manager;
   PlayerctlPlayer* player;

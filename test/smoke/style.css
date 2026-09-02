@@ -1,0 +1,27 @@
+/* Deterministic stylesheet for the CI smoke/screenshot test.
+ * A pinned font (DejaVu Sans, installed in CI) and fixed colors keep the
+ * rendered bar reproducible across runs for the golden comparison. */
+* {
+    font-family: "DejaVu Sans";
+    font-size: 14px;
+    border: none;
+    border-radius: 0;
+    min-height: 0;
+}
+
+window#waybar {
+    background-color: #1e1e2e;
+    color: #cdd6f4;
+}
+
+#custom-left,
+#custom-center,
+#custom-right {
+    padding: 0 16px;
+    color: #cdd6f4;
+}
+
+#custom-left {
+    font-weight: bold;
+    color: #89b4fa;
+}

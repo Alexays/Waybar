@@ -100,6 +100,12 @@ See *systemd-inhibit*(1) for more information.
 
 *{icon}*: Icon, as defined in *format-icons*
 
+# STYLE
+
+- *#inhibitor*
+- *#inhibitor.activated*
+- *#inhibitor.deactivated*
+
 # EXAMPLES
 
 ```
