@@ -3,7 +3,7 @@
 default: build
 
 build:
-	meson setup build
+	meson setup build -Drfkill=enabled
 	ninja -C build
 
 build-debug:
