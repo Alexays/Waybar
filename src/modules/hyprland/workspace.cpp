@@ -185,9 +185,23 @@ void Workspace::stopHoverCheck() {
   }
 }
 
-bool Workspace::handleEnter(GdkEventCrossing* /*event*/) {
-  m_button.get_style_context()->add_class("workspace-hover");
-  startHoverCheck();
+bool Workspace::handleEnter(GdkEventCrossing* event) {
+  auto gdk_window = m_button.get_window();
+  
+  if (m_workspaceManager.onClick() == "disabled") {
+    if (gdk_window) {
+      auto cursor = Gdk::Cursor::create(gdk_window->get_display(), "default");
+      gdk_window->set_cursor(cursor);
+    }
+  } else {
+    if (gdk_window) {
+      auto cursor = Gdk::Cursor::create(gdk_window->get_display(), "pointer");
+      gdk_window->set_cursor(cursor);
+    }
+    
+    m_button.get_style_context()->add_class("workspace-hover");
+    startHoverCheck();
+  }
   return false;
 }
 
