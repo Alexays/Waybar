@@ -65,6 +65,12 @@ Addressed by *wlr/taskbar*
 	If set to true, only the currently active application button is shown.
 	Other applications remain tracked and reappear when activated.
 
+*group-apps*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, tasks with the same app_id are displayed as a single
+	button. Clicking the button cycles through the application's windows.
+
 *sort-by-app-id*: ++
 	typeof: bool ++
 	default: false ++

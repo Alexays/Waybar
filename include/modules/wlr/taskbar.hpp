@@ -25,6 +25,13 @@
 #include "util/json.hpp"
 #include "wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
 
+#include <map>
+#include <memory>
+#include <ranges>
+#include <string>
+#include <unordered_set>
+#include <vector>
+
 namespace waybar::modules::wlr {
 
 struct widget_geometry {
@@ -114,6 +121,10 @@ class Task {
   bool active() const { return state_ & ACTIVE; }
   bool fullscreen() const { return state_ & FULLSCREEN; }
   bool visible() const { return button_visible_; }
+  bool ignored() const { return ignored_; }
+bool squashed() const { return squashed_; }
+bool on_bar_output() const { return on_bar_output_; }
+
   struct ext_workspace_handle_v1* workspace() const { return workspace_; }
   void set_workspace(struct ext_workspace_handle_v1* workspace) { workspace_ = workspace; }
 
@@ -154,6 +165,16 @@ class Task {
 
 using TaskPtr = std::unique_ptr<Task>;
 
+struct TaskGroup {
+  std::string app_id;
+  std::vector<Task*> tasks;
+
+  Gtk::Button button;
+  Gtk::Box content;
+  Gtk::Image icon;
+  Gtk::Label label;
+};
+
 class Taskbar : public waybar::AModule {
  public:
   struct WorkspaceState {
@@ -170,6 +191,8 @@ class Taskbar : public waybar::AModule {
   const waybar::Bar& bar_;
   Gtk::Box box_;
   std::vector<TaskPtr> tasks_;
+  std::map<std::string, std::unique_ptr<TaskGroup>> groups_;
+
 
   IconLoader icon_loader_;
   std::unordered_set<std::string> ignore_list_;
@@ -209,7 +232,7 @@ class Taskbar : public waybar::AModule {
 
   bool show_output(struct wl_output*) const;
   bool all_outputs() const;
-
+bool group_apps() const;
   const IconLoader& icon_loader() const;
   const std::unordered_set<std::string>& ignore_list() const;
   const std::unordered_set<std::string>& squash_list() const;
@@ -221,8 +244,10 @@ class Taskbar : public waybar::AModule {
     return tasks_ | std::views::transform([](auto& task) -> Task& { return *task; });
   }
 
- private:
+private:
   void set_bar_css_class(const std::string&, bool);
+  void update_groups();
+  void clear_groups();
 };
 
 } /* namespace waybar::modules::wlr */
