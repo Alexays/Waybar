@@ -48,6 +48,10 @@ class Workspaces : public AModule, public EventHandler {
   auto taskbarWithIcon() const -> bool { return m_taskbarWithIcon; }
   auto barScroll() const -> bool { return m_barScroll; }
 
+  std::string onClick() const { return m_onClick; }
+  std::string onClickMiddle() const { return m_onClickMiddle; }
+  std::string onClickRight() const { return m_onClickRight; }
+
   auto getBarOutput() const -> std::string { return m_bar.output->name; }
   auto formatBefore() const -> std::string { return m_formatBefore; }
   auto formatAfter() const -> std::string { return m_formatAfter; }
@@ -160,6 +164,11 @@ class Workspaces : public AModule, public EventHandler {
   bool m_moveToMonitor = false;
   bool m_uniqueIcons = false;
   bool m_barScroll = false;
+
+  std::string m_onClick = "";
+  std::string m_onClickMiddle = "";
+  std::string m_onClickRight = "";
+
   Json::Value m_persistentWorkspaceConfig;
 
   // Map for windows stored in workspaces not present in the current bar.
