@@ -147,6 +147,11 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	default: false ++
 	If set to false workspaces group will be shown only in assigned output. Otherwise, all workspace groups are shown.
 
+*inactive-on-special*:++
+	typeof: bool ++
+	default: false ++
+	If set true, all workspaces will be marked as inactive when a special workspace is active on the current monitor
+
 *active-only*: ++
 	typeof: bool ++
 	default: false ++
@@ -239,7 +244,6 @@ they are written in the config:
 
 When the config contains only "vague" rules, they are matched against window
 *classes* only. This is both for backwards compatibility and for performance:
-matching against the title requires listening to window title changes via
 Hyprland's IPC, which is unnecessary when no title rule is in use.
 
 When the config contains *at least one* "title-only" or "hybrid" rule, then all

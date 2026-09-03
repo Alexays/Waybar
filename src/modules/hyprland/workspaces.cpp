@@ -665,6 +665,7 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
   populateBoolConfig(config, "move-to-monitor", m_moveToMonitor);
   populateBoolConfig(config, "unique-icons", m_uniqueIcons);
   populateBoolConfig(config, "enable-bar-scroll", m_barScroll);
+  populateBoolConfig(config, "inactive-on-special", m_inactiveOnSpecial);
 
   m_persistentWorkspaceConfig = config.get("persistent-workspaces", Json::Value());
   populateSortByConfig(config);
@@ -837,7 +838,7 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value& config) -> vo
     auto posStr = workspaceTaskbar["active-window-position"].asString();
     try {
       m_activeWindowPosition =
-        util::parseStringToEnum<ActiveWindowPosition>(posStr, m_activeWindowPositionMap);
+          util::parseStringToEnum<ActiveWindowPosition>(posStr, m_activeWindowPositionMap);
     } catch (const std::invalid_argument& e) {
       spdlog::warn(
           "Invalid string representation for active-window-position. Falling back to 'none'.");
@@ -1134,12 +1135,27 @@ void Workspaces::updateWorkspaceStates() {
       currentWorkspace.isMember("name") ? currentWorkspace["name"].asString() : "";
 
   for (auto& workspace : m_workspaces) {
+    auto updatedWorkspace = std::ranges::find_if(updatedWorkspaces, [&workspace](const auto& w) {
+      return w["id"].asInt() == workspace->id();
+    });
+    std::string monitor = updatedWorkspace != updatedWorkspaces.end()
+                              ? (*updatedWorkspace)["monitor"].asString()
+                              : workspace->output();
+
     bool isActiveByName =
         !currentWorkspaceName.empty() && workspace->name() == currentWorkspaceName;
 
-    workspace->setActive(
-        workspace->id() == m_activeWorkspaceId || isActiveByName ||
-        (workspace->isSpecial() && workspace->name() == m_activeSpecialWorkspaceName));
+    bool isActive = workspace->id() == m_activeWorkspaceId || isActiveByName ||
+                    (workspace->isSpecial() && workspace->name() == m_activeSpecialWorkspaceName);
+
+    if (m_inactiveOnSpecial && !workspace->isSpecial() &&
+        std::ranges::any_of(updatedWorkspaces, [&monitor](const auto& w) {
+          return w["id"].asInt() < 0 && w["monitor"].asString() == monitor;
+        })) {
+      isActive = false;
+    }
+
+    workspace->setActive(isActive);
     if (workspace->isActive() && workspace->isUrgent()) {
       workspace->setUrgent(false);
     }
@@ -1153,9 +1169,6 @@ void Workspaces::updateWorkspaceStates() {
     if (m_withTooltip) {
       workspaceTooltip = workspace->selectString(m_tooltipMap);
     }
-    auto updatedWorkspace = std::ranges::find_if(updatedWorkspaces, [&workspace](const auto& w) {
-      return w["id"].asInt() == workspace->id();
-    });
     if (updatedWorkspace != updatedWorkspaces.end()) {
       workspace->setOutput((*updatedWorkspace)["monitor"].asString());
     }
