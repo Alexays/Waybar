@@ -155,8 +155,22 @@ void Language::onEvent(const std::string& ev) {
 
   layoutName = waybar::util::sanitize_string(layoutName);
 
+  if (layoutName.empty()) {
+    // Virtual keyboards (e.g. wtype) can emit activelayout events without a layout name;
+    // ignore them instead of blanking the module (#2079).
+    return;
+  }
+
+  auto newLayout = getLayout(layoutName);
+  if (newLayout.full_name.empty()) {
+    // Layout name not found in the xkb registry, e.g. reported by a virtual keyboard that
+    // isn't a real physical layout. Keep showing the last known good layout (#2079).
+    spdlog::debug("hyprland language onevent: unknown layout '{}', ignoring", layoutName);
+    return;
+  }
+
   // CSS class swap happens in update() on the main thread (#4665).
-  layout_ = getLayout(layoutName);
+  layout_ = newLayout;
 
   spdlog::debug("hyprland language onevent with {}", layoutName);
 
@@ -171,7 +185,8 @@ void Language::initLanguage() {
   try {
     auto searcher = kbName.empty()
                         ? inputDevices
-                        : inputDevices.substr(inputDevices.find(kbName) + kbName.length());
+                        : inputDevices.substr(inputDevices.find(std::format("\t{}\n", kbName)) +
+                                              kbName.length() + 2);
     searcher = searcher.substr(searcher.find("keymap:") + 8);
     searcher = searcher.substr(0, searcher.find_first_of("\n\t"));
 

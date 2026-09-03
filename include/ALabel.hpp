@@ -88,6 +88,8 @@ class ALabel : public AModule {
   static void handleGtkMenuEvent(GtkMenuItem* menuitem, gpointer data);
 
  private:
+  bool pointerOverModule() const;
+
   // Raw UTF-8 bytes, not Glib::ustring: ustring::operator== collates with
   // g_utf8_collate(), which gives private-use codepoints (nerd-font icons)
   // no collation weight, so two different icons compare equal.
