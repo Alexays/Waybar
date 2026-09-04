@@ -1149,8 +1149,10 @@ void Workspaces::updateWorkspaceStates() {
                     (workspace->isSpecial() && workspace->name() == m_activeSpecialWorkspaceName);
 
     if (m_inactiveOnSpecial && !workspace->isSpecial() &&
-        std::ranges::any_of(updatedWorkspaces, [&monitor](const auto& w) {
-          return w["id"].asInt() < 0 && w["monitor"].asString() == monitor;
+        std::ranges::any_of(updatedWorkspaces, [&monitor, this](const auto& w) {
+          return w["id"].asInt() < 0 && 
+                 w["name"].asString() == "special:" + m_activeSpecialWorkspaceName && 
+                 w["monitor"].asString() == monitor;
         })) {
       isActive = false;
     }
