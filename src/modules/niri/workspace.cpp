@@ -1,11 +1,11 @@
 #include "modules/niri/workspace.hpp"
 
 #include <gdkmm/pixbuf.h>
+#include <giomm/desktopappinfo.h>
+#include <giomm/icon.h>
 #include <gtkmm/icontheme.h>
 #include <gtkmm/image.h>
 #include <spdlog/spdlog.h>
-#include <giomm/desktopappinfo.h>
-#include <giomm/icon.h>
 
 #include "modules/niri/backend.hpp"
 #include "modules/niri/workspaces.hpp"
@@ -18,7 +18,7 @@ Workspace::Workspace(const Json::Value& workspace_data, Workspaces& manager)
       box_(Gtk::ORIENTATION_HORIZONTAL, 0),
       taskbar_box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
   button_.add(box_);
-  box_.pack_start(label_, false, false, 0);
+  box_.pack_start(label_, true, true, 0);
   box_.pack_start(taskbar_box_, false, false, 0);
 
   button_.set_relief(Gtk::RELIEF_NONE);
