@@ -1,11 +1,11 @@
 #include "modules/niri/workspace.hpp"
 
 #include <gdkmm/pixbuf.h>
+#include <giomm/desktopappinfo.h>
+#include <giomm/icon.h>
 #include <gtkmm/icontheme.h>
 #include <gtkmm/image.h>
 #include <spdlog/spdlog.h>
-#include <giomm/desktopappinfo.h>
-#include <giomm/icon.h>
 
 #include "modules/niri/backend.hpp"
 #include "modules/niri/workspaces.hpp"
@@ -18,7 +18,7 @@ Workspace::Workspace(const Json::Value& workspace_data, Workspaces& manager)
       box_(Gtk::ORIENTATION_HORIZONTAL, 0),
       taskbar_box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
   button_.add(box_);
-  box_.pack_start(label_, false, false, 0);
+  box_.pack_start(label_, true, true, 0);
   box_.pack_start(taskbar_box_, false, false, 0);
 
   button_.set_relief(Gtk::RELIEF_NONE);
@@ -211,51 +211,49 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
 // ── Icon loading ─────────────────────────────────────────────────────────────
 
 Glib::RefPtr<Gdk::Pixbuf> Workspace::loadIcon(const std::string& app_id, int size) {
-    if (app_id.empty()) return {};
-    auto app_info = Gio::DesktopAppInfo::create(app_id + ".desktop");
-        
-    if (app_info) {
-        auto icon = app_info->get_icon();
-        if (icon) {
-          auto theme = Gtk::IconTheme::get_default();
-          auto icon_info = theme->lookup_icon(icon, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
-        
-          if (icon_info) {
-              try {
-                  
-                  return icon_info.load_icon(); 
-              } catch (...) {
-                
-              }
-          }
+  if (app_id.empty()) return {};
+  auto app_info = Gio::DesktopAppInfo::create(app_id + ".desktop");
+
+  if (app_info) {
+    auto icon = app_info->get_icon();
+    if (icon) {
+      auto theme = Gtk::IconTheme::get_default();
+      auto icon_info = theme->lookup_icon(icon, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
+
+      if (icon_info) {
+        try {
+          return icon_info.load_icon();
+        } catch (...) {
+        }
       }
     }
+  }
 
-    auto theme = Gtk::IconTheme::get_default();
-    
-    auto tryLoad = [&](const std::string& name) -> Glib::RefPtr<Gdk::Pixbuf> {
-        if (!theme->has_icon(name)) return {};
-        try {
-            return theme->load_icon(name, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
-        } catch (...) {
-            return {};
-        }
-    };
+  auto theme = Gtk::IconTheme::get_default();
 
-    if (auto pb = tryLoad(app_id)) return pb;
-
-    std::string lower = app_id;
-    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-    if (auto pb = tryLoad(lower)) return pb;
-
-    auto dot = app_id.rfind('.');
-    if (dot != std::string::npos) {
-        std::string last = app_id.substr(dot + 1);
-        std::transform(last.begin(), last.end(), last.begin(), ::tolower);
-        if (auto pb = tryLoad(last)) return pb;
+  auto tryLoad = [&](const std::string& name) -> Glib::RefPtr<Gdk::Pixbuf> {
+    if (!theme->has_icon(name)) return {};
+    try {
+      return theme->load_icon(name, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
+    } catch (...) {
+      return {};
     }
+  };
 
-    return {};
+  if (auto pb = tryLoad(app_id)) return pb;
+
+  std::string lower = app_id;
+  std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+  if (auto pb = tryLoad(lower)) return pb;
+
+  auto dot = app_id.rfind('.');
+  if (dot != std::string::npos) {
+    std::string last = app_id.substr(dot + 1);
+    std::transform(last.begin(), last.end(), last.begin(), ::tolower);
+    if (auto pb = tryLoad(last)) return pb;
+  }
+
+  return {};
 }
 
 }  // namespace waybar::modules::niri
