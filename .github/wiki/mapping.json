@@ -35,7 +35,7 @@
   "Module:-PulseAudio-Slider": ["waybar-pulseaudio-slider"],
   "Module:-River": ["waybar-river-tags", "waybar-river-mode", "waybar-river-window", "waybar-river-layout"],
   "Module:-Sndio": ["waybar-sndio"],
-  "Module:-Sway": ["waybar-sway-workspaces", "waybar-sway-window", "waybar-sway-mode", "waybar-sway-scratchpad"],
+  "Module:-Sway": ["waybar-sway-workspaces", "waybar-sway-window", "waybar-sway-mode", "waybar-sway-scratchpad", "waybar-sway-taskbar"],
   "Module:-Systemd-failed-units": ["waybar-systemd-failed-units"],
   "Module:-Taskbar": ["waybar-wlr-taskbar"],
   "Module:-Temperature": ["waybar-temperature"],
