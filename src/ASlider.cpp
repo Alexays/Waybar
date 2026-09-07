@@ -52,6 +52,14 @@ ASlider::ASlider(const Json::Value& config, const std::string& name, const std::
     coalescer_ = std::make_unique<util::WriteCoalescer>([this](int value) { onCommit(value); },
                                                         write_interval_, mode);
   }
+  if (config_["failure-behaviour"].isString()) {
+    const auto& behaviour = config_["failure-behaviour"].asString();
+    if (behaviour == "min") {
+      failure_behaviour_ = FailureBehaviour::MIN;
+    } else if (behaviour == "hide") {
+      failure_behaviour_ = FailureBehaviour::HIDE;
+    }
+  }
 
   if (config_["min"].isUInt()) {
     min_ = config_["min"].asUInt();
@@ -111,6 +119,27 @@ void ASlider::commit() {
 }
 
 bool ASlider::commitPending() const { return dragging_; }
+
+void ASlider::setStale(bool stale) {
+  if (stale_ == stale) {
+    return;
+  }
+  stale_ = stale;
+  auto style = scale_.get_style_context();
+  if (stale) {
+    style->add_class("stale");
+    if (failure_behaviour_ == FailureBehaviour::MIN) {
+      setValueSilently(min_);
+    } else if (failure_behaviour_ == FailureBehaviour::HIDE) {
+      event_box_.hide();
+    }
+  } else {
+    style->remove_class("stale");
+    if (failure_behaviour_ == FailureBehaviour::HIDE) {
+      event_box_.show();
+    }
+  }
+}
 
 void ASlider::setValueSilently(int value) {
   updating_ = true;

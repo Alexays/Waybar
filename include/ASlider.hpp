@@ -16,6 +16,12 @@ enum class WriteBehaviour {
   DEBOUNCED,   // commit after movement stops
 };
 
+enum class FailureBehaviour {
+  KEEP,  // retain the last value, mark stale, never write (default)
+  MIN,   // snap the handle to min_
+  HIDE,  // hide the widget until a read succeeds
+};
+
 class ASlider : public AModule {
  public:
   ASlider(const Json::Value& config, const std::string& name, const std::string& id,
@@ -28,6 +34,9 @@ class ASlider : public AModule {
   void setValueSilently(int value);
   // True while a drag is in flight; a poll should not snap the handle away.
   bool commitPending() const;
+  // Mark the last read failed (or recovered): toggles .stale and applies
+  // failure_behaviour_. Never writes; never synthesises 0.
+  void setStale(bool stale);
 
   bool vertical_ = false;
   int min_ = 0, max_ = 100, curr_ = 50;
@@ -37,6 +46,8 @@ class ASlider : public AModule {
   bool updating_ = false;
   WriteBehaviour write_behaviour_ = WriteBehaviour::ON_RELEASE;
   std::chrono::milliseconds write_interval_{40};
+  FailureBehaviour failure_behaviour_ = FailureBehaviour::KEEP;
+  bool stale_ = false;
   Gtk::Scale scale_;
 
  private:
