@@ -11,7 +11,9 @@ class BacklightSlider : public ASlider {
   virtual ~BacklightSlider() = default;
 
   void update() override;
-  void onValueChanged() override;
+
+ protected:
+  void onCommit(int value) override;
 
  private:
   std::string preferred_device_;

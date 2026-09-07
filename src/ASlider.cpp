@@ -1,6 +1,7 @@
 #include "ASlider.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 #include "gtkmm/adjustment.h"
 #include "gtkmm/enums.h"
@@ -25,7 +26,8 @@ ASlider::ASlider(const Json::Value& config, const std::string& name, const std::
   }
   scale_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(scale_);
-  scale_.signal_value_changed().connect(sigc::mem_fun(*this, &ASlider::onValueChanged));
+  // change_value: user actions only. value_changed also fires on set_value (the write-back loop).
+  scale_.signal_change_value().connect(sigc::mem_fun(*this, &ASlider::handleChangeValue));
 
   if (config_["min"].isUInt()) {
     min_ = config_["min"].asUInt();
@@ -40,6 +42,20 @@ ASlider::ASlider(const Json::Value& config, const std::string& name, const std::
   scale_.set_adjustment(Gtk::Adjustment::create(curr_, min_, max_ + 1, 1, 1, 1));
 }
 
-void ASlider::onValueChanged() {}
+bool ASlider::handleChangeValue(Gtk::ScrollType /*scroll_type*/, double new_value) {
+  // Belt-and-braces; change_value cannot fire for a programmatic set_value.
+  if (updating_) {
+    return false;
+  }
+  onCommit(std::clamp(static_cast<int>(std::lround(new_value)), min_, max_));
+  // false lets GTK still move the handle.
+  return false;
+}
+
+void ASlider::setValueSilently(int value) {
+  updating_ = true;
+  scale_.set_value(value);
+  updating_ = false;
+}
 
 }  // namespace waybar

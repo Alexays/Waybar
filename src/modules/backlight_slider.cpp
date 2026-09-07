@@ -10,13 +10,12 @@ BacklightSlider::BacklightSlider(const std::string& id, const Json::Value& confi
       backend(interval_, [this] { this->dp.emit(); }) {}
 
 void BacklightSlider::update() {
-  uint16_t brightness = backend.get_scaled_brightness(preferred_device_);
-  scale_.set_value(brightness);
+  int brightness = backend.get_scaled_brightness(preferred_device_);
+  setValueSilently(brightness);
 }
 
-void BacklightSlider::onValueChanged() {
-  auto brightness = scale_.get_value();
-  backend.set_scaled_brightness(preferred_device_, brightness);
+void BacklightSlider::onCommit(int value) {
+  backend.set_scaled_brightness(preferred_device_, value);
 }
 
 }  // namespace waybar::modules
