@@ -18,8 +18,10 @@ test_src = files(
     'command.cpp',
     'command_line_stream.cpp',
     'css_reload_helper.cpp',
+    'write_coalescer.cpp',
     '../../src/util/css_reload_helper.cpp',
     '../../src/util/command_line_stream.cpp',
+    '../../src/util/write_coalescer.cpp',
 )
 
 if tz_dep.found()
