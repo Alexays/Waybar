@@ -43,6 +43,15 @@ ASlider::ASlider(const Json::Value& config, const std::string& name, const std::
       write_behaviour_ = WriteBehaviour::DEBOUNCED;
     }
   }
+  if (config_["write-interval"].isUInt()) {
+    write_interval_ = std::chrono::milliseconds(config_["write-interval"].asUInt());
+  }
+  if (write_behaviour_ != WriteBehaviour::ON_RELEASE) {
+    auto mode = write_behaviour_ == WriteBehaviour::THROTTLED ? util::CoalesceMode::THROTTLE
+                                                              : util::CoalesceMode::DEBOUNCE;
+    coalescer_ = std::make_unique<util::WriteCoalescer>([this](int value) { onCommit(value); },
+                                                        write_interval_, mode);
+  }
 
   if (config_["min"].isUInt()) {
     min_ = config_["min"].asUInt();
@@ -63,12 +72,15 @@ bool ASlider::handleChangeValue(Gtk::ScrollType scroll_type, double new_value) {
     return false;
   }
   int value = std::clamp(static_cast<int>(std::lround(new_value)), min_, max_);
-  // A drag streams SCROLL_JUMP; under ON_RELEASE hold it and commit on drag end.
-  // Discrete keyboard/wheel steps are one intent each, so commit immediately.
-  if (write_behaviour_ == WriteBehaviour::ON_RELEASE && dragging_ &&
-      scroll_type == Gtk::SCROLL_JUMP) {
-    pending_ = value;
-    has_pending_ = true;
+  // A drag streams SCROLL_JUMP; hold it (ON_RELEASE) or coalesce it. A wheel notch
+  // is a JUMP with no drag, and keyboard steps are one intent each: commit at once.
+  if (dragging_ && scroll_type == Gtk::SCROLL_JUMP) {
+    if (coalescer_) {
+      coalescer_->submit(value);
+    } else {
+      pending_ = value;
+      has_pending_ = true;
+    }
     return false;
   }
   onCommit(value);
@@ -88,6 +100,10 @@ bool ASlider::onGrabBroken(GdkEventGrabBroken* /*event*/) {
 
 void ASlider::commit() {
   dragging_ = false;
+  if (coalescer_) {
+    coalescer_->flush();
+    return;
+  }
   if (has_pending_) {
     has_pending_ = false;
     onCommit(pending_);

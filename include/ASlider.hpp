@@ -1,10 +1,12 @@
 #pragma once
 
 #include <chrono>
+#include <memory>
 
 #include "AModule.hpp"
 #include "gtkmm/gesturedrag.h"
 #include "gtkmm/scale.h"
+#include "util/write_coalescer.hpp"
 
 namespace waybar {
 
@@ -34,6 +36,7 @@ class ASlider : public AModule {
   // Guards against a stray write while we drive the scale ourselves.
   bool updating_ = false;
   WriteBehaviour write_behaviour_ = WriteBehaviour::ON_RELEASE;
+  std::chrono::milliseconds write_interval_{40};
   Gtk::Scale scale_;
 
  private:
@@ -45,6 +48,8 @@ class ASlider : public AModule {
   void commit();
 
   Glib::RefPtr<Gtk::GestureDrag> drag_gesture_;
+  // Only for THROTTLED/DEBOUNCED; null under ON_RELEASE.
+  std::unique_ptr<util::WriteCoalescer> coalescer_;
   int pending_ = 0;
   bool has_pending_ = false;
   bool dragging_ = false;
