@@ -207,7 +207,8 @@ src_files = files(
     'src/util/transform_8bit_to_rgba.cpp',
     'src/util/utf8_string.cpp',
     'src/util/command_line_stream.cpp',
-    'src/util/write_coalescer.cpp'
+    'src/util/write_coalescer.cpp',
+    'src/util/slider_value.cpp'
 )
 
 man_files = files(

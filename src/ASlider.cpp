@@ -1,10 +1,13 @@
 #include "ASlider.hpp"
 
+#include <spdlog/spdlog.h>
+
 #include <algorithm>
 #include <cmath>
 
 #include "gtkmm/adjustment.h"
 #include "gtkmm/enums.h"
+#include "util/slider_value.hpp"
 
 namespace waybar {
 
@@ -58,6 +61,15 @@ ASlider::ASlider(const Json::Value& config, const std::string& name, const std::
       failure_behaviour_ = FailureBehaviour::MIN;
     } else if (behaviour == "hide") {
       failure_behaviour_ = FailureBehaviour::HIDE;
+    }
+  }
+  if (config_["value-regex"].isString()) {
+    // A typo must not throw from the ctor; fall back to the default heuristic.
+    try {
+      value_regex_ = std::regex(config_["value-regex"].asString());
+    } catch (const std::regex_error& e) {
+      spdlog::warn("slider {}: invalid value-regex '{}': {}", name,
+                   config_["value-regex"].asString(), e.what());
     }
   }
 
@@ -139,6 +151,10 @@ void ASlider::setStale(bool stale) {
       event_box_.show();
     }
   }
+}
+
+std::optional<double> ASlider::parseValue(const std::string& raw) const {
+  return util::parseSliderValue(raw, min_, max_, value_regex_);
 }
 
 void ASlider::setValueSilently(int value) {

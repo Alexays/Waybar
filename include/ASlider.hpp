@@ -2,6 +2,8 @@
 
 #include <chrono>
 #include <memory>
+#include <optional>
+#include <regex>
 
 #include "AModule.hpp"
 #include "gtkmm/gesturedrag.h"
@@ -37,6 +39,9 @@ class ASlider : public AModule {
   // Mark the last read failed (or recovered): toggles .stale and applies
   // failure_behaviour_. Never writes; never synthesises 0.
   void setStale(bool stale);
+  // Extract a value from tool output, clamped to [min_, max_]; nullopt on failure
+  // (stale, never 0). Uses value-regex group 1 if set, else strips a trailing '%'.
+  std::optional<double> parseValue(const std::string& raw) const;
 
   bool vertical_ = false;
   int min_ = 0, max_ = 100, curr_ = 50;
@@ -61,6 +66,8 @@ class ASlider : public AModule {
   Glib::RefPtr<Gtk::GestureDrag> drag_gesture_;
   // Only for THROTTLED/DEBOUNCED; null under ON_RELEASE.
   std::unique_ptr<util::WriteCoalescer> coalescer_;
+  // Compiled once from value-regex; nullopt uses the default heuristic.
+  std::optional<std::regex> value_regex_;
   int pending_ = 0;
   bool has_pending_ = false;
   bool dragging_ = false;
