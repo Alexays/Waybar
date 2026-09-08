@@ -39,7 +39,11 @@ class CustomSource {
   ~CustomSource();
 
   void refresh(int signal);
+  // Parse the most recent read output.
   Output parse() const;
+  // Parse an explicit result; parse() applies this to the last read. Exposed so
+  // unit tests can drive the parsers without spawning a worker.
+  Output parse(const command::res& output) const;
 
  private:
   void delayWorker();
@@ -48,8 +52,8 @@ class CustomSource {
   void handleContinuousProcessExit(int exit_code);
   void scheduleContinuousRestart();
   void waitingWorker();
-  Output parseRaw() const;
-  Output parseJson() const;
+  Output parseRaw(const command::res& output) const;
+  Output parseJson(const command::res& output) const;
 
   Json::Value config_;
   std::string output_name_;

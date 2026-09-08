@@ -149,17 +149,19 @@ void CustomSource::refresh(int sig) {
 #endif
 }
 
-CustomSource::Output CustomSource::parse() const {
+CustomSource::Output CustomSource::parse() const { return parse(output_); }
+
+CustomSource::Output CustomSource::parse(const command::res& output) const {
   if (config_["return-type"].asString() == "json") {
-    return parseJson();
+    return parseJson(output);
   }
-  return parseRaw();
+  return parseRaw(output);
 }
 
-CustomSource::Output CustomSource::parseRaw() const {
+CustomSource::Output CustomSource::parseRaw(const command::res& output) const {
   Output out;
   // A failed or empty read is stale, not a value: the consumer keeps its last one.
-  if (output_.out.empty() || output_.exit_code != 0) {
+  if (output.out.empty() || output.exit_code != 0) {
     return out;
   }
   const bool escape = config_["escape"].isBool() && config_["escape"].asBool();
@@ -170,7 +172,7 @@ CustomSource::Output CustomSource::parseRaw() const {
     }
     return escape ? Glib::Markup::escape_text(value).raw() : value.raw();
   };
-  std::istringstream stream(output_.out);
+  std::istringstream stream(output.out);
   std::string line;
   int i = 0;
   while (getline(stream, line)) {
@@ -190,9 +192,9 @@ CustomSource::Output CustomSource::parseRaw() const {
   return out;
 }
 
-CustomSource::Output CustomSource::parseJson() const {
+CustomSource::Output CustomSource::parseJson(const command::res& output) const {
   Output out;
-  if (output_.out.empty() || output_.exit_code != 0) {
+  if (output.out.empty() || output.exit_code != 0) {
     return out;
   }
   const bool escape = config_["escape"].isBool() && config_["escape"].asBool();
@@ -203,7 +205,7 @@ CustomSource::Output CustomSource::parseJson() const {
     }
     return escape ? Glib::Markup::escape_text(value).raw() : value.raw();
   };
-  std::istringstream stream(output_.out);
+  std::istringstream stream(output.out);
   std::string line;
   if (!getline(stream, line)) {
     return out;
