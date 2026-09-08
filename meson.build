@@ -209,7 +209,8 @@ src_files = files(
     'src/util/command_line_stream.cpp',
     'src/util/write_coalescer.cpp',
     'src/util/slider_value.cpp',
-    'src/util/interval.cpp'
+    'src/util/interval.cpp',
+    'src/util/custom_source.cpp'
 )
 
 man_files = files(
