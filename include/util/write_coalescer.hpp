@@ -3,20 +3,23 @@
 #include <sigc++/connection.h>
 
 #include <chrono>
+#include <cstdint>
 #include <functional>
 #include <optional>
 
 namespace waybar::util {
 
-enum class CoalesceMode {
+enum class CoalesceMode : uint8_t {
   THROTTLE,  // leading write, then <=1 write per min_gap, plus a trailing final write
   DEBOUNCE,  // write only after min_gap of silence
 };
 
 /**
- * Rate-limits a stream of values to bounded writes; GTK-thread only, writer is
- * synchronous so single-flight is trivial. Properties: leading edge (THROTTLE),
- * coalescing (newest wins, never queued), convergence (final value always written).
+ * Rate-limits a stream of values to bounded writes; GTK-thread only. Each submit
+ * overwrites a single pending value (newest wins, nothing queued), and the
+ * synchronous writer keeps at most one write in flight. Both CoalesceMode variants
+ * converge on the final value via a trailing tick or flush(); THROTTLE additionally
+ * writes on the leading edge.
  */
 class WriteCoalescer {
  public:
