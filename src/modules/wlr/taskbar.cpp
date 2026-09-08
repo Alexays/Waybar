@@ -851,7 +851,6 @@ Taskbar::~Taskbar() {
   }
 }
 
-
 void Taskbar::clear_groups() {
   for (auto& [app_id, group] : groups_) {
     remove_button(group->button);
@@ -878,8 +877,7 @@ void Taskbar::update_groups() {
       continue;
     }
 
-    if (config_["active-only"].isBool() && config_["active-only"].asBool() &&
-        !task->active()) {
+    if (config_["active-only"].isBool() && config_["active-only"].asBool() && !task->active()) {
       continue;
     }
 
@@ -994,9 +992,8 @@ void Taskbar::update_groups() {
         return;
       }
 
-      auto active = std::find_if(
-          tasks.begin(), tasks.end(),
-          [](Task* task) { return task->active(); });
+      auto active =
+          std::find_if(tasks.begin(), tasks.end(), [](Task* task) { return task->active(); });
 
       if (active == tasks.end()) {
         tasks.front()->activate();
@@ -1020,8 +1017,6 @@ void Taskbar::update_groups() {
   }
 }
 
-
-
 void Taskbar::update() {
   for (auto& t : tasks_) {
     t->update();
@@ -1042,7 +1037,6 @@ void Taskbar::update() {
 
   AModule::update();
 }
-
 
 static void tm_handle_toplevel(void* data, struct zwlr_foreign_toplevel_manager_v1* manager,
                                struct zwlr_foreign_toplevel_handle_v1* tl_handle) {
@@ -1286,8 +1280,8 @@ void Taskbar::remove_task(uint32_t id) {
   tasks_.erase(it);
 
   if (group_apps()) {
-  update_groups();
-}
+    update_groups();
+  }
 
   update_bar_css_classes();
 }
@@ -1352,7 +1346,6 @@ bool Taskbar::all_outputs() const {
 bool Taskbar::group_apps() const {
   return config_["group-apps"].isBool() && config_["group-apps"].asBool();
 }
-
 
 const IconLoader& Taskbar::icon_loader() const { return icon_loader_; }
 
