@@ -19,9 +19,11 @@ test_src = files(
     'command_line_stream.cpp',
     'css_reload_helper.cpp',
     'write_coalescer.cpp',
+    'slider_value.cpp',
     '../../src/util/css_reload_helper.cpp',
     '../../src/util/command_line_stream.cpp',
     '../../src/util/write_coalescer.cpp',
+    '../../src/util/slider_value.cpp',
 )
 
 if tz_dep.found()
