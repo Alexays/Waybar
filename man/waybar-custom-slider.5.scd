@@ -43,9 +43,9 @@ Addressed by *custom-slider/<name>*
 
 *signal*: ++
 	typeof: integer ++
-	Update on *SIGRTMIN+N*. Pair it with a keybind (e.g.
-	`hyprctl hyprsunset gamma +10 && pkill -RTMIN+8 waybar`) for instant sync when
-	the value is changed outside Waybar.
+	Update on *SIGRTMIN+N*. Pair it with a keybind
+	(e.g. `hyprctl hyprsunset gamma +10 && pkill -RTMIN+8 waybar`) for instant
+	sync when the value is changed outside Waybar.
 
 *restart-interval*: ++
 	typeof: integer or float ++
