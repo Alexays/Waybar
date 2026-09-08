@@ -7,6 +7,7 @@
 
 #include "gtkmm/adjustment.h"
 #include "gtkmm/enums.h"
+#include "util/interval.hpp"
 #include "util/slider_value.hpp"
 
 namespace waybar {
@@ -15,13 +16,7 @@ ASlider::ASlider(const Json::Value& config, const std::string& name, const std::
                  uint16_t interval)
     : AModule(config, name, id, false, false),
       vertical_(config_["orientation"].asString() == "vertical"),
-      interval_(
-          config_["interval"] == "once"
-              ? std::chrono::milliseconds::max()
-              : std::chrono::milliseconds(
-                    config_["interval"].isNumeric()
-                        ? std::max(1L, static_cast<long>(config_["interval"].asDouble() * 1000))
-                        : 1000L * static_cast<long>(interval))),
+      interval_(util::parseInterval(config_, interval)),
       scale_(vertical_ ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL) {
   scale_.set_name(name);
   if (!id.empty()) {

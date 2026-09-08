@@ -208,7 +208,8 @@ src_files = files(
     'src/util/utf8_string.cpp',
     'src/util/command_line_stream.cpp',
     'src/util/write_coalescer.cpp',
-    'src/util/slider_value.cpp'
+    'src/util/slider_value.cpp',
+    'src/util/interval.cpp'
 )
 
 man_files = files(

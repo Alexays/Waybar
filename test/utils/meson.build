@@ -20,10 +20,12 @@ test_src = files(
     'css_reload_helper.cpp',
     'write_coalescer.cpp',
     'slider_value.cpp',
+    'interval.cpp',
     '../../src/util/css_reload_helper.cpp',
     '../../src/util/command_line_stream.cpp',
     '../../src/util/write_coalescer.cpp',
     '../../src/util/slider_value.cpp',
+    '../../src/util/interval.cpp',
 )
 
 if tz_dep.found()
