@@ -94,9 +94,8 @@ class Item : public sigc::trackable {
   Glib::RefPtr<Gdk::Pixbuf> getIconByName(const std::string& name, int size);
   double getScaledIconSize();
   static void onMenuDestroyed(Item* self, GObject* old_menu_pointer);
-  void validateMenu();
-  void menuProbeReady(Glib::RefPtr<Gio::AsyncResult>& result, const std::string& menu_path);
   void makeMenu();
+  bool hasMenuLayout() const;
   bool handleClick(GdkEventButton* const& /*ev*/);
   bool handleScroll(GdkEventScroll* const&);
   bool handleMouseEnter(GdkEventCrossing* const&);
@@ -120,7 +119,6 @@ class Item : public sigc::trackable {
 
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
   Glib::RefPtr<Gio::Cancellable> cancellable_;
-  bool has_dbus_menu_ = false;
   std::set<std::string_view> update_pending_;
 
   Host& host_;
