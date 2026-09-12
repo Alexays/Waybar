@@ -42,6 +42,8 @@ static const Glib::ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
 static const unsigned UPDATE_DEBOUNCE_TIME = 10;
 static const char DBUSMENU_INTERFACE[] = "com.canonical.dbusmenu";
 
+static void cancelPendingMenuPopup(PendingMenuPopup* pending);
+
 Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar,
            const std::function<void(Item&)>& on_ready,
            const std::function<void(Item&)>& on_invalidate, const std::function<void()>& on_updated,
@@ -88,6 +90,10 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
 }
 
 Item::~Item() {
+  if (this->pending_menu_popup != nullptr) {
+    cancelPendingMenuPopup(this->pending_menu_popup);
+    this->pending_menu_popup = nullptr;
+  }
   if (this->gtk_menu != nullptr) {
     this->gtk_menu->popdown();
     this->gtk_menu->detach();
@@ -621,6 +627,87 @@ void Item::makeMenu() {
   event_box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
 }
 
+struct PendingMenuPopup {
+  Item* item;
+  Gtk::Menu* menu;
+  GdkEvent* event;
+  guint poll_source_id = 0;
+  int last_seen_count = -1;
+  int stable_ticks = 0;
+  int elapsed_ms = 0;
+};
+
+// Called only from ~Item, to abort a still-pending wait if this tray item
+// disappears before it settles - the poll's own callback path below (which
+// always returns G_SOURCE_REMOVE right after) never needs to remove its
+// own source, only this external-cancellation path does.
+static void cancelPendingMenuPopup(PendingMenuPopup* pending) {
+  if (pending->poll_source_id != 0) {
+    g_source_remove(pending->poll_source_id);
+  }
+  gdk_event_free(pending->event);
+  delete pending;
+}
+
+// Called only from the poll callback below, once settled - never removes
+// its own still-firing source (see cancelPendingMenuPopup for that case).
+static void showPendingMenuPopup(PendingMenuPopup* pending) {
+  pending->item->first_show_pending = false;
+  pending->item->pending_menu_popup = nullptr;
+  Gtk::Menu* menu = pending->menu;
+  GdkEvent* event = pending->event;
+  delete pending;
+#if GTK_CHECK_VERSION(3, 22, 0)
+  menu->popup_at_pointer(event);
+#else
+  auto* button_event = reinterpret_cast<GdkEventButton*>(event);
+  menu->popup(button_event->button, button_event->time);
+#endif
+  gdk_event_free(event);
+}
+
+// libdbusmenu-gtk3 populates the real GtkMenuItem widgets into the menu
+// asynchronously, as a separate step after the client's "layout-updated"
+// signal (which only means the data model is complete, not that the
+// corresponding widgets have been packed into the container - confirmed
+// live: layout-updated fired with the menu still reporting 0 children).
+// The container's own "add" signal turned out not to be a reliable proxy
+// for this either - confirmed live against a real multi-item (16-entry)
+// menu that never fired "add" even once despite being fully populated
+// within 200ms. Polling get_children() directly did reliably observe the
+// real count in both cases, so that's what's used here: show once the
+// count has held steady for a few ticks, so we don't pop up mid-populate,
+// with a fixed ceiling in case a menu is genuinely empty or an app never
+// responds.
+static constexpr int kPollIntervalMs = 30;
+static constexpr int kStableTicksRequired = 3;
+static constexpr int kMaxWaitMs = 2000;
+
+static gboolean onPendingMenuPopupPoll(gpointer data) {
+  auto* pending = static_cast<PendingMenuPopup*>(data);
+  pending->elapsed_ms += kPollIntervalMs;
+  int count = static_cast<int>(pending->menu->get_children().size());
+  // A run of unchanging *zero* must never count as "stable" - the menu
+  // hasn't necessarily settled empty, it may simply not have gained its
+  // first item yet (confirmed live: some menus take longer than a few
+  // poll ticks just to start). Only a positive count that holds steady
+  // counts toward settling; zero can only conclude via the failsafe below,
+  // for a menu that's genuinely empty or an app that never responds.
+  if (count > 0 && count == pending->last_seen_count) {
+    pending->stable_ticks++;
+  } else {
+    pending->last_seen_count = count;
+    pending->stable_ticks = count > 0 ? 1 : 0;
+  }
+  bool settled = count > 0 && pending->stable_ticks >= kStableTicksRequired;
+  if (settled || pending->elapsed_ms >= kMaxWaitMs) {
+    pending->poll_source_id = 0;
+    showPendingMenuPopup(pending);
+    return G_SOURCE_REMOVE;
+  }
+  return G_SOURCE_CONTINUE;
+}
+
 bool Item::handleClick(GdkEventButton* const& ev) {
   if (!proxy_) {
     return false;
@@ -629,8 +716,42 @@ bool Item::handleClick(GdkEventButton* const& ev) {
       {Glib::Variant<int>::create(ev->x_root + bar_.x_global),
        Glib::Variant<int>::create(ev->y_root + bar_.y_global)});
   if ((ev->button == 1 && item_is_menu) || ev->button == 3) {
+    if (first_show_pending) {
+      // The first-ever show of this menu is still waiting on its real
+      // content to settle (see below) - ignore repeat clicks until it
+      // actually appears rather than racing that with a second immediate
+      // popup_at_pointer() on the same still-populating menu.
+      return true;
+    }
+    bool const menu_just_created = gtk_menu == nullptr;
     makeMenu();
     if (gtk_menu != nullptr) {
+      // dbusmenu_gtkmenu_new() (in makeMenu() above) only *starts* an async
+      // D-Bus fetch of the menu's real layout - it doesn't wait for it. On
+      // this very first popup for this menu, gtk_menu can still be
+      // completely empty right now, which is the size GTK measures for the
+      // Wayland xdg_popup positioner; that size is locked in as soon as we
+      // pop up, so the real items arriving a moment later can't grow it -
+      // producing a mis-sized/glitched menu on first open only (subsequent
+      // opens reuse the by-then-populated cached menu and size correctly).
+      // Wait for the menu's real children to actually settle (see
+      // onPendingMenuPopupPoll above) before showing it the first time.
+      // menu_just_created is the reliable signal for "first show ever" -
+      // checking the client's root for null too (an earlier attempt, back
+      // when this waited on "layout-updated" instead) turned out to be
+      // unreliable: the root can already be non-null by click time even
+      // though the GTK widgets aren't packed in yet, which let some clicks
+      // skip this branch entirely and hit the unguarded popup below.
+      if (menu_just_created) {
+        first_show_pending = true;
+        auto* pending =
+            new PendingMenuPopup{.item = this,
+                                  .menu = gtk_menu,
+                                  .event = gdk_event_copy(reinterpret_cast<GdkEvent*>(ev))};
+        pending->poll_source_id = g_timeout_add(kPollIntervalMs, onPendingMenuPopupPoll, pending);
+        pending_menu_popup = pending;
+        return true;
+      }
 #if GTK_CHECK_VERSION(3, 22, 0)
       gtk_menu->popup_at_pointer(reinterpret_cast<GdkEvent*>(ev));
 #else

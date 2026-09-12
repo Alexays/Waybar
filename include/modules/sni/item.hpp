@@ -26,6 +26,8 @@ struct ToolTip {
 
 class Host;
 
+struct PendingMenuPopup;
+
 using ItemOrderMap = std::unordered_map<std::string, int>;
 
 class Item : public sigc::trackable {
@@ -62,6 +64,14 @@ class Item : public sigc::trackable {
   ToolTip tooltip;
   DbusmenuGtkMenu* dbus_menu = nullptr;
   Gtk::Menu* gtk_menu = nullptr;
+  // Guards against a second click landing while the first-ever show of this
+  // menu is still waiting on its real content to settle (see handleClick) -
+  // without this, that second click would see a non-null gtk_menu and pop
+  // up immediately on the still-populating menu, racing the deferred show.
+  // pending_menu_popup tracks the wait itself so ~Item can cancel it if
+  // this tray item disappears before it settles.
+  bool first_show_pending = false;
+  PendingMenuPopup* pending_menu_popup = nullptr;
   /**
    * ItemIsMenu flag means that the item only supports the context menu.
    * Default value is true because libappindicator supports neither ItemIsMenu nor Activate method
