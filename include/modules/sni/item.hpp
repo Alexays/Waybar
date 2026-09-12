@@ -64,14 +64,6 @@ class Item : public sigc::trackable {
   ToolTip tooltip;
   DbusmenuGtkMenu* dbus_menu = nullptr;
   Gtk::Menu* gtk_menu = nullptr;
-  // Guards against a second click landing while the first-ever show of this
-  // menu is still waiting on its real content to settle (see handleClick) -
-  // without this, that second click would see a non-null gtk_menu and pop
-  // up immediately on the still-populating menu, racing the deferred show.
-  // pending_menu_popup tracks the wait itself so ~Item can cancel it if
-  // this tray item disappears before it settles.
-  bool first_show_pending = false;
-  PendingMenuPopup* pending_menu_popup = nullptr;
   /**
    * ItemIsMenu flag means that the item only supports the context menu.
    * Default value is true because libappindicator supports neither ItemIsMenu nor Activate method
@@ -107,6 +99,12 @@ class Item : public sigc::trackable {
   void validateMenu();
   void menuProbeReady(Glib::RefPtr<Gio::AsyncResult>& result, const std::string& menu_path);
   void makeMenu();
+  // Called only from ~Item, to abort a still-pending wait (see
+  // onPendingMenuPopupPoll) if this tray item disappears before it settles.
+  static void cancelPendingMenuPopup(PendingMenuPopup* pending);
+  // Called only from onPendingMenuPopupPoll, once settled.
+  static void showPendingMenuPopup(PendingMenuPopup* pending);
+  static gboolean onPendingMenuPopupPoll(gpointer data);
   bool handleClick(GdkEventButton* const& /*ev*/);
   bool handleScroll(GdkEventScroll* const&);
   bool handleMouseEnter(GdkEventCrossing* const&);
@@ -131,6 +129,14 @@ class Item : public sigc::trackable {
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
   Glib::RefPtr<Gio::Cancellable> cancellable_;
   bool has_dbus_menu_ = false;
+  // Guards against a second click landing while the first-ever show of this
+  // menu is still waiting on its real content to settle (see handleClick) -
+  // without this, that second click would see a non-null gtk_menu and pop
+  // up immediately on the still-populating menu, racing the deferred show.
+  // pending_menu_popup_ tracks the wait itself so ~Item can cancel it if
+  // this tray item disappears before it settles.
+  bool first_show_pending_ = false;
+  PendingMenuPopup* pending_menu_popup_ = nullptr;
   std::set<std::string_view> update_pending_;
 
   Host& host_;
