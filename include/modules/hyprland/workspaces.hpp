@@ -109,7 +109,6 @@ class Workspaces : public AModule, public EventHandler {
   void onWorkspaceMoved(std::string const& payload);
   void onWorkspaceRenamed(std::string const& payload);
   void onWorkspaceIdChanged(std::string const& payload);
-  static std::optional<int> parseWorkspaceId(std::string const& workspaceIdStr);
 
   // monitor events
   void onMonitorFocused(std::string const& payload);
@@ -139,11 +138,11 @@ class Workspaces : public AModule, public EventHandler {
   void doUpdate();
   void removeWorkspacesToRemove();
   void createWorkspacesToCreate();
-  static std::vector<int> getVisibleWorkspaces();
+  static std::vector<std::string> getVisibleWorkspaces();
   void updateWorkspaceStates();
   bool updateWindowsToCreate();
 
-  void extendOrphans(int workspaceId, Json::Value const& clientsJson);
+  void extendOrphans(const std::string& workspaceAddress, Json::Value const& clientsJson);
   void registerOrphanWindow(WindowCreationPayload create_window_payload);
 
   void initializeWorkspaces();
@@ -190,7 +189,7 @@ class Workspaces : public AModule, public EventHandler {
 
   bool m_withIcon;
   uint64_t m_monitorId;
-  int m_activeWorkspaceId;
+  std::string m_activeWorkspaceAddress;
   std::string m_activeSpecialWorkspaceName;
   std::vector<std::unique_ptr<Workspace>> m_workspaces;
   std::vector<std::pair<Json::Value, Json::Value>> m_workspacesToCreate;

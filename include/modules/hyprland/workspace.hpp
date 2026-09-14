@@ -18,6 +18,7 @@
 #include "bar.hpp"
 #include "modules/hyprland/backend.hpp"
 #include "modules/hyprland/windowcreationpayload.hpp"
+#include "modules/hyprland/workspace_identity.hpp"
 #include "util/enum.hpp"
 #include "util/regex_collection.hpp"
 
@@ -34,7 +35,10 @@ class Workspace {
   std::string& selectString(std::map<std::string, std::string>& string_map);
   Gtk::Button& button() { return m_button; };
 
-  int id() const { return m_id; };
+  const WorkspaceIdentity& identity() const { return m_identity; };
+  const std::string& address() const { return m_identity.address; };
+  WorkspaceKind kind() const { return m_identity.kind; };
+  std::optional<int> number() const { return m_identity.number; };
   std::string name() const { return m_name; };
   std::string output() const { return m_output; };
   bool isActive() const { return m_isActive; };
@@ -61,7 +65,7 @@ class Workspace {
   void setUrgent(bool value = true) { m_isUrgent = value; };
   void setVisible(bool value = true) { m_isVisible = value; };
   void setWindows(uint value) { m_windows = value; };
-  void setId(int value) { m_id = value; };
+  void setAddress(std::string const& value);
   void setName(std::string const& value) { m_name = value; };
   void setOutput(std::string const& value) { m_output = value; };
   bool containsWindow(WindowAddress const& addr) const {
@@ -80,7 +84,7 @@ class Workspace {
  private:
   Workspaces& m_workspaceManager;
 
-  int m_id;
+  WorkspaceIdentity m_identity;
   std::string m_name;
   std::string m_prevNameClass;
   std::string m_output;
