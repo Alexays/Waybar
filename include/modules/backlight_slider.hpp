@@ -1,7 +1,5 @@
 #pragma once
 
-#include <chrono>
-
 #include "ASlider.hpp"
 #include "util/backlight_backend.hpp"
 
@@ -13,10 +11,11 @@ class BacklightSlider : public ASlider {
   virtual ~BacklightSlider() = default;
 
   void update() override;
-  void onValueChanged() override;
+
+ protected:
+  void onCommit(int value) override;
 
  private:
-  std::chrono::milliseconds interval_;
   std::string preferred_device_;
   util::BacklightBackend backend;
 };

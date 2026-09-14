@@ -238,4 +238,15 @@
 			"hibernate": "systemctl hibernate"
 		}
     }
+    // Example: a config-driven slider. Reads a value from a command and writes it
+    // back on change. Add "custom-slider/brightness" to a modules array to use it,
+    // and size its `trough` in style.css (sliders need min-width/min-height).
+    // "custom-slider/brightness": {
+    //     "exec": "hyprctl hyprsunset gamma",         // read: prints the current value
+    //     "on-change": "hyprctl hyprsunset gamma {}", // write: {} is the value
+    //     "interval": 5,
+    //     "signal": 8,                                // pkill -RTMIN+8 waybar to sync
+    //     "min": 10, "max": 200,
+    //     "orientation": "horizontal"
+    // }
 }

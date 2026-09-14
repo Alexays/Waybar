@@ -182,6 +182,7 @@ src_files = files(
     'src/AAppIconLabel.cpp',
     'src/modules/custom.cpp',
     'src/modules/custom_graph.cpp',
+    'src/modules/custom_slider.cpp',
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
     'src/modules/image.cpp',
@@ -206,11 +207,17 @@ src_files = files(
     'src/util/css_reload_helper.cpp',
     'src/util/transform_8bit_to_rgba.cpp',
     'src/util/utf8_string.cpp',
-    'src/util/command_line_stream.cpp'
+    'src/util/command_line_stream.cpp',
+    'src/util/write_coalescer.cpp',
+    'src/util/slider_value.cpp',
+    'src/util/interval.cpp',
+    'src/util/custom_source.cpp'
 )
 
 man_files = files(
     'man/waybar-custom.5.scd',
+    'man/waybar-custom-graph.5.scd',
+    'man/waybar-custom-slider.5.scd',
     'man/waybar-disk.5.scd',
     'man/waybar-idle-inhibitor.5.scd',
     'man/waybar-image.5.scd',
