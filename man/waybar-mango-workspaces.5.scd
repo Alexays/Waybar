@@ -48,6 +48,14 @@ Addressed by *mango/workspaces*
 	typeof: string ++
 	Command for right click. Same actions as *on-click*.
 
+*on-enter*: ++
+	typeof: string ++
+	Command to execute when the mouse enters the module.
+
+*on-leave*: ++
+	typeof: string ++
+	Command to execute when the mouse leaves the module.
+
 *overview-label*: ++
 	typeof: string ++
 	default: "OVERVIEW" ++
