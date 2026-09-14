@@ -47,7 +47,8 @@ class SingleImageStrategy : public IStrategy {
 
 class MultipleImageStrategy : public IStrategy {
  public:
-  MultipleImageStrategy(const std::string&, const Json::Value&, const std::string&, Gtk::EventBox&);
+  MultipleImageStrategy(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&,
+                        const std::string&, Gtk::EventBox&);
   ~MultipleImageStrategy() override = default;
   void fetch() override;
   void update() override;
@@ -69,6 +70,10 @@ class MultipleImageStrategy : public IStrategy {
 
   Json::Value config_;
   int size_;
+
+  std::mutex& reap_mtx;
+  std::list<pid_t>& reap;
+
   Gtk::Box box_;
   std::vector<ImageData> images_data_;
   // stdout captured by fetch() on the worker thread and consumed by update()
@@ -79,7 +84,7 @@ class MultipleImageStrategy : public IStrategy {
 
 class Image : public AModule {
  public:
-  Image(const std::string&, const Json::Value&);
+  Image(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~Image() = default;
   auto update() -> void override;
   void refresh(int /*signal*/) override;
@@ -88,6 +93,7 @@ class Image : public AModule {
   void delayWorker();
   void handleEvent();
   static std::unique_ptr<image::IStrategy> getStrategy(const std::string&, const Json::Value&,
+                                                       std::mutex&, std::list<pid_t>&,
                                                        const std::string&, Gtk::EventBox&, bool);
 
   std::chrono::milliseconds interval_;
