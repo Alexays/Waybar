@@ -27,14 +27,13 @@
 namespace waybar::modules::wlr {
 
 /* Truncate file name to 10 chars*/
-std::string truncate(std::string str, size_t width, bool show_ellipsis=true)
-{
-    if (str.length() > width)
-        if (show_ellipsis)
-            return str.substr(0, width) + "...";
-        else
-            return str.substr(0, width);
-    return str;
+std::string truncate(std::string str, size_t width, bool show_ellipsis = true) {
+  if (str.length() > width)
+    if (show_ellipsis)
+      return str.substr(0, width) + "...";
+    else
+      return str.substr(0, width);
+  return str;
 }
 
 /* Task class implementation */
@@ -928,15 +927,35 @@ void Taskbar::update_groups() {
     if (app_info) {
       name = app_info->get_display_name();
     }
-			name = truncate(name,7);
+
+		/*Parse the configuration
+		 * If truncate is set, truncate to value supplied
+		 * use app_id or name button TEXT
+		 * */
+		auto format = config_["format"].asString();
+
+		fmt::dynamic_format_arg_store<fmt::format_context> store;
+    store.push_back(fmt::arg("name", app_info->get_display_name()));
+    store.push_back(fmt::arg("app_id", app_id));
+		
+		if (format.find("{name") != std::string::npos) {
+    // s contains substr
+    name = fmt::vformat("{name}", store);
+		} else if (format.find("{app_id") != std::string::npos) {
+		name = fmt::vformat("{app_id}", store);
+		}
+		
+    if (config_["truncate"].isBool() && config_["truncate"].asBool() ){
+			name = truncate(name, config_["truncate-value"].asInt());
+		}
 
     if (group->tasks.size() > 1) {
       name += "(" + std::to_string(group->tasks.size()) + ")";
     }
+    
 
-    group->label.set_text(name);
-    
-    
+		group->label.set_text(name);
+
     group->label.show();
     group->content.pack_start(group->label, false, false, 0);
 
@@ -1022,6 +1041,34 @@ void Taskbar::update_groups() {
 
       (*next)->activate();
     });
+
+    /*
+     * Clicking a group activates the next window.
+     *
+     * If a window in the group is already active, activate the next
+     * window. Otherwise activate the first window.
+     *
+     * right-click to close
+     */
+    group->button.signal_button_release_event().connect(
+        [group_ptr = group.get()](GdkEventButton* event) -> bool {
+          if (event->button == GDK_BUTTON_SECONDARY) {
+            auto& tasks = group_ptr->tasks;
+
+            auto active =
+                std::find_if(tasks.begin(), tasks.end(), [](Task* task) { return task->active(); });
+
+            if (active != tasks.end()) {
+              (*active)->close();
+            } else {
+              tasks.front()->close();
+            }
+
+            return true;
+          }
+
+          return false;
+        });
 
     add_button(group->button);
 
@@ -1254,6 +1301,14 @@ void Taskbar::handle_workspace_removed(struct ext_workspace_handle_v1* handle) {
 }
 
 void Taskbar::add_button(Gtk::Button& bt) {
+	/*TODO
+	 * every app_id enters a group
+	 * if there is more than 1 item in the group append to the label
+	 * the quantity of elements
+	 * 
+	 * clicking on the button cycles through the list of tasks
+	 * */
+	 
   /* When "homogeneous" is enabled, let every child expand and fill so the buttons
    * divide the available width equally. Otherwise, only let the buttons expand to
    * fill the taskbar when "expand" is enabled and the bar is horizontal (see the
