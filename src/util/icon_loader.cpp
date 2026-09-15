@@ -187,8 +187,9 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_from_app_id_list(
     }
 
     auto lower_app_id = app_id;
-    std::ranges::transform(lower_app_id, lower_app_id.begin(),
-                           [](char c) { return std::tolower(c); });
+    std::ranges::transform(lower_app_id, lower_app_id.begin(), [](char c) {
+      return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    });
     app_info_ = get_desktop_app_info(lower_app_id);
     if (app_info_) {
       return app_info_;
