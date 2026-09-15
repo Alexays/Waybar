@@ -26,6 +26,17 @@
 
 namespace waybar::modules::wlr {
 
+/* Truncate file name to 10 chars*/
+std::string truncate(std::string str, size_t width, bool show_ellipsis=true)
+{
+    if (str.length() > width)
+        if (show_ellipsis)
+            return str.substr(0, width) + "...";
+        else
+            return str.substr(0, width);
+    return str;
+}
+
 /* Task class implementation */
 uint32_t Task::global_id = 0;
 
@@ -917,12 +928,15 @@ void Taskbar::update_groups() {
     if (app_info) {
       name = app_info->get_display_name();
     }
+			name = truncate(name,7);
 
     if (group->tasks.size() > 1) {
-      name += " (" + std::to_string(group->tasks.size()) + ")";
+      name += "(" + std::to_string(group->tasks.size()) + ")";
     }
 
     group->label.set_text(name);
+    
+    
     group->label.show();
     group->content.pack_start(group->label, false, false, 0);
 
