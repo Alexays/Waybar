@@ -26,6 +26,17 @@
 
 namespace waybar::modules::wlr {
 
+/* Truncate file name to 10 chars*/
+std::string truncate(std::string str, size_t width, bool show_ellipsis=true)
+{
+    if (str.length() > width)
+        if (show_ellipsis)
+            return str.substr(0, width) + "...";
+        else
+            return str.substr(0, width);
+    return str;
+}
+
 /* Task class implementation */
 uint32_t Task::global_id = 0;
 
@@ -390,6 +401,10 @@ void Task::handle_output_leave(struct wl_output* output) {
 }
 
 void Task::show_button() {
+  if (tbar_->group_apps()) {
+    return;
+  }
+
   if (button_visible_) {
     return;
   }
@@ -408,6 +423,10 @@ void Task::show_button() {
 }
 
 void Task::hide_button() {
+  if (tbar_->group_apps()) {
+    return;
+  }
+
   if (!button_visible_) {
     return;
   }
@@ -843,12 +862,183 @@ Taskbar::~Taskbar() {
   }
 }
 
+void Taskbar::clear_groups() {
+  for (auto& [app_id, group] : groups_) {
+    remove_button(group->button);
+  }
+
+  groups_.clear();
+}
+
+void Taskbar::update_groups() {
+  clear_groups();
+
+  std::map<std::string, std::vector<Task*>> grouped_tasks;
+
+  for (auto& task : tasks_) {
+    if (task->app_id().empty()) {
+      continue;
+    }
+
+    if (task->ignored() || task->squashed()) {
+      continue;
+    }
+
+    if (!all_outputs() && !task->on_bar_output()) {
+      continue;
+    }
+
+    if (config_["active-only"].isBool() && config_["active-only"].asBool() && !task->active()) {
+      continue;
+    }
+
+    grouped_tasks[task->app_id()].push_back(task.get());
+  }
+
+  for (auto& [app_id, tasks] : grouped_tasks) {
+    auto group = std::make_unique<TaskGroup>();
+
+    group->app_id = app_id;
+    group->tasks = std::move(tasks);
+
+    group->button.set_relief(Gtk::RELIEF_NONE);
+
+    group->content.set_orientation(bar_.orientation);
+    group->content.set_spacing(0);
+
+    const auto& first = *group->tasks.front();
+
+    /*
+     * Reuse the application's icon through the normal icon loader.
+     */
+    int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
+
+    auto app_info = IconLoader::get_app_info_from_app_id_list(first.app_id());
+
+    if (icon_loader_.image_load_icon(group->icon, app_info, icon_size)) {
+      group->icon.show();
+      group->content.pack_start(group->icon, false, false, 0);
+    }
+
+    /*
+     * Show the application name and number of windows.
+     */
+    std::string name = first.app_id();
+
+    if (app_info) {
+      name = app_info->get_display_name();
+    }
+			name = truncate(name,7);
+
+    if (group->tasks.size() > 1) {
+      name += "(" + std::to_string(group->tasks.size()) + ")";
+    }
+
+    group->label.set_text(name);
+    
+    
+    group->label.show();
+    group->content.pack_start(group->label, false, false, 0);
+
+    group->content.show();
+    group->button.add(group->content);
+
+    /*
+     * Group state.
+     */
+    bool active = false;
+    bool minimized = true;
+    bool maximized = false;
+    bool fullscreen = false;
+
+    for (auto* task : group->tasks) {
+      active |= task->active();
+      minimized &= task->minimized();
+      maximized |= task->maximized();
+      fullscreen |= task->fullscreen();
+    }
+
+    auto style = group->button.get_style_context();
+
+    if (active) {
+      style->add_class("active");
+    }
+
+    if (minimized) {
+      style->add_class("minimized");
+    }
+
+    if (maximized) {
+      style->add_class("maximized");
+    }
+
+    if (fullscreen) {
+      style->add_class("fullscreen");
+    }
+
+    /*
+     * Tooltip contains the titles of all windows in the group.
+     */
+    if (!config_["tooltip"].isBool() || config_["tooltip"].asBool()) {
+      std::string tooltip;
+
+      for (auto* task : group->tasks) {
+        if (!tooltip.empty()) {
+          tooltip += "\n";
+        }
+
+        tooltip += task->title();
+      }
+
+      group->button.set_tooltip_text(tooltip);
+    }
+
+    /*
+     * Clicking a group activates the next window.
+     *
+     * If a window in the group is already active, activate the next
+     * window. Otherwise activate the first window.
+     */
+    group->button.signal_clicked().connect([group_ptr = group.get()] {
+      auto& tasks = group_ptr->tasks;
+
+      if (tasks.empty()) {
+        return;
+      }
+
+      auto active =
+          std::find_if(tasks.begin(), tasks.end(), [](Task* task) { return task->active(); });
+
+      if (active == tasks.end()) {
+        tasks.front()->activate();
+        return;
+      }
+
+      auto next = std::next(active);
+
+      if (next == tasks.end()) {
+        next = tasks.begin();
+      }
+
+      (*next)->activate();
+    });
+
+    add_button(group->button);
+
+    group->button.show();
+
+    groups_.emplace(app_id, std::move(group));
+  }
+}
+
 void Taskbar::update() {
   for (auto& t : tasks_) {
     t->update();
   }
 
-  if (config_["sort-by-app-id"].asBool()) {
+  if (group_apps()) {
+    update_groups();
+  } else if (config_["sort-by-app-id"].asBool()) {
     std::stable_sort(tasks_.begin(), tasks_.end(),
                      [](const std::unique_ptr<Task>& a, const std::unique_ptr<Task>& b) {
                        return a->app_id() < b->app_id();
@@ -1102,6 +1292,11 @@ void Taskbar::remove_task(uint32_t id) {
   }
 
   tasks_.erase(it);
+
+  if (group_apps()) {
+    update_groups();
+  }
+
   update_bar_css_classes();
 }
 
@@ -1160,6 +1355,10 @@ bool Taskbar::show_output(struct wl_output* output) const {
 
 bool Taskbar::all_outputs() const {
   return config_["all-outputs"].isBool() && config_["all-outputs"].asBool();
+}
+
+bool Taskbar::group_apps() const {
+  return config_["group-apps"].isBool() && config_["group-apps"].asBool();
 }
 
 const IconLoader& Taskbar::icon_loader() const { return icon_loader_; }
