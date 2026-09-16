@@ -72,12 +72,17 @@ void Workspaces::init() {
 Json::Value Workspaces::createMonitorWorkspaceData(std::string const& name,
                                                    std::string const& monitor) {
   spdlog::trace("Creating persistent workspace: {} on monitor {}", name, monitor);
-  Json::Value workspaceData;
+  const auto selector = parseWorkspaceSelector(name);
 
+  Json::Value workspaceData;
+  // There is no IPC payload behind a persistent-workspaces entry, so the
+  // placeholder is keyed by the selector the user wrote until the live
+  // workspace shows up and createWorkspace() adopts its identity. The name is
+  // written in the shape Hyprland would report it, so that the Workspace
+  // constructor never has to know about selector syntax.
   workspaceData["address"] = name;
-  // No IPC payload here, so the kind comes from the configured selector.
-  workspaceData["type"] = workspaceTypeName(workspaceKindForAddress(name));
-  workspaceData["name"] = name;
+  workspaceData["type"] = workspaceTypeName(selector.kind);
+  workspaceData["name"] = workspaceRawName(selector);
   workspaceData["monitor"] = monitor;
   workspaceData["windows"] = 0;
   return workspaceData;
@@ -100,14 +105,27 @@ void Workspaces::createWorkspace(Json::Value const& workspace_data,
       });
 
   if (workspace == m_workspaces.end()) {
-    // A persistent-workspaces entry is addressed by the selector the user
-    // wrote, which on legacy Hyprland never matches the live workspace's
-    // numeric address (a configured "special" against address "-99").
-    const auto selector = workspace_data["name"].asString();
-    workspace =
-        std::ranges::find_if(m_workspaces, [&selector](std::unique_ptr<Workspace> const& w) {
-          return workspaceSelectorMatchesName(selector, w->name());
-        });
+    // A persistent-workspaces placeholder is keyed by the selector the user
+    // wrote, which is not an address and so never matches above. Match it on
+    // what it displays instead -- and on kind, because a named workspace `foo`
+    // and a special one `special:foo` both display `foo` and must stay
+    // distinct.
+    const auto rawName = workspace_data["name"].asString();
+    const auto displayName = workspaceDisplayName(rawName, identity->kind);
+    const auto isGeneric = isGenericSpecialName(rawName, identity->kind);
+    workspace = std::ranges::find_if(m_workspaces, [&](std::unique_ptr<Workspace> const& w) {
+      return w->isPersistentConfig() && w->kind() == identity->kind &&
+             w->isGenericSpecial() == isGeneric && w->name() == displayName;
+    });
+
+    if (workspace != m_workspaces.end()) {
+      // The placeholder now has a live workspace behind it. Adopt its identity,
+      // or every later address-keyed lookup -- clients, visibility, window
+      // counts, destroy -- keeps missing the button the user can see.
+      spdlog::debug("Persistent workspace {} adopting live address {}", (*workspace)->address(),
+                    workspaceAddress);
+      (*workspace)->setIdentity(*identity);
+    }
   }
 
   if (workspace != m_workspaces.end()) {
@@ -228,12 +246,13 @@ void Workspaces::initializeWorkspaces() {
   auto const clientsJson = m_ipc.getSocket1JsonReply("clients");
 
   for (const auto& workspaceJson : workspacesJson) {
-    std::string workspaceName = workspaceJson["name"].asString();
+    const auto identity = parseWorkspaceIdentity(workspaceJson);
+    const std::string workspaceName = workspaceJson["name"].asString();
+    const bool isSpecial = identity.has_value() && identity->kind == WorkspaceKind::Special;
     if ((allOutputs() || m_bar.output->name == workspaceJson["monitor"].asString()) &&
-        (!workspaceName.starts_with("special") || showSpecial()) &&
-        !isWorkspaceIgnored(workspaceName)) {
+        (!isSpecial || showSpecial()) && !isWorkspaceIgnored(workspaceName)) {
       m_workspacesToCreate.emplace_back(workspaceJson, clientsJson);
-    } else if (const auto identity = parseWorkspaceIdentity(workspaceJson); identity.has_value()) {
+    } else if (identity.has_value()) {
       extendOrphans(identity->address, clientsJson);
     }
   }
@@ -378,7 +397,7 @@ void Workspaces::onWorkspaceActivated(std::string const& payload) {
 
 void Workspaces::onSpecialWorkspaceActivated(std::string const& payload) {
   std::string name(begin(payload), begin(payload) + payload.find_first_of(','));
-  m_activeSpecialWorkspaceName = (!name.starts_with("special:") ? name : name.substr(8));
+  m_activeSpecialWorkspaceName = workspaceDisplayName(name, WorkspaceKind::Special);
 }
 
 void Workspaces::onWorkspaceDestroyed(std::string const& payload) {
@@ -408,7 +427,7 @@ void Workspaces::onWorkspaceCreated(std::string const& payload, Json::Value cons
       }
 
       if ((allOutputs() || m_bar.output->name == workspaceJson["monitor"].asString()) &&
-          (showSpecial() || !workspaceName.starts_with("special")) &&
+          (showSpecial() || currentIdentity->kind != WorkspaceKind::Special) &&
           !isDoubleSpecial(workspaceName)) {
         for (Json::Value const& rule : workspaceRules) {
           auto ruleWorkspaceName = rule.isMember("defaultName")
@@ -457,11 +476,8 @@ void Workspaces::onWorkspaceRenamed(std::string const& payload) {
   spdlog::debug("Workspace renamed: {}", payload);
   const auto [workspaceAddress, newName] = splitDoublePayload(payload);
 
-  for (auto& workspace : m_workspaces) {
-    if (workspace->address() == workspaceAddress) {
-      workspace->setName(newName);
-      break;
-    }
+  if (auto workspace = findWorkspace(workspaceAddress); workspace != m_workspaces.end()) {
+    (*workspace)->setName(workspaceDisplayName(newName, (*workspace)->kind()));
   }
   sortWorkspaces();
 }
@@ -476,12 +492,9 @@ void Workspaces::onWorkspaceIdChanged(std::string const& payload) {
     return;
   }
 
-  for (auto& workspace : m_workspaces) {
-    if (workspace->address() == oldAddress) {
-      spdlog::debug("Changing workspace address from {} to {}", oldAddress, newAddress);
-      workspace->setAddress(newAddress);
-      break;
-    }
+  if (auto workspace = findWorkspace(oldAddress); workspace != m_workspaces.end()) {
+    spdlog::debug("Changing workspace address from {} to {}", (*workspace)->address(), newAddress);
+    (*workspace)->setAddress(newAddress);
   }
 
   if (m_activeWorkspaceAddress == oldAddress) {
@@ -502,7 +515,7 @@ void Workspaces::onMonitorFocused(std::string const& payload) {
   for (Json::Value& monitor : m_ipc.getSocket1JsonReply("monitors")) {
     if (monitor["name"].asString() == monitorName) {
       const auto name = monitor["specialWorkspace"]["name"].asString();
-      m_activeSpecialWorkspaceName = !name.starts_with("special:") ? name : name.substr(8);
+      m_activeSpecialWorkspaceName = workspaceDisplayName(name, WorkspaceKind::Special);
     }
   }
 }
@@ -895,18 +908,30 @@ void Workspaces::removeWorkspacesToRemove() {
   m_workspacesToRemove.clear();
 }
 
+std::vector<std::unique_ptr<Workspace>>::iterator Workspaces::findWorkspace(
+    std::string const& addressOrSelector) {
+  auto workspace = std::ranges::find_if(m_workspaces, [&](std::unique_ptr<Workspace> const& w) {
+    return addressOrSelector == w->address();
+  });
+  if (workspace != m_workspaces.end()) {
+    return workspace;
+  }
+
+  // Not every identifier that reaches us is an address. A persistent-workspaces
+  // placeholder is keyed by its selector until it adopts a live identity, and
+  // legacy Hyprland identifies the generic special workspace as the literal
+  // string `special` in some payloads rather than by its id.
+  const auto selector = parseWorkspaceSelector(addressOrSelector);
+  return std::ranges::find_if(m_workspaces, [&](std::unique_ptr<Workspace> const& w) {
+    return w->kind() == selector.kind && w->isGenericSpecial() == selector.isGenericSpecial &&
+           w->name() == selector.name;
+  });
+}
+
 void Workspaces::removeWorkspace(std::string const& workspaceString) {
   spdlog::debug("Removing workspace {}", workspaceString);
 
-  // Prefer the stable address; fall back to the name for workspace selectors
-  // (e.g. "special:foo") that are not addresses.
-  auto workspace = std::ranges::find_if(
-      m_workspaces, [&](std::unique_ptr<Workspace>& x) { return workspaceString == x->address(); });
-  if (workspace == m_workspaces.end()) {
-    workspace = std::ranges::find_if(m_workspaces, [&](std::unique_ptr<Workspace>& x) {
-      return workspaceSelectorMatchesName(workspaceString, x->name());
-    });
-  }
+  auto workspace = findWorkspace(workspaceString);
 
   if (workspace == m_workspaces.end()) {
     // happens when a workspace on another monitor is destroyed

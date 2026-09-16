@@ -7,9 +7,13 @@
 #include "modules/hyprland/workspace_identity.hpp"
 
 namespace hyprland = waybar::modules::hyprland;
+using hyprland::isGenericSpecialName;
 using hyprland::parseWorkspaceIdentity;
+using hyprland::parseWorkspaceSelector;
+using hyprland::workspaceDisplayName;
 using hyprland::WorkspaceKind;
-using hyprland::workspaceSelectorMatchesName;
+using hyprland::workspaceRawName;
+using hyprland::WorkspaceSelector;
 
 TEST_CASE("addressable numbered workspace", "[workspace_identity]") {
   Json::Value ws;
@@ -98,16 +102,104 @@ TEST_CASE("unusable workspace payload", "[workspace_identity]") {
   REQUIRE_FALSE(parseWorkspaceIdentity(Json::Value::nullRef).has_value());
 }
 
-TEST_CASE("selector matches a workspace display name", "[workspace_identity]") {
-  // A configured "special" must dedupe against the live special workspace,
-  // whose address is "-99" on legacy Hyprland and so never matches.
-  REQUIRE(workspaceSelectorMatchesName("special", "special"));
-  REQUIRE(workspaceSelectorMatchesName("special:spotify", "spotify"));
-  REQUIRE(workspaceSelectorMatchesName("name:web", "web"));
-  REQUIRE(workspaceSelectorMatchesName("web", "web"));
+TEST_CASE("legacy workspace merely named like the special namespace", "[workspace_identity]") {
+  // `specialfoo` is not under `special:`, so it is an ordinary named workspace.
+  Json::Value ws;
+  ws["id"] = -1377;
+  ws["name"] = "specialfoo";
 
-  REQUIRE_FALSE(workspaceSelectorMatchesName("special:spotify", "special:spotify"));
-  REQUIRE_FALSE(workspaceSelectorMatchesName("special:", ""));
-  REQUIRE_FALSE(workspaceSelectorMatchesName("", ""));
-  REQUIRE_FALSE(workspaceSelectorMatchesName("web", "code"));
+  auto identity = parseWorkspaceIdentity(ws);
+
+  REQUIRE(identity.has_value());
+  REQUIRE(identity->kind == WorkspaceKind::Named);
+}
+
+TEST_CASE("display name strips exactly one special prefix", "[workspace_identity]") {
+  REQUIRE(workspaceDisplayName("special:spotify", WorkspaceKind::Special) == "spotify");
+
+  // A special workspace the user named `special:123` is reported by Hyprland as
+  // `special:special:123`, so only the outer prefix belongs to the namespace.
+  REQUIRE(workspaceDisplayName("special:special:123", WorkspaceKind::Special) == "special:123");
+
+  // The generic special workspace carries no name after the namespace.
+  REQUIRE(workspaceDisplayName("special", WorkspaceKind::Special) == "special");
+
+  // A special workspace the user named `special` is reported as
+  // `special:special` and displays as `special` -- same text, different
+  // workspace. isGenericSpecialName() is what keeps them apart.
+  REQUIRE(workspaceDisplayName("special:special", WorkspaceKind::Special) == "special");
+  REQUIRE(isGenericSpecialName("special", WorkspaceKind::Special));
+  REQUIRE_FALSE(isGenericSpecialName("special:special", WorkspaceKind::Special));
+  REQUIRE_FALSE(isGenericSpecialName("special", WorkspaceKind::Named));
+}
+
+TEST_CASE("display name never strips the name: selector prefix", "[workspace_identity]") {
+  // `name:` is selector syntax; Hyprland never prepends it to a reported name.
+  // A workspace actually called `name:foo` must keep that name.
+  REQUIRE(workspaceDisplayName("name:foo", WorkspaceKind::Named) == "name:foo");
+  REQUIRE(workspaceDisplayName("name:foo", WorkspaceKind::Numbered) == "name:foo");
+
+  // A special workspace the user named `name:foo` is reported as
+  // `special:name:foo`: the namespace goes, the rest stays.
+  REQUIRE(workspaceDisplayName("special:name:foo", WorkspaceKind::Special) == "name:foo");
+}
+
+TEST_CASE("selectors split into kind and name", "[workspace_identity]") {
+  auto selector = parseWorkspaceSelector("7");
+  REQUIRE(selector.kind == WorkspaceKind::Numbered);
+  REQUIRE(selector.name == "7");
+
+  selector = parseWorkspaceSelector("web");
+  REQUIRE(selector.kind == WorkspaceKind::Named);
+  REQUIRE(selector.name == "web");
+
+  selector = parseWorkspaceSelector("name:web");
+  REQUIRE(selector.kind == WorkspaceKind::Named);
+  REQUIRE(selector.name == "web");
+
+  selector = parseWorkspaceSelector("special");
+  REQUIRE(selector.kind == WorkspaceKind::Special);
+  REQUIRE(selector.name == "special");
+
+  selector = parseWorkspaceSelector("special:spotify");
+  REQUIRE(selector.kind == WorkspaceKind::Special);
+  REQUIRE(selector.name == "spotify");
+
+  // A named workspace `foo` and a special one `special:foo` display the same
+  // name; only the kind separates them.
+  REQUIRE(parseWorkspaceSelector("foo").kind == WorkspaceKind::Named);
+  REQUIRE(parseWorkspaceSelector("special:foo").kind == WorkspaceKind::Special);
+  REQUIRE(parseWorkspaceSelector("foo").name == parseWorkspaceSelector("special:foo").name);
+
+  // `specialfoo` is not under the special namespace.
+  REQUIRE(parseWorkspaceSelector("specialfoo").kind == WorkspaceKind::Named);
+}
+
+TEST_CASE("a bare selector prefix selects nothing", "[workspace_identity]") {
+  // Stripping these would leave an empty name that matches every workspace of
+  // the kind, so they are left intact and simply match nothing.
+  REQUIRE(parseWorkspaceSelector("special:").name == "special:");
+  REQUIRE(parseWorkspaceSelector("name:").name == "name:");
+  REQUIRE(parseWorkspaceSelector("").name.empty());
+}
+
+TEST_CASE("raw name round-trips through the display name", "[workspace_identity]") {
+  for (const auto* selectorText : {"7", "web", "name:web", "special", "special:spotify",
+                                   "special:special", "special:name:foo", "specialfoo"}) {
+    const auto selector = parseWorkspaceSelector(selectorText);
+    const auto rawName = workspaceRawName(selector);
+    INFO("selector: " << selectorText << " raw: " << rawName);
+    REQUIRE(workspaceDisplayName(rawName, selector.kind) == selector.name);
+  }
+}
+
+TEST_CASE("raw name restores the namespace Hyprland would report", "[workspace_identity]") {
+  REQUIRE(workspaceRawName(parseWorkspaceSelector("special:spotify")) == "special:spotify");
+  REQUIRE(workspaceRawName(parseWorkspaceSelector("special")) == "special");
+  REQUIRE(workspaceRawName(parseWorkspaceSelector("name:web")) == "web");
+  REQUIRE(workspaceRawName(parseWorkspaceSelector("7")) == "7");
+
+  // A configured `special:special` is the user's own workspace named `special`,
+  // not the generic one, so its raw name keeps the namespace.
+  REQUIRE(workspaceRawName(parseWorkspaceSelector("special:special")) == "special:special");
 }

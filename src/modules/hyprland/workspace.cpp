@@ -46,21 +46,15 @@ Workspace::Workspace(const Json::Value& workspace_data, Workspaces& workspace_ma
                      const Json::Value& clients_data)
     : m_workspaceManager(workspace_manager),
       m_identity(parseWorkspaceIdentity(workspace_data).value_or(WorkspaceIdentity{})),
-      m_name(workspace_data["name"].asString()),
+      m_name(workspaceDisplayName(workspace_data["name"].asString(), m_identity.kind)),
       m_output(workspace_data["monitor"].asString()),  // TODO:allow using monitor desc
       m_windows(workspace_data["windows"].asInt()),
       m_isActive(true),
       m_isPersistentRule(workspace_data["persistent-rule"].asBool()),
       m_isPersistentConfig(workspace_data["persistent-config"].asBool()),
       m_ipc(IPC::inst()) {
-  if (m_name.starts_with("name:")) {
-    m_name = m_name.substr(5);
-  } else if (m_identity.kind == WorkspaceKind::Special) {
-    m_isSpecial = true;
-    if (m_name.starts_with("special:")) {
-      m_name = m_name.substr(8);
-    }
-  }
+  m_isSpecial = m_identity.kind == WorkspaceKind::Special;
+  m_isGenericSpecial = isGenericSpecialName(workspace_data["name"].asString(), m_identity.kind);
 
   m_button.add_events(Gdk::BUTTON_PRESS_MASK);
   m_button.add_events(Gdk::ENTER_NOTIFY_MASK | Gdk::LEAVE_NOTIFY_MASK);
@@ -219,7 +213,7 @@ bool Workspace::handleClicked(GdkEventButton* bt) const {
         } else {
           IPC::dispatch("workspace", "name:" + name());
         }
-      } else if (name() != "special") {  // named special
+      } else if (!isGenericSpecial()) {  // named special
         IPC::dispatch("togglespecialworkspace", name());
       } else {  // special
         IPC::dispatch("togglespecialworkspace", "");
@@ -250,7 +244,14 @@ void Workspace::initializeWindowMap(const Json::Value& clients_data) {
   m_windowMap.clear();
   for (const auto& client : clients_data) {
     const auto clientWorkspace = parseWorkspaceIdentity(client["workspace"]);
-    if (clientWorkspace.has_value() && clientWorkspace->address == address()) {
+    if (!clientWorkspace.has_value()) {
+      // Logged at debug, not warn: this loop runs once per workspace, so a
+      // malformed client would otherwise be reported once per workspace too.
+      spdlog::debug("Client {} carries no workspace identity; not assigning it to a workspace",
+                    client["address"].asString());
+      continue;
+    }
+    if (clientWorkspace->address == address()) {
       insertWindow({client});
     }
   }
