@@ -417,8 +417,9 @@ void Workspaces::onWorkspaceCreated(std::string const& payload, Json::Value cons
 
   for (auto workspaceJson : workspacesJson) {
     const auto currentIdentity = parseWorkspaceIdentity(workspaceJson);
-    if (currentIdentity.has_value() && currentIdentity->address == workspaceAddress) {
-      std::string workspaceName = workspaceJson["name"].asString();
+    std::string workspaceName = workspaceJson["name"].asString();
+    if (currentIdentity.has_value() &&
+        workspaceMatchesIdentifier(workspaceAddress, *currentIdentity, workspaceName)) {
       // This workspace name is more up-to-date than the one in the event payload.
       if (isWorkspaceIgnored(workspaceName)) {
         spdlog::trace("Not creating workspace because it is ignored: address={} name={}",
@@ -857,7 +858,7 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value& config) -> vo
     auto posStr = workspaceTaskbar["active-window-position"].asString();
     try {
       m_activeWindowPosition =
-        util::parseStringToEnum<ActiveWindowPosition>(posStr, m_activeWindowPositionMap);
+          util::parseStringToEnum<ActiveWindowPosition>(posStr, m_activeWindowPositionMap);
     } catch (const std::invalid_argument& e) {
       spdlog::warn(
           "Invalid string representation for active-window-position. Falling back to 'none'.");

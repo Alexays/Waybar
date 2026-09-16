@@ -12,6 +12,7 @@ using hyprland::parseWorkspaceIdentity;
 using hyprland::parseWorkspaceSelector;
 using hyprland::workspaceDisplayName;
 using hyprland::WorkspaceKind;
+using hyprland::workspaceMatchesIdentifier;
 using hyprland::workspaceRawName;
 using hyprland::WorkspaceSelector;
 
@@ -202,4 +203,42 @@ TEST_CASE("raw name restores the namespace Hyprland would report", "[workspace_i
   // A configured `special:special` is the user's own workspace named `special`,
   // not the generic one, so its raw name keeps the namespace.
   REQUIRE(workspaceRawName(parseWorkspaceSelector("special:special")) == "special:special");
+}
+
+TEST_CASE("event identifiers resolve to the workspace they name", "[workspace_identity]") {
+  // Hyprland announces a workspace by the identifier it was created with, which
+  // is not always the address `workspaces` reports. Observed on 0.56.0:
+  //   createworkspacev2>>name:web,web              -> address "web"
+  //   createworkspacev2>>special:newspecial,...    -> address "special:newspecial"
+  // so a named workspace is announced by selector and reported by address.
+  Json::Value named;
+  named["address"] = "web";
+  named["type"] = "named";
+  named["name"] = "web";
+  const auto namedIdentity = parseWorkspaceIdentity(named);
+  REQUIRE(namedIdentity.has_value());
+
+  REQUIRE(workspaceMatchesIdentifier("name:web", *namedIdentity, "web"));
+  REQUIRE(workspaceMatchesIdentifier("web", *namedIdentity, "web"));
+  REQUIRE_FALSE(workspaceMatchesIdentifier("name:other", *namedIdentity, "web"));
+  // A special workspace displaying the same name is a different workspace.
+  REQUIRE_FALSE(workspaceMatchesIdentifier("special:web", *namedIdentity, "web"));
+
+  Json::Value special;
+  special["address"] = "special:newspecial";
+  special["type"] = "special";
+  special["name"] = "special:newspecial";
+  const auto specialIdentity = parseWorkspaceIdentity(special);
+  REQUIRE(specialIdentity.has_value());
+
+  REQUIRE(workspaceMatchesIdentifier("special:newspecial", *specialIdentity, "special:newspecial"));
+  REQUIRE_FALSE(workspaceMatchesIdentifier("newspecial", *specialIdentity, "special:newspecial"));
+
+  Json::Value numbered;
+  numbered["address"] = "3";
+  numbered["type"] = "numbered";
+  numbered["name"] = "3";
+  const auto numberedIdentity = parseWorkspaceIdentity(numbered);
+  REQUIRE(workspaceMatchesIdentifier("3", *numberedIdentity, "3"));
+  REQUIRE_FALSE(workspaceMatchesIdentifier("4", *numberedIdentity, "3"));
 }
