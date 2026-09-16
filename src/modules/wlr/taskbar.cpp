@@ -919,41 +919,51 @@ void Taskbar::update_groups() {
       group->content.pack_start(group->icon, false, false, 0);
     }
 
-    /*
-     * Show the application name and number of windows.
-     */
-    std::string name = first.app_id();
+/*
+ * Show the application name / title and number of windows.
+ */
+std::string name     = first.app_id();          // safe fallback
+std::string title    = first.title();
 
-    if (app_info) {
-      name = app_info->get_display_name();
+
+if (app_info) {
+  name = app_info->get_display_name();
+}
+
+auto format = config_["format"].asString();
+if (!format.empty()) {
+  fmt::dynamic_format_arg_store<fmt::format_context> store;
+  store.push_back(fmt::arg("name", name));
+  store.push_back(fmt::arg("app_id", app_id));
+  store.push_back(fmt::arg("title", title));
+
+  try {
+    if (format.find("{app_id}") != std::string::npos) {
+      name = fmt::vformat("{app_id}", store);
+    } else if (format.find("{name}") != std::string::npos) {
+      name = fmt::vformat("{name}", store);
+    } else if (format.find("{title}") != std::string::npos){
+			name = fmt::vformat("{title}", store);
+		} else {
+      // format string contains neither placeholder → keep the fallback name
     }
+  } catch (const fmt::format_error&) {
+    // keep the fallback name if the format string is invalid
+  }
+}
 
-		/*Parse the configuration
-		 * If truncate is set, truncate to value supplied
-		 * use app_id or name button TEXT
-		 * */
-		auto format = config_["format"].asString();
+if (config_["truncate"].isBool() && config_["truncate"].asBool()) {
+  int max_len = config_["truncate-value"].isInt()
+                    ? config_["truncate-value"].asInt()
+                    : 20;                     // sensible default
+  name = truncate(name, max_len);
+}
 
-		fmt::dynamic_format_arg_store<fmt::format_context> store;
-    store.push_back(fmt::arg("name", app_info->get_display_name()));
-    store.push_back(fmt::arg("app_id", app_id));
-		
-		if (format.find("{app_id}") != std::string::npos) {
-    name = fmt::vformat("{app_id}", store);
-		} else if (format.find("{name") != std::string::npos) {
-		name = fmt::vformat("{name}", store);
-		}
-		
-    if (config_["truncate"].isBool() && config_["truncate"].asBool() ){
-			name = truncate(name, config_["truncate-value"].asInt());
-		}
+if (group->tasks.size() > 1) {
+  name += "(" + std::to_string(group->tasks.size()) + ")";
+}
 
-    if (group->tasks.size() > 1) {
-      name += "(" + std::to_string(group->tasks.size()) + ")";
-    }
-    
-
-		group->label.set_text(name);
+group->label.set_text(name);
 
     group->label.show();
     group->content.pack_start(group->label, false, false, 0);
