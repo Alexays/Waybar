@@ -76,6 +76,14 @@ bool isGenericSpecialName(const std::string& rawName, WorkspaceKind kind);
 // https://wiki.hyprland.org/Configuring/Workspace-Rules/#workspace-selectors
 WorkspaceSelector parseWorkspaceSelector(const std::string& selector);
 
+// True when `identifier` -- the workspace field of an IPC event payload --
+// refers to the workspace whose IPC entry parsed to `identity` and reported
+// `rawName`. Compares the address first, then falls back to selector syntax,
+// because Hyprland announces a named workspace by the `name:foo` selector it
+// was created with while reporting its address as `foo`.
+bool workspaceMatchesIdentifier(const std::string& identifier, const WorkspaceIdentity& identity,
+                                const std::string& rawName);
+
 // The raw IPC name Hyprland would report for the workspace `selector` selects.
 // Inverse of workspaceDisplayName(), used to build the placeholder payload for
 // a persistent-workspaces entry so that the Workspace constructor only ever

@@ -123,6 +123,21 @@ WorkspaceSelector parseWorkspaceSelector(const std::string& selector) {
   return {kind, selector, isGenericSpecialName(selector, kind)};
 }
 
+bool workspaceMatchesIdentifier(const std::string& identifier, const WorkspaceIdentity& identity,
+                                const std::string& rawName) {
+  if (identity.address == identifier) {
+    return true;
+  }
+  // Hyprland's workspace events carry the identifier the workspace was created
+  // with, not the address `workspaces` reports. They agree for numbered and
+  // special workspaces, but a named one created as `name:web` is announced as
+  // `name:web` and reported at address `web`, so the raw comparison misses it.
+  const auto selector = parseWorkspaceSelector(identifier);
+  return identity.kind == selector.kind &&
+         isGenericSpecialName(rawName, identity.kind) == selector.isGenericSpecial &&
+         workspaceDisplayName(rawName, identity.kind) == selector.name;
+}
+
 std::string workspaceRawName(const WorkspaceSelector& selector) {
   if (selector.kind == WorkspaceKind::Special && !selector.isGenericSpecial) {
     return std::string{kSpecialPrefix} + selector.name;
