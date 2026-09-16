@@ -114,6 +114,12 @@ void waybar::modules::Battery::refreshBatteries() {
     check_map[bat.first] = false;
   }
 
+  fs::path named_adapter;
+  fs::path mains_adapter;
+  fs::path usb_adapter;
+  fs::path online_adapter;
+  fs::path status_adapter;
+
   try {
     for (auto& node : fs::directory_iterator(data_dir_)) {
       if (!fs::is_directory(node)) {
@@ -154,14 +160,41 @@ void waybar::modules::Battery::refreshBatteries() {
           }
         }
       }
-      auto adap_defined = config_["adapter"].isString();
-      if (((adap_defined && dir_name == config_["adapter"].asString()) || !adap_defined) &&
-          (fs::exists(node.path() / "online") || fs::exists(node.path() / "status"))) {
-        adapter_ = node.path();
+      if (config_["adapter"].isString()) {
+        if (dir_name == config_["adapter"].asString() &&
+            (fs::exists(node.path() / "online") || fs::exists(node.path() / "status"))) {
+          named_adapter = node.path();
+        }
+      } else {
+        std::string type;
+        if (fs::exists(node.path() / "online")) {
+          std::ifstream{node.path() / "type"} >> type;
+          if (type == "Mains" && mains_adapter.empty()) {
+            mains_adapter = node.path();
+          } else if (type.starts_with("USB") && usb_adapter.empty()) {
+            usb_adapter = node.path();
+          } else if (online_adapter.empty()) {
+            online_adapter = node.path();
+          }
+        } else if (status_adapter.empty() && fs::exists(node.path() / "status")) {
+          status_adapter = node.path();
+        }
       }
     }
   } catch (fs::filesystem_error& e) {
     spdlog::warn("Battery directory tracking failed: {}", e.what());
+  }
+
+  if (!named_adapter.empty()) {
+    adapter_ = named_adapter;
+  } else if (!mains_adapter.empty()) {
+    adapter_ = mains_adapter;
+  } else if (!usb_adapter.empty()) {
+    adapter_ = usb_adapter;
+  } else if (!online_adapter.empty()) {
+    adapter_ = online_adapter;
+  } else if (!status_adapter.empty()) {
+    adapter_ = status_adapter;
   }
   if (warnFirstTime_ && batteries_.empty()) {
     if (config_["bat"].isString()) {
