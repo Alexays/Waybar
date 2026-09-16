@@ -593,6 +593,7 @@ void Item::menuProbeReady(Glib::RefPtr<Gio::AsyncResult>& result, const std::str
   try {
     proxy_->get_connection()->call_finish(result);
     has_dbus_menu_ = true;
+    makeMenu();
   } catch (const Glib::Error&) {
   }
 }
