@@ -8,6 +8,16 @@ namespace waybar::modules::hyprland {
 
 namespace {
 
+constexpr std::string_view kSpecialPrefix{"special:"};
+constexpr std::string_view kNamePrefix{"name:"};
+constexpr std::string_view kGenericSpecial{"special"};
+
+// Hyprland's special namespace is exactly `special` or anything under
+// `special:`. A workspace merely *named* `specialfoo` is not special.
+bool isSpecialName(std::string_view name) {
+  return name == kGenericSpecial || name.starts_with(kSpecialPrefix);
+}
+
 std::optional<int> parseNumber(const std::string& value) {
   try {
     return std::stoi(value);
@@ -52,7 +62,7 @@ std::optional<WorkspaceIdentity> parseWorkspaceIdentity(const Json::Value& works
     if (id > 0) {
       identity.kind = WorkspaceKind::Numbered;
       identity.number = id;
-    } else if (workspace["name"].asString().starts_with("special")) {
+    } else if (isSpecialName(workspace["name"].asString())) {
       identity.kind = WorkspaceKind::Special;
     } else {
       identity.kind = WorkspaceKind::Named;
@@ -70,16 +80,16 @@ const char* workspaceTypeName(WorkspaceKind kind) {
     case WorkspaceKind::Special:
       return "special";
     case WorkspaceKind::Named:
-      break;
+      return "named";
   }
+  // Unreachable: the switch covers every WorkspaceKind, so -Wswitch fails the
+  // build if an enumerator is added without a case above. This exists only to
+  // satisfy -Wreturn-type.
   return "named";
 }
 
 WorkspaceKind workspaceKindForAddress(const std::string& address) {
-  // Loose "special" prefix, not "special:": a bare `special` is a valid
-  // persistent-workspaces selector, and the legacy branch above matches names
-  // the same way.
-  if (address.starts_with("special")) {
+  if (isSpecialName(address)) {
     return WorkspaceKind::Special;
   }
   if (!address.empty() &&
@@ -89,28 +99,35 @@ WorkspaceKind workspaceKindForAddress(const std::string& address) {
   return WorkspaceKind::Named;
 }
 
-bool workspaceSelectorMatchesName(const std::string& selector, const std::string& name) {
-  // TODO: support the rest of the selector grammar.
-  // https://wiki.hyprland.org/Configuring/Workspace-Rules/#workspace-selectors
-  std::string_view wanted{selector};
-  if (wanted.starts_with("special:")) {
-    wanted.remove_prefix(std::string_view{"special:"}.size());
-  } else if (wanted.starts_with("name:")) {
-    wanted.remove_prefix(std::string_view{"name:"}.size());
+std::string workspaceDisplayName(const std::string& rawName, WorkspaceKind kind) {
+  if (kind == WorkspaceKind::Special && rawName.starts_with(kSpecialPrefix)) {
+    return rawName.substr(kSpecialPrefix.size());
   }
-  return !wanted.empty() && wanted == name;
+  return rawName;
 }
 
-int workspaceKindRank(WorkspaceKind kind) {
-  switch (kind) {
-    case WorkspaceKind::Numbered:
-      return 0;
-    case WorkspaceKind::Named:
-      return 1;
-    case WorkspaceKind::Special:
-      return 2;
+bool isGenericSpecialName(const std::string& rawName, WorkspaceKind kind) {
+  return kind == WorkspaceKind::Special && rawName == kGenericSpecial;
+}
+
+WorkspaceSelector parseWorkspaceSelector(const std::string& selector) {
+  // A bare prefix selects nothing, so it is left alone rather than yielding an
+  // empty name that would match every workspace of that kind.
+  if (selector.size() > kSpecialPrefix.size() && selector.starts_with(kSpecialPrefix)) {
+    return {WorkspaceKind::Special, selector.substr(kSpecialPrefix.size())};
   }
-  return 1;
+  if (selector.size() > kNamePrefix.size() && selector.starts_with(kNamePrefix)) {
+    return {WorkspaceKind::Named, selector.substr(kNamePrefix.size())};
+  }
+  const auto kind = workspaceKindForAddress(selector);
+  return {kind, selector, isGenericSpecialName(selector, kind)};
+}
+
+std::string workspaceRawName(const WorkspaceSelector& selector) {
+  if (selector.kind == WorkspaceKind::Special && !selector.isGenericSpecial) {
+    return std::string{kSpecialPrefix} + selector.name;
+  }
+  return selector.name;
 }
 
 bool workspaceLessById(const WorkspaceIdentity& a, const std::string& aName,
