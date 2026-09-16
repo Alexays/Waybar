@@ -938,11 +938,10 @@ void Taskbar::update_groups() {
     store.push_back(fmt::arg("name", app_info->get_display_name()));
     store.push_back(fmt::arg("app_id", app_id));
 		
-		if (format.find("{name") != std::string::npos) {
-    // s contains substr
-    name = fmt::vformat("{name}", store);
-		} else if (format.find("{app_id") != std::string::npos) {
-		name = fmt::vformat("{app_id}", store);
+		if (format.find("{app_id}") != std::string::npos) {
+    name = fmt::vformat("{app_id}", store);
+		} else if (format.find("{name") != std::string::npos) {
+		name = fmt::vformat("{name}", store);
 		}
 		
     if (config_["truncate"].isBool() && config_["truncate"].asBool() ){
