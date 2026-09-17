@@ -183,16 +183,10 @@ Task::Task(const waybar::Bar& bar, const Json::Value& config, Taskbar* tbar,
       format_tooltip_ = "{title}";
   }
 
-  /* Handle click events if configured */
-  if (config_["on-click"].isString() || config_["on-click-middle"].isString() ||
-      config_["on-click-right"].isString()) {
-  }
-
-  button.add_events(Gdk::BUTTON_PRESS_MASK);
-  button.signal_button_release_event().connect(sigc::mem_fun(*this, &Task::handle_clicked), false);
-
-  button.signal_motion_notify_event().connect(sigc::mem_fun(*this, &Task::handle_motion_notify),
-                                              false);
+  button.add_events(Gdk::BUTTON_RELEASE_MASK);
+  button.signal_button_release_event().connect(
+      sigc::mem_fun(*this, &Task::handle_button_release), false);
+  button.signal_clicked().connect(sigc::mem_fun(*this, &Task::handle_primary_clicked));
 
   button.drag_source_set(target_entries, Gdk::BUTTON1_MASK, Gdk::ACTION_MOVE);
   button.drag_dest_set(target_entries, Gtk::DEST_DEFAULT_ALL, Gdk::ACTION_MOVE);
@@ -510,26 +504,25 @@ void Task::handle_closed() {
   tbar_->remove_task(id_);
 }
 
-bool Task::handle_clicked(GdkEventButton* bt) {
-  /* filter out additional events for double/triple clicks */
-  if (bt->type == GDK_BUTTON_PRESS) {
-    /* save where the button press occurred in case it becomes a drag */
-    drag_start_button = bt->button;
-    drag_start_x = bt->x;
-    drag_start_y = bt->y;
-  }
+void Task::handle_primary_clicked() {
+  if (config_["on-click"].isString()) handle_action(config_["on-click"].asString());
+}
+
+bool Task::handle_button_release(GdkEventButton* bt) {
+  if (bt->button == 1) return false;
 
   std::string action;
-  if (config_["on-click"].isString() && bt->button == 1)
-    action = config_["on-click"].asString();
-  else if (config_["on-click-middle"].isString() && bt->button == 2)
+  if (config_["on-click-middle"].isString() && bt->button == 2)
     action = config_["on-click-middle"].asString();
   else if (config_["on-click-right"].isString() && bt->button == 3)
     action = config_["on-click-right"].asString();
 
-  if (action.empty())
-    return true;
-  else if (action == "activate")
+  if (!action.empty()) handle_action(action);
+  return !action.empty();
+}
+
+void Task::handle_action(const std::string& action) {
+  if (action == "activate")
     activate();
   else if (action == "minimize") {
     set_minimize_hint();
@@ -550,23 +543,6 @@ bool Task::handle_clicked(GdkEventButton* bt) {
     close();
   else
     spdlog::warn("Unknown action {}", action);
-
-  drag_start_button = -1;
-  return true;
-}
-
-bool Task::handle_motion_notify(GdkEventMotion* mn) {
-  if (drag_start_button == -1) return false;
-
-  if (button.drag_check_threshold(drag_start_x, drag_start_y, mn->x, mn->y)) {
-    /* start drag in addition to other assigned action */
-    auto target_list = Gtk::TargetList::create(target_entries);
-    auto refptr = Glib::RefPtr<Gtk::TargetList>(target_list);
-    auto drag_context =
-        button.drag_begin(refptr, Gdk::DragAction::ACTION_MOVE, drag_start_button, (GdkEvent*)mn);
-  }
-
-  return false;
 }
 
 void Task::handle_drag_data_get(const Glib::RefPtr<Gdk::DragContext>& context,
