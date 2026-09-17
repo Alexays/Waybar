@@ -14,6 +14,7 @@ test_src = files(
     'JsonParser.cpp',
     'SafeSignal.cpp',
     'format.cpp',
+    'string.cpp',
     'sleeper_thread.cpp',
     'command.cpp',
     'command_line_stream.cpp',
