@@ -97,11 +97,13 @@ auto waybar::modules::Disk::update() -> void {
           label += separator_;
         }
 
-        label += fmt::format(fmt::runtime(disk_format), stats.f_bavail * 100 / stats.f_blocks, fmt::arg("free", free),
+        label += fmt::format(fmt::runtime(disk_format), stats.f_bavail * 100 / stats.f_blocks,
+                             fmt::arg("free", free),
                              fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks),
                              fmt::arg("used", used), fmt::arg("percentage_used", percentage_used),
                              fmt::arg("total", total), fmt::arg("path", path),
-                             fmt::arg("specific_free", specific_free), fmt::arg("specific_used", specific_used),
+                             fmt::arg("specific_free", specific_free),
+                             fmt::arg("specific_used", specific_used),
                              fmt::arg("specific_total", specific_total));
 
         had_valid_disk = true;
