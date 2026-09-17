@@ -174,6 +174,7 @@ void Group::hide_group() {
 }
 
 bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
+  handleCrossingEvent(e, true);
   if (!click_to_reveal) {
     if (reveal_delay > 0) {
       if (reveal_timeout_.connected()) {
@@ -194,6 +195,7 @@ bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
 }
 
 bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
+  handleCrossingEvent(e, false);
   if (!click_to_reveal && e->detail != GDK_NOTIFY_INFERIOR) {
     if (reveal_delay > 0 && reveal_timeout_.connected()) {
       reveal_timeout_.disconnect();
