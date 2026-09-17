@@ -14,8 +14,9 @@
 namespace waybar {
 
 AGraph::AGraph(const Json::Value& config, const std::string& name, const std::string& id,
-               uint16_t interval, bool enable_click, bool enable_scroll)
-    : AModule(config, name, id,
+               std::mutex& reap_mtx, std::list<pid_t>& reap, uint16_t interval,
+	       bool enable_click, bool enable_scroll)
+    : AModule(config, name, id, reap_mtx, reap, 
               config["format-alt"].isString() || config["menu"].isString() || enable_click,
               enable_scroll),
       interval_(

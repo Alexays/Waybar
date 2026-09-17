@@ -2,15 +2,17 @@
 
 #include <gdkmm/pixbuf.h>
 #include <spdlog/spdlog.h>
+
 #include <regex>
 #include <string>
 
 namespace waybar {
 
 AIconLabel::AIconLabel(const Json::Value& config, const std::string& name, const std::string& id,
-                       const std::string& format, uint16_t interval, bool ellipsize,
-                       bool enable_click, bool enable_scroll)
-    : ALabel(config, name, id, format, interval, ellipsize, enable_click, enable_scroll) {
+                       const std::string& format, std::mutex& reap_mtx, std::list<pid_t>& reap,
+                       uint16_t interval, bool ellipsize, bool enable_click, bool enable_scroll)
+    : ALabel(config, name, id, format, reap_mtx, reap, interval, ellipsize, enable_click,
+             enable_scroll) {
   if (config["icon-size"].isUInt()) {
     app_icon_size_ = config["icon-size"].asUInt();
   }
@@ -74,7 +76,7 @@ std::tuple<std::string, std::string> AIconLabel::extractIcon(const std::string& 
       label_result = std::regex_replace(input, clean_label_pattern, "");
     }
   } catch (const std::exception& e) {
-      spdlog::warn("Error while parsing icon from label. {}", e.what());
+    spdlog::warn("Error while parsing icon from label. {}", e.what());
   }
 
   return std::make_tuple(icon_result, label_result);

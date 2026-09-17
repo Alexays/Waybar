@@ -5,8 +5,9 @@
 const std::map<std::string, waybar::modules::cava::CavaRaw::Action>
     waybar::modules::cava::CavaRaw::actionMap_{{"mode", &CavaRaw::pauseResume}};
 
-waybar::modules::cava::CavaRaw::CavaRaw(const std::string& id, const Json::Value& config)
-    : ALabel(config, "cava", id, "{}", 60, false, false, false),
+waybar::modules::cava::CavaRaw::CavaRaw(const std::string& id, const Json::Value& config,
+                                        std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "cava", id, "{}", reap_mtx, reap, 60, false, false, false),
       backend_{waybar::modules::cava::CavaBackend::inst(config)} {
   if (config_["hide_on_silence"].isBool()) hide_on_silence_ = config_["hide_on_silence"].asBool();
   if (config_["format_silent"].isString()) format_silent_ = config_["format_silent"].asString();
