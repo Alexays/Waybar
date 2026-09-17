@@ -2,7 +2,7 @@
 
 #include <fmt/format.h>
 
-#include "ALabel.hpp"
+#include "AIconLabel.hpp"
 #include "bar.hpp"
 #include "client.hpp"
 
@@ -10,7 +10,7 @@ struct ext_idle_notification_v1;
 
 namespace waybar::modules {
 
-class IdleInhibitor : public ALabel {
+class IdleInhibitor : public AIconLabel {
   sigc::connection timeout_;
   ext_idle_notification_v1* idle_notification_;
   uint32_t idle_timeout_ms_;

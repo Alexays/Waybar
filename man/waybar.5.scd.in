@@ -313,6 +313,10 @@ When positioning Waybar on the left or right side of the screen, sometimes it's 
 
 Valid options for the "rotate" property are: 0, 90, 180, and 270.
 
+## Encode icon name in label string
+You can use Rofi’s extended dmenu protocol to use system icon as module's icon. String in "format" and/or "format-icons" property may contain Rofi's extended dmenu protocol which is substring that prefixed with \0icon\1f followed by named icon or path to an image and ended with \n. Because of config file written in JSON then it should written \\0icon\\1f<icon-name>\\n in "format" and/or "format-icon" property.
+
+
 ## Swapping icon and label
 
 If a module displays both a label and an icon, it might be desirable to swap them (for instance, for panels on the left or right of the screen, or for user adopting a right-to-left script). This can be achieved with the "swap-icon-label" property, taking a boolean. Example:
