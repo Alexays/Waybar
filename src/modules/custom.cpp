@@ -272,12 +272,13 @@ auto waybar::modules::Custom::update() -> void {
         label_.set_visible(!str.empty());
       }
     } catch (const fmt::format_error& e) {
-      if (std::strcmp(e.what(), "cannot switch from manual to automatic argument indexing") != 0)
-        throw;
-
-      throw fmt::format_error(
-          "mixing manual and automatic argument indexing is no longer supported; "
-          "try replacing \"{}\" with \"{text}\" in your format specifier");
+      spdlog::warn("{}: {}", name_, e.what());
+      event_box_.show();
+      label_.set_visible(true);
+      setLabelMarkup(fmt::format(fmt::runtime("{text}"), fmt::arg("text", text_)));
+      if (tooltipEnabled()) {
+        setTooltipMarkup(tooltip_.empty() ? Glib::ustring(text_) : Glib::ustring(tooltip_));
+      }
     }
   }
   // Call parent update

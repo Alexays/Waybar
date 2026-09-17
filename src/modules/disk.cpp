@@ -1,5 +1,6 @@
 #include "modules/disk.hpp"
 
+#include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
 using namespace waybar::util;
@@ -91,17 +92,22 @@ auto waybar::modules::Disk::update() -> void {
     }
 
     if (!disk_format.empty()) {
-      if (had_valid_disk) {
-        label += separator_;
-      }
+      try {
+        if (had_valid_disk) {
+          label += separator_;
+        }
 
-      label += fmt::format(
-          fmt::runtime(disk_format), stats.f_bavail * 100 / stats.f_blocks, fmt::arg("free", free),
-          fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks),
-          fmt::arg("used", used), fmt::arg("percentage_used", percentage_used),
-          fmt::arg("total", total), fmt::arg("path", path),
-          fmt::arg("specific_free", specific_free), fmt::arg("specific_used", specific_used),
-          fmt::arg("specific_total", specific_total));
+        label += fmt::format(fmt::runtime(disk_format), stats.f_bavail * 100 / stats.f_blocks, fmt::arg("free", free),
+                             fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks),
+                             fmt::arg("used", used), fmt::arg("percentage_used", percentage_used),
+                             fmt::arg("total", total), fmt::arg("path", path),
+                             fmt::arg("specific_free", specific_free), fmt::arg("specific_used", specific_used),
+                             fmt::arg("specific_total", specific_total));
+
+        had_valid_disk = true;
+      } catch (const fmt::format_error& e) {
+        spdlog::warn("Disk: {} ({})", e.what(), path);
+      }
     }
 
     std::string tooltip_format = "{used} used out of {total} on {path} ({percentage_used}%)";
@@ -110,21 +116,25 @@ auto waybar::modules::Disk::update() -> void {
     }
 
     if (!tooltip_format.empty()) {
-      if (had_valid_disk) {
-        tooltip_label += "\n";
+      try {
+        if (had_valid_disk) {
+          tooltip_label += "\n";
+        }
+
+        tooltip_label += fmt::format(
+            fmt::runtime(tooltip_format), stats.f_bavail * 100 / stats.f_blocks,
+            fmt::arg("free", free),
+            fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks),
+            fmt::arg("used", used), fmt::arg("percentage_used", percentage_used),
+            fmt::arg("total", total), fmt::arg("path", path),
+            fmt::arg("specific_free", specific_free), fmt::arg("specific_used", specific_used),
+            fmt::arg("specific_total", specific_total));
+
+        had_valid_disk = true;
+      } catch (const fmt::format_error& e) {
+        spdlog::warn("Disk tooltip: {} ({})", e.what(), path);
       }
-
-      tooltip_label += fmt::format(
-          fmt::runtime(tooltip_format), stats.f_bavail * 100 / stats.f_blocks,
-          fmt::arg("free", free),
-          fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks),
-          fmt::arg("used", used), fmt::arg("percentage_used", percentage_used),
-          fmt::arg("total", total), fmt::arg("path", path),
-          fmt::arg("specific_free", specific_free), fmt::arg("specific_used", specific_used),
-          fmt::arg("specific_total", specific_total));
     }
-
-    had_valid_disk = true;
   }
   if (had_valid_disk) {
     event_box_.show();
