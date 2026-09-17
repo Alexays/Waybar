@@ -40,7 +40,6 @@ namespace waybar::modules::SNI {
 
 static const Glib::ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
 static const unsigned UPDATE_DEBOUNCE_TIME = 10;
-static const char DBUSMENU_INTERFACE[] = "com.canonical.dbusmenu";
 
 Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar,
            const std::function<void(Item&)>& on_ready,
@@ -238,7 +237,9 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       }
     } else if (name == "Menu") {
       menu = get_variant<std::string>(value);
-      validateMenu();
+      // Create the menu as soon as the path is known: libdbusmenu fetches the layout
+      // asynchronously, and a menu popped up before that completes renders empty.
+      makeMenu();
     } else if (name == "ItemIsMenu") {
       item_is_menu = get_variant<bool>(value);
     }
@@ -572,34 +573,8 @@ void Item::onMenuDestroyed(Item* self, GObject* old_menu_pointer) {
   }
 }
 
-void Item::validateMenu() {
-  has_dbus_menu_ = false;
-  if (menu.empty() || !proxy_) {
-    return;
-  }
-
-  auto parameters =
-      Glib::VariantContainerBase(g_variant_new("(ss)", DBUSMENU_INTERFACE, "Version"));
-  proxy_->get_connection()->call(menu, "org.freedesktop.DBus.Properties", "Get", parameters,
-                                 sigc::bind(sigc::mem_fun(*this, &Item::menuProbeReady), menu),
-                                 cancellable_, bus_name);
-}
-
-void Item::menuProbeReady(Glib::RefPtr<Gio::AsyncResult>& result, const std::string& menu_path) {
-  if (menu != menu_path) {
-    return;
-  }
-
-  try {
-    proxy_->get_connection()->call_finish(result);
-    has_dbus_menu_ = true;
-    makeMenu();
-  } catch (const Glib::Error&) {
-  }
-}
-
 void Item::makeMenu() {
-  if (gtk_menu == nullptr && has_dbus_menu_) {
+  if (gtk_menu == nullptr && !menu.empty()) {
     dbus_menu = dbusmenu_gtkmenu_new(bus_name.data(), menu.data());
     if (dbus_menu != nullptr) {
       g_object_ref_sink(G_OBJECT(dbus_menu));
@@ -622,6 +597,14 @@ void Item::makeMenu() {
   event_box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
 }
 
+bool Item::hasMenuLayout() const {
+  if (dbus_menu == nullptr) {
+    return false;
+  }
+  DbusmenuGtkClient* client = dbusmenu_gtkmenu_get_client(dbus_menu);
+  return client != nullptr && dbusmenu_client_get_root(DBUSMENU_CLIENT(client)) != nullptr;
+}
+
 bool Item::handleClick(GdkEventButton* const& ev) {
   if (!proxy_) {
     return false;
@@ -631,7 +614,10 @@ bool Item::handleClick(GdkEventButton* const& ev) {
        Glib::Variant<int>::create(ev->y_root + bar_.y_global)});
   if ((ev->button == 1 && item_is_menu) || ev->button == 3) {
     makeMenu();
-    if (gtk_menu != nullptr) {
+    // Some items advertise a Menu path without serving com.canonical.dbusmenu (e.g. Steam), so
+    // the client never gets a layout root. Use the item's own ContextMenu for those instead of
+    // popping up an empty GTK menu.
+    if (gtk_menu != nullptr && hasMenuLayout()) {
 #if GTK_CHECK_VERSION(3, 22, 0)
       gtk_menu->popup_at_pointer(reinterpret_cast<GdkEvent*>(ev));
 #else
