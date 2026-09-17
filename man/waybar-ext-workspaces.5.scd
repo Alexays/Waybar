@@ -54,6 +54,16 @@ Addressed by *ext/workspaces*
 	default: false ++
 	If set to true only active or urgent workspaces will be shown.
 
+*disable-scroll*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, scrolling is disabled for this module.
+
+*enable-bar-scroll*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, scrolling anywhere on the bar switches to the previous or next workspace. By default, scrolling only works when the pointer is over the workspaces module
+
 *ignore-hidden*: ++
 	typeof: bool ++
 	default: true ++
