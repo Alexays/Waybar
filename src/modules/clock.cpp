@@ -34,7 +34,8 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       tzTooltipFormat_{config_["timezone-tooltip-format"].isString()
                            ? config_["timezone-tooltip-format"].asString()
                            : ""},
-      ordInTooltip_{m_tlpFmt_.find("{" + kOrdPlaceholder + "}") != std::string::npos} {
+      ordInTooltip_{m_tlpFmt_.find("{" + kOrdPlaceholder + "}") != std::string::npos},
+      monInTooltip_{m_tlpFmt_.find("{" + kMonthPlaceholder + "}") != std::string::npos} {
   m_tlpText_ = m_tlpFmt_;
 
   if (config_["timezones"].isArray() && !config_["timezones"].empty()) {
@@ -219,9 +220,10 @@ auto waybar::modules::Clock::update() -> void {
 
     if (tzInTooltip_) tzText_ = getTZtext(now.get_sys_time());
     if (cldInTooltip_) cldText_ = get_calendar(today, shiftedDay, tz);
+    if (monInTooltip_) monText_ = get_month_name(shiftedDay.year() / shiftedDay.month());
     if (ordInTooltip_) ordText_ = get_ordinal_date(shiftedDay);
     try {
-      if (tzInTooltip_ || cldInTooltip_ || ordInTooltip_) {
+      if (tzInTooltip_ || cldInTooltip_ || ordInTooltip_ || monInTooltip_) {
         // std::vformat doesn't support named arguments.
         m_tlpText_ =
             std::regex_replace(m_tlpFmt_, std::regex("\\{" + kTZPlaceholder + "\\}"), tzText_);
@@ -230,6 +232,8 @@ auto waybar::modules::Clock::update() -> void {
             fmt_lib::vformat(m_locale_, cldText_, fmt_lib::make_format_args(shiftedNow)));
         m_tlpText_ =
             std::regex_replace(m_tlpText_, std::regex("\\{" + kOrdPlaceholder + "\\}"), ordText_);
+        m_tlpText_ =
+            std::regex_replace(m_tlpText_, std::regex("\\{" + kMonthPlaceholder + "\\}"), monText_);
       } else {
         m_tlpText_ = m_tlpFmt_;
       }
@@ -678,4 +682,18 @@ auto waybar::modules::Clock::get_ordinal_date(const year_month_day& today) -> st
       res << "th";
   }
   return res.str();
+}
+
+/* Falling back to use strftime() for %OB specifier support that missing on chrono/date C++20
+ * library */
+auto waybar::modules::Clock::get_month_name(const date::year_month& ym) -> std::string {
+  const auto tp = date::sys_days{ym / date::day{1}};
+  const std::time_t t = std::chrono::system_clock::to_time_t(tp);
+  std::tm tm{};
+  gmtime_r(&t, &tm);
+
+  std::ostringstream oss;
+  oss.imbue(m_locale_);
+  oss << std::put_time(&tm, "%OB");
+  return oss.str();
 }
