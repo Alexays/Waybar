@@ -230,4 +230,5 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
 - *#workspaces button.empty*
 - *#workspaces button.current_output*
 - *#workspaces button#sway-workspace-${name}*
+- *#workspaces button.workspace-index-${index}*
 - *#workspaces button.${output-class}*

@@ -457,6 +457,7 @@ Gtk::Button& Workspaces::addButton(const Json::Value& node) {
   box_.pack_start(button, false, false, 0);
   button.set_name("sway-workspace-" + node["name"].asString());
   button.set_relief(Gtk::RELIEF_NONE);
+  button.get_style_context()->add_class("workspace-index-" + node["num"].asString());
   if (!config_["disable-click"].asBool()) {
     button.signal_pressed().connect([this, node] {
       try {
