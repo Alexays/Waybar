@@ -20,59 +20,49 @@ using hyprland::workspaceTypeName;
 
 namespace {
 
-// A workspace as the comparator sees it: its identity plus its display name.
-struct Entry {
-  WorkspaceIdentity identity;
-  std::string name;
-};
-
-Entry numbered(int number, const std::string& name) {
-  return {WorkspaceIdentity{std::to_string(number), WorkspaceKind::Numbered, number}, name};
+WorkspaceIdentity numbered(int number) {
+  return {std::to_string(number), std::to_string(number), WorkspaceKind::Numbered};
 }
 
-// A Numbered workspace whose address did not yield a number -- Hyprland can
-// label an out-of-int-range address "numbered".
-Entry numberless(const std::string& address, const std::string& name) {
-  return {WorkspaceIdentity{address, WorkspaceKind::Numbered, std::nullopt}, name};
+// A Numbered workspace whose address does not yield a number -- Hyprland can
+// label an out-of-int-range address "numbered". The number is derived from the
+// address, so this is the only way to produce one.
+WorkspaceIdentity numberless(const std::string& address, const std::string& name) {
+  return {address, name, WorkspaceKind::Numbered};
 }
 
-Entry named(const std::string& address) {
-  return {WorkspaceIdentity{address, WorkspaceKind::Named, std::nullopt}, address};
+WorkspaceIdentity named(const std::string& address) {
+  return {address, address, WorkspaceKind::Named};
 }
 
-Entry special(const std::string& address, const std::string& name) {
-  return {WorkspaceIdentity{address, WorkspaceKind::Special, std::nullopt}, name};
+WorkspaceIdentity special(const std::string& address, const std::string& name) {
+  return {address, name, WorkspaceKind::Special};
 }
 
-using Comparator = bool (*)(const WorkspaceIdentity&, const std::string&, const WorkspaceIdentity&,
-                            const std::string&);
+using Comparator = bool (*)(const WorkspaceIdentity&, const WorkspaceIdentity&);
 
-bool less(Comparator cmp, const Entry& a, const Entry& b) {
-  return cmp(a.identity, a.name, b.identity, b.name);
-}
-
-bool equiv(Comparator cmp, const Entry& a, const Entry& b) {
-  return !less(cmp, a, b) && !less(cmp, b, a);
+bool equiv(Comparator cmp, const WorkspaceIdentity& a, const WorkspaceIdentity& b) {
+  return !cmp(a, b) && !cmp(b, a);
 }
 
 // Exhaustively verify the axioms `std::ranges::sort` relies on; violating any
 // of them is undefined behavior, not merely a wrong order.
-void requireStrictWeakOrdering(Comparator cmp, const std::vector<Entry>& entries) {
+void requireStrictWeakOrdering(Comparator cmp, const std::vector<WorkspaceIdentity>& entries) {
   bool sawTie = false;
 
   for (const auto& a : entries) {
     // Irreflexivity.
-    REQUIRE_FALSE(less(cmp, a, a));
+    REQUIRE_FALSE(cmp(a, a));
 
     for (const auto& b : entries) {
       // Asymmetry.
-      REQUIRE_FALSE((less(cmp, a, b) && less(cmp, b, a)));
+      REQUIRE_FALSE((cmp(a, b) && cmp(b, a)));
       sawTie = sawTie || (&a != &b && equiv(cmp, a, b));
 
       for (const auto& c : entries) {
         // Transitivity of <.
-        if (less(cmp, a, b) && less(cmp, b, c)) {
-          REQUIRE(less(cmp, a, c));
+        if (cmp(a, b) && cmp(b, c)) {
+          REQUIRE(cmp(a, c));
         }
         // Transitivity of equivalence.
         if (equiv(cmp, a, b) && equiv(cmp, b, c)) {
@@ -88,14 +78,14 @@ void requireStrictWeakOrdering(Comparator cmp, const std::vector<Entry>& entries
 
 // Mixes numbered workspaces that do and do not carry a number -- the case that
 // used to cycle.
-std::vector<Entry> mixedPopulation() {
+std::vector<WorkspaceIdentity> mixedPopulation() {
   return {
-      numbered(1, "1"),
-      numbered(2, "2"),
-      numbered(10, "10"),
-      numberless("15", "15"),
-      numberless("15b", "15"),  // ties with the entry above
-      numberless("0x1", "0x1"),
+      numbered(1),
+      numbered(2),
+      numbered(10),
+      numberless("99999999999999", "15"),
+      numberless("99999999999998", "15"),  // ties with the entry above
+      numberless("huge", "huge"),
       named("web"),
       named("code"),
       special("special:special", "special"),
@@ -105,17 +95,28 @@ std::vector<Entry> mixedPopulation() {
 
 }  // namespace
 
+TEST_CASE("a number is derived from the address only for numbered workspaces",
+          "[workspace_order]") {
+  REQUIRE(numbered(7).number() == 7);
+  REQUIRE_FALSE(numberless("99999999999999", "15").number().has_value());
+
+  // A legacy named or special workspace carries a negative id as its address;
+  // that is a key, not a position in the numbered namespace.
+  REQUIRE_FALSE(named("-1377").number().has_value());
+  REQUIRE_FALSE(special("-99", "special").number().has_value());
+}
+
 TEST_CASE("reported comparison cycle is gone", "[workspace_order]") {
   // The old comparator gave A<B (numeric), B<U ("10"<"15") and U<A ("15"<"2").
-  const auto a = numbered(2, "2");
-  const auto b = numbered(10, "10");
-  const auto u = numberless("15", "15");
+  const auto a = numbered(2);
+  const auto b = numbered(10);
+  const auto u = numberless("99999999999999", "15");
 
   for (const Comparator cmp : {&workspaceLessById, &workspaceLessByDefault}) {
-    REQUIRE(less(cmp, a, b));
-    REQUIRE(less(cmp, b, u));
-    REQUIRE_FALSE(less(cmp, u, a));  // was true, closing the cycle
-    REQUIRE(less(cmp, a, u));        // transitivity now holds
+    REQUIRE(cmp(a, b));
+    REQUIRE(cmp(b, u));
+    REQUIRE_FALSE(cmp(u, a));  // was true, closing the cycle
+    REQUIRE(cmp(a, u));        // transitivity now holds
   }
 }
 
@@ -128,16 +129,14 @@ TEST_CASE("sort-by default is a strict weak ordering", "[workspace_order]") {
 }
 
 TEST_CASE("default ordering groups numbered then named then special", "[workspace_order]") {
-  std::vector<Entry> entries{
+  std::vector<WorkspaceIdentity> entries{
       special("special:spotify", "spotify"),
       named("web"),
-      numbered(10, "10"),
-      numbered(2, "2"),
+      numbered(10),
+      numbered(2),
   };
 
-  std::ranges::sort(entries, [](const Entry& a, const Entry& b) {
-    return workspaceLessByDefault(a.identity, a.name, b.identity, b.name);
-  });
+  std::ranges::sort(entries, workspaceLessByDefault);
 
   std::vector<std::string> order;
   order.reserve(entries.size());
@@ -150,11 +149,11 @@ TEST_CASE("default ordering groups numbered then named then special", "[workspac
 }
 
 TEST_CASE("numbered workspaces without a number sort after those with one", "[workspace_order]") {
-  const auto withNumber = numbered(99, "99");
+  const auto withNumber = numbered(99);
   const auto withoutNumber = numberless("99999999999999", "huge");
 
-  REQUIRE(less(&workspaceLessById, withNumber, withoutNumber));
-  REQUIRE(less(&workspaceLessByDefault, withNumber, withoutNumber));
+  REQUIRE(workspaceLessById(withNumber, withoutNumber));
+  REQUIRE(workspaceLessByDefault(withNumber, withoutNumber));
 }
 
 TEST_CASE("address classification", "[workspace_order]") {
@@ -173,8 +172,8 @@ TEST_CASE("address classification", "[workspace_order]") {
 }
 
 TEST_CASE("type names round-trip through the parser", "[workspace_order]") {
-  // `setAddress` and the persistent-workspace synthesis hand these names back
-  // to parseWorkspaceIdentity, so the two mappings have to agree.
+  // The persistent-workspace synthesis hands these names back to
+  // parseWorkspaceIdentity, so the two mappings have to agree.
   for (const auto kind : {WorkspaceKind::Numbered, WorkspaceKind::Named, WorkspaceKind::Special}) {
     Json::Value ws;
     ws["address"] = kind == WorkspaceKind::Numbered ? "7" : "web";
@@ -188,8 +187,8 @@ TEST_CASE("type names round-trip through the parser", "[workspace_order]") {
 
 TEST_CASE("deriving a kind from an address keeps Numbered workspaces numbered",
           "[workspace_order]") {
-  // The invariant `setAddress` relies on: Numbered implies the parser can turn
-  // the address into a number.
+  // The invariant `setAddress` relies on: Numbered implies the address yields a
+  // number.
   for (const std::string address : {"1", "2", "10", "4242"}) {
     Json::Value ws;
     ws["address"] = address;
@@ -198,6 +197,6 @@ TEST_CASE("deriving a kind from an address keeps Numbered workspaces numbered",
     const auto identity = hyprland::parseWorkspaceIdentity(ws);
     REQUIRE(identity.has_value());
     REQUIRE(identity->kind == WorkspaceKind::Numbered);
-    REQUIRE(identity->number.has_value());
+    REQUIRE(identity->number().has_value());
   }
 }

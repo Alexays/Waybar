@@ -46,16 +46,12 @@ Workspace::Workspace(const Json::Value& workspace_data, Workspaces& workspace_ma
                      const Json::Value& clients_data)
     : m_workspaceManager(workspace_manager),
       m_identity(parseWorkspaceIdentity(workspace_data).value_or(WorkspaceIdentity{})),
-      m_name(workspaceDisplayName(workspace_data["name"].asString(), m_identity.kind)),
       m_output(workspace_data["monitor"].asString()),  // TODO:allow using monitor desc
       m_windows(workspace_data["windows"].asInt()),
       m_isActive(true),
       m_isPersistentRule(workspace_data["persistent-rule"].asBool()),
       m_isPersistentConfig(workspace_data["persistent-config"].asBool()),
       m_ipc(IPC::inst()) {
-  m_isSpecial = m_identity.kind == WorkspaceKind::Special;
-  m_isGenericSpecial = isGenericSpecialName(workspace_data["name"].asString(), m_identity.kind);
-
   m_button.add_events(Gdk::BUTTON_PRESS_MASK);
   m_button.add_events(Gdk::ENTER_NOTIFY_MASK | Gdk::LEAVE_NOTIFY_MASK);
 
@@ -213,10 +209,12 @@ bool Workspace::handleClicked(GdkEventButton* bt) const {
         } else {
           IPC::dispatch("workspace", "name:" + name());
         }
-      } else if (!isGenericSpecial()) {  // named special
-        IPC::dispatch("togglespecialworkspace", name());
       } else {  // special
-        IPC::dispatch("togglespecialworkspace", "");
+        // `togglespecialworkspace <name>` re-adds the namespace, so the display
+        // name is the right argument for every special workspace -- the generic
+        // one included, which Hyprland calls `special:special` and displays as
+        // `special`.
+        IPC::dispatch("togglespecialworkspace", name());
       }
       return true;
     } catch (const std::exception& e) {
@@ -229,15 +227,9 @@ bool Workspace::handleClicked(GdkEventButton* bt) const {
 void Workspace::setAddress(std::string const& value) {
   // The kind must come from the new address, not from the identity being
   // replaced: a renumbering event can move a workspace between the numbered and
-  // named namespaces.
-  Json::Value data;
-  data["address"] = value;
-  data["type"] = workspaceTypeName(workspaceKindForAddress(value));
-  if (const auto identity = parseWorkspaceIdentity(data); identity.has_value()) {
-    m_identity = *identity;
-  } else {
-    m_identity.address = value;
-  }
+  // named namespaces. The display name is unaffected and carries over.
+  m_identity.address = value;
+  m_identity.kind = workspaceKindForAddress(value);
 }
 
 void Workspace::initializeWindowMap(const Json::Value& clients_data) {
@@ -394,7 +386,7 @@ std::string& Workspace::selectString(std::map<std::string, std::string>& icons_m
     return defaultIconIt->second;
   }
 
-  return m_name;
+  return m_identity.name;
 }
 
 void Workspace::update(const std::string& workspace_icon, const std::string& workspace_tooltip) {

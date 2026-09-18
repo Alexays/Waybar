@@ -193,7 +193,7 @@ class Workspaces : public AModule, public EventHandler {
 
   bool m_withIcon;
   uint64_t m_monitorId;
-  std::string m_activeWorkspaceAddress;
+  std::string m_activeWorkspaceIdentifier;
   std::string m_activeSpecialWorkspaceName;
   std::vector<std::unique_ptr<Workspace>> m_workspaces;
   std::vector<std::pair<Json::Value, Json::Value>> m_workspacesToCreate;
