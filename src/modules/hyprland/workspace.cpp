@@ -45,21 +45,13 @@ namespace waybar::modules::hyprland {
 Workspace::Workspace(const Json::Value& workspace_data, Workspaces& workspace_manager,
                      const Json::Value& clients_data)
     : m_workspaceManager(workspace_manager),
-      m_id(workspace_data["id"].asInt()),
-      m_name(workspace_data["name"].asString()),
+      m_identity(parseWorkspaceIdentity(workspace_data).value_or(WorkspaceIdentity{})),
       m_output(workspace_data["monitor"].asString()),  // TODO:allow using monitor desc
       m_windows(workspace_data["windows"].asInt()),
       m_isActive(true),
       m_isPersistentRule(workspace_data["persistent-rule"].asBool()),
       m_isPersistentConfig(workspace_data["persistent-config"].asBool()),
       m_ipc(IPC::inst()) {
-  if (m_name.starts_with("name:")) {
-    m_name = m_name.substr(5);
-  } else if (m_name.starts_with("special")) {
-    m_name = m_id == -99 ? m_name : m_name.substr(8);
-    m_isSpecial = true;
-  }
-
   m_button.add_events(Gdk::BUTTON_PRESS_MASK);
   m_button.add_events(Gdk::ENTER_NOTIFY_MASK | Gdk::LEAVE_NOTIFY_MASK);
 
@@ -205,11 +197,11 @@ bool Workspace::handleLeave(GdkEventCrossing* /*event*/) {
 bool Workspace::handleClicked(GdkEventButton* bt) const {
   if (bt->type == GDK_BUTTON_PRESS) {
     try {
-      if (id() > 0) {  // normal
+      if (kind() == WorkspaceKind::Numbered) {  // normal
         if (m_workspaceManager.moveToMonitor()) {
-          IPC::dispatch("focusworkspaceoncurrentmonitor", std::to_string(id()));
+          IPC::dispatch("focusworkspaceoncurrentmonitor", address());
         } else {
-          IPC::dispatch("workspace", std::to_string(id()));
+          IPC::dispatch("workspace", address());
         }
       } else if (!isSpecial()) {  // named (this includes persistent)
         if (m_workspaceManager.moveToMonitor()) {
@@ -217,10 +209,12 @@ bool Workspace::handleClicked(GdkEventButton* bt) const {
         } else {
           IPC::dispatch("workspace", "name:" + name());
         }
-      } else if (id() != -99) {  // named special
-        IPC::dispatch("togglespecialworkspace", name());
       } else {  // special
-        IPC::dispatch("togglespecialworkspace", "");
+        // `togglespecialworkspace <name>` re-adds the namespace, so the display
+        // name is the right argument for every special workspace -- the generic
+        // one included, which Hyprland calls `special:special` and displays as
+        // `special`.
+        IPC::dispatch("togglespecialworkspace", name());
       }
       return true;
     } catch (const std::exception& e) {
@@ -230,10 +224,26 @@ bool Workspace::handleClicked(GdkEventButton* bt) const {
   return false;
 }
 
+void Workspace::setAddress(std::string const& value) {
+  // The kind must come from the new address, not from the identity being
+  // replaced: a renumbering event can move a workspace between the numbered and
+  // named namespaces. The display name is unaffected and carries over.
+  m_identity.address = value;
+  m_identity.kind = workspaceKindForAddress(value);
+}
+
 void Workspace::initializeWindowMap(const Json::Value& clients_data) {
   m_windowMap.clear();
   for (const auto& client : clients_data) {
-    if (client["workspace"]["id"].asInt() == id()) {
+    const auto clientWorkspace = parseWorkspaceIdentity(client["workspace"]);
+    if (!clientWorkspace.has_value()) {
+      // Logged at debug, not warn: this loop runs once per workspace, so a
+      // malformed client would otherwise be reported once per workspace too.
+      spdlog::debug("Client {} carries no workspace identity; not assigning it to a workspace",
+                    client["address"].asString());
+      continue;
+    }
+    if (clientWorkspace->address == address()) {
       insertWindow({client});
     }
   }
@@ -376,7 +386,7 @@ std::string& Workspace::selectString(std::map<std::string, std::string>& icons_m
     return defaultIconIt->second;
   }
 
-  return m_name;
+  return m_identity.name;
 }
 
 void Workspace::update(const std::string& workspace_icon, const std::string& workspace_tooltip) {
@@ -491,13 +501,13 @@ void Workspace::update(const std::string& workspace_icon, const std::string& wor
   }
 
   if (!workspace_tooltip.empty()) {
-    m_button.set_tooltip_text(
-        fmt::format(fmt::runtime(workspace_tooltip), fmt::arg("id", id()), fmt::arg("name", name()),
-                    fmt::arg("icon", workspace_icon), fmt::arg("windows", windows)));
+    m_button.set_tooltip_text(fmt::format(
+        fmt::runtime(workspace_tooltip), fmt::arg("id", address()), fmt::arg("name", name()),
+        fmt::arg("icon", workspace_icon), fmt::arg("windows", windows)));
   }
 
   auto formatBefore = m_workspaceManager.formatBefore();
-  m_labelBefore.set_markup(fmt::format(fmt::runtime(formatBefore), fmt::arg("id", id()),
+  m_labelBefore.set_markup(fmt::format(fmt::runtime(formatBefore), fmt::arg("id", address()),
                                        fmt::arg("name", name()), fmt::arg("icon", workspace_icon),
                                        fmt::arg("windows", windows)));
   m_labelBefore.get_style_context()->add_class("workspace-label");
@@ -622,7 +632,7 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
   const bool has_format_after = !formatAfter.empty();
 
   if (has_format_after) {
-    m_labelAfter.set_markup(fmt::format(fmt::runtime(formatAfter), fmt::arg("id", id()),
+    m_labelAfter.set_markup(fmt::format(fmt::runtime(formatAfter), fmt::arg("id", address()),
                                         fmt::arg("name", name()),
                                         fmt::arg("icon", workspace_icon)));
     m_content.pack_end(m_labelAfter, false, false);

@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "modules/hyprland/backend.hpp"
+#include "modules/hyprland/workspace_identity.hpp"
 #include "util/rewrite_string.hpp"
 #include "util/sanitize_str.hpp"
 
@@ -124,23 +125,40 @@ auto Window::getActiveWorkspace(const std::string& monitorName) -> Workspace {
     if (monitor == std::end(monitors)) {
       spdlog::warn("Monitor not found: {}", monitorName);
       return Workspace{
-          .id = -1,
+          .address = "",
           .windows = 0,
           .last_window = "",
           .last_window_title = "",
       };
     }
-    const int special_id = (*monitor)["specialWorkspace"]["id"].asInt();
-    const int id = special_id != 0 ? special_id : (*monitor)["activeWorkspace"]["id"].asInt();
+    // An inactive special workspace still parses into an identity: it reports
+    // an empty name, and id 0 on the legacy schema.
+    auto special = parseWorkspaceIdentity((*monitor)["specialWorkspace"]);
+    if (special.has_value() && ((*monitor)["specialWorkspace"]["name"].asString().empty() ||
+                                special->address.empty() || special->address == "0")) {
+      special.reset();
+    }
+    const auto active =
+        special.has_value() ? special : parseWorkspaceIdentity((*monitor)["activeWorkspace"]);
+    if (!active.has_value()) {
+      return Workspace{
+          .address = "",
+          .windows = 0,
+          .last_window = "",
+          .last_window_title = "",
+      };
+    }
 
     const auto workspaces = IPC::inst().getSocket1JsonReply("workspaces");
     if (workspaces.isArray()) {
-      auto workspace = std::ranges::find_if(
-          workspaces, [&](const Json::Value& workspace) { return workspace["id"] == id; });
+      auto workspace = std::ranges::find_if(workspaces, [&](const Json::Value& workspace) {
+        const auto identity = parseWorkspaceIdentity(workspace);
+        return identity.has_value() && identity->address == active->address;
+      });
       if (workspace == std::end(workspaces)) {
-        spdlog::warn("No workspace with id {}", id);
+        spdlog::warn("No workspace with address {}", active->address);
         return Workspace{
-            .id = -1,
+            .address = "",
             .windows = 0,
             .last_window = "",
             .last_window_title = "",
@@ -155,7 +173,7 @@ auto Window::getActiveWorkspace(const std::string& monitorName) -> Workspace {
 
 auto Window::Workspace::parse(const Json::Value& value) -> Window::Workspace {
   return Workspace{
-      .id = value["id"].asInt(),
+      .address = parseWorkspaceIdentity(value).value_or(WorkspaceIdentity{}).address,
       .windows = value["windows"].asInt(),
       .last_window = value["lastwindow"].asString(),
       .last_window_title = value["lastwindowtitle"].asString(),
@@ -209,10 +227,12 @@ void Window::queryActiveWorkspace() {
   windowData_ = WindowData::parse(*activeWindow);
   updateAppIconName(windowData_.class_name, windowData_.initial_class_name);
   std::vector<Json::Value> workspaceWindows;
-  std::ranges::copy_if(
-      clients, std::back_inserter(workspaceWindows), [&](const Json::Value& window) {
-        return window["workspace"]["id"] == workspace_.id && window["mapped"].asBool();
-      });
+  std::ranges::copy_if(clients, std::back_inserter(workspaceWindows),
+                       [&](const Json::Value& window) {
+                         const auto identity = parseWorkspaceIdentity(window["workspace"]);
+                         return identity.has_value() && identity->address == workspace_.address &&
+                                window["mapped"].asBool();
+                       });
   swallowing_ = std::ranges::any_of(workspaceWindows, [&](const Json::Value& window) {
     return !window["swallowing"].isNull() && window["swallowing"].asString() != "0x0";
   });

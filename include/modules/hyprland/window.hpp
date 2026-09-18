@@ -20,7 +20,7 @@ class Window : public waybar::AAppIconLabel, public EventHandler {
 
  private:
   struct Workspace {
-    int id = 0;
+    std::string address;
     int windows = 0;
     std::string last_window;
     std::string last_window_title;
