@@ -50,7 +50,7 @@ Workspaces::~Workspaces() {
 void Workspaces::init() {
   if (const auto active = parseWorkspaceIdentity(m_ipc.getSocket1JsonReply("activeworkspace"));
       active.has_value()) {
-    m_activeWorkspaceAddress = active->address;
+    m_activeWorkspaceIdentifier = active->address;
   }
 
   initializeWorkspaces();
@@ -72,7 +72,7 @@ void Workspaces::init() {
 Json::Value Workspaces::createMonitorWorkspaceData(std::string const& name,
                                                    std::string const& monitor) {
   spdlog::trace("Creating persistent workspace: {} on monitor {}", name, monitor);
-  const auto selector = parseWorkspaceSelector(name);
+  const WorkspaceSelector selector{name};
 
   Json::Value workspaceData;
   // There is no IPC payload behind a persistent-workspaces entry, so the
@@ -82,7 +82,7 @@ Json::Value Workspaces::createMonitorWorkspaceData(std::string const& name,
   // constructor never has to know about selector syntax.
   workspaceData["address"] = name;
   workspaceData["type"] = workspaceTypeName(selector.kind);
-  workspaceData["name"] = workspaceRawName(selector);
+  workspaceData["name"] = selector.rawName();
   workspaceData["monitor"] = monitor;
   workspaceData["windows"] = 0;
   return workspaceData;
@@ -107,15 +107,11 @@ void Workspaces::createWorkspace(Json::Value const& workspace_data,
   if (workspace == m_workspaces.end()) {
     // A persistent-workspaces placeholder is keyed by the selector the user
     // wrote, which is not an address and so never matches above. Match it on
-    // what it displays instead -- and on kind, because a named workspace `foo`
-    // and a special one `special:foo` both display `foo` and must stay
-    // distinct.
-    const auto rawName = workspace_data["name"].asString();
-    const auto displayName = workspaceDisplayName(rawName, identity->kind);
-    const auto isGeneric = isGenericSpecialName(rawName, identity->kind);
+    // what it selects instead -- kind and display name, because a named
+    // workspace `foo` and a special one `special:foo` both display `foo` and
+    // must stay distinct.
     workspace = std::ranges::find_if(m_workspaces, [&](std::unique_ptr<Workspace> const& w) {
-      return w->isPersistentConfig() && w->kind() == identity->kind &&
-             w->isGenericSpecial() == isGeneric && w->name() == displayName;
+      return w->isPersistentConfig() && w->identity().matches(identity->asSelector());
     });
 
     if (workspace != m_workspaces.end()) {
@@ -392,7 +388,7 @@ void Workspaces::onWorkspaceActivated(std::string const& payload) {
   if (workspaceAddress.empty()) {
     return;
   }
-  m_activeWorkspaceAddress = workspaceAddress;
+  m_activeWorkspaceIdentifier = workspaceAddress;
 }
 
 void Workspaces::onSpecialWorkspaceActivated(std::string const& payload) {
@@ -418,8 +414,7 @@ void Workspaces::onWorkspaceCreated(std::string const& payload, Json::Value cons
   for (auto workspaceJson : workspacesJson) {
     const auto currentIdentity = parseWorkspaceIdentity(workspaceJson);
     std::string workspaceName = workspaceJson["name"].asString();
-    if (currentIdentity.has_value() &&
-        workspaceMatchesIdentifier(workspaceAddress, *currentIdentity, workspaceName)) {
+    if (currentIdentity.has_value() && currentIdentity->matches(workspaceAddress)) {
       // This workspace name is more up-to-date than the one in the event payload.
       if (isWorkspaceIgnored(workspaceName)) {
         spdlog::trace("Not creating workspace because it is ignored: address={} name={}",
@@ -455,7 +450,7 @@ void Workspaces::onWorkspaceMoved(std::string const& payload) {
   // Update active workspace
   if (const auto active = parseWorkspaceIdentity(m_ipc.getSocket1JsonReply("activeworkspace"));
       active.has_value()) {
-    m_activeWorkspaceAddress = active->address;
+    m_activeWorkspaceIdentifier = active->address;
   }
 
   if (allOutputs()) return;
@@ -495,11 +490,11 @@ void Workspaces::onWorkspaceIdChanged(std::string const& payload) {
 
   if (auto workspace = findWorkspace(oldAddress); workspace != m_workspaces.end()) {
     spdlog::debug("Changing workspace address from {} to {}", (*workspace)->address(), newAddress);
+    const bool wasActive = (*workspace)->identity().matches(m_activeWorkspaceIdentifier);
     (*workspace)->setAddress(newAddress);
-  }
-
-  if (m_activeWorkspaceAddress == oldAddress) {
-    m_activeWorkspaceAddress = newAddress;
+    if (wasActive) {
+      m_activeWorkspaceIdentifier = newAddress;
+    }
   }
 
   sortWorkspaces();
@@ -511,7 +506,7 @@ void Workspaces::onMonitorFocused(std::string const& payload) {
 
   const auto [monitorName, workspaceAddress] = splitDoublePayload(payload);
 
-  m_activeWorkspaceAddress = workspaceAddress;
+  m_activeWorkspaceIdentifier = workspaceAddress;
 
   for (Json::Value& monitor : m_ipc.getSocket1JsonReply("monitors")) {
     if (monitor["name"].asString() == monitorName) {
@@ -918,14 +913,15 @@ std::vector<std::unique_ptr<Workspace>>::iterator Workspaces::findWorkspace(
     return workspace;
   }
 
-  // Not every identifier that reaches us is an address. A persistent-workspaces
+  // Not every identifier that reaches us is an address: a persistent-workspaces
   // placeholder is keyed by its selector until it adopts a live identity, and
-  // legacy Hyprland identifies the generic special workspace as the literal
-  // string `special` in some payloads rather than by its id.
-  const auto selector = parseWorkspaceSelector(addressOrSelector);
+  // Hyprland announces a named workspace by the `name:foo` selector it was
+  // created with while reporting its address as `foo`. The address is tried
+  // across the whole list first so that it wins over a selector match on some
+  // other workspace.
+  const WorkspaceSelector selector{addressOrSelector};
   return std::ranges::find_if(m_workspaces, [&](std::unique_ptr<Workspace> const& w) {
-    return w->kind() == selector.kind && w->isGenericSpecial() == selector.isGenericSpecial &&
-           w->name() == selector.name;
+    return w->identity().matches(selector);
   });
 }
 
@@ -1008,7 +1004,7 @@ void Workspaces::sortWorkspaces() {
         // unit-tested.
         switch (m_sortBy) {
           case SortMethod::ID:
-            return workspaceLessById(a->identity(), a->name(), b->identity(), b->name());
+            return workspaceLessById(a->identity(), b->identity());
           case SortMethod::NAME:
             return isNameLess;
           case SortMethod::NUMBER:
@@ -1020,7 +1016,7 @@ void Workspaces::sortWorkspaces() {
             }
           case SortMethod::DEFAULT:
           default:
-            return workspaceLessByDefault(a->identity(), a->name(), b->identity(), b->name());
+            return workspaceLessByDefault(a->identity(), b->identity());
         }
 
         // Return a default value if none of the cases match.
@@ -1130,16 +1126,16 @@ void Workspaces::updateWorkspaceStates() {
   const std::vector<std::string> visibleWorkspaces = getVisibleWorkspaces();
   auto updatedWorkspaces = m_ipc.getSocket1JsonReply("workspaces");
 
-  auto currentWorkspace = m_ipc.getSocket1JsonReply("activeworkspace");
-  std::string currentWorkspaceName =
-      currentWorkspace.isMember("name") ? currentWorkspace["name"].asString() : "";
+  // A persistent-workspaces placeholder still carries the selector the user
+  // wrote rather than a live address, so the active workspace is matched by
+  // what it selects as well as by address.
+  const auto activeIdentity = parseWorkspaceIdentity(m_ipc.getSocket1JsonReply("activeworkspace"));
 
   for (auto& workspace : m_workspaces) {
-    bool isActiveByName =
-        !currentWorkspaceName.empty() && workspace->name() == currentWorkspaceName;
-
     workspace->setActive(
-        workspace->address() == m_activeWorkspaceAddress || isActiveByName ||
+        workspace->identity().matches(m_activeWorkspaceIdentifier) ||
+        (activeIdentity.has_value() &&
+         workspace->identity().matches(activeIdentity->asSelector())) ||
         (workspace->isSpecial() && workspace->name() == m_activeSpecialWorkspaceName));
     if (workspace->isActive() && workspace->isUrgent()) {
       workspace->setUrgent(false);

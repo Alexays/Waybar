@@ -38,15 +38,11 @@ class Workspace {
   const WorkspaceIdentity& identity() const { return m_identity; };
   const std::string& address() const { return m_identity.address; };
   WorkspaceKind kind() const { return m_identity.kind; };
-  std::optional<int> number() const { return m_identity.number; };
-  std::string name() const { return m_name; };
+  std::optional<int> number() const { return m_identity.number(); };
+  std::string name() const { return m_identity.name; };
   std::string output() const { return m_output; };
   bool isActive() const { return m_isActive; };
-  bool isSpecial() const { return m_isSpecial; };
-  // The special workspace with no name -- `togglespecialworkspace` with an
-  // empty argument. Not the same as a special workspace the user named
-  // `special`, which displays the same name but toggles by name.
-  bool isGenericSpecial() const { return m_isGenericSpecial; };
+  bool isSpecial() const { return m_identity.kind == WorkspaceKind::Special; };
   bool isPersistent() const { return m_isPersistentRule || m_isPersistentConfig; };
   bool isPersistentConfig() const { return m_isPersistentConfig; };
   bool isPersistentRule() const { return m_isPersistentRule; };
@@ -71,7 +67,7 @@ class Workspace {
   void setWindows(uint value) { m_windows = value; };
   void setAddress(std::string const& value);
   void setIdentity(WorkspaceIdentity const& value) { m_identity = value; };
-  void setName(std::string const& value) { m_name = value; };
+  void setName(std::string const& value) { m_identity.name = value; };
   void setOutput(std::string const& value) { m_output = value; };
   bool containsWindow(WindowAddress const& addr) const {
     return std::ranges::any_of(m_windowMap,
@@ -90,13 +86,10 @@ class Workspace {
   Workspaces& m_workspaceManager;
 
   WorkspaceIdentity m_identity;
-  std::string m_name;
   std::string m_prevNameClass;
   std::string m_output;
   uint m_windows;
   bool m_isActive = false;
-  bool m_isSpecial = false;
-  bool m_isGenericSpecial = false;
   bool m_isPersistentRule = false;    // represents the persistent state in hyprland
   bool m_isPersistentConfig = false;  // represents the persistent state in the Waybar config
   bool m_isUrgent = false;

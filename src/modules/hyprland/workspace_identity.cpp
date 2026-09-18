@@ -1,5 +1,7 @@
 #include "modules/hyprland/workspace_identity.hpp"
 
+#include <spdlog/spdlog.h>
+
 #include <algorithm>
 #include <cctype>
 #include <string_view>
@@ -38,41 +40,6 @@ WorkspaceKind kindFromTypeName(std::string_view type) {
 
 }  // namespace
 
-std::optional<WorkspaceIdentity> parseWorkspaceIdentity(const Json::Value& workspace) {
-  if (!workspace.isObject()) {
-    return std::nullopt;
-  }
-
-  // Hyprland with addressable workspaces (hyprwm/Hyprland#16140).
-  if (workspace["address"].isString()) {
-    WorkspaceIdentity identity;
-    identity.address = workspace["address"].asString();
-    identity.kind = kindFromTypeName(workspace["type"].asString());
-    if (identity.kind == WorkspaceKind::Numbered) {
-      identity.number = parseNumber(identity.address);
-    }
-    return identity;
-  }
-
-  // Hyprland before addressable workspaces: kind was encoded in the id's sign.
-  if (workspace["id"].isInt()) {
-    const int id = workspace["id"].asInt();
-    WorkspaceIdentity identity;
-    identity.address = std::to_string(id);
-    if (id > 0) {
-      identity.kind = WorkspaceKind::Numbered;
-      identity.number = id;
-    } else if (isSpecialName(workspace["name"].asString())) {
-      identity.kind = WorkspaceKind::Special;
-    } else {
-      identity.kind = WorkspaceKind::Named;
-    }
-    return identity;
-  }
-
-  return std::nullopt;
-}
-
 const char* workspaceTypeName(WorkspaceKind kind) {
   switch (kind) {
     case WorkspaceKind::Numbered:
@@ -82,10 +49,12 @@ const char* workspaceTypeName(WorkspaceKind kind) {
     case WorkspaceKind::Named:
       return "named";
   }
-  // Unreachable: the switch covers every WorkspaceKind, so -Wswitch fails the
-  // build if an enumerator is added without a case above. This exists only to
-  // satisfy -Wreturn-type.
-  return "named";
+  // The switch covers every enumerator, so -Wswitch fails the build if one is
+  // added without a case. That is not the same as unreachable: a C++ scoped
+  // enum can hold any value its underlying bits can represent, so a bad cast
+  // lands here. Say so rather than returning a name that reads as legitimate.
+  spdlog::error("Unknown WorkspaceKind {}", static_cast<int>(kind));
+  return "unknown";
 }
 
 WorkspaceKind workspaceKindForAddress(const std::string& address) {
@@ -106,74 +75,102 @@ std::string workspaceDisplayName(const std::string& rawName, WorkspaceKind kind)
   return rawName;
 }
 
-bool isGenericSpecialName(const std::string& rawName, WorkspaceKind kind) {
-  return kind == WorkspaceKind::Special && rawName == kGenericSpecial;
-}
-
-WorkspaceSelector parseWorkspaceSelector(const std::string& selector) {
+WorkspaceSelector::WorkspaceSelector(const std::string& selector) {
   // A bare prefix selects nothing, so it is left alone rather than yielding an
   // empty name that would match every workspace of that kind.
   if (selector.size() > kSpecialPrefix.size() && selector.starts_with(kSpecialPrefix)) {
-    return {WorkspaceKind::Special, selector.substr(kSpecialPrefix.size())};
+    kind = WorkspaceKind::Special;
+    name = selector.substr(kSpecialPrefix.size());
+    return;
   }
   if (selector.size() > kNamePrefix.size() && selector.starts_with(kNamePrefix)) {
-    return {WorkspaceKind::Named, selector.substr(kNamePrefix.size())};
+    kind = WorkspaceKind::Named;
+    name = selector.substr(kNamePrefix.size());
+    return;
   }
-  const auto kind = workspaceKindForAddress(selector);
-  return {kind, selector, isGenericSpecialName(selector, kind)};
+  kind = workspaceKindForAddress(selector);
+  name = selector;
 }
 
-bool workspaceMatchesIdentifier(const std::string& identifier, const WorkspaceIdentity& identity,
-                                const std::string& rawName) {
-  if (identity.address == identifier) {
-    return true;
+std::string WorkspaceSelector::rawName() const {
+  if (kind == WorkspaceKind::Special) {
+    return std::string{kSpecialPrefix} + name;
   }
-  // Hyprland's workspace events carry the identifier the workspace was created
-  // with, not the address `workspaces` reports. They agree for numbered and
-  // special workspaces, but a named one created as `name:web` is announced as
-  // `name:web` and reported at address `web`, so the raw comparison misses it.
-  const auto selector = parseWorkspaceSelector(identifier);
-  return identity.kind == selector.kind &&
-         isGenericSpecialName(rawName, identity.kind) == selector.isGenericSpecial &&
-         workspaceDisplayName(rawName, identity.kind) == selector.name;
+  return name;
 }
 
-std::string workspaceRawName(const WorkspaceSelector& selector) {
-  if (selector.kind == WorkspaceKind::Special && !selector.isGenericSpecial) {
-    return std::string{kSpecialPrefix} + selector.name;
+std::optional<WorkspaceIdentity> parseWorkspaceIdentity(const Json::Value& workspace) {
+  if (!workspace.isObject()) {
+    return std::nullopt;
   }
-  return selector.name;
+  const auto rawName = workspace["name"].asString();
+
+  // Hyprland with addressable workspaces (hyprwm/Hyprland#16140).
+  if (workspace["address"].isString()) {
+    WorkspaceIdentity identity;
+    identity.address = workspace["address"].asString();
+    identity.kind = kindFromTypeName(workspace["type"].asString());
+    identity.name = workspaceDisplayName(rawName, identity.kind);
+    return identity;
+  }
+
+  // Hyprland before addressable workspaces: kind was encoded in the id's sign.
+  if (workspace["id"].isInt()) {
+    const int id = workspace["id"].asInt();
+    WorkspaceIdentity identity;
+    identity.address = std::to_string(id);
+    if (id > 0) {
+      identity.kind = WorkspaceKind::Numbered;
+    } else if (isSpecialName(rawName)) {
+      identity.kind = WorkspaceKind::Special;
+    } else {
+      identity.kind = WorkspaceKind::Named;
+    }
+    identity.name = workspaceDisplayName(rawName, identity.kind);
+    return identity;
+  }
+
+  return std::nullopt;
 }
 
-bool workspaceLessById(const WorkspaceIdentity& a, const std::string& aName,
-                       const WorkspaceIdentity& b, const std::string& bName) {
+std::optional<int> WorkspaceIdentity::number() const {
+  if (kind != WorkspaceKind::Numbered) {
+    return std::nullopt;
+  }
+  return parseNumber(address);
+}
+
+bool workspaceLessById(const WorkspaceIdentity& a, const WorkspaceIdentity& b) {
+  const auto numberA = a.number();
+  const auto numberB = b.number();
   // Splitting on `has_value` before comparing numbers is what keeps this
   // transitive.
-  if (a.number.has_value() != b.number.has_value()) {
-    return a.number.has_value();
+  if (numberA.has_value() != numberB.has_value()) {
+    return numberA.has_value();
   }
-  if (a.number.has_value()) {
-    return *a.number < *b.number;
+  if (numberA.has_value()) {
+    return *numberA < *numberB;
   }
   const int rankA = workspaceKindRank(a.kind);
   const int rankB = workspaceKindRank(b.kind);
-  return rankA != rankB ? rankA < rankB : aName < bName;
+  return rankA != rankB ? rankA < rankB : a.name < b.name;
 }
 
-bool workspaceLessByDefault(const WorkspaceIdentity& a, const std::string& aName,
-                            const WorkspaceIdentity& b, const std::string& bName) {
+bool workspaceLessByDefault(const WorkspaceIdentity& a, const WorkspaceIdentity& b) {
   const int rankA = workspaceKindRank(a.kind);
   const int rankB = workspaceKindRank(b.kind);
   if (rankA != rankB) {
     return rankA < rankB;
   }
-  if (a.number.has_value() != b.number.has_value()) {
-    return a.number.has_value();
+  const auto numberA = a.number();
+  const auto numberB = b.number();
+  if (numberA.has_value() != numberB.has_value()) {
+    return numberA.has_value();
   }
-  if (a.number.has_value()) {
-    return *a.number < *b.number;
+  if (numberA.has_value()) {
+    return *numberA < *numberB;
   }
-  return aName < bName;
+  return a.name < b.name;
 }
 
 }  // namespace waybar::modules::hyprland
