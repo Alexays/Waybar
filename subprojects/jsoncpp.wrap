@@ -1,8 +1,8 @@
 [wrap-file]
-directory = jsoncpp-1.9.5
-source_url = https://github.com/open-source-parsers/jsoncpp/archive/1.9.5.tar.gz
-source_filename = jsoncpp-1.9.5.tar.gz
-source_hash = f409856e5920c18d0c2fb85276e24ee607d2a09b5e7d5f0a371368903c275da2
+directory = jsoncpp-1.9.8
+source_url = https://github.com/open-source-parsers/jsoncpp/archive/1.9.8.tar.gz
+source_filename = jsoncpp-1.9.8.tar.gz
+source_hash = 51828cf3574281d2b79ec2a1c56a9e4c20cc1103711321ea96384cffb8d2d904
 
 [provide]
 jsoncpp = jsoncpp_dep
