@@ -234,12 +234,11 @@ auto waybar::modules::Custom::update() -> void {
           if (c == id_) continue;
           style->remove_class(c);
         }
-        for (auto const& c : class_) {
-          style->add_class(c);
-        }
-        // Mirror the dynamic script classes onto box_, which now carries the
-        // #custom-<name> widget name (see AIconLabel), so #custom-<name>.<class>
-        // CSS selectors keep resolving as they did in 0.15.0.
+        // Module-level classes belong on box_, which carries the #custom-<name>
+        // widget name and MODULE_CLASS (see AIconLabel). Adding them to label_
+        // as well makes box_ and label_ both match a .<class> selector, so any
+        // background, border or padding is applied twice, inset by the box's
+        // padding.
         auto box_style = box_.get_style_context();
         for (auto const& c : box_style->list_classes()) {
           if (c == id_ || c == MODULE_CLASS) continue;
@@ -250,7 +249,6 @@ auto waybar::modules::Custom::update() -> void {
         }
         style->add_class("flat");
         style->add_class("text-button");
-        style->add_class(MODULE_CLASS);
         auto image_style = image_.get_style_context();
         image_style->add_class("image-button");
         event_box_.show();
