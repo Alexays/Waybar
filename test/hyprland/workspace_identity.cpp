@@ -57,6 +57,38 @@ TEST_CASE("addressable named workspace", "[workspace_identity]") {
   REQUIRE_FALSE(identity->number().has_value());
 }
 
+TEST_CASE("normal/special schema from hyprwm/Hyprland#16269", "[workspace_identity]") {
+  // Taken from `hyprctl workspaces -j` on v0.56.0-198: numbered and named
+  // workspaces are both `normal`, told apart by whether `id` is present.
+  Json::Value numbered;
+  numbered["address"] = "10";
+  numbered["id"] = 10;
+  numbered["type"] = "normal";
+  numbered["name"] = "10";
+  const auto numberedIdentity = parseWorkspaceIdentity(numbered);
+  REQUIRE(numberedIdentity.has_value());
+  REQUIRE(numberedIdentity->kind == WorkspaceKind::Numbered);
+  REQUIRE(numberedIdentity->number() == 10);
+
+  Json::Value named;
+  named["address"] = "web";
+  named["type"] = "normal";
+  named["name"] = "web";
+  const auto namedIdentity = parseWorkspaceIdentity(named);
+  REQUIRE(namedIdentity.has_value());
+  REQUIRE(namedIdentity->kind == WorkspaceKind::Named);
+  REQUIRE_FALSE(namedIdentity->number().has_value());
+
+  Json::Value special;
+  special["address"] = "special:magic";
+  special["type"] = "special";
+  special["name"] = "special:magic";
+  const auto specialIdentity = parseWorkspaceIdentity(special);
+  REQUIRE(specialIdentity.has_value());
+  REQUIRE(specialIdentity->kind == WorkspaceKind::Special);
+  REQUIRE(specialIdentity->name == "magic");
+}
+
 TEST_CASE("legacy numeric workspace", "[workspace_identity]") {
   Json::Value ws;
   ws["id"] = 2;

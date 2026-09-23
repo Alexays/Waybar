@@ -12,8 +12,10 @@ namespace waybar::modules::hyprland {
 // workspaces module groups by, which workspaceKindRank() reads off directly.
 enum class WorkspaceKind { Numbered, Named, Special };
 
-// The literal Hyprland IPC `type` name for a kind. Inverse of the `type`
-// mapping parseWorkspaceIdentity() applies.
+// The hyprwm/Hyprland#16140 IPC `type` name for a kind, which spells out all
+// three kinds. Hyprland has since collapsed numbered and named into `normal`,
+// but parseWorkspaceIdentity() still reads these, so they remain the unambiguous
+// way to build a payload that has no `id`.
 const char* workspaceTypeName(WorkspaceKind kind);
 
 // Classifies a bare string for the paths that have no IPC `type` field to read:
