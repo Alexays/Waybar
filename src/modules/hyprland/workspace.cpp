@@ -224,13 +224,7 @@ bool Workspace::handleClicked(GdkEventButton* bt) const {
   return false;
 }
 
-void Workspace::setAddress(std::string const& value) {
-  // The kind must come from the new address, not from the identity being
-  // replaced: a renumbering event can move a workspace between the numbered and
-  // named namespaces. The display name is unaffected and carries over.
-  m_identity.address = value;
-  m_identity.kind = workspaceKindForAddress(value);
-}
+void Workspace::setAddress(std::string const& value) { m_identity.renumber(value); }
 
 void Workspace::initializeWindowMap(const Json::Value& clients_data) {
   m_windowMap.clear();

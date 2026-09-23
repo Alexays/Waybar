@@ -82,6 +82,11 @@ struct WorkspaceIdentity {
 
   WorkspaceSelector asSelector() const { return {kind, name}; }
 
+  // Applies a `changeworkspaceid` event, which Hyprland only emits for a
+  // numbered workspace. Like Hyprland, a name set by `renameworkspace` is kept
+  // and a name still equal to the old number follows the new one.
+  void renumber(const std::string& newAddress);
+
   bool matches(const WorkspaceSelector& selector) const {
     // The kind is what separates a named workspace `foo` from a special one
     // `special:foo`: both display `foo`.
