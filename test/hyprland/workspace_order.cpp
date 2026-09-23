@@ -130,10 +130,7 @@ TEST_CASE("sort-by default is a strict weak ordering", "[workspace_order]") {
 
 TEST_CASE("default ordering groups numbered then named then special", "[workspace_order]") {
   std::vector<WorkspaceIdentity> entries{
-      special("special:spotify", "spotify"),
-      named("web"),
-      numbered(10),
-      numbered(2),
+      special("special:spotify", "spotify"), named("web"), numbered(10), numbered(2), numbered(1),
   };
 
   std::ranges::sort(entries, workspaceLessByDefault);
@@ -144,8 +141,8 @@ TEST_CASE("default ordering groups numbered then named then special", "[workspac
     order.push_back(entry.name);
   }
 
-  // Numbers compare numerically, not lexicographically: 2 before 10.
-  REQUIRE(order == std::vector<std::string>{"2", "10", "web", "spotify"});
+  // Numbers compare numerically, not lexicographically: 1 and 2 before 10.
+  REQUIRE(order == std::vector<std::string>{"1", "2", "10", "web", "spotify"});
 }
 
 TEST_CASE("numbered workspaces without a number sort after those with one", "[workspace_order]") {

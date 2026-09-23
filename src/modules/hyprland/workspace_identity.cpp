@@ -28,14 +28,21 @@ std::optional<int> parseNumber(const std::string& value) {
   }
 }
 
-WorkspaceKind kindFromTypeName(std::string_view type) {
-  if (type == "numbered") {
-    return WorkspaceKind::Numbered;
-  }
+// hyprwm/Hyprland#16140 reported the kind as `numbered`, `named` or `special`.
+// hyprwm/Hyprland#16269 collapsed that to `normal` or `special` and marks a
+// numbered workspace by carrying an `id`, so both schemas are read here.
+WorkspaceKind kindFromPayload(const Json::Value& workspace) {
+  const auto type = workspace["type"].asString();
   if (type == "special") {
     return WorkspaceKind::Special;
   }
-  return WorkspaceKind::Named;
+  if (type == "numbered") {
+    return WorkspaceKind::Numbered;
+  }
+  if (type == "named") {
+    return WorkspaceKind::Named;
+  }
+  return workspace["id"].isInt() ? WorkspaceKind::Numbered : WorkspaceKind::Named;
 }
 
 }  // namespace
@@ -109,7 +116,7 @@ std::optional<WorkspaceIdentity> parseWorkspaceIdentity(const Json::Value& works
   if (workspace["address"].isString()) {
     WorkspaceIdentity identity;
     identity.address = workspace["address"].asString();
-    identity.kind = kindFromTypeName(workspace["type"].asString());
+    identity.kind = kindFromPayload(workspace);
     identity.name = workspaceDisplayName(rawName, identity.kind);
     return identity;
   }
