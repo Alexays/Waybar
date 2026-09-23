@@ -89,6 +89,30 @@ TEST_CASE("normal/special schema from hyprwm/Hyprland#16269", "[workspace_identi
   REQUIRE(specialIdentity->name == "magic");
 }
 
+TEST_CASE("renumbering follows Hyprland's naming", "[workspace_identity]") {
+  Json::Value ws;
+  ws["address"] = "3";
+  ws["id"] = 3;
+  ws["type"] = "normal";
+  ws["name"] = "3";
+
+  auto unrenamed = parseWorkspaceIdentity(ws);
+  REQUIRE(unrenamed.has_value());
+  unrenamed->renumber("5");
+  REQUIRE(unrenamed->address == "5");
+  REQUIRE(unrenamed->name == "5");
+  REQUIRE(unrenamed->number() == 5);
+
+  // A name set by renameworkspace survives the renumbering.
+  ws["name"] = "code";
+  auto renamed = parseWorkspaceIdentity(ws);
+  REQUIRE(renamed.has_value());
+  renamed->renumber("5");
+  REQUIRE(renamed->address == "5");
+  REQUIRE(renamed->name == "code");
+  REQUIRE(renamed->number() == 5);
+}
+
 TEST_CASE("legacy numeric workspace", "[workspace_identity]") {
   Json::Value ws;
   ws["id"] = 2;

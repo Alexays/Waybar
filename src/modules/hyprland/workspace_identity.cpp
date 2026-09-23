@@ -147,6 +147,14 @@ std::optional<int> WorkspaceIdentity::number() const {
   return parseNumber(address);
 }
 
+void WorkspaceIdentity::renumber(const std::string& newAddress) {
+  if (name == address) {
+    name = newAddress;
+  }
+  address = newAddress;
+  kind = workspaceKindForAddress(newAddress);
+}
+
 bool workspaceLessById(const WorkspaceIdentity& a, const WorkspaceIdentity& b) {
   const auto numberA = a.number();
   const auto numberB = b.number();
