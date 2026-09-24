@@ -8,7 +8,16 @@ std::vector<float> waybar::modules::CpuFrequency::parseCpuFrequencies() {
   size_t len;
   int32_t freq;
 
-#ifndef __OpenBSD__
+#if defined(__NetBSD__)
+  if (sysctlbyname("machdep.cpu.frequency.current", &freq, &len, NULL, 0) == 0) {
+    frequencies.push_back((float)freq);
+  }
+#elif defined(__OpenBSD__)
+  int getMhz[] = {CTL_HW, HW_CPUSPEED};
+  len = sizeof(freq);
+  sysctl(getMhz, 2, &freq, &len, NULL, 0);
+  frequencies.push_back((float)freq);
+#else
   char buffer[256];
   uint32_t i = 0;
   while (true) {
@@ -18,11 +27,6 @@ std::vector<float> waybar::modules::CpuFrequency::parseCpuFrequencies() {
     frequencies.push_back(freq);
     ++i;
   }
-#else
-  int getMhz[] = {CTL_HW, HW_CPUSPEED};
-  len = sizeof(freq);
-  sysctl(getMhz, 2, &freq, &len, NULL, 0);
-  frequencies.push_back((float)freq);
 #endif
 
   if (frequencies.empty()) {
