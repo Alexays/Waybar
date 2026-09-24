@@ -383,6 +383,11 @@ A group may hide all but one element, showing them only on mouse hover. In order
 	default: false ++
 	Defines whether the drawer should initialize in an expanded state.
 
+*hide-leader-when-expanded*: ++
+	typeof: bool ++
+	default: false ++
+	Hides the group leader while the drawer is expanded.
+
 *transition-left-to-right*: ++
 	typeof: bool ++
 	default: true ++
