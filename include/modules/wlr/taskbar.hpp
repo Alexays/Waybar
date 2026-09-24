@@ -89,10 +89,6 @@ class Task {
   uint32_t state_ = 0;
   struct ext_workspace_handle_v1* workspace_ = nullptr;
 
-  int32_t drag_start_x;
-  int32_t drag_start_y;
-  int32_t drag_start_button = -1;
-
  private:
   std::string repr() const;
   std::string state_string(bool = false) const;
@@ -128,9 +124,9 @@ class Task {
   void handle_closed();
 
   /* Callbacks for Gtk events */
-  bool handle_clicked(GdkEventButton*);
+  void handle_action(const std::string&);
+  void handle_primary_clicked();
   bool handle_button_release(GdkEventButton*);
-  bool handle_motion_notify(GdkEventMotion*);
   void handle_drag_data_get(const Glib::RefPtr<Gdk::DragContext>& context,
                             Gtk::SelectionData& selection_data, guint info, guint time);
   void handle_drag_data_received(const Glib::RefPtr<Gdk::DragContext>& context, int x, int y,
