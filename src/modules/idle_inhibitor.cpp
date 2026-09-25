@@ -10,7 +10,7 @@ long waybar::modules::IdleInhibitor::deactivationTime = time(nullptr);
 
 waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar,
                                               const Json::Value& config)
-    : ALabel(config, "idle_inhibitor", id, "{status}", 0, false, true),
+    : AIconLabel(config, "idle_inhibitor", id, "{status}", 0, false, true),
       bar_(bar),
       idle_inhibitor_(nullptr),
       idle_notification_(nullptr),
@@ -99,7 +99,7 @@ auto waybar::modules::IdleInhibitor::update() -> void {
                                 fmt::arg("icon", getIcon(0, status_text)));
   label_.get_style_context()->add_class(status_text);
   // Call parent update
-  ALabel::update();
+  AIconLabel::update();
 }
 
 auto waybar::modules::IdleInhibitor::refresh(int sig) -> void {
@@ -197,7 +197,7 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
     toggleStatus(0);
     timeout = config_["timeout"].asDouble();
   }
-  ALabel::handleToggle(e);
+  AIconLabel::handleToggle(e);
   return true;
 }
 
@@ -206,7 +206,7 @@ bool waybar::modules::IdleInhibitor::handleScroll(GdkEventScroll* e) {
   // "dynamic-timeout" (singular) key spellings.
   if (!(config_["dynamic-timeouts"].asBool() || config_["dynamic-timeout"].asBool())) {
     // Delegate to the base handler so any configured on-scroll-* command still runs.
-    return ALabel::handleScroll(e);
+    return AIconLabel::handleScroll(e);
   }
   auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {
@@ -221,7 +221,7 @@ bool waybar::modules::IdleInhibitor::handleScroll(GdkEventScroll* e) {
   }
   deactivationTime = time(nullptr) + timeout * 60;
 
-  ALabel::handleScroll(e);
+  AIconLabel::handleScroll(e);
   return true;
 }
 
