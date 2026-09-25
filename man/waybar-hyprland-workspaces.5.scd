@@ -21,6 +21,24 @@ Addressed by *hyprland/workspaces*
 	typeof: object ++
 	Based on the workspace ID and state, the corresponding icon gets selected. See *icons*.
 
+*on-click*: ++
+	typeof: string ++
+	Command to execute when the module is clicked.
+	Default activates workspace
+	Set to disabled to deactivate click
+
+*on-click-middle*: ++
+	typeof: string ++
+	Command to execute when middle-clicked on the module using mouse scroll wheel.
+	Default activates workspace
+	Set to disabled to deactivate click
+
+*on-click-right*: ++
+	typeof: string ++
+	Command to execute when the module is right-clicked.
+	Default activates workspace
+	Set to disabled to deactivate click
+
 *window-rewrite*: ++
 	typeof: object ++
 	Regex rules to map window class to an icon or preferred method of representation for a workspace's window.
