@@ -41,6 +41,12 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	The separator to be used between windows in a workspace. ++
 	This setting is ignored if *workspace-taskbar.enable* is set to true.
 
+*format-window-active*: ++
+	typeof: string ++
+	default: "" ++
+	Format applied to the focused window's representation in the label's *{windows}*. Use *{}* for the representation; Pango markup can highlight it, for example, "<span foreground='#ff0000'>{}</span>". When *window-rewrite-group-threshold* collapses windows, the format applies to the group containing the focused window. Tooltips retain the plain representation. ++
+	This setting is ignored if *workspace-taskbar.enable* is set to true.
+
 *window-rewrite-group-threshold*: ++
 	typeof: int ++
 	default: 0 ++
@@ -302,6 +308,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 "hyprland/workspaces": {
 	"format": "{name}\n{windows}",
 	"format-window-separator": "\n",
+	"format-window-active": "<span foreground='#ff0000'>{}</span>",
 	"window-rewrite-default": "",
 	"window-rewrite": {
 		"title<.*youtube.*>": "", // Windows whose titles contain "youtube"
