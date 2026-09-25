@@ -87,10 +87,16 @@ gboolean Watcher::handleRegisterItem(Watcher* obj, GDBusMethodInvocation* invoca
                                      const gchar* service) {
   const gchar* bus_name = service;
   const gchar* object_path = "/StatusNotifierItem";
+  g_autofree gchar* bus_name_buf = nullptr;
 
   if (*service == '/') {
     bus_name = g_dbus_method_invocation_get_sender(invocation);
     object_path = service;
+  } else if (const gchar* slash = g_strstr_len(service, -1, "/")) {
+    // Electron >= 43.4.1 registers with a combined "bus_name/object_path" string
+    bus_name_buf = g_strndup(service, slash - service);
+    bus_name = bus_name_buf;
+    object_path = slash;
   }
   if (g_dbus_is_name(bus_name) == FALSE) {
     g_dbus_method_invocation_return_error(invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
