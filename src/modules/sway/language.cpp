@@ -20,7 +20,8 @@ const std::string Language::XKB_ACTIVE_LAYOUT_NAME_KEY = "xkb_active_layout_name
 Language::Language(const std::string& id, const Json::Value& config)
     : ALabel(config, "language", id, "{}", 0, true) {
   hide_single_ = config["hide-single-layout"].isBool() && config["hide-single-layout"].asBool();
-  is_variant_displayed = format_.find("{variant}") != std::string::npos;
+  is_variant_displayed =
+      format_.find("{}") != std::string::npos || format_.find("{variant}") != std::string::npos;
   if (format_.find("{}") != std::string::npos || format_.find("{short}") != std::string::npos) {
     displayed_short_flag |= static_cast<std::byte>(DisplayedShortFlag::ShortName);
   }
@@ -130,10 +131,36 @@ auto Language::update() -> void {
     event_box_.hide();
     return;
   }
-  auto display_layout = trim(fmt::format(
-      fmt::runtime(format_), fmt::arg("short", layout_.short_name),
-      fmt::arg("shortDescription", layout_.short_description), fmt::arg("long", layout_.full_name),
-      fmt::arg("variant", layout_.variant), fmt::arg("flag", layout_.country_flag())));
+
+  spdlog::debug("sway language update with full name {}", layout_.full_name);
+  spdlog::debug("sway language update with short name {}", layout_.short_name);
+  spdlog::debug("sway language update with short description {}", layout_.short_description);
+  spdlog::debug("sway language update with variant {}", layout_.variant);
+
+  std::string display_layout = std::string{};
+  if (const auto prop_name = "format-" + layout_.short_description + "-" + layout_.variant;
+      config_.isMember(prop_name)) {
+    display_layout =
+        trim(fmt::format(fmt::runtime(format_), config_[prop_name].asString(),
+                         fmt::arg("long", layout_.full_name), fmt::arg("short", layout_.short_name),
+                         fmt::arg("shortDescription", layout_.short_description),
+                         fmt::arg("variant", layout_.variant)));
+  } else if (const auto prop_name = "format-" + layout_.short_description;
+             config_.isMember(prop_name)) {
+    display_layout =
+        trim(fmt::format(fmt::runtime(format_), config_[prop_name].asString(),
+                         fmt::arg("long", layout_.full_name), fmt::arg("short", layout_.short_name),
+                         fmt::arg("shortDescription", layout_.short_description),
+                         fmt::arg("variant", layout_.variant)));
+  } else {
+    display_layout = trim(fmt::format(fmt::runtime(format_), fmt::arg("long", layout_.full_name),
+                                      fmt::arg("short", layout_.short_name),
+                                      fmt::arg("shortDescription", layout_.short_description),
+                                      fmt::arg("variant", layout_.variant)));
+  }
+
+  spdlog::debug("sway language formatted layout name {}", display_layout);
+
   setLabelMarkup(display_layout);
   if (tooltipEnabled()) {
     if (tooltip_format_ != "") {
