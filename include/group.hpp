@@ -32,6 +32,7 @@ class Group : public AModule {
   bool empty_if_drawer_empty = false;
   int reveal_delay = 0;
   std::string add_class_to_drawer_children;
+  Gtk::Align align_ = Gtk::ALIGN_CENTER;
   bool handleMouseEnter(GdkEventCrossing* const& ev) override;
   bool handleMouseLeave(GdkEventCrossing* const& ev) override;
   bool handleToggle(GdkEventButton* const& ev) override;

@@ -349,6 +349,12 @@ A module group is defined by specifying a module named "group/some-group-name". 
 
 Valid options for the (optional) "orientation" property are: "horizontal", "vertical", "inherit", and "orthogonal" (default).
 
+*align*: ++
+	typeof: string ++
+	Valid options: "start", "center", "end" ++
+	default: "center" ++
+	Controls how the group's children are aligned within the group's box. This is useful when a group lives in `modules-left` but its children would otherwise appear centered. Set it to "start" to left-align the children.
+
 ## Group Drawers
 
 A group may hide all but one element, showing them only on mouse hover. In order to configure this, you can use the `drawer` property, whose value is an object with the following properties:
