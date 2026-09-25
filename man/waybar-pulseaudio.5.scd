@@ -83,6 +83,14 @@ Additionally, you can control the volume by scrolling *up* or *down* while the c
 	typeof: string ++
 	Command to execute when the module is updated.
 
+*on-enter*: ++
+	typeof: string ++
+	Command to execute when the mouse enters the module.
+
+*on-leave*: ++
+	typeof: string ++
+	Command to execute when the mouse leaves the module.
+
 *on-scroll-up*: ++
 	typeof: string ++
 	Command to execute when scrolling up on the module. This replaces the default behaviour of volume control.
