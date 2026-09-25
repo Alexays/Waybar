@@ -25,7 +25,7 @@ HARDWARE=(backlight backlight/slider battery upower power-profiles-daemon blueto
           mpd mpris temperature keyboard-state systemd-failed-units privacy tray gamemode)
 
 # Need a specific compositor / its IPC to produce output.
-COMPOSITOR=(sway/language sway/mode sway/scratchpad sway/window sway/workspaces
+COMPOSITOR=(sway/language sway/mode sway/scratchpad sway/taskbar sway/window sway/workspaces
             hyprland/language hyprland/submap hyprland/window hyprland/windowcount hyprland/workspaces
             river/layout river/mode river/tags river/window
             niri/language niri/window niri/workspaces
