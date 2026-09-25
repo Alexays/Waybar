@@ -50,6 +50,17 @@ Workspaces::~Workspaces() {
 void Workspaces::init() {
   m_activeWorkspaceId = m_ipc.getSocket1JsonReply("activeworkspace")["id"].asInt();
 
+  if (!m_enableTaskbar && !m_formatWindowActive.empty()) {
+    m_currentActiveWindowAddress.clear();
+    const auto activeWindow = m_ipc.getSocket1JsonReply("activewindow");
+    if (activeWindow["address"].isString()) {
+      m_currentActiveWindowAddress = activeWindow["address"].asString();
+      if (m_currentActiveWindowAddress.starts_with("0x")) {
+        m_currentActiveWindowAddress.erase(0, 2);
+      }
+    }
+  }
+
   initializeWorkspaces();
 
   if (m_scrollEventConnection_.connected()) {
@@ -115,6 +126,9 @@ void Workspaces::createWorkspace(Json::Value const& workspace_data,
 
   // create new workspace
   m_workspaces.emplace_back(std::make_unique<Workspace>(workspace_data, *this, clients_data));
+  if (!m_enableTaskbar && !m_formatWindowActive.empty() && !m_currentActiveWindowAddress.empty()) {
+    m_workspaces.back()->setActiveWindow(m_currentActiveWindowAddress);
+  }
   Gtk::Button& newWorkspaceButton = m_workspaces.back()->button();
   m_box.pack_start(newWorkspaceButton, false, false);
   sortWorkspaces();
@@ -670,6 +684,9 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
   populateSortByConfig(config);
   populateIgnoreWorkspacesConfig(config);
   populateFormatWindowSeparatorConfig(config);
+  if (config["format-window-active"].isString()) {
+    m_formatWindowActive = config["format-window-active"].asString();
+  }
 
   const auto& groupThreshold = config["window-rewrite-group-threshold"];
   if (groupThreshold.isInt()) {
@@ -873,10 +890,10 @@ auto Workspaces::registerIpc() -> void {
         "rewrite rule uses the 'title' field.");
     m_ipc.registerForIPC("windowtitlev2", this);
   }
-  if (m_updateActiveWindow) {
+  if (m_updateActiveWindow || (!m_enableTaskbar && !m_formatWindowActive.empty())) {
     spdlog::info(
-        "Registering for Hyprland's 'activewindowv2' events because 'update-active-window' is set "
-        "to true.");
+        "Registering for Hyprland's 'activewindowv2' events because 'update-active-window' is "
+        "true or 'format-window-active' is non-empty.");
     m_ipc.registerForIPC("activewindowv2", this);
   }
 }
