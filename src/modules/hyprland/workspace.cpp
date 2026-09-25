@@ -524,7 +524,9 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
   for (auto child : m_content.get_children()) {
     if (child != &m_labelBefore) {
       m_content.remove(*child);
-      delete child;
+      if (child != &m_labelAfter) {
+        delete child;
+      }
     }
   }
 
