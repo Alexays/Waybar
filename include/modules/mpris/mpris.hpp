@@ -78,6 +78,7 @@ class Mpris : public ALabel {
   std::vector<std::string> ignored_players_;
 
   bool prefer_album_artist_;
+  bool hide_on_paused_;
 
   PlayerctlPlayerManager* manager;
   PlayerctlPlayer* player;
