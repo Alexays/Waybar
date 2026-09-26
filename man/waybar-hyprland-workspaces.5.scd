@@ -147,6 +147,13 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	default: false ++
 	If set to false workspaces group will be shown only in assigned output. Otherwise, all workspace groups are shown.
 
+*active-by*: ++
+	typeof: string ++
+	default: "default" ++
+	If set to id, workspaces will be set as active by id.
+	If set to name, workspaces will set as active by name.
+	If none of those, workspaces will set as active by default behavior.
+
 *active-only*: ++
 	typeof: bool ++
 	default: false ++
