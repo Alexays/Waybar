@@ -4,8 +4,9 @@
 
 namespace waybar::modules::mango {
 
-Layout::Layout(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "layout", id, "{}", 0, false), bar_(bar) {
+Layout::Layout(const std::string& id, const Bar& bar, const Json::Value& config,
+               std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "layout", id, "{}", reap_mtx, reap, 0, false), bar_(bar) {
   IPC::getInstance().registerForIPC("monitor", this);
 }
 

@@ -9,8 +9,9 @@ bool waybar::modules::IdleInhibitor::status = false;
 long waybar::modules::IdleInhibitor::deactivationTime = time(nullptr);
 
 waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar,
-                                              const Json::Value& config)
-    : ALabel(config, "idle_inhibitor", id, "{status}", 0, false, true),
+                                              const Json::Value& config, std::mutex& reap_mtx,
+                                              std::list<pid_t>& reap)
+    : ALabel(config, "idle_inhibitor", id, "{status}", reap_mtx, reap, 0, false, true),
       bar_(bar),
       idle_inhibitor_(nullptr),
       idle_notification_(nullptr),

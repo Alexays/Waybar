@@ -10,8 +10,9 @@
 #include "util/scope_guard.hpp"
 
 waybar::modules::CustomGraph::CustomGraph(const std::string& name, const std::string& id,
-                                          const Json::Value& config, const std::string& output_name)
-    : AGraph(config, "custom-graph-" + name, id),
+                                          const Json::Value& config, const std::string& output_name,
+                                          std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : AGraph(config, "custom-graph-" + name, id, reap_mtx, reap),
       name_(name),
       output_name_(output_name),
       id_(id),

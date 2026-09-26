@@ -11,7 +11,7 @@ namespace waybar::modules::mango {
 
 class Layout : public ALabel, public EventHandler {
  public:
-  Layout(const std::string&, const Bar&, const Json::Value&);
+  Layout(const std::string&, const Bar&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   ~Layout() override;
   void update() override;
 

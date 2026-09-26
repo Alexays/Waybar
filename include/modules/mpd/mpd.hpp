@@ -38,7 +38,7 @@ class MPD : public ALabel {
   std::string ellipsis_;
 
  public:
-  MPD(const std::string&, const Json::Value&);
+  MPD(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~MPD() noexcept = default;
   auto update() -> void override;
 

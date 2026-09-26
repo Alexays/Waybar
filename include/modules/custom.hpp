@@ -16,7 +16,8 @@ namespace waybar::modules {
 
 class Custom : public AIconLabel {
  public:
-  Custom(const std::string&, const std::string&, const Json::Value&, const std::string&);
+  Custom(const std::string&, const std::string&, const Json::Value&, const std::string&,
+         std::mutex&, std::list<pid_t>&);
   virtual ~Custom();
   auto update() -> void override;
   void refresh(int /*signal*/) override;

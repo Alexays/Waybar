@@ -15,7 +15,7 @@ namespace waybar::modules::cava {
 
 class CavaGLSL final : public AModule {
  public:
-  CavaGLSL(const std::string&, const Json::Value&);
+  CavaGLSL(const std::string&, const Json::Value&, std::mutex& reap_mtx, std::list<pid_t>& reap);
   ~CavaGLSL();
   auto doAction(const std::string& name) -> void override;
 
