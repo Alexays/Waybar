@@ -173,6 +173,16 @@ void Group::hide_group() {
   box.get_style_context()->remove_class("expanded");
 }
 
+void waybar::Group::refresh(int sig) {
+  if (sig == SIGRTMIN + config_["signal"].asInt()) {
+    if ((box.get_state_flags() & Gtk::StateFlags::STATE_FLAG_PRELIGHT) != 0U) {
+      hide_group();
+    } else {
+      show_group();
+    }
+  }
+}
+
 bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
   if (!click_to_reveal) {
     if (reveal_delay > 0) {
