@@ -11,6 +11,7 @@ test_dep = [
 test_src = files(
     'main.cpp',
     'config.cpp',
+    'taskbar_dnd.cpp',
     '../src/config.cpp',
 )
 
