@@ -270,12 +270,12 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
 
   unmap_conn_ = window.signal_unmap().connect([this]() {
-    spdlog::debug("Output {} unmapped (DPMS off), suspending modules", output->name);
+    spdlog::debug("Output {} unmapped, suspending modules", output->name);
     toggleSuspend(true);
   });
 
   map_conn_ = window.signal_map().connect([this]() {
-    spdlog::debug("Output {} mapped (DPMS on), resuming modules", output->name);
+    spdlog::debug("Output {} mapped, resuming modules", output->name);
     toggleSuspend(false);
   });
 
