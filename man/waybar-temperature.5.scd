@@ -55,6 +55,12 @@ Addressed by *temperature*
 	default: 10 ++
 	The interval in which the information gets polled.
 
+*disable-on-sleep*: ++
+	typeof: bool ++
+	default: false ++
+	Pause polling while the bar is unmapped from its output, e.g. when the output is disabled or disconnected, and resume once the bar is mapped again.
+	Turning an output off with DPMS does not necessarily unmap the bar: on Hyprland, for example, the bar stays mapped and polling continues while the display is powered off.
+
 *format-warning*: ++
 	typeof: string ++
 	The format to use when temperature is considered warning
