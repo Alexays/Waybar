@@ -21,10 +21,10 @@
 // wayland-scanner only forward-declares interfaces defined by other protocols, so the
 // headers that actually define ext_workspace_handle_v1_interface /
 // ext_image_capture_source_v1_interface must be included first.
+#include "ext-image-capture-source-v1-client-protocol.h"
 #include "cosmic-image-capture-source-unstable-v1-client-protocol.h"
 #include "cosmic-overlap-notify-unstable-v1-client-protocol.h"
 #include "ext-foreign-toplevel-list-v1-client-protocol.h"
-#include "ext-image-capture-source-v1-client-protocol.h"
 #include "ext-image-copy-capture-v1-client-protocol.h"
 #include "ext-workspace-v1-client-protocol.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
@@ -142,7 +142,10 @@ class WorkspaceThumbnails final : public AModule {
   int thumbnail_height() const { return thumb_height_; }
   const ThumbnailOptions& options() const { return options_; }
   Gtk::Orientation bar_orientation() const { return bar_.orientation; }
-  CropRect dead_zone_crop(double width, double height) const;
+  // Only the bar's own output has known reserved-space geometry; `handle` identifies
+  // which workspace/output this crop is for, so foreign-output thumbnails aren't cropped
+  // using this bar's own dead zones.
+  CropRect dead_zone_crop(ext_workspace_handle_v1* handle, double width, double height) const;
   void commit() const;
 
   struct WorkspaceMeta {

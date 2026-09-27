@@ -412,7 +412,7 @@ bool Thumbnail::on_draw(const Cairo::RefPtr<Cairo::Context>& cr) {
     double src_x = 0, src_y = 0;
     double src_w = surface_->get_width(), src_h = surface_->get_height();
     if (opts.crop_dead_zones != CropMode::None) {
-      const CropRect crop = owner_.dead_zone_crop(src_w, src_h);
+      const CropRect crop = owner_.dead_zone_crop(workspace_, src_w, src_h);
       src_x = crop.x;
       src_y = crop.y;
       src_w = crop.width;
@@ -745,7 +745,7 @@ WorkspaceThumbnails::WorkspaceThumbnails(const std::string& id, const waybar::Ba
         "protocol; thumbnails will stay blank");
   }
 
-  if (options_.crop_dead_zones != CropMode::None) {
+  if (options_.display == DisplayMode::Live && options_.crop_dead_zones != CropMode::None) {
     start_overlap_probe();
   }
 }
@@ -923,6 +923,10 @@ void WorkspaceThumbnails::handle_workspace_removed(ext_workspace_handle_v1* hand
     ext_workspace_handle_v1_destroy(*it);
     workspaces_.erase(it);
   }
+  // Remaining thumbnails' displayed numbers shift once a preceding workspace is gone.
+  for (auto& [remaining_handle, thumb] : thumbnails_) {
+    thumb->refresh_style();
+  }
 }
 
 void WorkspaceThumbnails::handle_workspace_name(ext_workspace_handle_v1* handle,
@@ -992,15 +996,32 @@ const WorkspaceThumbnails::WorkspaceMeta* WorkspaceThumbnails::meta_for(
 }
 
 int WorkspaceThumbnails::number_for(ext_workspace_handle_v1* handle) const {
-  const auto it = std::find(workspaces_.begin(), workspaces_.end(), handle);
-  if (it == workspaces_.end()) return 0;
-  return static_cast<int>(std::distance(workspaces_.begin(), it)) + 1;
+  // Number among the workspaces actually shown on this bar, not the compositor's
+  // full (possibly other-output) list, so numbering has no gaps with all-outputs: false.
+  const auto visible = visible_workspaces();
+  const auto it = std::find(visible.begin(), visible.end(), handle);
+  if (it == visible.end()) return 0;
+  return static_cast<int>(std::distance(visible.begin(), it)) + 1;
 }
 
-CropRect WorkspaceThumbnails::dead_zone_crop(double width, double height) const {
+CropRect WorkspaceThumbnails::dead_zone_crop(ext_workspace_handle_v1* handle, double width,
+                                             double height) const {
   const CropRect full{0, 0, width, height};
   if (options_.crop_dead_zones == CropMode::None) return full;
   if (!bar_.output || bar_.output->width <= 0 || bar_.output->height <= 0) return full;
+
+  // Reserved-space geometry (compute_edge_clips) is only probed for this bar's own
+  // output, so a workspace living on another output (all-outputs mode) can't be
+  // cropped correctly here; leave it uncropped rather than apply the wrong geometry.
+  const auto* bar_wl_output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
+  const bool on_bar_output = std::any_of(groups_.begin(), groups_.end(), [&](const auto& group) {
+    const bool ws_in_group = std::find(group.workspaces.begin(), group.workspaces.end(),
+                                       handle) != group.workspaces.end();
+    const bool group_on_bar_output = std::find(group.outputs.begin(), group.outputs.end(),
+                                               bar_wl_output) != group.outputs.end();
+    return ws_in_group && group_on_bar_output;
+  });
+  if (!on_bar_output) return full;
 
   const EdgeClips clips = compute_edge_clips();
   const double out_w = bar_.output->width;
