@@ -52,6 +52,11 @@ void waybar::Client::handleGlobal(void* data, struct wl_registry* registry, uint
     spdlog::debug("Bound ext-idle-notifier-v1 at version {}", bind_version);
 #ifdef HAVE_BAR_BLUR
   } else if (strcmp(interface, ext_background_effect_manager_v1_interface.name) == 0) {
+    if (client->background_effect_manager != nullptr) {
+      ext_background_effect_manager_v1_destroy(client->background_effect_manager);
+      client->background_effect_manager = nullptr;
+    }
+
     client->background_effect_manager = static_cast<struct ext_background_effect_manager_v1*>(
         wl_registry_bind(registry, name, &ext_background_effect_manager_v1_interface, 1));
 #endif

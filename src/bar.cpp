@@ -4,7 +4,6 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
-#include <cmath>
 #include <ostream>
 #include <type_traits>
 
@@ -531,11 +530,24 @@ void waybar::Bar::setupBackgroundBlur() {
   updateBlurRegion();
 }
 
-// Re-applies the blur region to match the bar's current pixel size, clipped
-// to the bar's own CSS border-radius so blur doesn't leak past the visually
-// rounded corners as a rectangular "ghost".
+// Re-applies the blur region to match the bar's current pixel size, clipped to the bar's
+// actual rendered CSS background shape (rounded corners, including asymmetric top/bottom
+// radii) so blur doesn't leak past it as a rectangular "ghost".
 void waybar::Bar::updateBlurRegion() {
   if (!blur_enabled_ || !background_effect_surface_ || !surface) {
+    return;
+  }
+  // Query the live GDK window size rather than width_/height_: those track the
+  // user-requested config size and may still be unset (0) the first time we're
+  // called, from onMap, before any configure event has landed.
+  auto gdk_window_ref = window.get_window();
+  if (!gdk_window_ref) {
+    return;
+  }
+  auto* gdk_window = gdk_window_ref->gobj();
+  const int32_t w = gdk_window_get_width(gdk_window);
+  const int32_t h = gdk_window_get_height(gdk_window);
+  if (w <= 0 || h <= 0) {
     return;
   }
   auto* compositor = gdk_wayland_display_get_wl_compositor(window.get_display()->gobj());
@@ -543,29 +555,42 @@ void waybar::Bar::updateBlurRegion() {
     return;
   }
 
+  auto* style_context = window.get_style_context()->gobj();
   gint radius = 0;
-  gtk_style_context_get(window.get_style_context()->gobj(), GTK_STATE_FLAG_NORMAL,
-                        GTK_STYLE_PROPERTY_BORDER_RADIUS, &radius, nullptr);
-  const int32_t w = static_cast<int32_t>(width_);
-  const int32_t h = static_cast<int32_t>(height_);
+  gtk_style_context_get(style_context, GTK_STATE_FLAG_NORMAL, GTK_STYLE_PROPERTY_BORDER_RADIUS,
+                        &radius, nullptr);
   radius = std::clamp<gint>(radius, 0, std::min(w, h) / 2);
 
   wl_region* region = wl_compositor_create_region(compositor);
   if (radius <= 0) {
     wl_region_add(region, 0, 0, w, h);
   } else {
-    // Middle band, full width, between the two rounded strips.
+    // Middle band, full width, between the two corner strips.
     wl_region_add(region, 0, radius, w, h - 2 * radius);
-    // Per-row circular inset approximating the rounded top/bottom corners.
-    for (int32_t dy = 0; dy < radius; ++dy) {
-      const double opposite = radius - dy;
-      const double dx =
-          radius - std::sqrt(static_cast<double>(radius) * radius - opposite * opposite);
-      const int32_t inset = static_cast<int32_t>(std::ceil(dx));
-      const int32_t row_w = std::max<int32_t>(0, w - 2 * inset);
-      wl_region_add(region, inset, dy, row_w, 1);
-      wl_region_add(region, inset, h - 1 - dy, row_w, 1);
-    }
+    // Rasterize the actual CSS background to find each corner row's opaque span, so
+    // top and bottom corners are clipped correctly even when their radii differ.
+    cairo_surface_t* mask = cairo_image_surface_create(CAIRO_FORMAT_A8, w, h);
+    cairo_t* cr = cairo_create(mask);
+    gtk_render_background(style_context, cr, 0, 0, w, h);
+    cairo_surface_flush(mask);
+    const unsigned char* data = cairo_image_surface_get_data(mask);
+    const int stride = cairo_image_surface_get_stride(mask);
+
+    auto add_opaque_span = [&](int32_t y) {
+      const unsigned char* row = data + static_cast<size_t>(y) * stride;
+      int32_t left = 0;
+      while (left < w && row[left] == 0) ++left;
+      int32_t right = w;
+      while (right > left && row[right - 1] == 0) --right;
+      if (right > left) {
+        wl_region_add(region, left, y, right - left, 1);
+      }
+    };
+    for (int32_t y = 0; y < radius; ++y) add_opaque_span(y);
+    for (int32_t y = h - radius; y < h; ++y) add_opaque_span(y);
+
+    cairo_destroy(cr);
+    cairo_surface_destroy(mask);
   }
   ext_background_effect_surface_v1_set_blur_region(background_effect_surface_, region);
   wl_region_destroy(region);
