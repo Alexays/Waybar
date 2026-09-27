@@ -1149,15 +1149,18 @@ void Workspaces::updateWorkspaceStates() {
       currentWorkspace.isMember("name") ? currentWorkspace["name"].asString() : "";
 
   for (auto& workspace : m_workspaces) {
+    bool isActiveById = workspace->id() == m_activeWorkspaceId;
     bool isActiveByName =
-        !currentWorkspaceName.empty() && 
+        !currentWorkspaceName.empty() &&
         workspace->name() == currentWorkspaceName;
 
-    workspace->setActive(
-        ((m_activeBy == ActiveMethod::ID || m_activeBy == ActiveMethod::DEFAULT) &&
-          workspace->id() == m_activeWorkspaceId ) || 
+    bool isActive =
+        (m_activeBy == ActiveMethod::ID && isActiveById) ||
         (m_activeBy == ActiveMethod::NAME && isActiveByName) ||
-        (workspace->isSpecial() && workspace->name() == m_activeSpecialWorkspaceName));
+        (m_activeBy == ActiveMethod::DEFAULT && (isActiveById || isActiveByName)) ||
+        (workspace->isSpecial() && workspace->name() == m_activeSpecialWorkspaceName);
+
+    workspace->setActive(isActive);
     if (workspace->isActive() && workspace->isUrgent()) {
       workspace->setUrgent(false);
     }
