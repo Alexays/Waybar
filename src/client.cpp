@@ -13,6 +13,9 @@
 #include "util/clara.hpp"
 #include "util/format.hpp"
 #include "util/hex_checker.hpp"
+#ifdef HAVE_BAR_BLUR
+#include "ext-background-effect-v1-client-protocol.h"
+#endif
 
 waybar::Client* waybar::Client::inst() {
   static auto* c = new Client();
@@ -47,6 +50,11 @@ void waybar::Client::handleGlobal(void* data, struct wl_registry* registry, uint
     client->idle_notifier = static_cast<struct ext_idle_notifier_v1 *>(
         wl_registry_bind(registry, name, &ext_idle_notifier_v1_interface, bind_version));
     spdlog::debug("Bound ext-idle-notifier-v1 at version {}", bind_version);
+#ifdef HAVE_BAR_BLUR
+  } else if (strcmp(interface, ext_background_effect_manager_v1_interface.name) == 0) {
+    client->background_effect_manager = static_cast<struct ext_background_effect_manager_v1*>(
+        wl_registry_bind(registry, name, &ext_background_effect_manager_v1_interface, 1));
+#endif
   }
 }
 
@@ -260,6 +268,12 @@ auto waybar::Client::setupCss(const std::string& css_file) -> void {
   }
   Gtk::StyleContext::add_provider_for_screen(screen, css_provider_,
                                              GTK_STYLE_PROVIDER_PRIORITY_USER);
+#ifdef HAVE_BAR_BLUR
+  // The bar's border-radius may have changed without a resize event.
+  for (auto& bar : bars) {
+    bar->updateBlurRegion();
+  }
+#endif
 }
 
 void waybar::Client::bindInterfaces() {

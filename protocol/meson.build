@@ -38,6 +38,12 @@ if wayland_protos.version().version_compare('>=1.39')
     ]
 endif
 
+if wayland_protos.version().version_compare('>=1.41')
+    client_protocols += [
+        [wl_protocol_dir, 'staging/ext-background-effect/ext-background-effect-v1.xml'],
+    ]
+endif
+
 client_protos_src = []
 client_protos_headers = []
 
