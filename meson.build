@@ -391,6 +391,16 @@ if get_option('mango')
     )
 endif
 
+if get_option('cosmic') and wayland_protos.version().version_compare('>=1.41')
+    add_project_arguments('-DHAVE_COSMIC_WORKSPACES', language: 'cpp')
+    src_files += files(
+        'src/modules/cosmic/workspace_thumbnails.cpp',
+    )
+    man_files += files(
+        'man/waybar-cosmic-workspaces.5.scd',
+    )
+endif
+
 if true
     add_project_arguments('-DHAVE_WAYFIRE', language: 'cpp')
     src_files += files(

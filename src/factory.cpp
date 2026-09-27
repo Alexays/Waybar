@@ -53,6 +53,9 @@
 #include "modules/wayfire/window.hpp"
 #include "modules/wayfire/workspaces.hpp"
 #endif
+#ifdef HAVE_COSMIC_WORKSPACES
+#include "modules/cosmic/workspace_thumbnails.hpp"
+#endif
 #if defined(__FreeBSD__) || defined(__linux__)
 #include "modules/battery.hpp"
 #endif
@@ -191,6 +194,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #ifdef HAVE_EXT_WORKSPACES
     if (ref == "ext/workspaces") {
       return new waybar::modules::ext::WorkspaceManager(id, bar_, config_[name]);
+    }
+#endif
+#ifdef HAVE_COSMIC_WORKSPACES
+    if (ref == "cosmic/workspaces") {
+      return new waybar::modules::cosmic::WorkspaceThumbnails(id, bar_, config_[name]);
     }
 #endif
 #ifdef HAVE_RIVER

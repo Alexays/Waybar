@@ -2,7 +2,7 @@ wl_protocol_dir = wayland_protos.get_variable(pkgconfig: 'pkgdatadir')
 
 wayland_scanner = find_program('wayland-scanner')
 
-# should check wayland_scanner's version, but it is hard to get
+#should check wayland_scanner's version, but it is hard to get
 if wayland_client.version().version_compare('>=1.14.91')
 	code_type = 'private-code'
 else
@@ -26,6 +26,7 @@ client_protocols = [
 	[wl_protocol_dir, 'unstable/xdg-output/xdg-output-unstable-v1.xml'],
 	[wl_protocol_dir, 'unstable/idle-inhibit/idle-inhibit-unstable-v1.xml'],
 	['wlr-foreign-toplevel-management-unstable-v1.xml'],
+	['wlr-layer-shell-unstable-v1.xml'],
 	['river-status-unstable-v1.xml'],
 	['river-control-unstable-v1.xml'],
 	['dwl-ipc-unstable-v2.xml'],
@@ -35,6 +36,19 @@ client_protocols = [
 if wayland_protos.version().version_compare('>=1.39')
     client_protocols += [
         [wl_protocol_dir, 'staging/ext-workspace/ext-workspace-v1.xml']
+    ]
+endif
+
+if wayland_protos.version().version_compare('>=1.41')
+    client_protocols += [
+#ext - image - capture - source's toplevel source manager references
+#ext_foreign_toplevel_handle_v1_interface even though we only use its
+#output / workspace source managers, so this must be linked in too.
+        [wl_protocol_dir, 'staging/ext-foreign-toplevel-list/ext-foreign-toplevel-list-v1.xml'],
+        [wl_protocol_dir, 'staging/ext-image-capture-source/ext-image-capture-source-v1.xml'],
+        [wl_protocol_dir, 'staging/ext-image-copy-capture/ext-image-copy-capture-v1.xml'],
+        ['cosmic-image-capture-source-unstable-v1.xml'],
+        ['cosmic-overlap-notify-unstable-v1.xml'],
     ]
 endif
 

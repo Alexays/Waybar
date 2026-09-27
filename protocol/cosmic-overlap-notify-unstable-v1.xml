@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="cosmic_overlap_notify_unstable_v1">
+  <copyright>
+    Copytight © 2024 Victoria Brekenfeld
+
+    Permission to use, copy, modify, distribute, and sell this
+    software and its documentation for any purpose is hereby granted
+    without fee, provided that the above copyright notice appear in
+    all copies and that both that copyright notice and this permission
+    notice appear in supporting documentation, and that the name of
+    the copyright holders not be used in advertising or publicity
+    pertaining to distribution of the software without specific,
+    written prior permission.  The copyright holders make no
+    representations about the suitability of this software for any
+    purpose.  It is provided "as is" without express or implied
+    warranty.
+
+    THE COPYRIGHT HOLDERS DISCLAIM ALL WARRANTIES WITH REGARD TO THIS
+    SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+    FITNESS, IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+    WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+    AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+    ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+    THIS SOFTWARE.
+  </copyright>
+
+  <interface name="zcosmic_overlap_notify_v1" version="1">
+    <description summary="get notifications of other elements overlapping layer surfaces">
+      The purpose of this protocol is to enable layer-shell client to get
+      notifications if part of their surfaces are occluded other elements
+      (currently toplevels and other layer-surfaces).
+
+      You can request a notification object for any of your zwlr_layer_surface_v1
+      surfaces, which will then emit overlap events.
+    </description>
+
+    <request name="notify_on_overlap">
+      <description summary="get notified if a layer-shell is obstructed by a toplevel">
+        Requests notifications for toplevels and layer-surfaces entering and leaving the
+        surface-area of the given zwlr_layer_surface_v1. This can be used e.g. to
+        implement auto-hide functionality.
+
+        To stop receiving notifications, destroy the returned
+        zcosmic_overlap_notification_v1 object.
+      </description>
+      <arg name="overlap_notification" type="new_id" interface="zcosmic_overlap_notification_v1"/>
+      <arg name="layer_surface" type="object" interface="zwlr_layer_surface_v1"/>
+    </request>
+  </interface>
+
+  <interface name="zcosmic_overlap_notification_v1" version="1">
+    <description summary="Subscription for overlapping toplevels on a layer-surface"/>
+
+    <event name="toplevel_enter">
+      <description summary="Toplevel entered the surface area">
+        A ext_foreign_toplevel_handle_v1 has entered the surface area.
+
+        This event will be emitted once for every ext_foreign_toplevel_handle_v1
+        representing this toplevel.
+
+        Compositors are free to update the overlapping area by sending additional
+        `toplevel_enter` events for the same toplevel without sending `toplevel_leave`
+        in between.
+      </description>
+      <arg name="toplevel" type="object" interface="ext_foreign_toplevel_handle_v1"/>
+      <arg name="x" type="int" summary="x coordinate of the upper-left corner of the overlapping area"/>
+      <arg name="y" type="int" summary="y coordinate of the upper-left corner of the overlapping area"/>
+      <arg name="width" type="int" summary="width of the overlapping area"/>
+      <arg name="height" type="int" summary="height of the overlapping area"/>
+    </event>
+
+    <event name="toplevel_leave">
+      <description summary="Toplevel entered the surface area">
+        A ext_foreign_toplevel_handle_v1 has left the surface area.
+
+        This event will be emitted once for every ext_foreign_toplevel_handle_v1
+        representing this toplevel.
+      </description>
+      <arg name="toplevel" type="object" interface="ext_foreign_toplevel_handle_v1"/>
+    </event>
+
+    <event name="layer_enter">
+      <description summary="Layer surface entered the surface area">
+        A zwlr_layer_surface_v1 has entered the surface area.
+
+        Compositors are free to update the overlapping area by sending additional
+        `layer_enter` events for the same surface without sending `layer_leave`
+        in between.
+
+        The overlapping region is given surface-relative to the zwlr_layer_surface_v1
+        used to create this notification object.
+      </description>
+      <arg name="identifier" type="string" summary="unique identifier for the overlapping layer-surface"/>
+      <arg name="name_space" type="string" summary="namespace for the layer surface"/>
+      <arg name="exclusive" type="uint" summary="if the overlapping surface is requesting an exclusive area or not"/>
+      <arg name="layer" type="uint" enum="zwlr_layer_shell_v1.layer" summary="layer the overlapping surface sits on"/>
+      <arg name="x" type="int" summary="x coordinate of the upper-left corner of the overlapping area"/>
+      <arg name="y" type="int" summary="y coordinate of the upper-left corner of the overlapping area"/>
+      <arg name="width" type="int" summary="width of the overlapping area"/>
+      <arg name="height" type="int" summary="height of the overlapping area"/>
+    </event>
+
+    <event name="layer_leave">
+      <description summary="Layer surface left the surface area">
+        A zwlr_layer_surface_v1 has left the surface area.
+      </description>
+      <arg name="identifier" type="string" summary="unique identifier for the overlapping layer-surface"/>
+    </event>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy the notification object">
+        This request should be called when the client has no interest in overlap
+        notifications anymore.
+      </description>
+    </request>
+  </interface>
+</protocol>
