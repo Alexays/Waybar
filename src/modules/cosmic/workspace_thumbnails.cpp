@@ -70,19 +70,32 @@ Thumbnail::Thumbnail(WorkspaceThumbnails& owner, ext_workspace_handle_v1* worksp
   overlay_.set_valign(Gtk::ALIGN_CENTER);
 
   thumbnail_label_.get_style_context()->add_class("thumbnail-label");
-  thumbnail_label_.set_halign(opts.thumbnail_label_halign);
-  thumbnail_label_.set_valign(opts.thumbnail_label_valign);
+  // Overlay children (unlike area_ below them) have no window of their own and would
+  // otherwise just swallow the click without ever handing it to area_'s handler, so
+  // give the label an (invisible) input window of its own to activate the workspace too.
+  thumbnail_label_box_.set_visible_window(false);
+  thumbnail_label_box_.add(thumbnail_label_);
+  thumbnail_label_box_.add_events(Gdk::BUTTON_PRESS_MASK);
+  thumbnail_label_box_.signal_button_press_event().connect(
+      sigc::mem_fun(*this, &Thumbnail::on_button_press));
+  thumbnail_label_box_.set_halign(opts.thumbnail_label_halign);
+  thumbnail_label_box_.set_valign(opts.thumbnail_label_valign);
   if (opts.thumbnail_label_show) {
-    overlay_.add_overlay(thumbnail_label_);
+    overlay_.add_overlay(thumbnail_label_box_);
   }
 
   adjacent_label_.get_style_context()->add_class("label");
+  adjacent_label_box_.set_visible_window(false);
+  adjacent_label_box_.add(adjacent_label_);
+  adjacent_label_box_.add_events(Gdk::BUTTON_PRESS_MASK);
+  adjacent_label_box_.signal_button_press_event().connect(
+      sigc::mem_fun(*this, &Thumbnail::on_button_press));
   if (opts.label_show && opts.label_position == LabelPosition::Before) {
-    item_box_.pack_start(adjacent_label_, false, false);
+    item_box_.pack_start(adjacent_label_box_, false, false);
   }
   item_box_.pack_start(overlay_, false, false);
   if (opts.label_show && opts.label_position == LabelPosition::After) {
-    item_box_.pack_start(adjacent_label_, false, false);
+    item_box_.pack_start(adjacent_label_box_, false, false);
   }
 
   refresh_style();

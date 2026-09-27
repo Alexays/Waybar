@@ -5,6 +5,7 @@
 #include <gtkmm/box.h>
 #include <gtkmm/drawingarea.h>
 #include <gtkmm/enums.h>
+#include <gtkmm/eventbox.h>
 #include <gtkmm/label.h>
 #include <gtkmm/overlay.h>
 #include <sigc++/connection.h>
@@ -99,7 +100,9 @@ class Thumbnail {
   Gtk::Overlay overlay_;
   Gtk::DrawingArea area_;
   Gtk::Label thumbnail_label_;
+  Gtk::EventBox thumbnail_label_box_;
   Gtk::Label adjacent_label_;
+  Gtk::EventBox adjacent_label_box_;
 
   ext_image_capture_source_v1* source_ = nullptr;
   ext_image_copy_capture_session_v1* session_ = nullptr;
