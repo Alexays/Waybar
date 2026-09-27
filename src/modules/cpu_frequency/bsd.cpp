@@ -9,6 +9,7 @@ std::vector<float> waybar::modules::CpuFrequency::parseCpuFrequencies() {
   int32_t freq;
 
 #if defined(__NetBSD__)
+  len = sizeof(freq);
   if (sysctlbyname("machdep.cpu.frequency.current", &freq, &len, NULL, 0) == 0) {
     frequencies.push_back((float)freq);
   }
