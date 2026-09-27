@@ -36,6 +36,30 @@ Addressed by *cosmic/workspaces*
 	default: 90 ++
 	Height in pixels of each workspace thumbnail.
 
+*workspace-wrap-size*: ++
+	typeof: int ++
+	default: 0 ++
+	Maximum amount of the bar's main axis, in pixels, that a single row
+	(horizontal bar) or column (vertical bar) of thumbnails may consume,
+	measured at the configured *thumbnail-width*/*thumbnail-height* including
+	*spacing* between items. When the visible workspaces would need more than
+	this, enough rows/columns are added to fit them, and *thumbnail-width* and
+	*thumbnail-height* are both divided by the number of rows/columns (subject
+	to *thumbnail-min-width*/*thumbnail-min-height*). A value of 0 disables
+	wrapping.
+
+*thumbnail-min-width*: ++
+	typeof: int ++
+	default: 0 ++
+	Floor, in pixels, below which *workspace-wrap-size* will not shrink
+	*thumbnail-width*. Only relevant when *workspace-wrap-size* is set.
+
+*thumbnail-min-height*: ++
+	typeof: int ++
+	default: 0 ++
+	Floor, in pixels, below which *workspace-wrap-size* will not shrink
+	*thumbnail-height*. Only relevant when *workspace-wrap-size* is set.
+
 *interval*: ++
 	typeof: int ++
 	default: 1000 ++

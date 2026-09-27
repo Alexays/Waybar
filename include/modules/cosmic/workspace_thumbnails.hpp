@@ -6,6 +6,7 @@
 #include <gtkmm/drawingarea.h>
 #include <gtkmm/enums.h>
 #include <gtkmm/eventbox.h>
+#include <gtkmm/grid.h>
 #include <gtkmm/label.h>
 #include <gtkmm/overlay.h>
 #include <sigc++/connection.h>
@@ -72,6 +73,11 @@ class Thumbnail {
 
   // Re-reads name/active state from the owner and redraws.
   void refresh_style();
+
+  // Applies a new (possibly wrap-shrunk) thumbnail size; the draw callback
+  // already scales painted content to the widget's actual allocation, so no
+  // capture/buffer renegotiation is needed.
+  void resize(int width, int height);
 
   // ext_image_copy_capture_session_v1 events
   void handle_buffer_size(uint32_t width, uint32_t height);
@@ -144,6 +150,9 @@ class WorkspaceThumbnails final : public AModule {
   int thumbnail_width() const { return thumb_width_; }
   int thumbnail_height() const { return thumb_height_; }
   const ThumbnailOptions& options() const { return options_; }
+  int workspace_wrap_size() const { return workspace_wrap_size_; }
+  int thumbnail_min_width() const { return thumb_min_width_; }
+  int thumbnail_min_height() const { return thumb_min_height_; }
   Gtk::Orientation bar_orientation() const { return bar_.orientation; }
   // Only the bar's own output has known reserved-space geometry; `handle` identifies
   // which workspace/output this crop is for, so foreign-output thumbnails aren't cropped
@@ -200,6 +209,15 @@ class WorkspaceThumbnails final : public AModule {
   void refresh_thumbnail(ext_workspace_handle_v1* handle);
   bool on_scroll(GdkEventScroll* event);
 
+  // Result of applying workspace-wrap-size to a given visible-workspace count.
+  struct WrapLayout {
+    int lines = 1;
+    int items_per_line = 0;
+    int thumb_width = 0;
+    int thumb_height = 0;
+  };
+  WrapLayout compute_wrap_layout(size_t count) const;
+
   // Overlap-probe: an invisible, full-output layer-surface used solely to ask
   // the compositor (via cosmic-overlap-notify) which other layer-surfaces
   // reserve screen space, so crop-dead-zones can crop them out of previews.
@@ -227,7 +245,7 @@ class WorkspaceThumbnails final : public AModule {
   };
 
   const waybar::Bar& bar_;
-  Gtk::Box box_;
+  Gtk::Grid box_;
 
   wl_shm* shm_ = nullptr;
   ext_workspace_manager_v1* workspace_manager_ = nullptr;
@@ -258,6 +276,9 @@ class WorkspaceThumbnails final : public AModule {
   std::chrono::milliseconds interval_{1000};
   int thumb_width_ = 160;
   int thumb_height_ = 90;
+  int thumb_min_width_ = 0;
+  int thumb_min_height_ = 0;
+  int workspace_wrap_size_ = 0;
   bool needs_sync_ = false;
 };
 

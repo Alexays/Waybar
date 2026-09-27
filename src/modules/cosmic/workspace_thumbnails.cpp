@@ -107,6 +107,8 @@ Thumbnail::Thumbnail(WorkspaceThumbnails& owner, ext_workspace_handle_v1* worksp
 
 Thumbnail::~Thumbnail() { release_session(); }
 
+void Thumbnail::resize(int width, int height) { area_.set_size_request(width, height); }
+
 void Thumbnail::refresh_style() {
   const auto& opts = owner_.options();
   const auto* meta = owner_.meta_for(workspace_);
@@ -652,13 +654,18 @@ static wl_buffer* create_transparent_buffer(wl_shm* shm, uint32_t width, uint32_
 WorkspaceThumbnails::WorkspaceThumbnails(const std::string& id, const waybar::Bar& bar,
                                          const Json::Value& config)
     : waybar::AModule(config, "cosmic-workspaces", id, false, false),
-      bar_(bar),
-      box_(bar.orientation, 0) {
+      bar_(bar) {
   box_.set_name("cosmic-workspaces");
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
   box_.get_style_context()->add_class(MODULE_CLASS);
+  // The bar's own cross-axis thickness (height for a horizontal bar, width for
+  // a vertical one) can leave the grid smaller than its allocation - e.g. once
+  // workspace-wrap-size shrinks thumbnails - so centre it on both axes rather
+  // than hugging the container's default (start) edge.
+  box_.set_halign(Gtk::ALIGN_CENTER);
+  box_.set_valign(Gtk::ALIGN_CENTER);
   event_box_.add(box_);
 
   if (config_["all-outputs"].isBool()) {
@@ -672,6 +679,15 @@ WorkspaceThumbnails::WorkspaceThumbnails(const std::string& id, const waybar::Ba
   }
   if (config_["thumbnail-height"].isUInt()) {
     thumb_height_ = config_["thumbnail-height"].asUInt();
+  }
+  if (config_["thumbnail-min-width"].isUInt()) {
+    thumb_min_width_ = config_["thumbnail-min-width"].asUInt();
+  }
+  if (config_["thumbnail-min-height"].isUInt()) {
+    thumb_min_height_ = config_["thumbnail-min-height"].asUInt();
+  }
+  if (config_["workspace-wrap-size"].isUInt()) {
+    workspace_wrap_size_ = config_["workspace-wrap-size"].asUInt();
   }
 
   if (config_["display"].isString()) {
@@ -737,7 +753,8 @@ WorkspaceThumbnails::WorkspaceThumbnails(const std::string& id, const waybar::Ba
   if (config_["spacing"].isUInt()) {
     options_.spacing = config_["spacing"].asUInt();
   }
-  box_.set_spacing(options_.spacing);
+  box_.set_row_spacing(options_.spacing);
+  box_.set_column_spacing(options_.spacing);
 
   if (options_.mouse_scroll_enabled) {
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
@@ -1243,6 +1260,49 @@ bool WorkspaceThumbnails::on_scroll(GdkEventScroll* event) {
   return true;
 }
 
+WorkspaceThumbnails::WrapLayout WorkspaceThumbnails::compute_wrap_layout(size_t count) const {
+  WrapLayout layout;
+  if (workspace_wrap_size_ <= 0 || count == 0) {
+    layout.lines = 1;
+    layout.items_per_line = static_cast<int>(count);
+    layout.thumb_width = thumb_width_;
+    layout.thumb_height = thumb_height_;
+    return layout;
+  }
+
+  // The bar's main axis is width for a horizontal bar (items run left-to-right,
+  // additional lines stack as rows) and height for a vertical bar (items run
+  // top-to-bottom, additional lines stack as columns).
+  const bool horizontal = bar_.orientation == Gtk::ORIENTATION_HORIZONTAL;
+
+  // Search forward one line-count at a time: thumbnails stay full-size in a
+  // single line until it overflows, and each subsequent shrink (applied once
+  // per added line) is kept as long as that many lines' worth of capacity -
+  // at the resulting shrunk size - still fits everything. Only once the
+  // last line overflows again does another line get added and the
+  // thumbnails shrink further.
+  for (int lines = 1;; ++lines) {
+    const int thumb_w =
+        lines == 1 ? thumb_width_ : std::max(thumb_min_width_, thumb_width_ / lines);
+    const int thumb_h =
+        lines == 1 ? thumb_height_ : std::max(thumb_min_height_, thumb_height_ / lines);
+    const int main_dim = horizontal ? thumb_w : thumb_h;
+    const int capacity_per_line =
+        std::max(1, (workspace_wrap_size_ + options_.spacing) / (main_dim + options_.spacing));
+
+    if (static_cast<size_t>(capacity_per_line) * static_cast<size_t>(lines) >= count) {
+      layout.lines = lines;
+      // Fill each line to capacity before overflowing into the next, rather
+      // than spreading items evenly across all lines.
+      layout.items_per_line = capacity_per_line;
+      layout.thumb_width = thumb_w;
+      layout.thumb_height = thumb_h;
+      break;
+    }
+  }
+  return layout;
+}
+
 void WorkspaceThumbnails::sync_thumbnails() {
   const auto visible = visible_workspaces();
 
@@ -1252,10 +1312,7 @@ void WorkspaceThumbnails::sync_thumbnails() {
     const auto it = thumbnails_.find(handle);
     if (on_bar_output) {
       if (it == thumbnails_.end()) {
-        auto thumb = std::make_unique<Thumbnail>(*this, handle);
-        box_.pack_start(thumb->widget(), false, false);
-        thumb->widget().show_all();
-        thumbnails_.emplace(handle, std::move(thumb));
+        thumbnails_.emplace(handle, std::make_unique<Thumbnail>(*this, handle));
       }
     } else if (it != thumbnails_.end()) {
       box_.remove(it->second->widget());
@@ -1271,6 +1328,27 @@ void WorkspaceThumbnails::sync_thumbnails() {
     } else {
       ++it;
     }
+  }
+
+  // Re-lay-out from scratch: with workspace-wrap-size, adding/removing even one
+  // workspace can shift every item's grid position and shrink/grow every thumbnail.
+  const WrapLayout layout = compute_wrap_layout(visible.size());
+  const bool horizontal = bar_.orientation == Gtk::ORIENTATION_HORIZONTAL;
+  for (size_t i = 0; i < visible.size(); ++i) {
+    auto& thumb = *thumbnails_.at(visible[i]);
+    if (thumb.widget().get_parent() != nullptr) {
+      box_.remove(thumb.widget());
+    }
+    thumb.resize(layout.thumb_width, layout.thumb_height);
+
+    const int line = static_cast<int>(i) / layout.items_per_line;
+    const int in_line = static_cast<int>(i) % layout.items_per_line;
+    // Horizontal bar: lines stack as rows, items within a line run left-to-right.
+    // Vertical bar: lines stack as columns, items within a line run top-to-bottom.
+    const int col = horizontal ? in_line : line;
+    const int row = horizontal ? line : in_line;
+    box_.attach(thumb.widget(), col, row, 1, 1);
+    thumb.widget().show_all();
   }
 }
 
