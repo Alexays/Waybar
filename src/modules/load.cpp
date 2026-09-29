@@ -20,10 +20,7 @@ waybar::modules::Load::Load(const std::string& id, const Json::Value& config)
 auto waybar::modules::Load::update() -> void {
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
   auto [load1, load5, load15] = Load::getLoad();
-  if (tooltipEnabled()) {
-    auto tooltip = fmt::format("Load 1: {}\nLoad 5: {}\nLoad 15: {}", load1, load5, load15);
-    label_.set_tooltip_markup(tooltip);
-  }
+  auto default_tooltip = fmt::format("Load 1: {}\nLoad 5: {}\nLoad 15: {}", load1, load5, load15);
   auto format = format_;
   auto state = getState(load1);
   if (!state.empty() && config_["format-" + state].isString()) {
@@ -43,6 +40,9 @@ auto waybar::modules::Load::update() -> void {
     store.push_back(fmt::arg("icon5", getIcon(load5, icons)));
     store.push_back(fmt::arg("icon15", getIcon(load15, icons)));
     label_.set_markup(fmt::vformat(format, store));
+    if (tooltipEnabled()) {
+      setTooltipMarkup(fmt::vformat(resolveTooltipFormat(default_tooltip, state), store));
+    }
   }
 
   // Call parent update

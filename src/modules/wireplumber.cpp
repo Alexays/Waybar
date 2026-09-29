@@ -669,17 +669,17 @@ auto waybar::modules::Wireplumber::update() -> void {
     if (format_name != "format" && !config_[format_name + "-muted"].isString())
       format_name = "format";
     format_name += "-muted";
+    label_.get_style_context()->add_class("muted");
     if (is_source_type) {
       label_.get_style_context()->add_class("source-muted");
     } else {
-      label_.get_style_context()->add_class("muted");
       label_.get_style_context()->add_class("sink-muted");
     }
   } else {
+    label_.get_style_context()->remove_class("muted");
     if (is_source_type) {
       label_.get_style_context()->remove_class("source-muted");
     } else {
-      label_.get_style_context()->remove_class("muted");
       label_.get_style_context()->remove_class("sink-muted");
     }
   }
