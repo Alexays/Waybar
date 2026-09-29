@@ -12,6 +12,7 @@ test_src = files(
     '../config.cpp',
     '../../src/config.cpp',
     'JsonParser.cpp',
+    'backlight_brightness.cpp',
     'SafeSignal.cpp',
     'format.cpp',
     'sleeper_thread.cpp',
