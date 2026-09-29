@@ -312,11 +312,11 @@ void BacklightBackend::set_brightness(const std::string& preferred_device, Chang
   GET_BEST_DEVICE(best, (*this), preferred_device);
 
   if (best != nullptr) {
-    const int next = brightness_after_scroll(best->get_actual(), best->get_max(),
-                                             change_type == ChangeType::Increase, step, minimum);
-    if (next != best->get_actual()) {
-      set_brightness_internal(best->name(), next, best->get_max(), best->subsystem());
-    }
+    scroll_brightness(best->get_actual(), best->get_max(), change_type == ChangeType::Increase,
+                      step, minimum, [&](int target) {
+                        set_brightness_internal(best->name(), target, best->get_max(),
+                                                best->subsystem());
+                      });
   }
 }
 

@@ -6,52 +6,69 @@
 #include <catch2/catch.hpp>
 #endif
 
+#include <cmath>
 #include <limits>
+#include <vector>
 
-using waybar::util::brightness_after_scroll;
+static std::vector<int> scroll_writes(int current, int maximum, bool increase, double step = 1,
+                                      double minimum = 0) {
+  std::vector<int> writes;
+  waybar::util::scroll_brightness(current, maximum, increase, step, minimum,
+                                  [&](int target) { writes.push_back(target); });
+  return writes;
+}
 
 TEST_CASE("Backlight scroll reaches zero below the displayed zero percent", "[backlight]") {
-  for (int current = 1; current <= 193; ++current) {
-    REQUIRE(brightness_after_scroll(current, 38787, false, 1, 0) == 0);
-  }
-  REQUIRE(brightness_after_scroll(1941, 38787, false, 1, 0) == 1553);
-  REQUIRE(brightness_after_scroll(389, 38787, false, 1, 0) == 1);
-  REQUIRE(brightness_after_scroll(1, 38787, false, 1, 0) == 0);
+  REQUIRE(scroll_writes(389, 38787, false) == std::vector{1});
+  REQUIRE(scroll_writes(1, 38787, false) == std::vector{0});
+  REQUIRE(scroll_writes(193, 38787, false) == std::vector{0});
 }
 
 TEST_CASE("Backlight scroll respects fractional lower limits", "[backlight]") {
   // 2.5% of 38787 is 969.675: 970 is the lowest allowed device value.
-  REQUIRE(brightness_after_scroll(1000, 38787, false, 1, 2.5) == 970);
-  REQUIRE(brightness_after_scroll(970, 38787, false, 1, 2.5) == 970);
-  REQUIRE(brightness_after_scroll(969, 38787, false, 1, 2.5) == 969);
-  REQUIRE(brightness_after_scroll(0, 38787, true, 1, 2.5) == 388);
-  REQUIRE(brightness_after_scroll(100, 38787, false, 1, -1) == 0);
-  REQUIRE(brightness_after_scroll(100, 38787, false, 1, 101) == 100);
-  REQUIRE(brightness_after_scroll(100, 100, false, 100, 100) == 100);
+  REQUIRE(scroll_writes(1000, 38787, false, 1, 2.5) == std::vector{970});
+  REQUIRE(scroll_writes(970, 38787, false, 1, 2.5).empty());
+  REQUIRE(scroll_writes(969, 38787, false, 1, 2.5).empty());
+  REQUIRE(scroll_writes(0, 38787, true, 1, 2.5) == std::vector{388});
+  REQUIRE(scroll_writes(100, 100, false, 100, 100).empty());
+  REQUIRE(scroll_writes(2, 3, false, 100, 1) == std::vector{1});
 }
 
 TEST_CASE("Backlight scroll makes progress at device resolution", "[backlight]") {
-  REQUIRE(brightness_after_scroll(0, 3, true, 1, 0) == 1);
-  REQUIRE(brightness_after_scroll(1, 3, false, 1, 0) == 0);
-  REQUIRE(brightness_after_scroll(2, 3, false, 100, 1) == 1);
-  REQUIRE(brightness_after_scroll(0, 38787, true, 0.1, 0) == 39);
-  REQUIRE(brightness_after_scroll(0, 38787, true, 0.0001, 0) == 1);
-  REQUIRE(brightness_after_scroll(38786, 38787, true, 1, 0) == 38787);
-  REQUIRE(brightness_after_scroll(38787, 38787, true, 1, 0) == 38787);
-  REQUIRE(brightness_after_scroll(0, 38787, false, 1, 0) == 0);
+  REQUIRE(scroll_writes(0, 1, true) == std::vector{1});
+  REQUIRE(scroll_writes(1, 1, false) == std::vector{0});
+  REQUIRE(scroll_writes(0, 38787, true, 0.1) == std::vector{39});
+}
+
+TEST_CASE("Backlight minimum preserves percentage boundaries", "[backlight]") {
+  REQUIRE(scroll_writes(9, 10000, false, 1, 0.07) == std::vector{7});
+  REQUIRE(scroll_writes(9, 10000, false, 1, std::nextafter(0.07, 1.0)) == std::vector{8});
+  REQUIRE(scroll_writes(9, 10000, false, 1, std::nextafter(0.07, 0.0)) == std::vector{7});
+}
+
+TEST_CASE("Backlight step rounds half units upward at percentage boundaries", "[backlight]") {
+  REQUIRE(scroll_writes(0, 10000, true, 0.285) == std::vector{29});
+  REQUIRE(scroll_writes(0, 10000, true, std::nextafter(0.285, 0.0)) == std::vector{28});
+  REQUIRE(scroll_writes(0, 10000, true, std::nextafter(0.285, 1.0)) == std::vector{29});
+}
+
+TEST_CASE("Backlight scroll writes the maximum even when the cache is already there",
+          "[backlight]") {
+  REQUIRE(scroll_writes(38787, 38787, true) == std::vector{38787});
 }
 
 TEST_CASE("Backlight scroll bounds arithmetic before integer conversion", "[backlight]") {
   constexpr int maximum = std::numeric_limits<int>::max();
   constexpr double huge = std::numeric_limits<double>::max();
-  REQUIRE(brightness_after_scroll(1, maximum, true, huge, 0) == maximum);
-  REQUIRE(brightness_after_scroll(maximum, maximum, false, huge, 0) == 0);
-  REQUIRE(brightness_after_scroll(maximum - 1, maximum, true, 1, 0) == maximum);
-  REQUIRE(brightness_after_scroll(1, maximum, false, 1, -huge) == 0);
-  REQUIRE(brightness_after_scroll(1, maximum, false, 1, huge) == 1);
-  REQUIRE(brightness_after_scroll(0, 3, true, std::numeric_limits<double>::denorm_min(), 0) == 1);
-  REQUIRE(brightness_after_scroll(2, 3, false, 100, std::numeric_limits<double>::denorm_min()) ==
-          1);
+  REQUIRE(scroll_writes(1, maximum, true, huge, 0) == std::vector{maximum});
+  REQUIRE(scroll_writes(maximum, maximum, false, huge, 0) == std::vector{0});
+  REQUIRE(scroll_writes(maximum - 1, maximum, true) == std::vector{maximum});
+  REQUIRE(scroll_writes(1, maximum, false, 1, -huge) == std::vector{0});
+  REQUIRE(scroll_writes(1, maximum, false, 1, huge).empty());
+  REQUIRE(scroll_writes(0, 3, true, std::numeric_limits<double>::denorm_min(), 0) ==
+          std::vector{1});
+  REQUIRE(scroll_writes(2, 3, false, 100, std::numeric_limits<double>::denorm_min()) ==
+          std::vector{1});
 }
 
 TEST_CASE("Backlight scroll ignores invalid steps and unavailable ranges", "[backlight]") {
@@ -59,26 +76,32 @@ TEST_CASE("Backlight scroll ignores invalid steps and unavailable ranges", "[bac
   constexpr double nan = std::numeric_limits<double>::quiet_NaN();
   for (bool increase : {false, true}) {
     for (double step : {0.0, -1.0, infinity, -infinity, nan}) {
-      REQUIRE(brightness_after_scroll(100, 38787, increase, step, 0) == 100);
+      REQUIRE(scroll_writes(100, 38787, increase, step, 0).empty());
     }
     for (double minimum : {infinity, -infinity, nan}) {
-      REQUIRE(brightness_after_scroll(100, 38787, increase, 1, minimum) == 100);
+      REQUIRE(scroll_writes(100, 38787, increase, 1, minimum).empty());
     }
-    REQUIRE(brightness_after_scroll(0, 0, increase, 1, 0) == 0);
-    REQUIRE(brightness_after_scroll(0, -1, increase, 1, 0) == 0);
+    REQUIRE(scroll_writes(0, 0, increase).empty());
+    REQUIRE(scroll_writes(0, -1, increase).empty());
   }
 }
 
-TEST_CASE("Backlight scroll is bounded and moves toward each limit", "[backlight]") {
-  for (int maximum : {1, 3, 99, 100, 255, 38787}) {
-    for (double step : {0.001, 0.1, 1.0, 5.0, 100.0, 1e300}) {
-      for (int current = 0; current <= maximum; ++current) {
-        const int up = brightness_after_scroll(current, maximum, true, step, 0);
-        const int down = brightness_after_scroll(current, maximum, false, step, 0);
-        REQUIRE(up <= maximum);
-        REQUIRE(down >= 0);
-        REQUIRE((current == maximum ? up == current : up > current));
-        REQUIRE((current == 0 ? down == current : down < current));
+TEST_CASE("Backlight scroll remains bounded and moves toward each limit", "[backlight]") {
+  for (int maximum : {3, 255, 38787}) {
+    for (int current : {0, 1, maximum - 1, maximum}) {
+      for (double step : {0.001, 1.0, 100.0}) {
+        const auto up = scroll_writes(current, maximum, true, step);
+        REQUIRE(up.size() == 1);
+        REQUIRE(up[0] <= maximum);
+        REQUIRE((current == maximum ? up[0] == current : up[0] > current));
+        const auto down = scroll_writes(current, maximum, false, step);
+        if (current == 0) {
+          REQUIRE(down.empty());
+        } else {
+          REQUIRE(down.size() == 1);
+          REQUIRE(down[0] >= 0);
+          REQUIRE(down[0] < current);
+        }
       }
     }
   }
