@@ -11,7 +11,7 @@
 #include <optional>
 #include <vector>
 
-#include "ALabel.hpp"
+#include "AIconLabel.hpp"
 #include "util/sleeper_thread.hpp"
 #ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
@@ -23,7 +23,7 @@ enum ip_addr_pref : uint8_t { IPV4, IPV6, IPV4_6 };
 
 namespace waybar::modules {
 
-class Network : public ALabel {
+class Network : public AIconLabel {
  public:
   Network(const std::string&, const Json::Value&);
   virtual ~Network();
