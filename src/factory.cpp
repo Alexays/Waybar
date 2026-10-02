@@ -129,6 +129,7 @@
 #include "modules/cffi.hpp"
 #include "modules/custom.hpp"
 #include "modules/custom_graph.hpp"
+#include "modules/custom_slider.hpp"
 #include "modules/image.hpp"
 #include "modules/temperature.hpp"
 #include "modules/user.hpp"
@@ -397,6 +398,10 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     }
     if (ref.compare(0, 13, "custom-graph/") == 0 && ref.size() > 13) {
       return new waybar::modules::CustomGraph(ref.substr(13), id, config_[name], bar_.output->name);
+    }
+    if (ref.compare(0, 14, "custom-slider/") == 0 && ref.size() > 14) {
+      return new waybar::modules::CustomSlider(ref.substr(14), id, config_[name],
+                                               bar_.output->name);
     }
     if (ref.compare(0, 5, "cffi/") == 0 && ref.size() > 5) {
       return new waybar::modules::CFFI(ref.substr(5), id, config_[name]);

@@ -12,7 +12,9 @@ class PulseaudioSlider : public ASlider {
   virtual ~PulseaudioSlider() = default;
 
   void update() override;
-  void onValueChanged() override;
+
+ protected:
+  void onCommit(int value) override;
 
  private:
   std::shared_ptr<util::AudioBackend> backend = nullptr;

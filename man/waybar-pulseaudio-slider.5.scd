@@ -33,6 +33,19 @@ The volume can be controlled by dragging the slider across the bar or clicking o
     default: horizontal ++
     The orientation of the slider. Can be either `horizontal` or `vertical`.
 
+*write-behaviour*: ++
+    typeof: string ++
+    default: on-release ++
+    Controls when a value is written as you interact with the slider. ++
+    `on-release` writes once, when a drag ends; a keyboard step or scroll writes immediately. ++
+    `throttled` writes continuously during a drag, at most once per *write-interval*. ++
+    `debounced` writes only after movement pauses for *write-interval*.
+
+*write-interval*: ++
+    typeof: uint ++
+    default: 40 ++
+    Minimum milliseconds between writes for `throttled` and `debounced`. Ignored under `on-release`.
+
 *expand*: ++
     typeof: bool ++
     default: false ++
