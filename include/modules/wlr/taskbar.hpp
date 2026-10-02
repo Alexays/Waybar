@@ -162,7 +162,8 @@ class Taskbar : public waybar::AModule {
     uint32_t state = 0;
   };
 
-  Taskbar(const std::string&, const waybar::Bar&, const Json::Value&);
+  Taskbar(const std::string&, const waybar::Bar&, const Json::Value&, std::mutex&,
+          std::list<pid_t>&);
   ~Taskbar();
   void update();
 

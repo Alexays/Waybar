@@ -20,7 +20,8 @@ class Workspace;
 
 class WorkspaceManager final : public AModule {
  public:
-  WorkspaceManager(const std::string& id, const waybar::Bar& bar, const Json::Value& config);
+  WorkspaceManager(const std::string& id, const waybar::Bar& bar, const Json::Value& config,
+                   std::mutex&, std::list<pid_t>&);
   ~WorkspaceManager() override;
   void register_manager(wl_registry* registry, uint32_t name, uint32_t version);
   void remove_workspace_group(uint32_t id);

@@ -1,7 +1,8 @@
 #include "modules/pulseaudio.hpp"
 
-waybar::modules::Pulseaudio::Pulseaudio(const std::string& id, const Json::Value& config)
-    : ALabel(config, "pulseaudio", id, "{volume}%") {
+waybar::modules::Pulseaudio::Pulseaudio(const std::string& id, const Json::Value& config,
+                                        std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "pulseaudio", id, "{volume}%", reap_mtx, reap) {
   event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
   event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Pulseaudio::handleScroll));
 

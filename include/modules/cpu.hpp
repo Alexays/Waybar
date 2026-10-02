@@ -16,7 +16,7 @@ namespace waybar::modules {
 
 class Cpu : public ALabel {
  public:
-  Cpu(const std::string&, const Json::Value&);
+  Cpu(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~Cpu() = default;
   auto update() -> void override;
 

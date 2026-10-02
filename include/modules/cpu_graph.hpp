@@ -16,7 +16,7 @@ namespace waybar::modules {
 
 class CpuGraph : public AGraph {
  public:
-  CpuGraph(const std::string&, const Json::Value&);
+  CpuGraph(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~CpuGraph() = default;
   auto update() -> void override;
 

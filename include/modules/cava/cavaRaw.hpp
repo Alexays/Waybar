@@ -12,7 +12,7 @@ namespace waybar::modules::cava {
 
 class CavaRaw final : public ALabel {
  public:
-  CavaRaw(const std::string&, const Json::Value&);
+  CavaRaw(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   ~CavaRaw();
   auto doAction(const std::string& name) -> void override;
 

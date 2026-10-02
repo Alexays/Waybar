@@ -10,8 +10,11 @@
 
 namespace waybar::modules::niri {
 
-Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value& config)
-    : AModule(config, "workspaces", id, false, false), bar_(bar), box_(bar.orientation, 0) {
+Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value& config,
+                       std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : AModule(config, "workspaces", id, reap_mtx, reap, false, false),
+      bar_(bar),
+      box_(bar.orientation, 0) {
   const auto config_sort_by_number = config_["sort-by-number"];
   if (config_sort_by_number.isBool()) {
     spdlog::warn("[niri/workspaces]: Prefer sort-by-id instead of sort-by-number");

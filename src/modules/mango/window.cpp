@@ -7,8 +7,9 @@
 
 namespace waybar::modules::mango {
 
-Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
-    : AAppIconLabel(config, "window", id, "{title}", 0, true), bar_(bar) {
+Window::Window(const std::string& id, const Bar& bar, const Json::Value& config,
+               std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : AAppIconLabel(config, "window", id, "{title}", reap_mtx, reap, 0, true), bar_(bar) {
   IPC::getInstance().registerForIPC("monitor", this);
 }
 

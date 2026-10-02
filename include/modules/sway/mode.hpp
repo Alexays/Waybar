@@ -12,7 +12,7 @@ namespace waybar::modules::sway {
 
 class Mode : public ALabel, public sigc::trackable {
  public:
-  Mode(const std::string&, const Json::Value&);
+  Mode(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~Mode() = default;
   auto update() -> void override;
 

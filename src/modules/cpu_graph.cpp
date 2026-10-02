@@ -13,8 +13,9 @@
 #include <fmt/core.h>
 #endif
 
-waybar::modules::CpuGraph::CpuGraph(const std::string& id, const Json::Value& config)
-    : AGraph(config, "cpu_graph", id, 5) {
+waybar::modules::CpuGraph::CpuGraph(const std::string& id, const Json::Value& config,
+                                    std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : AGraph(config, "cpu_graph", id, reap_mtx, reap, 5) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
