@@ -169,8 +169,10 @@ TEST_CASE("Load Hyprland Workspaces bar config", "[config]") {
   REQUIRE(hyprland["unique-icons"].asBool() == true);
   REQUIRE(hyprland["format"].asString() == "{icon} {windows}");
   REQUIRE(hyprland["format-window-separator"].asString() == " ");
-  REQUIRE(hyprland["on-scroll-down"].asString() == "hyprctl dispatch workspace e-1");
-  REQUIRE(hyprland["on-scroll-up"].asString() == "hyprctl dispatch workspace e+1");
+  REQUIRE(hyprland["on-scroll-down"].asString() ==
+          "hyprctl dispatch 'hl.dsp.focus({ workspace = \"e-1\" })'");
+  REQUIRE(hyprland["on-scroll-up"].asString() ==
+          "hyprctl dispatch 'hl.dsp.focus({ workspace = \"e+1\" })'");
   REQUIRE(hyprland["show-special"].asBool() == true);
   REQUIRE(hyprland["window-rewrite-default"].asString() == "");
   REQUIRE(hyprland["window-rewrite-separator"].asString() == " ");
