@@ -135,6 +135,12 @@ warp-on-scroll: ++
 	Keys are output names and values are class names like *${output}: {output-class}*.
 	Assignment in config is used to keep the stylesheet independent of the available outputs.
 
+*overflow*: ++
+	typeof: bool ++
+	default: true ++
+	Hides workspace buttons that would displace modules on the right side of the
+	bar. Hidden workspaces are available from an ellipsis button. The focused
+	workspace is kept visible.
 
 # FORMAT REPLACEMENTS
 
