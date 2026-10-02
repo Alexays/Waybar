@@ -638,6 +638,16 @@ void Workspaces::onConfigReloaded() {
 }
 
 auto Workspaces::parseConfig(const Json::Value& config) -> void {
+  if (config["on-click"].isString()) {
+    m_onClick = config["on-click"].asString();
+  }
+  if (config["on-click-middle"].isString()) {
+    m_onClickMiddle = config["on-click-middle"].asString();
+  }
+  if (config["on-click-right"].isString()) {
+    m_onClickRight = config["on-click-right"].asString();
+  }
+  
   const auto& configFormat = config["format"];
   m_formatBefore = configFormat.isString() ? configFormat.asString() : "{name}";
   m_withIcon = m_formatBefore.find("{icon}") != std::string::npos;
@@ -837,7 +847,7 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value& config) -> vo
     auto posStr = workspaceTaskbar["active-window-position"].asString();
     try {
       m_activeWindowPosition =
-        util::parseStringToEnum<ActiveWindowPosition>(posStr, m_activeWindowPositionMap);
+          util::parseStringToEnum<ActiveWindowPosition>(posStr, m_activeWindowPositionMap);
     } catch (const std::invalid_argument& e) {
       spdlog::warn(
           "Invalid string representation for active-window-position. Falling back to 'none'.");

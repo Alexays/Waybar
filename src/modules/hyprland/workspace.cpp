@@ -185,9 +185,23 @@ void Workspace::stopHoverCheck() {
   }
 }
 
-bool Workspace::handleEnter(GdkEventCrossing* /*event*/) {
-  m_button.get_style_context()->add_class("workspace-hover");
-  startHoverCheck();
+bool Workspace::handleEnter(GdkEventCrossing* event) {
+  auto gdk_window = m_button.get_window();
+  
+  if (m_workspaceManager.onClick() == "disabled") {
+    if (gdk_window) {
+      auto cursor = Gdk::Cursor::create(gdk_window->get_display(), "default");
+      gdk_window->set_cursor(cursor);
+    }
+  } else {
+    if (gdk_window) {
+      auto cursor = Gdk::Cursor::create(gdk_window->get_display(), "pointer");
+      gdk_window->set_cursor(cursor);
+    }
+    
+    m_button.get_style_context()->add_class("workspace-hover");
+    startHoverCheck();
+  }
   return false;
 }
 
@@ -204,6 +218,20 @@ bool Workspace::handleLeave(GdkEventCrossing* /*event*/) {
 }
 bool Workspace::handleClicked(GdkEventButton* bt) const {
   if (bt->type == GDK_BUTTON_PRESS) {
+    std::string action;
+
+    if (bt->button == 1) {
+      action = m_workspaceManager.onClick();
+    } else if (bt->button == 2) {
+      action = m_workspaceManager.onClickMiddle();
+    } else if (bt->button == 3) {
+      action = m_workspaceManager.onClickRight();
+    }
+
+    if (action == "disabled") {
+      return true;
+    }
+
     try {
       if (id() > 0) {  // normal
         if (m_workspaceManager.moveToMonitor()) {
