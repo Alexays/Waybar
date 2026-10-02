@@ -71,6 +71,14 @@ Addressed by *ext/workspaces*
 	typeof: string ++
 	The action to perform on right-click. See *CLICK ACTIONS* for the possible values.
 
+*on-enter*: ++
+	typeof: string ++
+	Command to execute when the mouse enters the module.
+
+*on-leave*: ++
+	typeof: string ++
+	Command to execute when the mouse leaves the module.
+
 # FORMAT REPLACEMENTS
 
 *{name}*: Name of workspace assigned by compositor.
