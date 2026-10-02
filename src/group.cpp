@@ -50,6 +50,18 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     throw std::runtime_error("Invalid orientation value: " + orientation);
   }
 
+  // default alignment of the group's children within its box
+  auto align = config_["align"].empty() ? "center" : config_["align"].asString();
+  if (align == "start") {
+    align_ = Gtk::ALIGN_START;
+  } else if (align == "center") {
+    align_ = Gtk::ALIGN_CENTER;
+  } else if (align == "end") {
+    align_ = Gtk::ALIGN_END;
+  } else {
+    throw std::runtime_error("Invalid align value: " + align);
+  }
+
   if (config_["drawer"].isObject()) {
     is_drawer = true;
 
@@ -268,6 +280,7 @@ void Group::addWidget(AModule* module) {
   Gtk::Widget& widget = *module;
 
   getBox().pack_start(widget, false, false);
+  widget.set_halign(align_);
 
   if (is_drawer && !is_first_widget) {
     widget.get_style_context()->add_class(add_class_to_drawer_children);
