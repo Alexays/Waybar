@@ -1,6 +1,7 @@
 #include "modules/systemd_failed_units.hpp"
 
 #include <fmt/format.h>
+#include <giomm/dbuserrorutils.h>
 #include <giomm/dbusproxy.h>
 #include <glibmm/markup.h>
 #include <glibmm/variant.h>
@@ -65,6 +66,7 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
       spdlog::warn("Unable to connect to systemwide systemd Manager interface: {}",
                    e.what().c_str());
     }
+    SubscribeManager("systemwide", system_manager_proxy_);
   }
   if (!config["user"].isBool() || config["user"].asBool()) {
     user_props_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
@@ -82,6 +84,7 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
     } catch (const Glib::Error& e) {
       spdlog::warn("Unable to connect to user systemd Manager interface: {}", e.what().c_str());
     }
+    SubscribeManager("user", user_manager_proxy_);
   }
 
   if (!user_props_proxy_ && !system_props_proxy_)
@@ -93,11 +96,33 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
 auto SystemdFailedUnits::notify_cb(const Glib::ustring& sender_name,
                                    const Glib::ustring& signal_name,
                                    const Glib::VariantContainerBase& arguments) -> void {
-  if (signal_name == "PropertiesChanged" && !update_pending_) {
+  /* SystemState has no change notification, so also re-read it once startup finishes. */
+  if ((signal_name == "PropertiesChanged" || signal_name == "StartupFinished") &&
+      !update_pending_) {
     update_pending_ = true;
     /* The fail count may fluctuate due to restarting. */
     Glib::signal_timeout().connect_once(sigc::mem_fun(*this, &SystemdFailedUnits::updateData),
                                         UPDATE_DEBOUNCE_TIME_MS);
+  }
+}
+
+void SystemdFailedUnits::SubscribeManager(const char* kind,
+                                          const Glib::RefPtr<Gio::DBus::Proxy>& proxy) {
+  if (!proxy) return;
+
+  proxy->signal_signal().connect(sigc::mem_fun(*this, &SystemdFailedUnits::notify_cb));
+
+  /* systemd only emits manager signals on the bus while a client is subscribed. The
+   * subscription lasts until the bus connection closes, so it's never undone here. */
+  try {
+    proxy->call_sync("Subscribe");
+  } catch (const Glib::Error& e) {
+    /* Every module instance shares the process' bus connection, so only the first
+     * one's Subscribe succeeds. */
+    if (Gio::DBus::ErrorUtils::get_remote_error(e) !=
+        "org.freedesktop.systemd1.AlreadySubscribed") {
+      spdlog::warn("Unable to subscribe to {} systemd signals: {}", kind, e.what().c_str());
+    }
   }
 }
 
