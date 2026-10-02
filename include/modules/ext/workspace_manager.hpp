@@ -35,6 +35,7 @@ class WorkspaceManager final : public AModule {
 
   // wl requests
   void commit() const;
+  bool handleScroll(GdkEventScroll* e) override;
 
  private:
   void update() override;
@@ -100,6 +101,7 @@ class Workspace {
   std::vector<u_int32_t>& coordinates() { return coordinates_; }
   Gtk::Button& button() { return button_; }
   void update();
+  bool is_active() const { return has_state(EXT_WORKSPACE_HANDLE_V1_STATE_ACTIVE); }
 
   // wl events
   void handle_id(const std::string& id);
