@@ -160,11 +160,34 @@ bool BacklightDevice::get_powered() const { return powered_; }
 void BacklightDevice::set_powered(bool powered) { powered_ = powered; }
 
 BacklightBackend::BacklightBackend(std::chrono::milliseconds interval,
-                                   std::function<void()> on_updated_cb)
-    : on_updated_cb_(std::move(on_updated_cb)), polling_interval_(interval), previous_best_({}) {
+                                   std::function<void()> on_updated_cb,
+                                   std::string preferred_device)
+    : on_updated_cb_(std::move(on_updated_cb)),
+      polling_interval_(interval),
+      preferred_device_(std::move(preferred_device)),
+      previous_best_({}) {
   std::unique_ptr<udev, UdevDeleter> udev_check{udev_new()};
   check_nn(udev_check.get(), "Udev check new failed");
-  enumerate_devices(devices_, udev_check.get());
+  if (!preferred_device_.empty()) {
+    // Only the configured device is tracked and polled, so reading unrelated
+    // backlights (e.g. a runtime-suspended dGPU's) never wakes their hardware.
+    std::unique_ptr<udev_device, UdevDeviceDeleter> dev{udev_device_new_from_subsystem_sysname(
+        udev_check.get(), "backlight", preferred_device_.c_str())};
+    if (!dev) {
+      dev.reset(udev_device_new_from_subsystem_sysname(udev_check.get(), "leds",
+                                                       preferred_device_.c_str()));
+    }
+    if (dev) {
+      preferred_device_found_ = true;
+      upsert_device(devices_, dev.get());
+    } else {
+      spdlog::warn("Backlight device '{}' not found, using automatic selection until it appears",
+                   preferred_device_);
+    }
+  }
+  if (!preferred_device_found_) {
+    enumerate_devices(devices_, udev_check.get());
+  }
   if (devices_.empty()) {
     throw std::runtime_error("No backlight found");
   }
@@ -226,6 +249,17 @@ BacklightBackend::BacklightBackend(std::chrono::milliseconds interval,
         std::unique_ptr<udev_device, UdevDeviceDeleter> dev{udev_monitor_receive_device(mon.get())};
         if (!dev) {
           continue;
+        }
+        const char* name = udev_device_get_sysname(dev.get());
+        if (preferred_device_found_) {
+          if (name == nullptr || preferred_device_ != name) {
+            continue;
+          }
+        } else if (!preferred_device_.empty() && name != nullptr && preferred_device_ == name) {
+          // The configured device showed up late: drop the fallback devices so the
+          // others are no longer polled.
+          devices.clear();
+          preferred_device_found_ = true;
         }
         upsert_device(devices, dev.get());
       }

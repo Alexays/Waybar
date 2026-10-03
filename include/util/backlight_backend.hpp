@@ -52,7 +52,8 @@ class BacklightDevice {
 
 class BacklightBackend {
  public:
-  BacklightBackend(std::chrono::milliseconds interval, std::function<void()> on_updated_cb = NOOP);
+  BacklightBackend(std::chrono::milliseconds interval, std::function<void()> on_updated_cb,
+                   std::string preferred_device);
 
   // const inline BacklightDevice *get_best_device(std::string_view preferred_device);
   const BacklightDevice* get_previous_best_device();
@@ -78,6 +79,10 @@ class BacklightBackend {
 
   std::function<void()> on_updated_cb_;
   std::chrono::milliseconds polling_interval_;
+  const std::string preferred_device_;
+  // Whether preferred_device_ exists, in which case only it is tracked and polled. Only
+  // touched by the constructor and the udev thread.
+  bool preferred_device_found_ = false;
 
   std::optional<BacklightDevice> previous_best_;
   // thread must destruct before shared data
