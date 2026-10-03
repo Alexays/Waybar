@@ -4,10 +4,12 @@
 #include <cairomm/surface.h>
 #include <glibmm/dispatcher.h>
 #include <gtkmm/box.h>
+#include <gtkmm/button.h>
 #include <gtkmm/drawingarea.h>
 #include <gtkmm/enums.h>
 #include <gtkmm/eventbox.h>
 #include <gtkmm/grid.h>
+#include <gtkmm/image.h>
 #include <gtkmm/label.h>
 #include <gtkmm/overlay.h>
 #include <sigc++/connection.h>
@@ -25,6 +27,7 @@
 
 #include "AModule.hpp"
 #include "bar.hpp"
+#include "util/icon_loader.hpp"
 // wayland-scanner only forward-declares interfaces defined by other protocols, so the
 // headers that actually define ext_workspace_handle_v1_interface /
 // ext_image_capture_source_v1_interface must be included first.
@@ -34,6 +37,11 @@
 #include "ext-foreign-toplevel-list-v1-client-protocol.h"
 #include "ext-image-copy-capture-v1-client-protocol.h"
 #include "ext-workspace-v1-client-protocol.h"
+// cosmic-toplevel-management's wl_interface table references
+// zcosmic_toplevel_handle_v1_interface, which is only defined by
+// cosmic-toplevel-info's generated code, so that header must come first.
+#include "cosmic-toplevel-info-unstable-v1-client-protocol.h"
+#include "cosmic-toplevel-management-unstable-v1-client-protocol.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 namespace waybar::modules::cosmic {
@@ -43,6 +51,10 @@ class WorkspaceThumbnails;
 enum class DisplayMode { Live, Standard };
 enum class LabelPosition { Before, After };
 enum class CropMode { None, OwnBar, AllBars };
+enum class IconsOrientation { Horizontal, Vertical };
+enum class IconsPosition { Embedded, BeforeThumbnail, AfterThumbnail, BeforeLabel, AfterLabel };
+enum class IconsEdge { Top, Bottom, Left, Right };
+enum class IconsAlign { Start, Center, End };
 
 // Shared, module-wide rendering options, parsed once from config.
 struct ThumbnailOptions {
@@ -58,6 +70,15 @@ struct ThumbnailOptions {
   bool label_show = true;
   LabelPosition label_position = LabelPosition::Before;
   int spacing = 4;
+  bool icons_show = false;
+  IconsOrientation icons_orientation = IconsOrientation::Horizontal;
+  IconsPosition icons_position = IconsPosition::Embedded;
+  // Only used when icons_position is Embedded; icons_orientation (and thus
+  // row-vs-column flow) is derived from icons_edge in that case.
+  IconsEdge icons_edge = IconsEdge::Bottom;
+  IconsAlign icons_align = IconsAlign::Start;
+  int icons_size = 20;
+  int icons_spacing = 4;
 };
 
 // Rectangle (widget-local pixel coordinates) that should remain visible
@@ -78,6 +99,9 @@ class Thumbnail {
 
   // Re-reads name/active state from the owner and redraws.
   void refresh_style();
+
+  // Rebuilds the app-icon row/column from the owner's current toplevel data.
+  void refresh_icons();
 
   // Applies a new (possibly wrap-shrunk) thumbnail size; the draw callback
   // already scales painted content to the widget's actual allocation, so no
@@ -123,6 +147,7 @@ class Thumbnail {
   Gtk::EventBox thumbnail_label_box_;
   Gtk::Label adjacent_label_;
   Gtk::EventBox adjacent_label_box_;
+  Gtk::Box icons_box_;
 
   ext_image_capture_source_v1* source_ = nullptr;
   ext_image_copy_capture_session_v1* session_ = nullptr;
@@ -219,6 +244,19 @@ class WorkspaceThumbnails final : public AModule {
   const WorkspaceMeta* meta_for(ext_workspace_handle_v1* handle) const;
   int number_for(ext_workspace_handle_v1* handle) const;
 
+  // One running app/toplevel currently assigned to a workspace.
+  struct Toplevel {
+    ext_foreign_toplevel_handle_v1* foreign = nullptr;
+    zcosmic_toplevel_handle_v1* cosmic = nullptr;
+    std::string app_id;
+    std::vector<ext_workspace_handle_v1*> workspaces;
+  };
+  // Toplevels currently assigned to `handle`, in creation order.
+  std::vector<const Toplevel*> icons_for(ext_workspace_handle_v1* handle) const;
+  const IconLoader& icon_loader() const { return icon_loader_; }
+  // Requests the compositor activate (focus) this toplevel.
+  void activate_toplevel(zcosmic_toplevel_handle_v1* handle) const;
+
   // True if `handle` should be highlighted as active right now: either it's
   // the not-yet-confirmed workspace a click/scroll just requested, or (absent
   // a pending request) it's the compositor-confirmed active workspace.
@@ -254,11 +292,28 @@ class WorkspaceThumbnails final : public AModule {
                           int32_t x, int32_t y, int32_t width, int32_t height);
   void handle_layer_leave(const std::string& identifier);
 
+  // ext_foreign_toplevel_list_v1 events
+  void handle_toplevel_list_toplevel(ext_foreign_toplevel_handle_v1* handle);
+  void handle_toplevel_list_finished();
+
+  // ext_foreign_toplevel_handle_v1 events
+  void handle_toplevel_closed(ext_foreign_toplevel_handle_v1* handle);
+  void handle_toplevel_app_id(ext_foreign_toplevel_handle_v1* handle, const std::string& app_id);
+  void handle_toplevel_done(ext_foreign_toplevel_handle_v1* handle);
+
+  // zcosmic_toplevel_handle_v1 events (workspace membership only; everything
+  // else about a toplevel is read from its ext_foreign_toplevel_handle_v1)
+  void handle_cosmic_workspace_enter(zcosmic_toplevel_handle_v1* handle,
+                                     ext_workspace_handle_v1* ws);
+  void handle_cosmic_workspace_leave(zcosmic_toplevel_handle_v1* handle,
+                                     ext_workspace_handle_v1* ws);
+
  private:
   void update() override;
   void sync_thumbnails();
   std::vector<ext_workspace_handle_v1*> visible_workspaces() const;
   void refresh_thumbnail(ext_workspace_handle_v1* handle);
+  void refresh_icons(ext_workspace_handle_v1* handle);
   bool on_scroll(GdkEventScroll* event);
 
   // Result of applying workspace-wrap-size to a given visible-workspace count.
@@ -306,6 +361,10 @@ class WorkspaceThumbnails final : public AModule {
   wl_compositor* compositor_ = nullptr;
   zwlr_layer_shell_v1* layer_shell_ = nullptr;
   zcosmic_overlap_notify_v1* overlap_notify_ = nullptr;
+  ext_foreign_toplevel_list_v1* foreign_toplevel_list_ = nullptr;
+  zcosmic_toplevel_info_v1* toplevel_info_manager_ = nullptr;
+  zcosmic_toplevel_manager_v1* toplevel_manager_ = nullptr;
+  wl_seat* seat_ = nullptr;
 
   wl_surface* probe_surface_ = nullptr;
   zwlr_layer_surface_v1* probe_layer_surface_ = nullptr;
@@ -319,6 +378,14 @@ class WorkspaceThumbnails final : public AModule {
   std::vector<ext_workspace_handle_v1*> workspaces_;
   std::unordered_map<ext_workspace_handle_v1*, WorkspaceMeta> meta_;
   std::unordered_map<ext_workspace_handle_v1*, std::unique_ptr<Thumbnail>> thumbnails_;
+
+  // Keyed by the ext_foreign_toplevel_handle_v1 (created first); cosmic_to_foreign_
+  // lets the zcosmic_toplevel_handle_v1-side listeners (workspace membership) find
+  // their way back to the same entry.
+  std::unordered_map<ext_foreign_toplevel_handle_v1*, Toplevel> toplevels_;
+  std::unordered_map<zcosmic_toplevel_handle_v1*, ext_foreign_toplevel_handle_v1*>
+      cosmic_to_foreign_;
+  IconLoader icon_loader_;
 
   ext_workspace_handle_v1* pending_active_ = nullptr;
   sigc::connection pending_active_timeout_;

@@ -30,6 +30,45 @@ Gtk::Align parse_align(const Json::Value& v, Gtk::Align fallback) {
   return fallback;
 }
 
+Gtk::Orientation opts_orientation(const ThumbnailOptions& opts) {
+  return opts.icons_orientation == IconsOrientation::Vertical ? Gtk::ORIENTATION_VERTICAL
+                                                              : Gtk::ORIENTATION_HORIZONTAL;
+}
+
+Gtk::Align icons_align_to_gtk(IconsAlign align) {
+  switch (align) {
+    case IconsAlign::Center:
+      return Gtk::ALIGN_CENTER;
+    case IconsAlign::End:
+      return Gtk::ALIGN_END;
+    default:
+      return Gtk::ALIGN_START;
+  }
+}
+
+// Orientation + overlay alignment for an embedded icon box anchored to one edge of the
+// thumbnail, positioned along that edge per `align` (e.g. edge=bottom, align=end => bottom-right).
+struct EdgePlacement {
+  Gtk::Orientation orientation;
+  Gtk::Align halign;
+  Gtk::Align valign;
+};
+
+EdgePlacement embedded_placement(IconsEdge edge, IconsAlign align) {
+  const Gtk::Align cross = icons_align_to_gtk(align);
+  switch (edge) {
+    case IconsEdge::Top:
+      return {Gtk::ORIENTATION_HORIZONTAL, cross, Gtk::ALIGN_START};
+    case IconsEdge::Left:
+      return {Gtk::ORIENTATION_VERTICAL, Gtk::ALIGN_START, cross};
+    case IconsEdge::Right:
+      return {Gtk::ORIENTATION_VERTICAL, Gtk::ALIGN_END, cross};
+    case IconsEdge::Bottom:
+    default:
+      return {Gtk::ORIENTATION_HORIZONTAL, cross, Gtk::ALIGN_END};
+  }
+}
+
 void replace_all(std::string& s, const std::string& from, const std::string& to) {
   size_t pos = 0;
   while ((pos = s.find(from, pos)) != std::string::npos) {
@@ -50,7 +89,10 @@ std::string format_workspace_label(const std::string& fmt, const std::string& na
 /* ---- Thumbnail: per-workspace preview, either live screencopy or a plain styled rectangle ---- */
 
 Thumbnail::Thumbnail(WorkspaceThumbnails& owner, ext_workspace_handle_v1* workspace)
-    : owner_(owner), workspace_(workspace), item_box_(owner.bar_orientation(), 0) {
+    : owner_(owner),
+      workspace_(workspace),
+      item_box_(owner.bar_orientation(), 0),
+      icons_box_(opts_orientation(owner.options()), owner.options().icons_spacing) {
   const auto& opts = owner_.options();
 
   convert_dispatcher_.connect(sigc::mem_fun(*this, &Thumbnail::on_convert_done));
@@ -92,15 +134,57 @@ Thumbnail::Thumbnail(WorkspaceThumbnails& owner, ext_workspace_handle_v1* worksp
   adjacent_label_box_.add_events(Gdk::BUTTON_PRESS_MASK);
   adjacent_label_box_.signal_button_press_event().connect(
       sigc::mem_fun(*this, &Thumbnail::on_button_press));
-  if (opts.label_show && opts.label_position == LabelPosition::Before) {
-    item_box_.pack_start(adjacent_label_box_, false, false);
+
+  icons_box_.get_style_context()->add_class("icons");
+  const bool icons_packed = opts.icons_show && opts.icons_position != IconsPosition::Embedded;
+
+  // Builds item_box_'s children in order; a non-embedded icons-position is resolved relative
+  // to whichever of the label/thumbnail precedes the other (per label-position), so e.g.
+  // "afterlabel" and "beforethumbnail" land in the same slot when the label comes first, and
+  // (when label-show is false) "beforelabel"/"afterlabel" naturally collapse to the thumbnail's
+  // own edge since there's no label to anchor to.
+  if (opts.label_position == LabelPosition::Before) {
+    if (icons_packed && opts.icons_position == IconsPosition::BeforeLabel) {
+      item_box_.pack_start(icons_box_, false, false);
+    }
+    if (opts.label_show) {
+      item_box_.pack_start(adjacent_label_box_, false, false);
+    }
+    if (icons_packed && (opts.icons_position == IconsPosition::AfterLabel ||
+                        opts.icons_position == IconsPosition::BeforeThumbnail)) {
+      item_box_.pack_start(icons_box_, false, false);
+    }
+    item_box_.pack_start(overlay_, false, false);
+    if (icons_packed && opts.icons_position == IconsPosition::AfterThumbnail) {
+      item_box_.pack_start(icons_box_, false, false);
+    }
+  } else {
+    if (icons_packed && opts.icons_position == IconsPosition::BeforeThumbnail) {
+      item_box_.pack_start(icons_box_, false, false);
+    }
+    item_box_.pack_start(overlay_, false, false);
+    if (icons_packed && (opts.icons_position == IconsPosition::AfterThumbnail ||
+                        opts.icons_position == IconsPosition::BeforeLabel)) {
+      item_box_.pack_start(icons_box_, false, false);
+    }
+    if (opts.label_show) {
+      item_box_.pack_start(adjacent_label_box_, false, false);
+    }
+    if (icons_packed && opts.icons_position == IconsPosition::AfterLabel) {
+      item_box_.pack_start(icons_box_, false, false);
+    }
   }
-  item_box_.pack_start(overlay_, false, false);
-  if (opts.label_show && opts.label_position == LabelPosition::After) {
-    item_box_.pack_start(adjacent_label_box_, false, false);
+
+  if (opts.icons_show && opts.icons_position == IconsPosition::Embedded) {
+    const auto placement = embedded_placement(opts.icons_edge, opts.icons_align);
+    icons_box_.set_orientation(placement.orientation);
+    icons_box_.set_halign(placement.halign);
+    icons_box_.set_valign(placement.valign);
+    overlay_.add_overlay(icons_box_);
   }
 
   refresh_style();
+  refresh_icons();
 
   if (opts.display == DisplayMode::Live) {
     start_session();
@@ -128,6 +212,38 @@ void Thumbnail::refresh_style() {
     style->remove_class("active");
   }
   area_.queue_draw();
+}
+
+void Thumbnail::refresh_icons() {
+  const auto& opts = owner_.options();
+  if (!opts.icons_show) {
+    icons_box_.hide();
+    return;
+  }
+
+  for (auto* child : icons_box_.get_children()) {
+    icons_box_.remove(*child);
+  }
+
+  for (const auto* toplevel : owner_.icons_for(workspace_)) {
+    auto* btn = Gtk::make_managed<Gtk::Button>();
+    btn->set_relief(Gtk::RELIEF_NONE);
+    btn->get_style_context()->add_class("icon");
+    btn->set_tooltip_text(toplevel->app_id);
+
+    auto* img = Gtk::make_managed<Gtk::Image>();
+    auto app_info = IconLoader::get_app_info_from_app_id_list(toplevel->app_id);
+    owner_.icon_loader().image_load_icon(*img, app_info, opts.icons_size);
+    btn->add(*img);
+
+    zcosmic_toplevel_handle_v1* cosmic_handle = toplevel->cosmic;
+    btn->signal_clicked().connect(
+        [this, cosmic_handle]() { owner_.activate_toplevel(cosmic_handle); });
+
+    icons_box_.pack_start(*btn, false, false);
+  }
+
+  icons_box_.show_all();
 }
 
 static void session_handle_buffer_size(void* data, ext_image_copy_capture_session_v1*,
@@ -695,6 +811,93 @@ static const struct ext_workspace_manager_v1_listener workspace_manager_impl = {
     .finished = workspace_manager_handle_finished,
 };
 
+/* ---- App icons: ext-foreign-toplevel-list-v1 (app_id) + cosmic-toplevel-info
+ * (workspace membership, via get_cosmic_toplevel) + cosmic-toplevel-management
+ * (activation on click) */
+
+static void toplevel_handle_closed(void* data, ext_foreign_toplevel_handle_v1* handle) {
+  static_cast<WorkspaceThumbnails*>(data)->handle_toplevel_closed(handle);
+}
+
+static void toplevel_handle_done(void* data, ext_foreign_toplevel_handle_v1* handle) {
+  static_cast<WorkspaceThumbnails*>(data)->handle_toplevel_done(handle);
+}
+
+static void toplevel_handle_title(void*, ext_foreign_toplevel_handle_v1*, const char*) {}
+
+static void toplevel_handle_app_id(void* data, ext_foreign_toplevel_handle_v1* handle,
+                                   const char* app_id) {
+  static_cast<WorkspaceThumbnails*>(data)->handle_toplevel_app_id(handle, app_id ? app_id : "");
+}
+
+static void toplevel_handle_identifier(void*, ext_foreign_toplevel_handle_v1*, const char*) {}
+
+static const struct ext_foreign_toplevel_handle_v1_listener toplevel_handle_impl = {
+    .closed = toplevel_handle_closed,
+    .done = toplevel_handle_done,
+    .title = toplevel_handle_title,
+    .app_id = toplevel_handle_app_id,
+    .identifier = toplevel_handle_identifier,
+};
+
+static void toplevel_list_handle_toplevel(void* data, ext_foreign_toplevel_list_v1*,
+                                          ext_foreign_toplevel_handle_v1* handle) {
+  static_cast<WorkspaceThumbnails*>(data)->handle_toplevel_list_toplevel(handle);
+}
+
+static void toplevel_list_handle_finished(void* data, ext_foreign_toplevel_list_v1*) {
+  static_cast<WorkspaceThumbnails*>(data)->handle_toplevel_list_finished();
+}
+
+static const struct ext_foreign_toplevel_list_v1_listener toplevel_list_impl = {
+    .toplevel = toplevel_list_handle_toplevel,
+    .finished = toplevel_list_handle_finished,
+};
+
+// zcosmic_toplevel_handle_v1: only workspace membership is used here. Since
+// toplevel_info_manager_ is bound at version >= 2, app_id/title/closed/done all
+// come from the paired ext_foreign_toplevel_handle_v1 instead (see toplevel_handle_impl).
+static void cosmic_toplevel_handle_closed(void*, zcosmic_toplevel_handle_v1*) {}
+static void cosmic_toplevel_handle_done(void*, zcosmic_toplevel_handle_v1*) {}
+static void cosmic_toplevel_handle_title(void*, zcosmic_toplevel_handle_v1*, const char*) {}
+static void cosmic_toplevel_handle_app_id(void*, zcosmic_toplevel_handle_v1*, const char*) {}
+static void cosmic_toplevel_handle_output_enter(void*, zcosmic_toplevel_handle_v1*, wl_output*) {}
+static void cosmic_toplevel_handle_output_leave(void*, zcosmic_toplevel_handle_v1*, wl_output*) {}
+static void cosmic_toplevel_handle_workspace_enter_v1(void*, zcosmic_toplevel_handle_v1*,
+                                                      zcosmic_workspace_handle_v1*) {}
+static void cosmic_toplevel_handle_workspace_leave_v1(void*, zcosmic_toplevel_handle_v1*,
+                                                      zcosmic_workspace_handle_v1*) {}
+static void cosmic_toplevel_handle_state(void*, zcosmic_toplevel_handle_v1*, wl_array*) {}
+static void cosmic_toplevel_handle_geometry(void*, zcosmic_toplevel_handle_v1*, wl_output*, int32_t,
+                                            int32_t, int32_t, int32_t) {}
+
+static void cosmic_toplevel_handle_ext_workspace_enter(void* data,
+                                                       zcosmic_toplevel_handle_v1* handle,
+                                                       ext_workspace_handle_v1* ws) {
+  static_cast<WorkspaceThumbnails*>(data)->handle_cosmic_workspace_enter(handle, ws);
+}
+
+static void cosmic_toplevel_handle_ext_workspace_leave(void* data,
+                                                       zcosmic_toplevel_handle_v1* handle,
+                                                       ext_workspace_handle_v1* ws) {
+  static_cast<WorkspaceThumbnails*>(data)->handle_cosmic_workspace_leave(handle, ws);
+}
+
+static const struct zcosmic_toplevel_handle_v1_listener cosmic_toplevel_handle_impl = {
+    .closed = cosmic_toplevel_handle_closed,
+    .done = cosmic_toplevel_handle_done,
+    .title = cosmic_toplevel_handle_title,
+    .app_id = cosmic_toplevel_handle_app_id,
+    .output_enter = cosmic_toplevel_handle_output_enter,
+    .output_leave = cosmic_toplevel_handle_output_leave,
+    .workspace_enter = cosmic_toplevel_handle_workspace_enter_v1,
+    .workspace_leave = cosmic_toplevel_handle_workspace_leave_v1,
+    .state = cosmic_toplevel_handle_state,
+    .geometry = cosmic_toplevel_handle_geometry,
+    .ext_workspace_enter = cosmic_toplevel_handle_ext_workspace_enter,
+    .ext_workspace_leave = cosmic_toplevel_handle_ext_workspace_leave,
+};
+
 /* ---- Overlap probe: invisible full-output surface used to discover every
  * other layer-surface's reserved (exclusive) area, via cosmic-overlap-notify */
 
@@ -884,6 +1087,75 @@ WorkspaceThumbnails::WorkspaceThumbnails(const std::string& id, const waybar::Ba
   box_.set_row_spacing(options_.spacing);
   box_.set_column_spacing(options_.spacing);
 
+  if (config_["icons-show"].isBool()) {
+    options_.icons_show = config_["icons-show"].asBool();
+  }
+  if (config_["icons-orientation"].isString()) {
+    const auto& v = config_["icons-orientation"].asString();
+    if (v == "horizontal") {
+      options_.icons_orientation = IconsOrientation::Horizontal;
+    } else if (v == "vertical") {
+      options_.icons_orientation = IconsOrientation::Vertical;
+    } else {
+      spdlog::warn("[cosmic/workspaces]: unknown icons-orientation '{}', expected "
+                   "horizontal/vertical",
+                   v);
+    }
+  }
+  if (config_["icons-position"].isString()) {
+    const auto& v = config_["icons-position"].asString();
+    if (v == "embedded") {
+      options_.icons_position = IconsPosition::Embedded;
+    } else if (v == "beforethumbnail") {
+      options_.icons_position = IconsPosition::BeforeThumbnail;
+    } else if (v == "afterthumbnail") {
+      options_.icons_position = IconsPosition::AfterThumbnail;
+    } else if (v == "beforelabel") {
+      options_.icons_position = IconsPosition::BeforeLabel;
+    } else if (v == "afterlabel") {
+      options_.icons_position = IconsPosition::AfterLabel;
+    } else {
+      spdlog::warn(
+          "[cosmic/workspaces]: unknown icons-position '{}', expected embedded/beforethumbnail/"
+          "afterthumbnail/beforelabel/afterlabel",
+          v);
+    }
+  }
+  if (config_["icons-size"].isUInt()) {
+    options_.icons_size = config_["icons-size"].asUInt();
+  }
+  if (config_["icons-spacing"].isUInt()) {
+    options_.icons_spacing = config_["icons-spacing"].asUInt();
+  }
+  if (config_["icons-edge"].isString()) {
+    const auto& v = config_["icons-edge"].asString();
+    if (v == "top") {
+      options_.icons_edge = IconsEdge::Top;
+    } else if (v == "bottom") {
+      options_.icons_edge = IconsEdge::Bottom;
+    } else if (v == "left") {
+      options_.icons_edge = IconsEdge::Left;
+    } else if (v == "right") {
+      options_.icons_edge = IconsEdge::Right;
+    } else {
+      spdlog::warn("[cosmic/workspaces]: unknown icons-edge '{}', expected "
+                   "top/bottom/left/right",
+                   v);
+    }
+  }
+  if (config_["icons-align"].isString()) {
+    const auto& v = config_["icons-align"].asString();
+    if (v == "start") {
+      options_.icons_align = IconsAlign::Start;
+    } else if (v == "center") {
+      options_.icons_align = IconsAlign::Center;
+    } else if (v == "end") {
+      options_.icons_align = IconsAlign::End;
+    } else {
+      spdlog::warn("[cosmic/workspaces]: unknown icons-align '{}', expected start/center/end", v);
+    }
+  }
+
   if (options_.mouse_scroll_enabled) {
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &WorkspaceThumbnails::on_scroll));
@@ -894,6 +1166,22 @@ WorkspaceThumbnails::WorkspaceThumbnails(const std::string& id, const waybar::Ba
   wl_registry_add_listener(registry, &registry_listener_impl, this);
   wl_display_roundtrip(display);
 
+  // The registry enumerates globals in compositor-defined order, so any ext_foreign_toplevel_v1
+  // "toplevel" events may have already arrived (and been handled) before toplevel_info_manager_
+  // was bound within the same roundtrip; retroactively fetch their cosmic wrapper now.
+  if (toplevel_info_manager_ && options_.icons_show) {
+    for (auto& [foreign, toplevel] : toplevels_) {
+      if (toplevel.cosmic) continue;
+      toplevel.cosmic = zcosmic_toplevel_info_v1_get_cosmic_toplevel(toplevel_info_manager_, foreign);
+      if (toplevel.cosmic) {
+        zcosmic_toplevel_handle_v1_add_listener(toplevel.cosmic, &cosmic_toplevel_handle_impl,
+                                                this);
+        cosmic_to_foreign_[toplevel.cosmic] = foreign;
+      }
+    }
+    wl_display_roundtrip(display);
+  }
+
   if (!workspace_manager_) {
     spdlog::error("[cosmic/workspaces]: Compositor does not support ext-workspace-v1");
   }
@@ -901,6 +1189,11 @@ WorkspaceThumbnails::WorkspaceThumbnails(const std::string& id, const waybar::Ba
     spdlog::error(
         "[cosmic/workspaces]: Compositor does not support the COSMIC workspace screencopy "
         "protocol; thumbnails will stay blank");
+  }
+  if (options_.icons_show && (!foreign_toplevel_list_ || !toplevel_info_manager_)) {
+    spdlog::warn(
+        "[cosmic/workspaces]: Compositor does not support ext-foreign-toplevel-list-v1 / "
+        "cosmic-toplevel-info; icons-show will have no effect");
   }
 
   if (options_.display == DisplayMode::Live && options_.crop_dead_zones != CropMode::None) {
@@ -958,6 +1251,29 @@ WorkspaceThumbnails::~WorkspaceThumbnails() {
     wl_shm_destroy(shm_);
     shm_ = nullptr;
   }
+
+  for (auto& [foreign, toplevel] : toplevels_) {
+    if (toplevel.cosmic) zcosmic_toplevel_handle_v1_destroy(toplevel.cosmic);
+    ext_foreign_toplevel_handle_v1_destroy(foreign);
+  }
+  toplevels_.clear();
+  cosmic_to_foreign_.clear();
+
+  if (foreign_toplevel_list_) {
+    ext_foreign_toplevel_list_v1_destroy(foreign_toplevel_list_);
+    foreign_toplevel_list_ = nullptr;
+  }
+  if (toplevel_manager_) {
+    zcosmic_toplevel_manager_v1_destroy(toplevel_manager_);
+    toplevel_manager_ = nullptr;
+  }
+  // zcosmic_toplevel_info_v1 (version >= 2) has no destroy request; it's expected
+  // to simply be dropped, mirroring the compositor-driven `finished` teardown.
+  toplevel_info_manager_ = nullptr;
+  if (seat_) {
+    wl_seat_release(seat_);
+    seat_ = nullptr;
+  }
 }
 
 void WorkspaceThumbnails::register_manager(wl_registry* registry, uint32_t name,
@@ -999,6 +1315,28 @@ void WorkspaceThumbnails::register_manager(wl_registry* registry, uint32_t name,
     version = std::min<uint32_t>(version, zcosmic_overlap_notify_v1_interface.version);
     overlap_notify_ = static_cast<zcosmic_overlap_notify_v1*>(
         wl_registry_bind(registry, name, &zcosmic_overlap_notify_v1_interface, version));
+  } else if (std::strcmp(interface, ext_foreign_toplevel_list_v1_interface.name) == 0) {
+    if (foreign_toplevel_list_) return;
+    version = std::min<uint32_t>(version, ext_foreign_toplevel_list_v1_interface.version);
+    foreign_toplevel_list_ = static_cast<ext_foreign_toplevel_list_v1*>(
+        wl_registry_bind(registry, name, &ext_foreign_toplevel_list_v1_interface, version));
+    ext_foreign_toplevel_list_v1_add_listener(foreign_toplevel_list_, &toplevel_list_impl, this);
+  } else if (std::strcmp(interface, zcosmic_toplevel_info_v1_interface.name) == 0) {
+    if (toplevel_info_manager_) return;
+    // Bind version >= 2 so we use get_cosmic_toplevel() + ext_foreign_toplevel_handle_v1
+    // for data, rather than the deprecated v1 toplevel/app_id/title events.
+    version = std::max<uint32_t>(2, std::min<uint32_t>(version, zcosmic_toplevel_info_v1_interface.version));
+    toplevel_info_manager_ = static_cast<zcosmic_toplevel_info_v1*>(
+        wl_registry_bind(registry, name, &zcosmic_toplevel_info_v1_interface, version));
+  } else if (std::strcmp(interface, zcosmic_toplevel_manager_v1_interface.name) == 0) {
+    if (toplevel_manager_) return;
+    version = std::min<uint32_t>(version, zcosmic_toplevel_manager_v1_interface.version);
+    toplevel_manager_ = static_cast<zcosmic_toplevel_manager_v1*>(
+        wl_registry_bind(registry, name, &zcosmic_toplevel_manager_v1_interface, version));
+  } else if (std::strcmp(interface, wl_seat_interface.name) == 0) {
+    if (seat_) return;
+    version = std::min<uint32_t>(version, wl_seat_interface.version);
+    seat_ = static_cast<wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, version));
   }
 }
 
@@ -1075,6 +1413,10 @@ void WorkspaceThumbnails::handle_workspace_removed(ext_workspace_handle_v1* hand
   for (auto& group : groups_) {
     group.workspaces.erase(std::remove(group.workspaces.begin(), group.workspaces.end(), handle),
                            group.workspaces.end());
+  }
+  for (auto& [foreign, toplevel] : toplevels_) {
+    auto& workspaces = toplevel.workspaces;
+    workspaces.erase(std::remove(workspaces.begin(), workspaces.end(), handle), workspaces.end());
   }
   const auto it = std::find(workspaces_.begin(), workspaces_.end(), handle);
   if (it != workspaces_.end()) {
@@ -1339,6 +1681,110 @@ void WorkspaceThumbnails::handle_layer_leave(const std::string& identifier) {
   reserved_.erase(identifier);
   for (auto& [handle, thumb] : thumbnails_) {
     thumb->widget().queue_draw();
+  }
+}
+
+void WorkspaceThumbnails::handle_toplevel_list_toplevel(ext_foreign_toplevel_handle_v1* handle) {
+  ext_foreign_toplevel_handle_v1_add_listener(handle, &toplevel_handle_impl, this);
+
+  Toplevel toplevel;
+  toplevel.foreign = handle;
+  if (toplevel_info_manager_) {
+    toplevel.cosmic =
+        zcosmic_toplevel_info_v1_get_cosmic_toplevel(toplevel_info_manager_, handle);
+    if (toplevel.cosmic) {
+      zcosmic_toplevel_handle_v1_add_listener(toplevel.cosmic, &cosmic_toplevel_handle_impl, this);
+      cosmic_to_foreign_[toplevel.cosmic] = handle;
+    }
+  }
+  toplevels_[handle] = std::move(toplevel);
+}
+
+void WorkspaceThumbnails::handle_toplevel_list_finished() {
+  if (foreign_toplevel_list_) {
+    ext_foreign_toplevel_list_v1_destroy(foreign_toplevel_list_);
+    foreign_toplevel_list_ = nullptr;
+  }
+}
+
+void WorkspaceThumbnails::handle_toplevel_closed(ext_foreign_toplevel_handle_v1* handle) {
+  const auto it = toplevels_.find(handle);
+  if (it == toplevels_.end()) return;
+
+  const auto affected = it->second.workspaces;
+  if (it->second.cosmic) {
+    cosmic_to_foreign_.erase(it->second.cosmic);
+    zcosmic_toplevel_handle_v1_destroy(it->second.cosmic);
+  }
+  toplevels_.erase(it);
+  ext_foreign_toplevel_handle_v1_destroy(handle);
+
+  for (auto* ws : affected) {
+    refresh_icons(ws);
+  }
+}
+
+void WorkspaceThumbnails::handle_toplevel_app_id(ext_foreign_toplevel_handle_v1* handle,
+                                                 const std::string& app_id) {
+  const auto it = toplevels_.find(handle);
+  if (it == toplevels_.end()) return;
+  it->second.app_id = app_id;
+}
+
+void WorkspaceThumbnails::handle_toplevel_done(ext_foreign_toplevel_handle_v1* handle) {
+  const auto it = toplevels_.find(handle);
+  if (it == toplevels_.end()) return;
+  for (auto* ws : it->second.workspaces) {
+    refresh_icons(ws);
+  }
+}
+
+void WorkspaceThumbnails::handle_cosmic_workspace_enter(zcosmic_toplevel_handle_v1* handle,
+                                                        ext_workspace_handle_v1* ws) {
+  const auto fit = cosmic_to_foreign_.find(handle);
+  if (fit == cosmic_to_foreign_.end()) return;
+  const auto it = toplevels_.find(fit->second);
+  if (it == toplevels_.end()) return;
+  auto& workspaces = it->second.workspaces;
+  if (std::find(workspaces.begin(), workspaces.end(), ws) == workspaces.end()) {
+    workspaces.push_back(ws);
+  }
+  refresh_icons(ws);
+}
+
+void WorkspaceThumbnails::handle_cosmic_workspace_leave(zcosmic_toplevel_handle_v1* handle,
+                                                        ext_workspace_handle_v1* ws) {
+  const auto fit = cosmic_to_foreign_.find(handle);
+  if (fit == cosmic_to_foreign_.end()) return;
+  const auto it = toplevels_.find(fit->second);
+  if (it == toplevels_.end()) return;
+  auto& workspaces = it->second.workspaces;
+  workspaces.erase(std::remove(workspaces.begin(), workspaces.end(), ws), workspaces.end());
+  refresh_icons(ws);
+}
+
+std::vector<const WorkspaceThumbnails::Toplevel*> WorkspaceThumbnails::icons_for(
+    ext_workspace_handle_v1* handle) const {
+  std::vector<const Toplevel*> result;
+  for (const auto& [foreign, toplevel] : toplevels_) {
+    const auto& workspaces = toplevel.workspaces;
+    if (std::find(workspaces.begin(), workspaces.end(), handle) != workspaces.end()) {
+      result.push_back(&toplevel);
+    }
+  }
+  return result;
+}
+
+void WorkspaceThumbnails::activate_toplevel(zcosmic_toplevel_handle_v1* handle) const {
+  if (!toplevel_manager_ || !seat_ || !handle) return;
+  zcosmic_toplevel_manager_v1_activate(toplevel_manager_, handle, seat_);
+  commit();
+}
+
+void WorkspaceThumbnails::refresh_icons(ext_workspace_handle_v1* handle) {
+  const auto it = thumbnails_.find(handle);
+  if (it != thumbnails_.end()) {
+    it->second->refresh_icons();
   }
 }
 

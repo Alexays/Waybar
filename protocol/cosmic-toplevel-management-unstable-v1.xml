@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="cosmic_toplevel_management_unstable_v1">
+  <copyright>
+    Copyright © 2018 Ilia Bozhinov
+    Copyright © 2020 Isaac Freund
+    Copyright © 2022 wb9688
+    Copyright © 2024 Victoria Brekenfeld
+
+    Permission to use, copy, modify, distribute, and sell this
+    software and its documentation for any purpose is hereby granted
+    without fee, provided that the above copyright notice appear in
+    all copies and that both that copyright notice and this permission
+    notice appear in supporting documentation, and that the name of
+    the copyright holders not be used in advertising or publicity
+    pertaining to distribution of the software without specific,
+    written prior permission.  The copyright holders make no
+    representations about the suitability of this software for any
+    purpose.  It is provided "as is" without express or implied
+    warranty.
+
+    THE COPYRIGHT HOLDERS DISCLAIM ALL WARRANTIES WITH REGARD TO THIS
+    SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+    FITNESS, IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+    WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+    AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+    ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+    THIS SOFTWARE.
+  </copyright>
+
+  <interface name="zcosmic_toplevel_manager_v1" version="4">
+    <description summary="control open apps">
+      This protocol allows clients such as a taskbar to request the compositor
+      to preform typical actions on open toplevels. The compositor is in all
+      cases free to ignore the request.
+    </description>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy the zcosmic_toplevel_manager_v1">
+        This request indicates that the client has finished using the
+        zcosmic_toplevel_manager_v1 object and that it can be safely
+        destroyed.
+      </description>
+    </request>
+
+    <enum name="zcosmic_toplelevel_management_capabilities_v1">
+      <entry name="close" value="1" summary="close request is available"/>
+      <entry name="activate" value="2" summary="activate request is available"/>
+      <entry name="maximize" value="3" summary="set_maximized and unset_maximized requests are available"/>
+      <entry name="minimize" value="4" summary="set_minimized and unset_minimized requests are available"/>
+      <entry name="fullscreen" value="5" summary="set_fullscreen and unset_fullscreen requests are available"/>
+      <entry name="move_to_workspace" value="6" since="2" summary="move_to_workspace request is available"/>
+      <entry name="sticky" value="7" since="3" summary="set_sticky and unset_sticky requests are available"/>
+      <entry name="move_to_ext_workspace" value="8" since="4" summary="move_to_ext_workspace request is available"/>
+    </enum>
+
+    <event name="capabilities">
+      <description summary="compositor capabilities">
+        This event advertises the capabilities supported by the compositor. If
+        a capability isn't supported, clients should hide or disable the UI
+        elements that expose this functionality. For instance, if the
+        compositor doesn't advertise support for closing toplevels, a button
+        triggering the close request should not be displayed.
+
+        The compositor will ignore requests it doesn't support. For instance,
+        a compositor which doesn't advertise support for closing toplevels will ignore
+        close requests.
+
+        Compositors must send this event once after creation of an
+        zcosmic_toplevel_manager_v1 . When the capabilities change, compositors
+        must send this event again.
+
+        The capabilities are sent as an array of 32-bit unsigned integers in
+        native endianness.
+      </description>
+      <arg name="capabilities" type="array" summary="array of 32-bit capabilities"/>
+    </event>
+
+    <request name="close">
+      <description summary="request that a toplevel be closed">
+        If the compositor honors this request, the
+        zcosmic_toplevel_handle_v1.closed event will be sent.
+      </description>
+      <arg name="toplevel" type="object" interface="zcosmic_toplevel_handle_v1"/>
+    </request>
+
+    <request name="activate">
+      <description summary="request that a toplevel be activated">
+        If the compositor honors this request, the
+        zcosmic_toplevel_handle_v1.state event will be sent.
+      </description>
+      <arg name="toplevel" type="object" interface="zcosmic_toplevel_handle_v1"/>
+      <arg name="seat" type="object" interface="wl_seat"/>
+    </request>
+
+    <request name="set_maximized">
+      <description summary="request that a toplevel be maximized">
+        If the compositor honors this request, the
+        zcosmic_toplevel_handle_v1.state event will be sent.
+      </description>
+      <arg name="toplevel" type="object" interface="zcosmic_toplevel_handle_v1"/>
+    </request>
+
+    <request name="unset_maximized">
+      <description summary="request that a toplevel be unmaximized">
+        If the compositor honors this request, the
+        zcosmic_toplevel_handle_v1.state event will be sent.
+      </description>
+      <arg name="toplevel" type="object" interface="zcosmic_toplevel_handle_v1"/>
+    </request>
+
+    <request name="set_minimized">
+      <description summary="request that a toplevel be minimized">
+        If the compositor honors this request, the
+        zcosmic_toplevel_handle_v1.state event will be sent.
+      </description>
+      <arg name="toplevel" type="object" interface="zcosmic_toplevel_handle_v1"/>
+    </request>
+
+    <request name="unset_minimized">
+      <description summary="request that a toplevel be unminimized">
+        If the compositor honors this request, the
+        zcosmic_toplevel_handle_v1.state event will be sent.
+      </description>
+      <arg name="toplevel" type="object" interface="zcosmic_toplevel_handle_v1"/>
+    </request>
+
+    <request name="set_fullscreen">
+      <description summary="request that a toplevel be fullscreened">
+        If the compositor honors this request, the
+        zcosmic_toplevel_handle_v1.state and potentially the
+        zcosmic_toplevel_handle_v1.output_enter/output_leave events will
+        be sent.
+
+        The output parameter a hint to the compositor and may be ignored. A
+        value of NULL indicates that the compositor should choose the target
+        output, if it honors the fullscreen request.
+      </description>
+      <arg name="toplevel" type="object" interface="zcosmic_toplevel_handle_v1"/>
+      <arg name="output" type="object" interface="wl_output" allow-null="true"/>
+    </request>
+
+    <request name="unset_fullscreen">
+      <description summary="request that a toplevel be unfullscreened">
+        If the compositor honors this request, the
+        zcosmic_toplevel_handle_v1.state event will be sent.
+      </description>
+      <arg name="toplevel" type="object" interface="zcosmic_toplevel_handle_v1"/>
+    </request>
+
+    <request name="set_rectangle">
+      <description summary="designate a rectangle to represent a toplevel">
+        If a client using this protocol displays UI elements corresponding
+        to toplevels, it may use this request to inform the server about such
+        a relation. This information may be used by the server, for example as
+        the target for a minimize animation.
+
+        If the client sets more than one rectangle, only the most recently
+        set rectangle is considered.
+
+        The dimensions are given in surface-local coordinates.
+
+        Setting width=height=0 removes the current rectangle if one was set.
+      </description>
+      <arg name="toplevel" type="object" interface="zcosmic_toplevel_handle_v1"/>
+      <arg name="surface" type="object" interface="wl_surface"/>
+      <arg name="x" type="int"/>
+      <arg name="y" type="int"/>
+      <arg name="width" type="int"/>
+      <arg name="height" type="int"/>
+    </request>
+
+    <request name = "move_to_workspace" since="2"  deprecated-since="4">
+      <description summary="move toplevel to workspace">
+        Move window to workspace, on given output.
+      </description>
+      <arg name="toplevel" type="object" interface="zcosmic_toplevel_handle_v1"/>
+      <arg name="workspace" type="object" interface="zcosmic_workspace_handle_v1"/>
+      <arg name="output" type="object" interface="wl_output"/>
+    </request>
+
+    <request name="set_sticky" since="3">
+      <description summary="request that a toplevel be made sticky">
+        If the compositor honors this request, the
+        zcosmic_toplevel_handle_v1.state event will be sent.
+      </description>
+      <arg name="toplevel" type="object" interface="zcosmic_toplevel_handle_v1"/>
+    </request>
+
+    <request name="unset_sticky" since="3">
+      <description summary="request that a toplevel be removed of the sticky status">
+        If the compositor honors this request, the
+        zcosmic_toplevel_handle_v1.state event will be sent.
+      </description>
+      <arg name="toplevel" type="object" interface="zcosmic_toplevel_handle_v1"/>
+    </request>
+
+    <request name = "move_to_ext_workspace" since="4">
+      <description summary="move toplevel to workspace">
+        Move window to workspace, on given output.
+      </description>
+      <arg name="toplevel" type="object" interface="zcosmic_toplevel_handle_v1"/>
+      <arg name="workspace" type="object" interface="ext_workspace_handle_v1"/>
+      <arg name="output" type="object" interface="wl_output"/>
+    </request>
+
+    <enum name="error">
+      <entry name="invalid_rectangle" value="0"
+        summary="the provided rectangle is invalid"/>
+    </enum>
+  </interface>
+</protocol>

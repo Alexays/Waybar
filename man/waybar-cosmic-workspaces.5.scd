@@ -147,6 +147,66 @@ Addressed by *cosmic/workspaces*
 	default: 4 ++
 	Gap, in pixels, between thumbnail items.
 
+*icons-show*: ++
+	typeof: bool ++
+	default: false ++
+	Shows one icon per running app assigned to each workspace, resolved the
+	same way as the COSMIC dock (via the app's desktop file and the icon
+	theme). A window pinned to every workspace (sticky) shows its icon on
+	every thumbnail. Clicking an icon activates (focuses) that window.
+
+	Requires the compositor to support *ext-foreign-toplevel-list-v1* and
+	COSMIC's *cosmic-toplevel-info-unstable-v1* protocol (for icons) and
+	*cosmic-toplevel-management-unstable-v1* (for click-to-activate);
+	otherwise this option has no effect.
+
+*icons-orientation*: ++
+	typeof: string ++
+	default: horizontal ++
+	Layout direction of the icon row/column: *horizontal* or *vertical*. Only
+	relevant when *icons-position* is *before* or *after*; when *embedded*,
+	orientation is derived automatically from *icons-edge* instead.
+
+*icons-position*: ++
+	typeof: string ++
+	default: embedded ++
+	Where the icons are placed: *embedded* (overlaid on the thumbnail, see
+	*icons-edge*/*icons-align*), *beforethumbnail*, *afterthumbnail*,
+	*beforelabel*, or *afterlabel* (packed alongside the thumbnail and label,
+	relative to whichever of the two). Note that depending on *label-position*,
+	some of these resolve to the same spot - e.g. with the default
+	*label-position: before*, *afterlabel* and *beforethumbnail* are the same
+	slot, between the label and the thumbnail. If *label-show* is false,
+	*beforelabel*/*afterlabel* fall back to the thumbnail's edge, since there's
+	no label to anchor to. Only relevant when *icons-show* is true.
+
+*icons-edge*: ++
+	typeof: string ++
+	default: bottom ++
+	Which edge of the thumbnail the icons are anchored to: *top*, *bottom*,
+	*left*, or *right*. *top*/*bottom* lay icons out horizontally;
+	*left*/*right* lay them out vertically. Only relevant when *icons-position*
+	is *embedded*.
+
+*icons-align*: ++
+	typeof: string ++
+	default: start ++
+	Position along *icons-edge*: *start*, *center*, or *end*. For a *top*/
+	*bottom* edge, *start* is the left side and *end* is the right side; for a
+	*left*/*right* edge, *start* is the top and *end* is the bottom. For
+	example, *icons-edge: bottom* with *icons-align: end* anchors icons to the
+	bottom-right corner. Only relevant when *icons-position* is *embedded*.
+
+*icons-size*: ++
+	typeof: int ++
+	default: 20 ++
+	Icon size in pixels. Only relevant when *icons-show* is true.
+
+*icons-spacing*: ++
+	typeof: int ++
+	default: 4 ++
+	Gap, in pixels, between icons. Only relevant when *icons-show* is true.
+
 # STYLE
 
 - *#cosmic-workspaces*
@@ -157,6 +217,8 @@ Addressed by *cosmic/workspaces*
   is enabled; set *border-color* here to theme the highlight drawn by *highlight-line-size*)
 - *#cosmic-workspaces .thumbnail-label* (the label overlaid on the thumbnail)
 - *#cosmic-workspaces .label* (the adjacent label placed before/after the thumbnail)
+- *#cosmic-workspaces .icons* (the box containing a workspace's app icons)
+- *#cosmic-workspaces .icons .icon* (one app icon button; use this to size/margin icons)
 
 # SEE ALSO
 

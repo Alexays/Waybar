@@ -49,6 +49,15 @@ if wayland_protos.version().version_compare('>=1.41')
         [wl_protocol_dir, 'staging/ext-image-copy-capture/ext-image-copy-capture-v1.xml'],
         ['cosmic-image-capture-source-unstable-v1.xml'],
         ['cosmic-overlap-notify-unstable-v1.xml'],
+#cosmic-toplevel-management's wl_interface table references
+#zcosmic_toplevel_handle_v1_interface, which is only defined by
+#cosmic-toplevel-info's generated code, so both must be linked together.
+        ['cosmic-toplevel-info-unstable-v1.xml'],
+        ['cosmic-toplevel-management-unstable-v1.xml'],
+#cosmic-toplevel-info/-management's deprecated (pre ext-workspace-v1) requests
+#and events reference zcosmic_workspace_handle_v1_interface even though waybar
+#never constructs one, so this must be linked in too.
+        ['cosmic-workspace-unstable-v1.xml'],
     ]
 endif
 
