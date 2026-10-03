@@ -66,6 +66,15 @@ Addressed by *cosmic/workspaces*
 	Minimum delay, in milliseconds, between two captures of the same workspace.
 	Only relevant when *display* is *live*.
 
+*max-concurrent-captures*: ++
+	typeof: int ++
+	default: 2 ++
+	Caps how many workspaces may have a compositor capture and pixel-format
+	conversion in flight at the same time. With a short *interval* and/or many
+	workspaces, this bounds how many simultaneous compositor-side GPU readbacks
+	and background CPU conversions can happen at once, trading some thumbnail
+	freshness for a smoother desktop. Only relevant when *display* is *live*.
+
 *all-outputs*: ++
 	typeof: bool ++
 	default: false ++

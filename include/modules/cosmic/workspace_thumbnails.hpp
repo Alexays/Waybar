@@ -2,6 +2,7 @@
 
 #include <cairomm/context.h>
 #include <cairomm/surface.h>
+#include <glibmm/dispatcher.h>
 #include <gtkmm/box.h>
 #include <gtkmm/drawingarea.h>
 #include <gtkmm/enums.h>
@@ -13,8 +14,12 @@
 #include <wayland-client.h>
 
 #include <chrono>
+#include <condition_variable>
 #include <memory>
+#include <mutex>
+#include <semaphore>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -98,6 +103,15 @@ class Thumbnail {
   bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr);
   bool on_button_press(GdkEventButton* event);
   bool on_capture_timeout();
+  void start_worker();
+  void stop_worker();
+  // Runs for the Thumbnail's whole lifetime on worker_thread_: waits for a job, converts it
+  // (reading buffer_data_, guarded by buffer_busy_) and hands the surface back via
+  // pending_surface_ + convert_dispatcher_.
+  void worker_main();
+  // Dispatched onto the main thread once worker_main() finishes a job.
+  void on_convert_done();
+  void schedule_next_capture();
 
   WorkspaceThumbnails& owner_;
   ext_workspace_handle_v1* workspace_;
@@ -129,7 +143,37 @@ class Thumbnail {
   Cairo::RefPtr<Cairo::ImageSurface> surface_;
 
   bool capture_in_flight_ = false;
+  // Delays only the very first capture (offset per thumbnail) so that, with many
+  // workspaces on the same refresh interval, their frame-ready callbacks don't all
+  // land in the same main-loop iteration and stall the bar.
+  bool staggered_ = false;
   sigc::connection timer_conn_;
+
+  // The pixel copy/format-swap runs on a persistent worker_thread_ (started/stopped with the
+  // capture session) instead of the GTK main thread. buffer_busy_ (job_mutex_/buffer_free_cv_)
+  // guards raw memory safety: release_buffer() waits for it to clear before unmapping
+  // buffer_data_. convert_in_flight_ additionally blocks a new capture from being requested
+  // until on_convert_done() has consumed the previous job's result on the main thread.
+  struct ConvertJob {
+    const uint8_t* data = nullptr;
+    size_t stride = 0;
+    uint32_t width = 0;
+    uint32_t height = 0;
+    uint32_t format = 0;
+  };
+  std::thread worker_thread_;
+  std::mutex job_mutex_;
+  std::condition_variable job_cv_;
+  std::condition_variable buffer_free_cv_;
+  ConvertJob pending_job_;
+  bool has_job_ = false;
+  bool buffer_busy_ = false;
+  bool stop_worker_ = false;
+
+  bool convert_in_flight_ = false;
+  std::mutex convert_mutex_;
+  Cairo::RefPtr<Cairo::ImageSurface> pending_surface_;
+  Glib::Dispatcher convert_dispatcher_;
 };
 
 class WorkspaceThumbnails final : public AModule {
@@ -147,6 +191,14 @@ class WorkspaceThumbnails final : public AModule {
   }
   wl_shm* shm() const { return shm_; }
   std::chrono::milliseconds interval() const { return interval_; }
+  size_t thumbnail_count() const { return thumbnails_.size(); }
+  // Caps how many thumbnails may have a compositor capture + background conversion in
+  // flight at once, regardless of refresh interval or workspace count, so a fast interval
+  // with many workspaces can't flood the compositor with simultaneous GPU readbacks or
+  // saturate CPU/memory bandwidth with concurrent conversions. Non-blocking: callers on the
+  // main thread must not wait on a slot, just retry shortly when none is free.
+  bool try_acquire_capture_slot() { return capture_slots_.try_acquire(); }
+  void release_capture_slot() { capture_slots_.release(); }
   int thumbnail_width() const { return thumb_width_; }
   int thumbnail_height() const { return thumb_height_; }
   const ThumbnailOptions& options() const { return options_; }
@@ -280,6 +332,7 @@ class WorkspaceThumbnails final : public AModule {
   int thumb_min_height_ = 0;
   int workspace_wrap_size_ = 0;
   bool needs_sync_ = false;
+  std::counting_semaphore<> capture_slots_;
 };
 
 }  // namespace waybar::modules::cosmic

@@ -53,6 +53,8 @@ Thumbnail::Thumbnail(WorkspaceThumbnails& owner, ext_workspace_handle_v1* worksp
     : owner_(owner), workspace_(workspace), item_box_(owner.bar_orientation(), 0) {
   const auto& opts = owner_.options();
 
+  convert_dispatcher_.connect(sigc::mem_fun(*this, &Thumbnail::on_convert_done));
+
   item_box_.get_style_context()->add_class("workspace");
   // Gtk::Box otherwise stretches children across the cross-axis regardless of
   // pack_start's fill flag, sizing the thumbnail (and its highlight) to the
@@ -203,6 +205,7 @@ void Thumbnail::start_session() {
     return;
   }
   ext_image_copy_capture_session_v1_add_listener(session_, &session_impl, this);
+  start_worker();
 }
 
 void Thumbnail::handle_buffer_size(uint32_t width, uint32_t height) {
@@ -239,6 +242,23 @@ void Thumbnail::handle_shm_format(uint32_t format) {
 
 void Thumbnail::handle_constraints_done() {
   if (!ensure_buffer()) {
+    return;
+  }
+  if (!staggered_) {
+    staggered_ = true;
+    // Spread workspaces' first capture across the interval instead of all starting at once,
+    // which would otherwise keep them in lockstep (each reschedules itself a fixed `interval()`
+    // after its own frame arrives) and re-create the same main-thread stall on every tick.
+    const int index = std::max(0, owner_.number_for(workspace_) - 1);
+    const int stagger_ms =
+        static_cast<int>(index * owner_.interval().count() / std::max<size_t>(1, owner_.thumbnail_count()));
+    timer_conn_.disconnect();
+    timer_conn_ = Glib::signal_timeout().connect(
+        [this]() {
+          request_capture();
+          return false;
+        },
+        stagger_ms);
     return;
   }
   request_capture();
@@ -294,6 +314,11 @@ bool Thumbnail::ensure_buffer() {
 }
 
 void Thumbnail::release_buffer() {
+  // Must not unmap buffer_data_ while the worker is still reading it for the current job.
+  {
+    std::unique_lock<std::mutex> lock(job_mutex_);
+    buffer_free_cv_.wait(lock, [this] { return !buffer_busy_; });
+  }
   if (buffer_) {
     wl_buffer_destroy(buffer_);
     buffer_ = nullptr;
@@ -308,11 +333,25 @@ void Thumbnail::release_buffer() {
 }
 
 void Thumbnail::request_capture() {
-  if (!session_ || !buffer_ || capture_in_flight_ || frame_) {
+  if (!session_ || !buffer_ || capture_in_flight_ || convert_in_flight_ || frame_) {
+    return;
+  }
+  if (!owner_.try_acquire_capture_slot()) {
+    // Every capture slot (compositor readback + background conversion) is in use by some
+    // other thumbnail; retry shortly rather than waiting out this thumbnail's own interval.
+    constexpr int kCaptureSlotRetryMs = 20;
+    timer_conn_.disconnect();
+    timer_conn_ = Glib::signal_timeout().connect(
+        [this]() {
+          request_capture();
+          return false;
+        },
+        kCaptureSlotRetryMs);
     return;
   }
   frame_ = ext_image_copy_capture_session_v1_create_frame(session_);
   if (!frame_) {
+    owner_.release_capture_slot();
     return;
   }
   ext_image_copy_capture_frame_v1_add_listener(frame_, &frame_impl, this);
@@ -325,48 +364,134 @@ void Thumbnail::request_capture() {
 
 void Thumbnail::handle_frame_ready() {
   capture_in_flight_ = false;
-
-  if (buffer_data_ != nullptr && buf_width_ > 0 && buf_height_ > 0) {
-    const bool has_alpha =
-        shm_format_ == WL_SHM_FORMAT_ARGB8888 || shm_format_ == WL_SHM_FORMAT_ABGR8888;
-    // *BGR8888 stores red/blue swapped relative to Cairo's native *RGB32 memory layout.
-    const bool swap_rb =
-        shm_format_ == WL_SHM_FORMAT_ABGR8888 || shm_format_ == WL_SHM_FORMAT_XBGR8888;
-    const auto cairo_format = has_alpha ? Cairo::FORMAT_ARGB32 : Cairo::FORMAT_RGB24;
-
-    auto surface = Cairo::ImageSurface::create(cairo_format, static_cast<int>(buf_width_),
-                                               static_cast<int>(buf_height_));
-    const size_t dst_stride = static_cast<size_t>(surface->get_stride());
-    unsigned char* dst = surface->get_data();
-    const size_t copy_len = std::min(dst_stride, buffer_stride_);
-
-    if (!swap_rb) {
-      for (uint32_t y = 0; y < buf_height_; ++y) {
-        std::memcpy(dst + y * dst_stride, buffer_data_ + y * buffer_stride_, copy_len);
-      }
-    } else {
-      const uint32_t pixels_per_row = static_cast<uint32_t>(copy_len / 4);
-      for (uint32_t y = 0; y < buf_height_; ++y) {
-        const uint8_t* src_row = buffer_data_ + y * buffer_stride_;
-        uint8_t* dst_row = dst + y * dst_stride;
-        for (uint32_t x = 0; x < pixels_per_row; ++x) {
-          dst_row[x * 4 + 0] = src_row[x * 4 + 2];
-          dst_row[x * 4 + 1] = src_row[x * 4 + 1];
-          dst_row[x * 4 + 2] = src_row[x * 4 + 0];
-          dst_row[x * 4 + 3] = src_row[x * 4 + 3];
-        }
-      }
-    }
-    surface->mark_dirty();
-    surface_ = surface;
-    area_.queue_draw();
-  }
-
   if (frame_) {
     ext_image_copy_capture_frame_v1_destroy(frame_);
     frame_ = nullptr;
   }
 
+  if (buffer_data_ == nullptr || buf_width_ == 0 || buf_height_ == 0) {
+    schedule_next_capture();
+    return;
+  }
+
+  // Hand the full-resolution copy/format-swap to the persistent worker thread so it can't
+  // stall the GTK main loop; request_capture()/release_buffer() hold off touching buffer_
+  // until buffer_busy_/convert_in_flight_ clear, so the worker's read below never races a
+  // write into the same memory.
+  convert_in_flight_ = true;
+  {
+    std::lock_guard<std::mutex> lock(job_mutex_);
+    buffer_busy_ = true;
+    pending_job_ = ConvertJob{buffer_data_, buffer_stride_, buf_width_, buf_height_, shm_format_};
+    has_job_ = true;
+  }
+  job_cv_.notify_one();
+}
+
+namespace {
+Cairo::RefPtr<Cairo::ImageSurface> convert_frame(const uint8_t* buffer_data, size_t buffer_stride,
+                                                  uint32_t width, uint32_t height,
+                                                  uint32_t shm_format) {
+  const bool has_alpha =
+      shm_format == WL_SHM_FORMAT_ARGB8888 || shm_format == WL_SHM_FORMAT_ABGR8888;
+  // *BGR8888 stores red/blue swapped relative to Cairo's native *RGB32 memory layout.
+  const bool swap_rb = shm_format == WL_SHM_FORMAT_ABGR8888 || shm_format == WL_SHM_FORMAT_XBGR8888;
+  const auto cairo_format = has_alpha ? Cairo::FORMAT_ARGB32 : Cairo::FORMAT_RGB24;
+
+  auto surface = Cairo::ImageSurface::create(cairo_format, static_cast<int>(width),
+                                             static_cast<int>(height));
+  const size_t dst_stride = static_cast<size_t>(surface->get_stride());
+  unsigned char* dst = surface->get_data();
+  const size_t copy_len = std::min(dst_stride, buffer_stride);
+
+  if (!swap_rb) {
+    for (uint32_t y = 0; y < height; ++y) {
+      std::memcpy(dst + y * dst_stride, buffer_data + y * buffer_stride, copy_len);
+    }
+  } else {
+    // Swap R/B as whole 32-bit words (one load/mask/store per pixel) rather than four
+    // separate byte stores - cheaper and easier for the compiler to auto-vectorize.
+    const uint32_t pixels_per_row = static_cast<uint32_t>(copy_len / 4);
+    for (uint32_t y = 0; y < height; ++y) {
+      const auto* src_row = reinterpret_cast<const uint32_t*>(buffer_data + y * buffer_stride);
+      auto* dst_row = reinterpret_cast<uint32_t*>(dst + y * dst_stride);
+      for (uint32_t x = 0; x < pixels_per_row; ++x) {
+        const uint32_t px = src_row[x];
+        dst_row[x] = (px & 0xFF00FF00u) | ((px & 0x00FF0000u) >> 16) | ((px & 0x000000FFu) << 16);
+      }
+    }
+  }
+  surface->mark_dirty();
+  return surface;
+}
+}  // namespace
+
+void Thumbnail::start_worker() {
+  if (worker_thread_.joinable()) {
+    return;
+  }
+  stop_worker_ = false;
+  worker_thread_ = std::thread(&Thumbnail::worker_main, this);
+}
+
+void Thumbnail::stop_worker() {
+  if (!worker_thread_.joinable()) {
+    return;
+  }
+  {
+    std::lock_guard<std::mutex> lock(job_mutex_);
+    stop_worker_ = true;
+  }
+  job_cv_.notify_all();
+  worker_thread_.join();
+}
+
+void Thumbnail::worker_main() {
+  for (;;) {
+    ConvertJob job;
+    {
+      std::unique_lock<std::mutex> lock(job_mutex_);
+      job_cv_.wait(lock, [this] { return has_job_ || stop_worker_; });
+      if (stop_worker_ && !has_job_) {
+        return;
+      }
+      job = pending_job_;
+      has_job_ = false;
+    }
+
+    auto surface = convert_frame(job.data, job.stride, job.width, job.height, job.format);
+
+    {
+      std::lock_guard<std::mutex> lock(job_mutex_);
+      buffer_busy_ = false;
+    }
+    buffer_free_cv_.notify_all();
+
+    {
+      std::lock_guard<std::mutex> lock(convert_mutex_);
+      pending_surface_ = surface;
+    }
+    convert_dispatcher_.emit();
+  }
+}
+
+void Thumbnail::on_convert_done() {
+  Cairo::RefPtr<Cairo::ImageSurface> surface;
+  {
+    std::lock_guard<std::mutex> lock(convert_mutex_);
+    surface = pending_surface_;
+    pending_surface_.clear();
+  }
+  convert_in_flight_ = false;
+  owner_.release_capture_slot();
+  if (surface) {
+    surface_ = surface;
+    area_.queue_draw();
+  }
+  schedule_next_capture();
+}
+
+void Thumbnail::schedule_next_capture() {
   timer_conn_.disconnect();
   timer_conn_ = Glib::signal_timeout().connect(sigc::mem_fun(*this, &Thumbnail::on_capture_timeout),
                                                owner_.interval().count());
@@ -378,9 +503,8 @@ void Thumbnail::handle_frame_failed() {
     ext_image_copy_capture_frame_v1_destroy(frame_);
     frame_ = nullptr;
   }
-  timer_conn_.disconnect();
-  timer_conn_ = Glib::signal_timeout().connect(sigc::mem_fun(*this, &Thumbnail::on_capture_timeout),
-                                               owner_.interval().count());
+  owner_.release_capture_slot();
+  schedule_next_capture();
 }
 
 void Thumbnail::release_session() {
@@ -397,6 +521,7 @@ void Thumbnail::release_session() {
     ext_image_capture_source_v1_destroy(source_);
     source_ = nullptr;
   }
+  stop_worker();
   release_buffer();
   capture_in_flight_ = false;
   have_shm_format_ = false;
@@ -654,7 +779,10 @@ static wl_buffer* create_transparent_buffer(wl_shm* shm, uint32_t width, uint32_
 WorkspaceThumbnails::WorkspaceThumbnails(const std::string& id, const waybar::Bar& bar,
                                          const Json::Value& config)
     : waybar::AModule(config, "cosmic-workspaces", id, false, false),
-      bar_(bar) {
+      bar_(bar),
+      capture_slots_(config["max-concurrent-captures"].isUInt()
+                         ? std::max(1, static_cast<int>(config["max-concurrent-captures"].asUInt()))
+                         : 2) {
   box_.set_name("cosmic-workspaces");
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
