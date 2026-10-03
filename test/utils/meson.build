@@ -39,3 +39,24 @@ test(
     utils_test,
     workdir: meson.project_source_root(),
 )
+
+if is_linux and libudev.found()
+  umockdev = dependency('umockdev-1.0', required: false)
+  umockdev_wrapper = find_program('umockdev-wrapper', required: false)
+  if umockdev.found() and umockdev_wrapper.found()
+    backlight_test = executable(
+      'backlight_test',
+      '../main.cpp',
+      'backlight_backend.cpp',
+      '../../src/util/backlight_backend.cpp',
+      dependencies: test_dep + [libudev, umockdev],
+      include_directories: test_inc,
+      cpp_args: ['-UHAVE_LOGIN_PROXY'],
+      link_args: [
+        '-Wl,--wrap=udev_device_get_sysattr_value',
+        '-Wl,--wrap=udev_monitor_receive_device',
+      ],
+    )
+    test('backlight', umockdev_wrapper, args: [backlight_test])
+  endif
+endif
