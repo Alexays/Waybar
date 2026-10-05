@@ -677,22 +677,25 @@ void waybar::Bar::onConfigure(int width, int height) {
       spdlog::warn(MIN_HEIGHT_MSG, height_, height);
     }
   }
-  width_ = width;
-  height_ = height;
 
-  configureGlobalOffset(width, height);
-  spdlog::info(BAR_SIZE_MSG, width, height, output->name);
+  if (static_cast<int>(width_) != width || static_cast<int>(height_) != height) {
+    width_ = width;
+    height_ = height;
 
-  /*
-   * gtk-layer-shell waits for the compositor's initial configure while realizing the window. On a
-   * busy compositor (common during session startup) that wait can time out even though the initial
-   * configure arrives shortly afterwards. In that case GTK may not schedule the frame commit that
-   * presents the first layer-surface buffer, leaving an otherwise configured bar invisible. Force a
-   * commit after every configure so late initial configures, and later compositor-driven resizes,
-   * always result in a submitted surface state.
-   */
-  window.queue_draw();
-  forceLayerCommit();
+    configureGlobalOffset(width, height);
+    spdlog::info(BAR_SIZE_MSG, width, height, output->name);
+
+    /*
+     * gtk-layer-shell waits for the compositor's initial configure while realizing the window. On a
+     * busy compositor (common during session startup) that wait can time out even though the
+     * initial configure arrives shortly afterwards. In that case GTK may not schedule the frame
+     * commit that presents the first layer-surface buffer, leaving an otherwise configured bar
+     * invisible. Force a commit after every configure so late initial configures, and later
+     * compositor-driven resizes, always result in a submitted surface state.
+     */
+    window.queue_draw();
+    forceLayerCommit();
+  }
 }
 
 void waybar::Bar::configureGlobalOffset(int width, int height) {
