@@ -637,9 +637,15 @@ void Thumbnail::release_session() {
     ext_image_capture_source_v1_destroy(source_);
     source_ = nullptr;
   }
+  // A capture/convert in flight (e.g. the workspace was deleted mid-capture) holds a
+  // slot that on_convert_done()/handle_frame_failed() will never now run to release.
+  if (capture_in_flight_ || convert_in_flight_) {
+    owner_.release_capture_slot();
+  }
   stop_worker();
   release_buffer();
   capture_in_flight_ = false;
+  convert_in_flight_ = false;
   have_shm_format_ = false;
   buf_width_ = buf_height_ = 0;
 }

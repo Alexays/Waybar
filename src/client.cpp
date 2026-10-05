@@ -180,6 +180,17 @@ void waybar::Client::handleMonitorAdded(Glib::RefPtr<Gdk::Monitor> monitor) {
 void waybar::Client::handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor) {
   spdlog::debug("Output removed: {} {}", monitor->get_manufacturer().c_str(),
                 monitor->get_model().c_str());
+  // Hide affected windows immediately so GTK stops realizing/drawing (and querying the
+  // now-invalid GdkMonitor for) them; this monitor object is gone the moment this signal
+  // fires, well before the deferred removal below runs, which otherwise leaves a window
+  // behind to keep painting against a disposed monitor (seen as a storm of
+  // "gdk_monitor_get_scale_factor: assertion 'GDK_IS_MONITOR (monitor)' failed" warnings
+  // when modules like cosmic/workspaces keep queueing redraws on that gap).
+  for (auto& bar : bars) {
+    if (bar->output->monitor == monitor) {
+      bar->window.hide();
+    }
+  }
   /* This event can be triggered from wl_display_roundtrip called by GTK or our code.
    * Defer destruction of bars for the output to the next iteration of the event loop to avoid
    * deleting objects referenced by currently executed code.
