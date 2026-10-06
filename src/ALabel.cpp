@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <util/command.hpp>

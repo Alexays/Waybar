@@ -4,6 +4,7 @@
 #include <gtkmm/label.h>
 #include <json/value.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <map>

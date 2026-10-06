@@ -1,5 +1,6 @@
 #include "modules/temperature.hpp"
 
+#include <algorithm>
 #include <filesystem>
 #include <optional>
 #include <stdexcept>

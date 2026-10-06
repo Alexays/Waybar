@@ -2,6 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+
 namespace waybar::util {
 
 std::mutex DefaultGtkIconThemeWrapper::default_theme_mutex;

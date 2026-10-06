@@ -3,6 +3,8 @@
 #include <glibmm/miscutils.h>
 #include <json/config.h>
 
+#include <algorithm>
+
 namespace waybar::util {
 bool valid_host(const Json::Value& config) {
   if (config.isMember("hosts") && config["hosts"].isArray()) {

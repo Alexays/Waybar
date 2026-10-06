@@ -77,11 +77,18 @@ wayland_protos = dependency('wayland-protocols')
 gtkmm = dependency('gtkmm-4.0', version : ['=4.20.0'], fallback : ['gtkmm', 'gtkmm_dep'])
 giomm = dependency('giomm-2.4', version : ['>=2.40.0'])
 giounix = dependency('gio-unix-2.0')
-jsoncpp = dependency('jsoncpp', version : ['>=1.9.8'], fallback : ['jsoncpp', 'jsoncpp_dep'])
+jsoncpp = dependency('jsoncpp', version : ['>=1.9.6'], fallback : ['jsoncpp', 'jsoncpp_dep'])
 sigcpp = dependency('sigc++-3.0')
 libepoll = dependency('epoll-shim', required: false)
 
+# Must be declared and linked before wayland_client dep.
+# Otherwise gtk_layer_is_supported() returns false at runtime.
+gtk_layer_shell = dependency('gtk4-layer-shell-0', version: ['>=1.3.0'],
+        default_options: ['introspection=false', 'vapi=false'],
+        fallback: ['gtk-layer-shell', 'gtk_layer_shell'])
+
 deps += [thread_dep,
+         gtk_layer_shell,
          wayland_client,
          wayland_cursor,
          gtkmm,
@@ -104,16 +111,13 @@ if libsndio.found()
 endif
 deps += libsndio
 
-gtk_layer_shell = dependency('gtk4-layer-shell-0', version: ['>=1.3.0'],
-        default_options: ['introspection=false', 'vapi=false'],
-        fallback: ['gtk-layer-shell', 'gtk_layer_shell'])
 systemd = dependency('systemd', required: get_option('systemd'))
 libsystemd = dependency('libsystemd', required: get_option('systemd'))
 if libsystemd.found()
     add_project_arguments('-DHAVE_LIBSYSTEMD', language: 'cpp')
 endif
 
-deps += [gtk_layer_shell, systemd, libsystemd]
+deps += [systemd, libsystemd]
 
 cpp_lib_chrono = compiler.compute_int('__cpp_lib_chrono', prefix : '#include <chrono>')
 have_chrono_timezones = cpp_lib_chrono >= 201611
