@@ -300,6 +300,9 @@ void WorkspaceGroup::handle_output_leave(wl_output* output) {
 
 void WorkspaceGroup::handle_workspace_enter(ext_workspace_handle_v1* handle) {
   workspaces_.push_back(handle);
+  // A workspace that moves to this group's output gets its button appended at
+  // the end of the box; force a re-sort so it lands in its proper position.
+  workspaces_manager_.set_needs_sorting();
 }
 
 void WorkspaceGroup::handle_workspace_leave(ext_workspace_handle_v1* handle) {
