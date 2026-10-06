@@ -21,6 +21,11 @@ Addressed by *tray*
 	default: false ++
 	Defines visibility of the tray icons with *Passive* status.
 
+*tooltip*: ++
+    typeof: bool ++
+    default: true ++
+    Option to disable tooltips on the tray icons.
+
 *smooth-scrolling-threshold*: ++
 	typeof: double ++
 	Threshold to be used when scrolling.
@@ -75,7 +80,8 @@ might not work for some Electron apps (see https://github.com/electron/electron/
 	},
 	"orders": {
 		"wechat": 99
-	}
+	},
+	"tooltip": false
 }
 
 ```
