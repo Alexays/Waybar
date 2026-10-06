@@ -348,32 +348,32 @@ std::string IPC::buildLuaDispatch(const std::string& dispatcher, const std::stri
   // Map old-style dispatchers to the new Lua hl.dsp API.
   //
   // Old format:  dispatch workspace 1
-  // New format:  /dispatch hl.dsp.focus({ workspace = "1" })
+  // New format:  dispatch 'hl.dsp.focus({ workspace = "1" })'
   //
   // Old format:  dispatch focusworkspaceoncurrentmonitor 2
-  // New format:  /dispatch hl.dsp.focus({ workspace = "2", on_current_monitor = true })
+  // New format:  dispatch 'hl.dsp.focus({ workspace = "2", on_current_monitor = true })'
   //
   // Old format:  dispatch togglespecialworkspace name
-  // New format:  /dispatch hl.dsp.workspace.toggle_special("name")
+  // New format:  dispatch 'hl.dsp.workspace.toggle_special("name")'
 
   if (dispatcher == "workspace") {
-    return "/dispatch hl.dsp.focus({ workspace = \"" + arg + "\" })";
+    return "dispatch 'hl.dsp.focus({ workspace = \"" + arg + "\" })'";
   }
   if (dispatcher == "focusworkspaceoncurrentmonitor") {
-    return "/dispatch hl.dsp.focus({ workspace = \"" + arg + "\", on_current_monitor = true })";
+    return "dispatch 'hl.dsp.focus({ workspace = \"" + arg + "\", on_current_monitor = true })'";
   }
   if (dispatcher == "togglespecialworkspace") {
     if (arg.empty()) {
-      return "/dispatch hl.dsp.workspace.toggle_special()";
+      return "dispatch 'hl.dsp.workspace.toggle_special()'";
     }
-    return "/dispatch hl.dsp.workspace.toggle_special(\"" + arg + "\")";
+    return "dispatch 'hl.dsp.workspace.toggle_special(\"" + arg + "\")'";
   }
 
   // Fallback for any other dispatcher: try the old format wrapped in dispatch().
   // This may not work for all dispatchers, but it's a reasonable default.
   spdlog::warn("Hyprland IPC: unknown dispatcher '{}' in Lua mode, attempting generic format",
                dispatcher);
-  return "/dispatch hl.dsp." + dispatcher + "(\"" + arg + "\")";
+  return "dispatch 'hl.dsp." + dispatcher + "(\"" + arg + "\")'";
 }
 
 std::string IPC::dispatch(const std::string& dispatcher, const std::string& arg) {
