@@ -74,7 +74,9 @@ cava::CavaBackend::~CavaBackend() {
   pthread_mutex_unlock(&audio_data_.lock);
 
   out_thread_.stop();
-  read_thread_.stop();
+  // Do not call read_thread_.stop() while PipeWire is running;
+  // it runs its own loop. Calling read_thread_.stop() can prevent
+  // pw_main_loop from shutting down correctly.
 
   std::unique_lock<std::mutex> lk(read_thread_exit_mutex_);
   if (!read_thread_exit_cv_.wait_for(lk, std::chrono::milliseconds(100),

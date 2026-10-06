@@ -678,7 +678,7 @@ void waybar::Bar::onConfigure(int width, int height) {
     }
   }
 
-  if (width_ != width || height_ != height) {
+  if (static_cast<int>(width_) != width || static_cast<int>(height_) != height) {
     width_ = width;
     height_ = height;
 
