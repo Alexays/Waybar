@@ -553,40 +553,41 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
       .length = std::nullopt,
   };
 
-  auto sanitize = [ ]( char* raw_str ) {
-      std::string s( raw_str );
-      std::replace( s.begin(), s.end(), '\n', ' ' );
-      std::replace( s.begin(), s.end(), '\r', ' ' );
-      return s;
-    };
+  auto sanitize = [](char* raw_str) {
+    std::string s(raw_str);
+    std::replace(s.begin(), s.end(), '\n', ' ');
+    std::replace(s.begin(), s.end(), '\r', ' ');
+    return s;
+  };
 
-if(auto* artist_ = playerctl_player_get_artist( last_active_player_, &error )) {
-    spdlog::debug( "mpris[{}]: artist = {}", info.name, artist_ );
-    info.artist = sanitize( artist_ );
-    g_free( artist_ );
+  if (auto* artist_ = playerctl_player_get_artist(last_active_player_, &error)) {
+    spdlog::debug("mpris[{}]: artist = {}", info.name, artist_);
+    info.artist = sanitize(artist_);
+    g_free(artist_);
   }
-  if(error) goto errorexit;
+  if (error) goto errorexit;
 
-  if(auto* album_artist_ = playerctl_player_print_metadata_prop( last_active_player_, "xesam:albumArtist", &error )) {
-    spdlog::debug( "mpris[{}]: albumArtist = {}", info.name, album_artist_ );
-    info.album_artist = sanitize( album_artist_ );
-    g_free( album_artist_ );
+  if (auto* album_artist_ =
+          playerctl_player_print_metadata_prop(last_active_player_, "xesam:albumArtist", &error)) {
+    spdlog::debug("mpris[{}]: albumArtist = {}", info.name, album_artist_);
+    info.album_artist = sanitize(album_artist_);
+    g_free(album_artist_);
   }
-  if(error) goto errorexit;
+  if (error) goto errorexit;
 
-  if(auto* album_ = playerctl_player_get_album( last_active_player_, &error )) {
-    spdlog::debug( "mpris[{}]: album = {}", info.name, album_ );
-    info.album = sanitize( album_ );
-    g_free( album_ );
+  if (auto* album_ = playerctl_player_get_album(last_active_player_, &error)) {
+    spdlog::debug("mpris[{}]: album = {}", info.name, album_);
+    info.album = sanitize(album_);
+    g_free(album_);
   }
-  if(error) goto errorexit;
+  if (error) goto errorexit;
 
-  if(auto* title_ = playerctl_player_get_title( last_active_player_, &error )) {
-    spdlog::debug( "mpris[{}]: title = {}", info.name, title_ );
-    info.title = sanitize( title_ );
-    g_free( title_ );
+  if (auto* title_ = playerctl_player_get_title(last_active_player_, &error)) {
+    spdlog::debug("mpris[{}]: title = {}", info.name, title_);
+    info.title = sanitize(title_);
+    g_free(title_);
   }
-  if(error) goto errorexit;
+  if (error) goto errorexit;
 
   if (auto* length_ =
           playerctl_player_print_metadata_prop(last_active_player_, "mpris:length", &error)) {
@@ -694,7 +695,8 @@ auto Mpris::update() -> void {
   auto info = *opt;
 
   if (info.status == PLAYERCTL_PLAYBACK_STATUS_STOPPED && format_stopped_.empty()) {
-    spdlog::debug("mpris[{}]: player stopped and format-stopped is empty, hiding module", info.name);
+    spdlog::debug("mpris[{}]: player stopped and format-stopped is empty, hiding module",
+                  info.name);
     event_box_.set_visible(false);
     ALabel::update();
     return;
