@@ -13,7 +13,7 @@ The *mpris* module displays currently playing media via libplayerctl.
 *player*: ++
 	typeof: string ++
 	default: playerctld ++
-	Name of the MPRIS player to attach to. Using the default value always follows the currently active player.
+	Name of the MPRIS player to attach to. Using the default value always follows the most interesting player: the first one playing, otherwise the most recently active one paused, otherwise the first one stopped.
 
 *ignored-players*: ++
 	typeof: []string ++
@@ -31,7 +31,7 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *format-[status]*: ++
 	typeof: string ++
-	The status-specific text format.
+	The status-specific text format. Setting *format-stopped* shows that format when every player is stopped; without it the module is hidden in that state.
 
 *tooltip*: ++
 	typeof: bool ++

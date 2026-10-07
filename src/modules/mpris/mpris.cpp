@@ -477,8 +477,19 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
     }
     // > get the list of players [..] in order of activity
     // https://github.com/altdesktop/playerctl/blob/b19a71cb9dba635df68d271bd2b3f6a99336a223/playerctl/playerctl-common.c#L248-L249
-    PlayerctlPlayer* first_valid_player = nullptr;
-    std::string first_valid_name;
+    auto status_rank = [](PlayerctlPlaybackStatus status) -> int {
+      switch (status) {
+        case PLAYERCTL_PLAYBACK_STATUS_PLAYING:
+          return 2;
+        case PLAYERCTL_PLAYBACK_STATUS_PAUSED:
+          return 1;
+        default:
+          return 0;  // stopped
+      }
+    };
+    PlayerctlPlayer* best_player = nullptr;
+    std::string best_player_name;
+    int best_player_rank = -1;
     for (auto* p = g_list_first(players); p != nullptr; p = p->next) {
       auto* pn = static_cast<PlayerctlPlayerName*>(p->data);
       std::string name = pn->name;
@@ -495,25 +506,24 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
         g_clear_error(&error);
         continue;
       }
-      if (!first_valid_player) {
-        first_valid_player = tmp;
-        first_valid_name = name;
-      }
-      PlayerctlPlaybackStatus status;
+      PlayerctlPlaybackStatus status = PLAYERCTL_PLAYBACK_STATUS_STOPPED;
       g_object_get(tmp, "playback-status", &status, NULL);
-      if (status == PLAYERCTL_PLAYBACK_STATUS_PLAYING) {
-        if (tmp != first_valid_player) g_object_unref(first_valid_player);
-        last_active_player_ = tmp;
-        player_name = name;
+      const int rank = status_rank(status);
+      if (rank > best_player_rank) {
+        if (best_player != nullptr) g_object_unref(best_player);
+        best_player = tmp;
+        best_player_name = name;
+        best_player_rank = rank;
+      } else {
+        g_object_unref(tmp);
+      }
+      if (rank == status_rank(PLAYERCTL_PLAYBACK_STATUS_PLAYING)) {
         break;
       }
-      if (tmp != first_valid_player) g_object_unref(tmp);
     }
-    if (!last_active_player_) {
-      if (!first_valid_player) return std::nullopt;
-      last_active_player_ = first_valid_player;
-      player_name = first_valid_name;
-    }
+    if (best_player == nullptr) return std::nullopt;
+    last_active_player_ = best_player;
+    player_name = best_player_name;
   } else if (std::any_of(ignored_players_.begin(), ignored_players_.end(),
                          [&](const std::string& pn) { return player_name == pn; })) {
     spdlog::warn("mpris[{}]: ignoring player update", player_name);
@@ -543,40 +553,41 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
       .length = std::nullopt,
   };
 
-  auto sanitize = [ ]( char* raw_str ) {
-      std::string s( raw_str );
-      std::replace( s.begin(), s.end(), '\n', ' ' );
-      std::replace( s.begin(), s.end(), '\r', ' ' );
-      return s;
-    };
+  auto sanitize = [](char* raw_str) {
+    std::string s(raw_str);
+    std::replace(s.begin(), s.end(), '\n', ' ');
+    std::replace(s.begin(), s.end(), '\r', ' ');
+    return s;
+  };
 
-if(auto* artist_ = playerctl_player_get_artist( last_active_player_, &error )) {
-    spdlog::debug( "mpris[{}]: artist = {}", info.name, artist_ );
-    info.artist = sanitize( artist_ );
-    g_free( artist_ );
+  if (auto* artist_ = playerctl_player_get_artist(last_active_player_, &error)) {
+    spdlog::debug("mpris[{}]: artist = {}", info.name, artist_);
+    info.artist = sanitize(artist_);
+    g_free(artist_);
   }
-  if(error) goto errorexit;
+  if (error) goto errorexit;
 
-  if(auto* album_artist_ = playerctl_player_print_metadata_prop( last_active_player_, "xesam:albumArtist", &error )) {
-    spdlog::debug( "mpris[{}]: albumArtist = {}", info.name, album_artist_ );
-    info.album_artist = sanitize( album_artist_ );
-    g_free( album_artist_ );
+  if (auto* album_artist_ =
+          playerctl_player_print_metadata_prop(last_active_player_, "xesam:albumArtist", &error)) {
+    spdlog::debug("mpris[{}]: albumArtist = {}", info.name, album_artist_);
+    info.album_artist = sanitize(album_artist_);
+    g_free(album_artist_);
   }
-  if(error) goto errorexit;
+  if (error) goto errorexit;
 
-  if(auto* album_ = playerctl_player_get_album( last_active_player_, &error )) {
-    spdlog::debug( "mpris[{}]: album = {}", info.name, album_ );
-    info.album = sanitize( album_ );
-    g_free( album_ );
+  if (auto* album_ = playerctl_player_get_album(last_active_player_, &error)) {
+    spdlog::debug("mpris[{}]: album = {}", info.name, album_);
+    info.album = sanitize(album_);
+    g_free(album_);
   }
-  if(error) goto errorexit;
+  if (error) goto errorexit;
 
-  if(auto* title_ = playerctl_player_get_title( last_active_player_, &error )) {
-    spdlog::debug( "mpris[{}]: title = {}", info.name, title_ );
-    info.title = sanitize( title_ );
-    g_free( title_ );
+  if (auto* title_ = playerctl_player_get_title(last_active_player_, &error)) {
+    spdlog::debug("mpris[{}]: title = {}", info.name, title_);
+    info.title = sanitize(title_);
+    g_free(title_);
   }
-  if(error) goto errorexit;
+  if (error) goto errorexit;
 
   if (auto* length_ =
           playerctl_player_print_metadata_prop(last_active_player_, "mpris:length", &error)) {
@@ -683,8 +694,11 @@ auto Mpris::update() -> void {
   }
   auto info = *opt;
 
-  if (info.status == PLAYERCTL_PLAYBACK_STATUS_STOPPED) {
-    spdlog::debug("mpris[{}]: player stopped, skipping update", info.name);
+  if (info.status == PLAYERCTL_PLAYBACK_STATUS_STOPPED && format_stopped_.empty()) {
+    spdlog::debug("mpris[{}]: player stopped and format-stopped is empty, hiding module",
+                  info.name);
+    event_box_.set_visible(false);
+    ALabel::update();
     return;
   }
 
