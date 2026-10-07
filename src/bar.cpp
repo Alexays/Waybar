@@ -3,12 +3,14 @@
 #include <gtk-layer-shell.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <ostream>
 #include <type_traits>
 
 #include "client.hpp"
 #include "factory.hpp"
 #include "group.hpp"
+#include "util/center_layout.hpp"
 #include "util/enum.hpp"
 #include "util/hosts_check.hpp"
 #include "util/kill_signal.hpp"
@@ -643,6 +645,7 @@ auto waybar::Bar::setupWidgets() -> void {
   if (!no_center) {
     if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
       box_.set_center_widget(center_);
+      box_.signal_size_allocate().connect(sigc::mem_fun(*this, &Bar::onBoxAllocate));
     } else {
       box_.pack_start(center_, true, expand_center);
     }
@@ -754,6 +757,55 @@ void waybar::Bar::configureGlobalOffset(int width, int height) {
 
 void waybar::Bar::onOutputGeometryChanged() {
   configureGlobalOffset(window.get_width(), window.get_height());
+}
+
+/*
+ * Runs after GtkBox has allocated its children and places them again, so that the center block
+ * can move to let a wide side use the space the other side leaves free (`fixed-center`).
+ */
+void waybar::Bar::onBoxAllocate(Gtk::Allocation& allocation) {
+  const bool vertical = box_.get_orientation() == Gtk::ORIENTATION_VERTICAL;
+  const int size = vertical ? allocation.get_height() : allocation.get_width();
+  const int breadth = vertical ? allocation.get_width() : allocation.get_height();
+
+  auto measure = [&](const Gtk::Widget& widget, int& minimum, int& natural) {
+    if (vertical) {
+      widget.get_preferred_height_for_width(breadth, minimum, natural);
+    } else {
+      widget.get_preferred_width_for_height(breadth, minimum, natural);
+    }
+  };
+  int start_min, start_nat, center_min, center_nat, end_min, end_nat;
+  measure(left_, start_min, start_nat);
+  measure(center_, center_min, center_nat);
+  measure(right_, end_min, end_nat);
+  const auto layout =
+      util::center_layout(size, start_min, start_nat, center_min, center_nat, end_min, end_nat);
+
+  const bool rtl = !vertical && box_.get_direction() == Gtk::TEXT_DIR_RTL;
+  auto place = [&](Gtk::Widget& widget, int offset, int length) {
+    length = std::max(length, 0);
+    if (rtl) {
+      offset = size - offset - length;
+    }
+    Gtk::Allocation child = allocation;
+    if (vertical) {
+      child.set_y(allocation.get_y() + offset);
+      child.set_height(length);
+    } else {
+      child.set_x(allocation.get_x() + offset);
+      child.set_width(length);
+    }
+    widget.size_allocate(child);
+  };
+
+  // Sides packed with expand-left / expand-right grow up to the center block.
+  const int center_end = layout.center_pos + layout.center_size;
+  const int start_size = box_.child_property_expand(left_) ? layout.center_pos : layout.start_size;
+  const int end_size = box_.child_property_expand(right_) ? size - center_end : layout.end_size;
+  place(left_, 0, start_size);
+  place(center_, layout.center_pos, layout.center_size);
+  place(right_, size - end_size, end_size);
 }
 
 void waybar::Bar::toggleSuspend(bool suspend) {
