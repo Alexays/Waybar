@@ -12,6 +12,7 @@ test_src = files(
     'main.cpp',
     'config.cpp',
     'taskbar_dnd.cpp',
+    'center_layout.cpp',
     '../src/config.cpp',
 )
 

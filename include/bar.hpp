@@ -107,6 +107,7 @@ class Bar : public sigc::trackable {
   void onConfigure(GdkEventConfigure* ev);
   void configureGlobalOffset(int width, int height);
   void onOutputGeometryChanged();
+  void onBoxAllocate(Gtk::Allocation& allocation);
 
   /* Copy initial set of modes to allow customization */
   bar_mode_map configured_modes = PRESET_MODES;
