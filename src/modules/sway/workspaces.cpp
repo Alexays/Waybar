@@ -293,6 +293,7 @@ bool Workspaces::filterButtons() {
                                                (*ws)["target_output"].asString() != ""
                                          : !config_["all-outputs"].asBool() &&
                                                (*ws)["output"].asString() != bar_.output->name)) {
+      box_.remove(it->second);
       it = buttons_.erase(it);
       needReorder = true;
     } else {
