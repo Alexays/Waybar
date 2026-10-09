@@ -240,6 +240,9 @@ class WorkspaceThumbnails final : public AModule {
   struct WorkspaceMeta {
     std::string name;
     bool active = false;
+    // Grid position within its workspace group, per the compositor's `coordinates`
+    // event; empty if the compositor never sent one for this workspace.
+    std::vector<uint32_t> coordinates;
   };
   const WorkspaceMeta* meta_for(ext_workspace_handle_v1* handle) const;
   int number_for(ext_workspace_handle_v1* handle) const;
@@ -284,6 +287,8 @@ class WorkspaceThumbnails final : public AModule {
   void handle_workspace_removed(ext_workspace_handle_v1* handle);
   void handle_workspace_name(ext_workspace_handle_v1* handle, const std::string& name);
   void handle_workspace_state(ext_workspace_handle_v1* handle, uint32_t state);
+  void handle_workspace_coordinates(ext_workspace_handle_v1* handle,
+                                    std::vector<uint32_t> coordinates);
 
   // Overlap-probe events (zwlr_layer_surface_v1 / zcosmic_overlap_notification_v1)
   void handle_probe_configure(uint32_t serial, uint32_t width, uint32_t height);

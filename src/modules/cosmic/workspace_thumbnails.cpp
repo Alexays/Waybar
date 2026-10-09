@@ -736,7 +736,16 @@ static void workspace_handle_name(void* data, ext_workspace_handle_v1* handle, c
   static_cast<WorkspaceThumbnails*>(data)->handle_workspace_name(handle, name ? name : "");
 }
 
-static void workspace_handle_coordinates(void*, ext_workspace_handle_v1*, wl_array*) {}
+static void workspace_handle_coordinates(void* data, ext_workspace_handle_v1* handle,
+                                         wl_array* coordinates) {
+  std::vector<uint32_t> coords_vec;
+  auto* coords = static_cast<uint32_t*>(coordinates->data);
+  for (size_t i = 0; i < coordinates->size / sizeof(uint32_t); ++i) {
+    coords_vec.push_back(coords[i]);
+  }
+  static_cast<WorkspaceThumbnails*>(data)->handle_workspace_coordinates(handle,
+                                                                       std::move(coords_vec));
+}
 
 static void workspace_handle_state(void* data, ext_workspace_handle_v1* handle, uint32_t state) {
   static_cast<WorkspaceThumbnails*>(data)->handle_workspace_state(handle, state);
@@ -1441,6 +1450,14 @@ void WorkspaceThumbnails::handle_workspace_name(ext_workspace_handle_v1* handle,
   refresh_thumbnail(handle);
 }
 
+void WorkspaceThumbnails::handle_workspace_coordinates(ext_workspace_handle_v1* handle,
+                                                       std::vector<uint32_t> coordinates) {
+  meta_[handle].coordinates = std::move(coordinates);
+  // A reorder needs a full grid re-layout, not just a per-thumbnail refresh.
+  needs_sync_ = true;
+  dp.emit();
+}
+
 void WorkspaceThumbnails::handle_workspace_state(ext_workspace_handle_v1* handle, uint32_t state) {
   meta_[handle].active = (state & EXT_WORKSPACE_HANDLE_V1_STATE_ACTIVE) != 0;
 
@@ -1457,9 +1474,7 @@ void WorkspaceThumbnails::handle_workspace_state(ext_workspace_handle_v1* handle
   }
 
   refresh_thumbnail(handle);
-}
-
-void WorkspaceThumbnails::refresh_thumbnail(ext_workspace_handle_v1* handle) {
+}void WorkspaceThumbnails::refresh_thumbnail(ext_workspace_handle_v1* handle) {
   const auto it = thumbnails_.find(handle);
   if (it != thumbnails_.end()) {
     it->second->refresh_style();
@@ -1820,6 +1835,32 @@ std::vector<ext_workspace_handle_v1*> WorkspaceThumbnails::visible_workspaces() 
         });
     if (on_bar_output) visible.push_back(handle);
   }
+
+  // Order by the compositor's reported workspace-grid position (`coordinates`),
+  // so reordering via COSMIC's workspace picker is reflected here. Sorting is
+  // scoped per workspace-group (coordinates are only meaningful within one
+  // group's grid); workspaces with no/partial coordinates keep their relative
+  // creation-order position, so compositors that never send the event are
+  // unaffected.
+  const auto group_index_of = [&](ext_workspace_handle_v1* handle) -> size_t {
+    for (size_t i = 0; i < groups_.size(); ++i) {
+      const auto& ws = groups_[i].workspaces;
+      if (std::find(ws.begin(), ws.end(), handle) != ws.end()) return i;
+    }
+    return groups_.size();
+  };
+  std::stable_sort(visible.begin(), visible.end(), [&](auto* a, auto* b) {
+    const size_t group_a = group_index_of(a);
+    const size_t group_b = group_index_of(b);
+    if (group_a != group_b) return group_a < group_b;
+    const auto* meta_a = meta_for(a);
+    const auto* meta_b = meta_for(b);
+    if (!meta_a || !meta_b || meta_a->coordinates.empty() || meta_b->coordinates.empty()) {
+      return false;
+    }
+    return meta_a->coordinates < meta_b->coordinates;
+  });
+
   return visible;
 }
 
