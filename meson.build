@@ -74,7 +74,7 @@ spdlog = dependency('spdlog', version : ['>=1.15.2'], fallback : ['spdlog', 'spd
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
-gtkmm = dependency('gtkmm-4.0', version : ['=4.20.0'], fallback : ['gtkmm', 'gtkmm_dep'])
+gtkmm = dependency('gtkmm-4.0', version : ['>=4.20.0'], fallback : ['gtkmm', 'gtkmm_dep'])
 giomm = dependency('giomm-2.4', version : ['>=2.40.0'])
 giounix = dependency('gio-unix-2.0')
 jsoncpp = dependency('jsoncpp', version : ['>=1.9.6'], fallback : ['jsoncpp', 'jsoncpp_dep'])
