@@ -54,7 +54,7 @@ class MPD final : public ALabel {
   std::string getTitleStr(bool truncated) const;
 
   // GUI-side methods
-  void handleToggle(int n_press, double x, double y) override;
+  void handlePress(int n_press, double x, double y) override;
   void emit() { dp.emit(); }
 
   // MPD-side, Non-GUI methods.

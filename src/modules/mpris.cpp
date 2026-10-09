@@ -615,7 +615,7 @@ errorexit:
   return std::nullopt;
 }
 
-void Mpris::handleToggle(int n_press, double x, double y) {
+void Mpris::handlePress(int n_press, double x, double y) {
   auto info = getPlayerInfo();
   if (!info) return;
 
@@ -642,12 +642,12 @@ void Mpris::handleToggle(int n_press, double x, double y) {
       {9, "on-click-forward", [&]() { playerctl_player_next(target, &error); }},
   };
 
-  auto button{controllClick_->get_current_button()};
+  auto button{gesture_click_->get_current_button()};
 
   for (const auto& action : actions) {
     if (button == action.button) {
       if (config_[action.config_key].isString()) {
-        ALabel::handleToggle(n_press, x, y);
+        ALabel::handlePress(n_press, x, y);
       }
       action.builtin_action();
       break;
@@ -667,7 +667,7 @@ auto Mpris::doUpdate() -> void {
 
   auto opt = getPlayerInfo();
   if (!opt) {
-    getWidget().set_visible(false);
+    w_->set_visible(false);
     ALabel::doUpdate();
     return;
   }
@@ -769,7 +769,7 @@ auto Mpris::doUpdate() -> void {
     }
   }
 
-  getWidget().set_visible(true);
+  w_->set_visible(true);
   // call parent update
   ALabel::doUpdate();
 }

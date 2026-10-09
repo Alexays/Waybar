@@ -20,7 +20,7 @@ class Mpris final : public ALabel {
   auto doUpdate() -> void override;
 
  private:
-  void handleToggle(int n_press, double x, double y);
+  void handlePress(int n_press, double x, double y) override;
 
   static auto onPlayerNameAppeared(PlayerctlPlayerManager*, PlayerctlPlayerName*, gpointer) -> void;
   static auto onPlayerNameVanished(PlayerctlPlayerManager*, PlayerctlPlayerName*, gpointer) -> void;
