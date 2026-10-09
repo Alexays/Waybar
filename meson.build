@@ -410,7 +410,7 @@ endif
 
 if libnl.found() and libnlgen.found()
     add_project_arguments('-DHAVE_LIBNL', language: 'cpp')
-    src_files += files('src/modules/network.cpp')
+    src_files += files('src/modules/network.cpp', 'src/util/netlink.cpp')
     man_files += files('man/waybar-network.5.scd')
 endif
 
