@@ -15,8 +15,8 @@ RUN apt update && \
         libgbm-dev \
         libgirepository1.0-dev \
         libgles2-mesa-dev \
-        libgtk-layer-shell-dev \
-        libgtkmm-3.0-dev \
+        libgtk4-layer-shell-dev \
+        libgtkmm-4.0-dev \
         libhowardhinnant-date-dev \
         libiniparser-dev \
         libinput-dev     \
@@ -46,4 +46,5 @@ RUN apt update && \
         scdoc \
         sudo \
         wayland-protocols \
+        libfftw3-dev \
     && apt clean
