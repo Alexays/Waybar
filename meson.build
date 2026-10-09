@@ -96,6 +96,7 @@ deps += [thread_dep,
          jsoncpp,
          fmt,
          libepoll,
+         spdlog
         ]
 
 libsndio = compiler.find_library('sndio', required: get_option('sndio'))
