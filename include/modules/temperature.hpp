@@ -9,15 +9,18 @@
 
 namespace waybar::modules {
 
-class Temperature : public ALabel {
+class Temperature final : public ALabel {
  public:
   Temperature(const std::string&, const Json::Value&);
   virtual ~Temperature() = default;
-  auto update() -> void override;
 
  private:
+  void doUpdate() override;
+  void doSuspend() override;
+  void doResume() override;
   float getTemperature();
   bool isCritical(uint16_t);
+  bool isWarning(uint16_t);
 
   std::string file_path_;
   util::SleeperThread thread_;

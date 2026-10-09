@@ -1,0 +1,6 @@
+{
+    "memory": {
+        "interval": 2,
+        "format": "foo",
+    }
+}

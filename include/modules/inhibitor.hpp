@@ -9,15 +9,15 @@
 
 namespace waybar::modules {
 
-class Inhibitor : public ALabel {
+class Inhibitor final : public ALabel {
  public:
   Inhibitor(const std::string&, const waybar::Bar&, const Json::Value&);
   virtual ~Inhibitor();
-  auto update() -> void override;
+  auto doUpdate() -> void override;
   auto activated() -> bool;
 
  private:
-  auto handleToggle(::GdkEventButton* const& e) -> bool override;
+  void handlePress(int n_press, double x, double y) override;
 
   const std::unique_ptr<::GDBusConnection, void (*)(::GDBusConnection*)> dbus_;
   const std::string inhibitors_;

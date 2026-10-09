@@ -9,20 +9,21 @@
 
 namespace waybar::modules {
 
-class Sndio : public ALabel {
+class Sndio final : public ALabel {
  public:
-  Sndio(const std::string &, const Json::Value &);
+  Sndio(const std::string&, const Json::Value&);
   virtual ~Sndio();
-  auto update() -> void override;
-  auto set_desc(struct sioctl_desc *, unsigned int) -> void;
+  auto doUpdate() -> void override;
+  auto set_desc(struct sioctl_desc*, unsigned int) -> void;
   auto put_val(unsigned int, unsigned int) -> void;
-  bool handleScroll(GdkEventScroll *) override;
-  bool handleToggle(GdkEventButton *const &) override;
 
  private:
+  bool handleScroll(double dx, double dy) override;
+  void handlePress(int n_press, double x, double y) override;
+
   auto connect_to_sndio() -> void;
   util::SleeperThread thread_;
-  struct sioctl_hdl *hdl_;
+  struct sioctl_hdl* hdl_;
   std::vector<struct pollfd> pfds_;
   unsigned int addr_;
   unsigned int volume_, old_volume_, maxval_;

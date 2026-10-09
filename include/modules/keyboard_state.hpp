@@ -3,6 +3,7 @@
 #include <fmt/chrono.h>
 #include <gtkmm/label.h>
 
+#include <mutex>
 #include <set>
 #include <unordered_map>
 
@@ -17,11 +18,11 @@ extern "C" {
 
 namespace waybar::modules {
 
-class KeyboardState : public AModule {
+class KeyboardState final : public AModule {
  public:
   KeyboardState(const std::string&, const waybar::Bar&, const Json::Value&);
   virtual ~KeyboardState();
-  auto update() -> void override;
+  auto doUpdate() -> void override;
 
  private:
   auto tryAddDevice(const std::string&) -> void;
@@ -35,12 +36,12 @@ class KeyboardState : public AModule {
   std::string capslock_format_;
   std::string scrolllock_format_;
   const std::chrono::seconds interval_;
-  std::string icon_locked_;
-  std::string icon_unlocked_;
+  std::unordered_map<std::string, std::vector<std::string>> key_icon_states_;
   std::string devices_path_;
 
   struct libinput* libinput_;
   std::unordered_map<std::string, struct libinput_device*> libinput_devices_;
+  std::mutex devices_mutex_;  // protects libinput_devices_
   std::set<int> binding_keys;
 
   util::SleeperThread libinput_thread_, hotplug_thread_;

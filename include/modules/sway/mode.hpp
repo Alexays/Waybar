@@ -10,11 +10,11 @@
 
 namespace waybar::modules::sway {
 
-class Mode : public ALabel, public sigc::trackable {
+class Mode final : public ALabel, public sigc::trackable {
  public:
   Mode(const std::string&, const Json::Value&);
   virtual ~Mode() = default;
-  auto update() -> void override;
+  auto doUpdate() -> void override;
 
  private:
   void onEvent(const struct Ipc::ipc_response&);

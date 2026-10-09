@@ -16,7 +16,7 @@ typedef struct wbcffi_module wbcffi_module;
 typedef struct {
   wbcffi_module* obj;
   const char* waybar_version;
-//todo  GtkContainer* (*get_root_widget)(wbcffi_module*);
+  GtkWidget* (*get_root_widget)(wbcffi_module*);
   void (*queue_update)(wbcffi_module*);
 } wbcffi_init_info;
 
@@ -27,18 +27,19 @@ struct wbcffi_config_entry {
 }
 }  // namespace ffi
 
-class CFFI : public AModule {
+class CFFI final : public AModule {
  public:
   CFFI(const std::string&, const std::string&, const Json::Value&);
   virtual ~CFFI();
 
-  virtual auto refresh(int signal) -> void override;
+  virtual auto doRefresh(int signal) -> void override;
   virtual auto doAction(const std::string& name) -> void override;
-  virtual auto update() -> void override;
+  virtual auto doUpdate() -> void override;
 
  private:
   ///
   void* cffi_instance_ = nullptr;
+  Gtk::Box box_;
 
   typedef void*(InitFn)(const ffi::wbcffi_init_info* init_info,
                         const ffi::wbcffi_config_entry* config_entries, size_t config_entries_len);
@@ -51,9 +52,9 @@ class CFFI : public AModule {
   struct {
     std::function<InitFn> init = nullptr;
     std::function<DenitFn> deinit = nullptr;
-    std::function<RefreshFn> refresh = [](void*, int) {};
+    std::function<RefreshFn> doRefresh = [](void*, int) {};
     std::function<DoActionFn> doAction = [](void*, const char*) {};
-    std::function<UpdateFn> update = [](void*) {};
+    std::function<UpdateFn> doUpdate = [](void*) {};
   } hooks_;
 };
 

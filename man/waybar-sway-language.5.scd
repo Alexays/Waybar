@@ -17,6 +17,11 @@ Addressed by *sway/language*
 	default: {} ++
 	The format, how layout should be displayed.
 
+*hide-single-layout*: ++
+	typeof: bool ++
+	default: false ++
+	Defines visibility of the module if a single layout is configured
+
 *tooltip-format*: ++
 	typeof: string ++
 	default: {} ++
@@ -26,6 +31,36 @@ Addressed by *sway/language*
 	typeof: bool ++
 	default: true ++
 	Option to disable tooltip on hover.
+
+*on-click*: ++
+	typeof: string ++
+	Command to execute when clicked on the module.
+
+*on-click-middle*: ++
+	typeof: string ++
+	Command to execute when you middle clicked on the module using mousewheel.
+
+*on-click-right*: ++
+	typeof: string ++
+	Command to execute when you right clicked on the module.
+
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
 
 # FORMAT REPLACEMENTS
 
@@ -44,6 +79,7 @@ Addressed by *sway/language*
 ```
 "sway/language": {
 	"format": "{}",
+	"on-click": "swaymsg input type:keyboard xkb_switch_layout next",
 },
 
 "sway/language": {
@@ -54,3 +90,4 @@ Addressed by *sway/language*
 # STYLE
 
 - *#language*
+- *#language.<layout-short-name>* Where *layout-short-name* is the short name of the active layout (e.g. *#language.us* or *#language.de*).

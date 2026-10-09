@@ -1,8 +1,8 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '4.1.0',
+    version: '4.0.0',
     license: 'MIT',
-    meson_version: '>= 1.3.0',
+    meson_version: '>= 1.11.1',
     default_options : [
         'cpp_std=c++23',
         'buildtype=release',
@@ -14,6 +14,7 @@ compiler = meson.get_compiler('cpp')
 
 cpp_args = []
 cpp_link_args = []
+deps = []
 
 if get_option('libcxx')
     cpp_args += ['-stdlib=libc++']
@@ -22,8 +23,6 @@ endif
 
 if compiler.has_link_argument('-lc++fs')
     cpp_link_args += ['-lc++fs']
-elif compiler.has_link_argument('-lc++experimental')
-    cpp_link_args += ['-lc++experimental']
 elif compiler.has_link_argument('-lstdc++fs')
     cpp_link_args += ['-lstdc++fs']
 endif
@@ -33,23 +32,14 @@ git = find_program('git', native: true, required: false)
 if not git.found()
     add_project_arguments('-DVERSION="@0@"'.format(meson.project_version()), language: 'cpp')
 else
-    git_path = run_command([git.path(), 'rev-parse', '--show-toplevel']).stdout().strip()
-    if meson.source_root() == git_path
-        git_commit_hash = run_command([git.path(), 'describe', '--always', '--tags']).stdout().strip()
-        git_branch = run_command([git.path(), 'rev-parse', '--abbrev-ref', 'HEAD']).stdout().strip()
+    git_path = run_command(git, 'rev-parse', '--show-toplevel', check: false).stdout().strip()
+    if meson.project_source_root() == git_path
+        git_commit_hash = run_command(git, 'describe', '--always', '--tags', check: false).stdout().strip()
+        git_branch = run_command(git, 'rev-parse', '--abbrev-ref', 'HEAD', check: false).stdout().strip()
         version = '"@0@ (branch \'@1@\')"'.format(git_commit_hash, git_branch)
         add_project_arguments('-DVERSION=@0@'.format(version), language: 'cpp')
     else
         add_project_arguments('-DVERSION="@0@"'.format(meson.project_version()), language: 'cpp')
-    endif
-endif
-
-if not compiler.has_header('filesystem')
-    if compiler.has_header('experimental/filesystem')
-        add_project_arguments('-DFILESYSTEM_EXPERIMENTAL', language: 'cpp')
-    else
-        add_project_arguments('-DNO_FILESYSTEM', language: 'cpp')
-        warning('No filesystem header found, some modules may not work')
     endif
 endif
 
@@ -78,60 +68,642 @@ is_freebsd = host_machine.system() == 'freebsd'
 is_netbsd = host_machine.system() == 'netbsd'
 is_openbsd = host_machine.system() == 'openbsd'
 
-jsoncpp = dependency('jsoncpp', version : ['>=1.9.4'], fallback : ['jsoncpp', 'jsoncpp_dep'])
+thread_dep = dependency('threads')
+fmt = dependency('fmt', version : ['>=8.1.1'], fallback : ['fmt', 'fmt_dep'])
+spdlog = dependency('spdlog', version : ['>=1.15.2'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['std_format=disabled', 'tests=disabled'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
-sigcpp = dependency('sigc++-3.0', version: ['>=3.4.0'])
-gtkmm = dependency('gtkmm-4.0', version : ['>=4.12.0'])
-giounix = dependency('gio-unix-2.0', version: ['>=2.76.4'])
-spdlog = dependency('spdlog', version : ['>=1.10.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=enabled'])
+gtkmm = dependency('gtkmm-4.0', version : ['>=4.20.0'], fallback : ['gtkmm', 'gtkmm_dep'])
+giomm = dependency('giomm-2.4', version : ['>=2.40.0'])
+giounix = dependency('gio-unix-2.0')
+jsoncpp = dependency('jsoncpp', version : ['>=1.9.6'], fallback : ['jsoncpp', 'jsoncpp_dep'])
+sigcpp = dependency('sigc++-3.0')
+libepoll = dependency('epoll-shim', required: false)
 
-gtk_layer_shell = dependency('gtk4-layer-shell-0',
-                             version : ['>=1.0.2'],
-                             fallback : ['gtk4-layer-shell', 'gtk_layer_shell'],
-                             default_options : ['introspection=false', 'vapi=false'])
+# Must be declared and linked before wayland_client dep.
+# Otherwise gtk_layer_is_supported() returns false at runtime.
+gtk_layer_shell = dependency('gtk4-layer-shell-0', version: ['>=1.3.0'],
+        default_options: ['introspection=false', 'vapi=false'],
+        fallback: ['gtk-layer-shell', 'gtk_layer_shell'])
+
+deps += [thread_dep,
+         gtk_layer_shell,
+         wayland_client,
+         wayland_cursor,
+         gtkmm,
+         giomm,
+         jsoncpp,
+         fmt,
+         libepoll,
+         spdlog
+        ]
+
+libsndio = compiler.find_library('sndio', required: get_option('sndio'))
+if libsndio.found()
+    if not compiler.has_function('sioctl_open', prefix: '#include <sndio.h>', dependencies: libsndio)
+        if get_option('sndio').enabled()
+            error('libsndio is too old, required >=1.7.0')
+        else
+            warning('libsndio is too old, required >=1.7.0')
+            libsndio = dependency('', required: false)
+        endif
+    endif
+endif
+deps += libsndio
+
+systemd = dependency('systemd', required: get_option('systemd'))
+libsystemd = dependency('libsystemd', required: get_option('systemd'))
+if libsystemd.found()
+    add_project_arguments('-DHAVE_LIBSYSTEMD', language: 'cpp')
+endif
+
+deps += [systemd, libsystemd]
+
+cpp_lib_chrono = compiler.compute_int('__cpp_lib_chrono', prefix : '#include <chrono>')
+have_chrono_timezones = cpp_lib_chrono >= 201611
+
+if have_chrono_timezones
+   code = '''
+#include <chrono>
+using namespace std::chrono;
+int main(int argc, char** argv) {
+   const time_zone* tz;
+   return 0;
+}
+'''
+   if not compiler.links(code)
+      have_chrono_timezones = false
+   endif
+endif
+
+if have_chrono_timezones
+  tz_dep = declare_dependency()
+else
+  tz_dep = dependency('date',
+      required: false,
+      default_options : [ 'use_system_tzdb=true' ],
+      modules : [ 'date::date', 'date::date-tz' ],
+      fallback: [ 'date', 'tz_dep' ])
+endif
 
 prefix = get_option('prefix')
 sysconfdir = get_option('sysconfdir')
 conf_data = configuration_data()
 conf_data.set('prefix', prefix)
 
-add_project_arguments('-DSYSCONFDIR="/@0@"'.format(join_paths(prefix, sysconfdir)), language : 'cpp')
+add_project_arguments('-DSYSCONFDIR="@0@"'.format(prefix / sysconfdir), language : 'cpp')
 
+if systemd.found()
+  user_units_dir = systemd.get_variable(pkgconfig: 'systemduserunitdir')
+
+  configure_file(
+    configuration: conf_data,
+    input: './resources/waybar.service.in',
+    output: '@BASENAME@',
+    install_dir: user_units_dir
+  )
+endif
+
+# Core sources
 src_files = files(
-     'src/main.cpp',
-     'src/client.cpp',
-     'src/bar.cpp',
-     'src/config.cpp',
-     'src/util/portal.cpp',
-     'src/util/prepare_for_sleep.cpp',
-#    'src/AModule.cpp',
+    'src/main.cpp',
+    'src/client.cpp',
+    'src/bar.cpp',
+    'src/config.cpp',
+    'src/AModule.cpp',
+    'src/ALabel.cpp',
+    'src/AAppIconLabel.cpp',
+    'src/AIconLabel.cpp',
+    'src/factory.cpp',
+    'src/AGraph.cpp',
+    'src/ASlider.cpp',
+    'src/group.cpp',
+)
+
+# Helpers
+src_files += files(
+    'src/util/common.cpp',
+    'src/util/portal.cpp',
+    'src/util/transform_8bit_to_rgba.cpp',
+    'src/util/css_reload_helper.cpp',
+    'src/util/hosts_check.cpp', # <- disagree here. Should be feature. Not a core dependency
+    'src/util/prepare_for_sleep.cpp',
+    'src/util/sanitize_str.cpp',
+    'src/util/utf8_string.cpp',
+    'src/util/gtk/gtk_icon.cpp',
+    'src/util/command_line_stream.cpp',
+    'src/util/regex_collection.cpp',
+    'src/util/rewrite_string.cpp'
+)
+
+# Modules
+src_files += files(
+    'src/modules/custom.cpp',
+    'src/modules/custom_graph.cpp',
+    'src/modules/disk.cpp',
+    'src/modules/idle_inhibitor.cpp',
+    'src/modules/image.cpp',
+    'src/modules/load.cpp',
+    'src/modules/temperature.cpp',
+    'src/modules/user.cpp'
+)
+
+man_files = files(
+    'man/waybar-custom.5.scd',
+    'man/waybar-disk.5.scd',
+    'man/waybar-idle-inhibitor.5.scd',
+    'man/waybar-image.5.scd',
+    'man/waybar-states.5.scd',
+    'man/waybar-menu.5.scd',
+    'man/waybar-temperature.5.scd',
+    'man/waybar-user.5.scd',
 )
 
 inc_dirs = ['include']
+
+if is_linux
+    add_project_arguments('-DHAVE_CPU_LINUX', language: 'cpp')
+    add_project_arguments('-DHAVE_MEMORY_LINUX', language: 'cpp')
+    add_project_arguments('-DHAVE_SYSTEMD_MONITOR', language: 'cpp')
+    src_files += files(
+        'src/modules/battery.cpp',
+        'src/modules/bluetooth.cpp',
+        'src/modules/cffi.cpp',
+        'src/modules/cpu.cpp',
+        'src/modules/cpu_graph.cpp',
+        'src/modules/cpu_frequency/common.cpp',
+        'src/modules/cpu_frequency/linux.cpp',
+        'src/modules/cpu_usage/common.cpp',
+        'src/modules/cpu_usage/linux.cpp',
+        'src/modules/memory/common.cpp',
+        'src/modules/memory/linux.cpp',
+        'src/modules/power_profiles_daemon.cpp',
+        'src/modules/systemd_failed_units.cpp',
+    )
+    man_files += files(
+        'man/waybar-battery.5.scd',
+        'man/waybar-bluetooth.5.scd',
+        'man/waybar-cffi.5.scd',
+        'man/waybar-cpu.5.scd',
+        'man/waybar-memory.5.scd',
+        'man/waybar-systemd-failed-units.5.scd',
+        'man/waybar-power-profiles-daemon.5.scd',
+    )
+elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
+    add_project_arguments('-DHAVE_CPU_BSD', language: 'cpp')
+    add_project_arguments('-DHAVE_MEMORY_BSD', language: 'cpp')
+    src_files += files(
+        'src/modules/cffi.cpp',
+        'src/modules/cpu.cpp',
+        'src/modules/cpu_graph.cpp',
+        'src/modules/cpu_frequency/bsd.cpp',
+        'src/modules/cpu_frequency/common.cpp',
+        'src/modules/cpu_usage/bsd.cpp',
+        'src/modules/cpu_usage/common.cpp',
+        'src/modules/memory/bsd.cpp',
+        'src/modules/memory/common.cpp',
+    )
+    man_files += files(
+        'man/waybar-cffi.5.scd',
+        'man/waybar-cpu.5.scd',
+        'man/waybar-memory.5.scd',
+    )
+    if is_freebsd
+        src_files += files('src/modules/battery.cpp')
+        man_files += files('man/waybar-battery.5.scd')
+    endif
+endif
+
+xkbregistry = dependency('xkbregistry')
+
+if true
+    add_project_arguments('-DHAVE_SWAY', language: 'cpp')
+    src_files += files(
+        'src/modules/sway/ipc/client.cpp',
+        'src/modules/sway/bar.cpp',
+        'src/modules/sway/mode.cpp',
+        'src/modules/sway/language.cpp',
+        'src/modules/sway/window.cpp',
+        'src/modules/sway/workspaces.cpp',
+        'src/modules/sway/scratchpad.cpp'
+    )
+    man_files += files(
+        'man/waybar-sway-language.5.scd',
+        'man/waybar-sway-mode.5.scd',
+        'man/waybar-sway-scratchpad.5.scd',
+        'man/waybar-sway-window.5.scd',
+        'man/waybar-sway-workspaces.5.scd',
+    )
+
+    deps += xkbregistry
+endif
+
+if true
+    add_project_arguments('-DHAVE_WLR_TASKBAR', language: 'cpp')
+    src_files += files('src/modules/wlr/taskbar.cpp')
+    man_files += files('man/waybar-wlr-taskbar.5.scd')
+endif
+
+if wayland_protos.version().version_compare('>=1.39')
+    add_project_arguments('-DHAVE_EXT_WORKSPACES', language: 'cpp')
+    src_files += files(
+        'src/modules/ext/workspace_manager.cpp',
+        'src/modules/ext/workspace_manager_binding.cpp',
+    )
+    man_files += files(
+        'man/waybar-ext-workspaces.5.scd',
+    )
+endif
+
+if true
+    add_project_arguments('-DHAVE_RIVER', language: 'cpp')
+    src_files += files(
+        'src/modules/river/layout.cpp',
+        'src/modules/river/mode.cpp',
+        'src/modules/river/tags.cpp',
+        'src/modules/river/window.cpp',
+    )
+    man_files += files(
+        'man/waybar-river-layout.5.scd',
+        'man/waybar-river-mode.5.scd',
+        'man/waybar-river-tags.5.scd',
+        'man/waybar-river-window.5.scd',
+    )
+endif
+
+if true
+    add_project_arguments('-DHAVE_DWL', language: 'cpp')
+    src_files += files('src/modules/dwl/tags.cpp')
+    src_files += files('src/modules/dwl/window.cpp')
+    man_files += files('man/waybar-dwl-tags.5.scd')
+    man_files += files('man/waybar-dwl-window.5.scd')
+endif
+
+if true
+    add_project_arguments('-DHAVE_HYPRLAND', language: 'cpp')
+    src_files += files(
+        'src/modules/hyprland/backend.cpp',
+        'src/modules/hyprland/language.cpp',
+        'src/modules/hyprland/submap.cpp',
+        'src/modules/hyprland/window.cpp',
+        'src/modules/hyprland/windowcount.cpp',
+        'src/modules/hyprland/workspace.cpp',
+        'src/modules/hyprland/workspaces.cpp',
+        'src/modules/hyprland/windowcreationpayload.cpp',
+    )
+    man_files += files(
+        'man/waybar-hyprland-language.5.scd',
+        'man/waybar-hyprland-submap.5.scd',
+        'man/waybar-hyprland-window.5.scd',
+        'man/waybar-hyprland-workspaces.5.scd',
+    )
+endif
+
+if get_option('niri')
+    add_project_arguments('-DHAVE_NIRI', language: 'cpp')
+    src_files += files(
+        'src/modules/niri/backend.cpp',
+        'src/modules/niri/language.cpp',
+        'src/modules/niri/window.cpp',
+        'src/modules/niri/workspaces.cpp',
+        'src/modules/niri/workspace.cpp',
+    )
+    man_files += files(
+        'man/waybar-niri-language.5.scd',
+        'man/waybar-niri-window.5.scd',
+        'man/waybar-niri-workspaces.5.scd',
+    )
+endif
+
+if get_option('mango')
+    add_project_arguments('-DHAVE_MANGO', language: 'cpp')
+    src_files += files(
+        'src/modules/mango/backend.cpp',
+        'src/modules/mango/language.cpp',
+        'src/modules/mango/keymode.cpp',
+        'src/modules/mango/window.cpp',
+        'src/modules/mango/workspaces.cpp',
+        'src/modules/mango/layout.cpp'
+    )
+    man_files += files(
+        'man/waybar-mango-language.5.scd',
+        'man/waybar-mango-keymode.5.scd',
+        'man/waybar-mango-window.5.scd',
+        'man/waybar-mango-workspaces.5.scd',
+        'man/waybar-mango-layout.5.scd'
+    )
+endif
+
+if true
+    add_project_arguments('-DHAVE_WAYFIRE', language: 'cpp')
+    src_files += files(
+        'src/modules/wayfire/backend.cpp',
+        'src/modules/wayfire/window.cpp',
+        'src/modules/wayfire/workspaces.cpp',
+    )
+    man_files += files(
+        'man/waybar-wayfire-window.5.scd',
+        'man/waybar-wayfire-workspaces.5.scd',
+    )
+endif
+
+if get_option('login-proxy')
+    add_project_arguments('-DHAVE_LOGIN_PROXY', language: 'cpp')
+endif
+
+## network
+libnl = dependency('libnl-3.0', required: get_option('libnl'))
+libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
+if libnl.found() and libnlgen.found()
+    add_project_arguments('-DHAVE_LIBNL', language: 'cpp')
+    src_files += files('src/modules/network.cpp')
+    man_files += files('man/waybar-network.5.scd')
+    deps += [libnl, libnlgen]
+endif
+
+if not get_option('logind').disabled()
+    add_project_arguments('-DHAVE_GAMEMODE', '-DHAVE_LOGIND_INHIBITOR', language: 'cpp')
+    src_files += files(
+        'src/modules/gamemode.cpp',
+        'src/modules/inhibitor.cpp',
+    )
+    man_files += files(
+        'man/waybar-gamemode.5.scd',
+        'man/waybar-inhibitor.5.scd',
+    )
+endif
+
+## upower
+upower_glib = dependency('upower-glib', required: get_option('upower_glib'))
+if (upower_glib.found() and not get_option('logind').disabled())
+    add_project_arguments('-DHAVE_UPOWER', language: 'cpp')
+    src_files += files('src/modules/upower.cpp')
+    man_files += files('man/waybar-upower.5.scd')
+    deps += upower_glib
+endif
+
+## pipewire & privacy
+pipewire = dependency('libpipewire-0.3', required: get_option('pipewire'))
+if pipewire.found()
+    add_project_arguments('-DHAVE_PIPEWIRE', language: 'cpp')
+    src_files += files(
+        'src/modules/privacy/privacy.cpp',
+        'src/modules/privacy/privacy_item.cpp',
+        'src/util/pipewire/pipewire_backend.cpp',
+        'src/util/pipewire/privacy_node_info.cpp',
+        'src/util/geoclue_backend.cpp',
+    )
+    man_files += files('man/waybar-privacy.5.scd')
+endif
+
+## mpris
+playerctl = dependency('playerctl', version : ['>=2.0.0'], required: get_option('mpris'))
+if playerctl.found()
+    add_project_arguments('-DHAVE_MPRIS', language: 'cpp')
+    src_files += files('src/modules/mpris.cpp')
+    man_files += files('man/waybar-mpris.5.scd')
+    deps += playerctl
+endif
+
+## pulseaudio
+libpulse = dependency('libpulse', required: get_option('pulseaudio'))
+if libpulse.found()
+    add_project_arguments('-DHAVE_LIBPULSE', language: 'cpp')
+    src_files += files(
+        'src/modules/pulseaudio.cpp',
+        'src/modules/pulseaudio_slider.cpp',
+        'src/util/audio_backend.cpp',
+    )
+    man_files += files(
+        'man/waybar-pulseaudio.5.scd',
+        'man/waybar-pulseaudio-slider.5.scd',
+    )
+    deps += libpulse
+endif
+
+## jack
+libjack = dependency('jack', required: get_option('jack'))
+if libjack.found()
+    add_project_arguments('-DHAVE_LIBJACK', language: 'cpp')
+    src_files += files('src/modules/jack.cpp')
+    man_files += files('man/waybar-jack.5.scd')
+    deps += libjack
+endif
+
+## wireplumber
+libwireplumber = dependency('wireplumber-0.5', required: get_option('wireplumber'))
+if libwireplumber.found()
+    add_project_arguments('-DHAVE_LIBWIREPLUMBER', language: 'cpp')
+    src_files += files('src/modules/wireplumber.cpp')
+    man_files += files('man/waybar-wireplumber.5.scd')
+    deps += libwireplumber
+endif
+
+## sni
+dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
+if dbusmenu_gtk.found()
+    add_project_arguments('-DHAVE_DBUSMENU', language: 'cpp')
+    src_files += files(
+        'src/modules/sni/tray.cpp',
+        'src/modules/sni/watcher.cpp',
+        'src/modules/sni/host.cpp',
+        'src/modules/sni/item.cpp'
+    )
+    man_files += files(
+        'man/waybar-tray.5.scd',
+    )
+    deps += dbusmenu_gtk
+endif
+
+## backlight
+libudev = dependency('libudev', required: get_option('libudev'))
+if libudev.found() and (is_linux or libepoll.found())
+    add_project_arguments('-DHAVE_LIBUDEV', language: 'cpp')
+    src_files += files(
+        'src/modules/backlight.cpp',
+        'src/modules/backlight_slider.cpp',
+        'src/util/backlight_backend.cpp',
+    )
+    man_files += files(
+        'man/waybar-backlight.5.scd',
+        'man/waybar-backlight-slider.5.scd',
+    )
+    deps += libudev
+endif
+
+## keyboard_state
+libevdev = dependency('libevdev', required: get_option('libevdev'))
+libinput = dependency('libinput', required: get_option('libinput'))
+libinotify = dependency('libinotify', required: false)
+if libevdev.found() and (is_linux or libepoll.found()) and libinput.found() and (is_linux or libinotify.found())
+    add_project_arguments('-DHAVE_LIBEVDEV', language: 'cpp')
+    add_project_arguments('-DHAVE_LIBINPUT', language: 'cpp')
+    src_files += files('src/modules/keyboard_state.cpp')
+    man_files += files('man/waybar-keyboard-state.5.scd')
+    deps += [libevdev, libinput, libinotify]
+endif
+
+## mpd
+libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
+if libmpdclient.found()
+    add_project_arguments('-DHAVE_LIBMPDCLIENT', language: 'cpp')
+    src_files += files(
+        'src/modules/mpd/mpd.cpp',
+        'src/modules/mpd/state.cpp',
+    )
+    man_files += files(
+        'man/waybar-mpd.5.scd',
+    )
+    deps += libmpdclient
+endif
+
+if libsndio.found()
+    add_project_arguments('-DHAVE_LIBSNDIO', language: 'cpp')
+    src_files += files('src/modules/sndio.cpp')
+    man_files += files('man/waybar-sndio.5.scd')
+endif
+
+if get_option('rfkill').enabled() and is_linux
+    add_project_arguments('-DWANT_RFKILL', language: 'cpp')
+    src_files += files(
+        'src/util/rfkill.cpp'
+    )
+endif
+
+if have_chrono_timezones
+    add_project_arguments('-DHAVE_CHRONO_TIMEZONES', language: 'cpp')
+    src_files += files('src/modules/clock.cpp')
+    man_files += files('man/waybar-clock.5.scd')
+elif tz_dep.found()
+    add_project_arguments('-DHAVE_LIBDATE', language: 'cpp')
+    src_files += files('src/modules/clock.cpp')
+    man_files += files('man/waybar-clock.5.scd')
+else
+    src_files += files('src/modules/simpleclock.cpp')
+    man_files += files('man/waybar-clock.5.scd')
+endif
+
+## cava
+cava = dependency('libcava',
+                  version : '>=1.0.0',
+                  required: get_option('cava'),
+                  fallback : ['libcava', 'cava_dep'],
+                  not_found_message: 'cava is not found. Building waybar without cava')
+eproxy = dependency('epoxy', required: false)
+if cava.found()
+   add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
+   src_files += files('src/modules/cava/cavaASCII.cpp',
+                      'src/modules/cava/cava_backend.cpp')
+   man_files += files('man/waybar-cava.5.scd')
+   deps += cava
+
+   if eproxy.found()
+      add_project_arguments('-DHAVE_LIBCAVAGLSL', language: 'cpp')
+      src_files += files('src/modules/cava/cavaGLSL.cpp')
+      deps += eproxy
+   endif
+endif
+
+## gps
+libgps = dependency('libgps', required: get_option('gps'))
+if libgps.found()
+   add_project_arguments('-DHAVE_LIBGPS', language: 'cpp')
+   src_files += files('src/modules/gps.cpp')
+   man_files += files('man/waybar-gps.5.scd')
+   deps += libgps
+endif
+
+## wwan
+libmm_glib = dependency('mm-glib', required: get_option('wwan'))
+if libmm_glib.found()
+   add_project_arguments('-DHAVE_LIBMM_GLIB', language: 'cpp')
+   src_files += files('src/modules/wwan.cpp')
+   man_files += files('man/waybar-wwan.5.scd')
+   deps += libmm_glib
+endif
+
 subdir('protocol')
+
+deps += client_protos
+
+app_resources = []
+subdir('resources/icons')
 
 executable(
     'waybar',
-    [src_files],
-    dependencies: [
-        gtk_layer_shell,
-        gtkmm,
-        giounix,
-        sigcpp,
-        jsoncpp,
-        wayland_client,
-        wayland_cursor,
-        client_protos,
-        spdlog
-    ],
+    [src_files, app_resources],
+    dependencies: deps,
     include_directories: inc_dirs,
     install: true,
 )
 
 install_data(
-    './resources/config',
-    './resources/style.css',
-    install_dir: sysconfdir + '/xdg/waybar'
+    'resources/config.jsonc',
+    'resources/style.css',
+    install_dir: sysconfdir / 'xdg/waybar'
 )
+
+scdoc = dependency('scdoc', version: '>=1.9.2', native: true, required: get_option('man-pages'))
+
+if scdoc.found()
+    man_files += configure_file(
+        input: 'man/waybar.5.scd.in',
+        output: 'waybar.5.scd',
+        configuration: {
+            'sysconfdir': prefix / sysconfdir
+        }
+    )
+
+    man_files += configure_file(
+        input: 'man/waybar-styles.5.scd.in',
+        output: 'waybar-styles.5.scd',
+        configuration: {
+            'sysconfdir': prefix / sysconfdir
+        }
+    )
+
+    fs = import('fs')
+    mandir = get_option('mandir')
+    foreach file : man_files
+        basename = fs.name(file)
+
+        topic = basename.split('.')[-3]
+        section = basename.split('.')[-2]
+        output = '@0@.@1@'.format(topic, section)
+
+        custom_target(
+            output,
+            input: file,
+            output: output,
+            command: scdoc.get_variable('scdoc'),
+            feed: true,
+            capture: true,
+            install: true,
+            install_dir: '@0@/man@1@'.format(mandir, section)
+        )
+    endforeach
+endif
+
+catch2 = dependency(
+    'catch2',
+    version: ['>=3.15.2'],
+    default_options: [ 'tests=false' ],
+    fallback: ['catch2', 'catch2_dep'],
+    required: get_option('tests'),
+)
+if false and catch2.found()
+    subdir('test')
+endif
+
+clangtidy = find_program('clang-tidy', required: false)
+
+if clangtidy.found()
+    run_target(
+        'tidy',
+        command: [
+            clangtidy,
+            '-checks=*,-fuchsia-default-arguments',
+            '-p', meson.project_build_root()
+        ] + src_files)
+endif

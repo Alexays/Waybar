@@ -16,6 +16,11 @@ Addressed by *network*
 	typeof: string ++
 	Use the defined interface instead of auto-detection. Accepts wildcard.
 
+*rfkill*: ++
+	typeof: bool ++
+	default: true ++
+	If enabled, the *disabled* format will be used when rfkill is blocking wlan interfaces.
+
 *interval*: ++
 	typeof: integer ++
 	default: 60 ++
@@ -24,7 +29,7 @@ Addressed by *network*
 *family*: ++
 	typeof: string ++
 	default: *ipv4* ++
-	The address family that is used for the format replacement {ipaddr} and to determine if a network connection is present.
+	The address family that is used for the format replacement {ipaddr} and to determine if a network connection is present. Set it to ipv4_6 to display both.
 
 *format*: ++
 	typeof: string  ++
@@ -49,7 +54,11 @@ Addressed by *network*
 
 *format-disabled*: ++
 	typeof: string ++
-	This format is used when the displayed interface is disabled.
+	This format is used when rfkill is blocking wlan interfaces.
+
+*format-alt*: ++
+	typeof: string ++
+	On click, toggle between this format and the regular format. The click button is set with *format-alt-click* (defaults to the left button).
 
 *format-icons*: ++
 	typeof: array/object ++
@@ -58,7 +67,7 @@ Addressed by *network*
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
@@ -70,7 +79,11 @@ Addressed by *network*
 
 *align*: ++
 	typeof: float ++
-	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *on-click*: ++
 	typeof: string ++
@@ -123,7 +136,25 @@ Addressed by *network*
 
 *tooltip-format-disabled*: ++
 	typeof: string ++
-	This format is used when the displayed interface is disabled.
+	This format is used when rfkill is blocking wlan interfaces.
+
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
 
 # FORMAT REPLACEMENTS
 
@@ -133,17 +164,25 @@ Addressed by *network*
 
 *{gwaddr}*: The default gateway for the interface
 
-*{netmask}*: The subnetmask corresponding to the IP.
+*{netmask}*: The subnetmask corresponding to the IP(V4).
 
-*{cidr}*: The subnetmask corresponding to the IP in CIDR notation.
+*{netmask6}*: The subnetmask corresponding to the IP(V6).
+
+*{cidr}*: The subnetmask corresponding to the IP(V4) in CIDR notation.
+
+*{cidr6}*: The subnetmask corresponding to the IP(V6) in CIDR notation.
 
 *{essid}*: Name (SSID) of the wireless network.
+
+*{bssid}*: MAC address (BSSID) of the wireless access point.
 
 *{signalStrength}*: Signal strength of the wireless network.
 
 *{signaldBm}*: Signal strength of the wireless network in dBm.
 
-*{frequency}*: Frequency of the wireless network in MHz.
+*{signalStrengthApp}*: Human-readable descriptor of the wireless connectivity derived from the signal strength (e.g. "Great Connectivity", "Streaming", "Poor Connectivity").
+
+*{frequency}*: Frequency of the wireless network in GHz.
 
 *{bandwidthUpBits}*: Instant up speed in bits/seconds.
 
@@ -161,9 +200,47 @@ Addressed by *network*
 
 *{bandwidthDownBytes}*: Instant down speed in bytes/seconds.
 
+*{bandwidthUpBytesCompact}*: Instant up speed in bytes/seconds, formatted compactly (e.g. 1.2K).
+
+*{bandwidthDownBytesCompact}*: Instant down speed in bytes/seconds, formatted compactly (e.g. 1.2K).
+
 *{bandwidthTotalBytes}*: Instant total speed in bytes/seconds.
 
+*{txBitrate}*: Link transmit bitrate (e.g., 866.7 Mb/s).
+
+*{rxBitrate}*: Link receive bitrate (e.g., 866.7 Mb/s).
+
+*{linkSpeed}*: Ethernet link speed.
+
 *{icon}*: Icon, as defined in *format-icons*.
+
+# NUMBER FORMAT MODIFIERS
+
+The bandwidth/bitrate replacements above (*{bandwidth\*}*, *{txBitrate}*,
+*{rxBitrate}*, *{linkSpeed}*) auto-scale the number with an SI prefix (k, M, G,
+…). Their rendering can be tuned with fmt-style modifiers, e.g.
+*"{bandwidthDownBits:>}"* or *"{bandwidthDownBits:M}"*. Modifiers may be combined
+in any order:
+
+*<*, *=*, *>*: Alignment/padding (left, column-align, right) — as before.
+
+*u* / *U*: Hide (*u*) or show (*U*) the unit suffix. The unit is shown by default
+with an auto scale and hidden by default when a scale is forced (see below).
+
+*#*, *k*, *M*, *G*, *T*, *P*: Force a fixed scale instead of auto-selecting one
+(*#* = base scale, no prefix). Forcing a scale hides the scale prefix and, by
+default, the unit (re-enable it with *U*). E.g. *"{bandwidthDownBits:M}"* always
+shows the value in megabits.
+
+*i*: Force integer display (no decimals).
+
+*b* / *B*: Force decimal base 1000 (*b*) or binary base 1024 with an *i* marker
+(*B*), overriding the module default.
+
+A trailing number is a fixed width for the coefficient when a scale is forced; if
+the value does not fit, it is shown as *#* characters (e.g. *"{bandwidthDownBits:=3#}"*
+→ *###*). Without a forced scale the number is ignored (kept for config
+compatibility).
 
 # EXAMPLES
 

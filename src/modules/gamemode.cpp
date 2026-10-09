@@ -3,30 +3,18 @@
 #include <fmt/core.h>
 #include <spdlog/spdlog.h>
 
-#include <cstdio>
-#include <cstring>
-#include <string>
-
-#include "AModule.hpp"
-#include "giomm/dbusconnection.h"
-#include "giomm/dbusinterface.h"
-#include "giomm/dbusproxy.h"
-#include "giomm/dbuswatchname.h"
-#include "glibmm/error.h"
-#include "glibmm/ustring.h"
-#include "glibmm/variant.h"
-#include "glibmm/varianttype.h"
-#include "gtkmm/label.h"
-#include "gtkmm/tooltip.h"
-#include "util/gtk_icon.hpp"
+#include "util/gtk/gtk_icon.hpp"
 
 namespace waybar::modules {
 Gamemode::Gamemode(const std::string& id, const Json::Value& config)
-    : AModule(config, "gamemode", id), box_(Gtk::ORIENTATION_HORIZONTAL, 0), icon_(), label_() {
-  box_.pack_start(icon_);
-  box_.pack_start(label_);
+    : AModule(config, "gamemode", id, true),
+      box_(Gtk::Orientation::HORIZONTAL, 0),
+      icon_(),
+      label_() {
+  w_ = &box_;
+  box_.append(icon_);
+  box_.append(label_);
   box_.set_name(name_);
-  event_box_.add(box_);
 
   // Tooltip
   if (config_["tooltip"].isBool()) {
@@ -53,7 +41,6 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
   if (config_["icon-spacing"].isUInt()) {
     iconSpacing = config_["icon-spacing"].asUInt();
   }
-  box_.set_spacing(iconSpacing);
 
   // Whether to use icon or not
   if (config_["use-icon"].isBool()) {
@@ -64,7 +51,6 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
   if (config_["icon-size"].isUInt()) {
     iconSize = config_["icon-size"].asUInt();
   }
-  icon_.set_pixel_size(iconSize);
 
   // Format
   if (config_["format"].isString()) {
@@ -82,13 +68,12 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
   }
 
   gamemodeWatcher_id = Gio::DBus::watch_name(
-      Gio::DBus::BUS_TYPE_SESSION, dbus_name, sigc::mem_fun(*this, &Gamemode::appear),
-      sigc::mem_fun(*this, &Gamemode::disappear),
-      Gio::DBus::BusNameWatcherFlags::BUS_NAME_WATCHER_FLAGS_AUTO_START);
+      Gio::DBus::BusType::SESSION, dbus_name, sigc::mem_fun(*this, &Gamemode::appear),
+      sigc::mem_fun(*this, &Gamemode::disappear), Gio::DBus::BusNameWatcherFlags::AUTO_START);
 
   // Connect to gamemode
-  gamemode_proxy = Gio::DBus::Proxy::create_for_bus_sync(Gio::DBus::BusType::BUS_TYPE_SESSION,
-                                                         dbus_name, dbus_obj_path, dbus_interface);
+  gamemode_proxy = Gio::DBus::Proxy::create_for_bus_sync(Gio::DBus::BusType::SESSION, dbus_name,
+                                                         dbus_obj_path, dbus_interface);
   if (!gamemode_proxy) {
     throw std::runtime_error("Unable to connect to gamemode DBus!...");
   } else {
@@ -96,7 +81,7 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
   }
 
   // Connect to Login1 PrepareForSleep signal
-  system_connection = Gio::DBus::Connection::get_sync(Gio::DBus::BusType::BUS_TYPE_SYSTEM);
+  system_connection = Gio::DBus::Connection::get_sync(Gio::DBus::BusType::SYSTEM);
   if (!system_connection) {
     throw std::runtime_error("Unable to connect to the SYSTEM Bus!...");
   } else {
@@ -105,7 +90,7 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
         "org.freedesktop.login1.Manager", "PrepareForSleep", "/org/freedesktop/login1");
   }
 
-  event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &Gamemode::handleToggle));
+  bindEvents(box_);
 }
 
 Gamemode::~Gamemode() {
@@ -130,14 +115,14 @@ void Gamemode::getData() {
       Glib::VariantContainerBase data = gamemode_proxy->call_sync("Get", parameters);
       if (data && data.is_of_type(Glib::VariantType("(v)"))) {
         Glib::VariantBase variant;
-        g_variant_get(data.gobj_copy(), "(v)", &variant);
+        g_variant_get(const_cast<GVariant*>(data.gobj()), "(v)", &variant);
         if (variant && variant.is_of_type(Glib::VARIANT_TYPE_INT32)) {
-          g_variant_get(variant.gobj_copy(), "i", &gameCount);
+          g_variant_get(const_cast<GVariant*>(variant.gobj()), "i", &gameCount);
           return;
         }
       }
     } catch (Glib::Error& e) {
-      spdlog::error("Gamemode Error {}", e.what().c_str());
+      spdlog::error("Gamemode Error {}", e.what());
     }
   }
   gameCount = 0;
@@ -160,7 +145,7 @@ void Gamemode::prepareForSleep_cb(const Glib::RefPtr<Gio::DBus::Connection>& con
                                   const Glib::VariantContainerBase& parameters) {
   if (parameters.is_of_type(Glib::VariantType("(b)"))) {
     gboolean sleeping;
-    g_variant_get(parameters.gobj_copy(), "(b)", &sleeping);
+    g_variant_get(const_cast<GVariant*>(parameters.gobj()), "(b)", &sleeping);
     if (!sleeping) {
       getData();
       dp.emit();
@@ -172,7 +157,7 @@ void Gamemode::prepareForSleep_cb(const Glib::RefPtr<Gio::DBus::Connection>& con
 void Gamemode::appear(const Glib::RefPtr<Gio::DBus::Connection>& connection,
                       const Glib::ustring& name, const Glib::ustring& name_owner) {
   gamemodeRunning = true;
-  event_box_.set_visible(true);
+  box_.set_visible(true);
   getData();
   dp.emit();
 }
@@ -180,24 +165,23 @@ void Gamemode::appear(const Glib::RefPtr<Gio::DBus::Connection>& connection,
 void Gamemode::disappear(const Glib::RefPtr<Gio::DBus::Connection>& connection,
                          const Glib::ustring& name) {
   gamemodeRunning = false;
-  event_box_.set_visible(false);
+  box_.set_visible(false);
 }
 
-bool Gamemode::handleToggle(GdkEventButton* const& event) {
+void Gamemode::handlePress(int n_press, double x, double y) {
   showAltText = !showAltText;
   dp.emit();
-  return true;
 }
 
-auto Gamemode::update() -> void {
+auto Gamemode::doUpdate() -> void {
   // Don't update widget if the Gamemode service isn't running
   if (!gamemodeRunning || (gameCount <= 0 && hideNotRunning)) {
-    event_box_.set_visible(false);
+    box_.set_visible(false);
     return;
   }
 
   // Show the module
-  if (!event_box_.get_visible()) event_box_.set_visible(true);
+  if (!box_.get_visible()) box_.set_visible(true);
 
   // CSS status class
   const std::string status = gamemodeRunning && gameCount > 0 ? "running" : "";
@@ -212,10 +196,7 @@ auto Gamemode::update() -> void {
   lastStatus = status;
 
   // Tooltip
-  if (tooltip) {
-    std::string text = fmt::format(fmt::runtime(tooltip_format), fmt::arg("count", gameCount));
-    box_.set_tooltip_text(text);
-  }
+  updateTooltip(box_, tooltip_format, fmt::arg("count", gameCount));
 
   // Label format
   std::string str = fmt::format(fmt::runtime(showAltText ? format_alt : format),
@@ -224,14 +205,19 @@ auto Gamemode::update() -> void {
   label_.set_markup(str);
 
   if (useIcon) {
-    if (!DefaultGtkIconThemeWrapper::has_icon(iconName)) {
+    if (!util::DefaultGtkIconThemeWrapper::has_icon(iconName)) {
       iconName = DEFAULT_ICON_NAME;
     }
-    icon_.set_from_icon_name(iconName, Gtk::ICON_SIZE_INVALID);
+    icon_.set_from_icon_name(iconName);
+    box_.set_spacing(iconSpacing);
+    icon_.set_pixel_size(iconSize);
+  } else {
+    box_.set_spacing(0);
+    icon_.set_pixel_size(0);
   }
 
   // Call parent update
-  AModule::update();
+  AModule::doUpdate();
 }
 
 }  // namespace waybar::modules

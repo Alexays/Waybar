@@ -12,7 +12,7 @@
 
 namespace waybar::modules {
 
-class Bluetooth : public ALabel {
+class Bluetooth final : public ALabel {
   struct ControllerInfo {
     std::string path;
     std::string address;
@@ -41,14 +41,18 @@ class Bluetooth : public ALabel {
     bool services_resolved;
     // NOTE: experimental feature in bluez
     std::optional<unsigned char> battery_percentage;
+    std::optional<unsigned char> battery_percentage_peripheral;
   };
 
  public:
   Bluetooth(const std::string&, const Json::Value&);
   virtual ~Bluetooth() = default;
-  auto update() -> void override;
+  auto doUpdate() -> void override;
 
  private:
+  static auto onObjectAdded(GDBusObjectManager*, GDBusObject*, gpointer) -> void;
+  static auto onObjectRemoved(GDBusObjectManager*, GDBusObject*, gpointer) -> void;
+
   static auto onInterfaceAddedOrRemoved(GDBusObjectManager*, GDBusObject*, GDBusInterface*,
                                         gpointer) -> void;
   static auto onInterfaceProxyPropertiesChanged(GDBusObjectManagerClient*, GDBusObjectProxy*,
@@ -56,6 +60,12 @@ class Bluetooth : public ALabel {
                                                 gpointer) -> void;
 
   auto getDeviceBatteryPercentage(GDBusObject*) -> std::optional<unsigned char>;
+  auto getDeviceGattBatteryLevels(GDBusObject*, std::optional<unsigned char>&,
+                                  std::optional<unsigned char>&) -> void;
+  static auto processBatteryServiceCharacteristics(GList*, const std::string&, const std::string&,
+                                                   const std::string&,
+                                                   std::optional<unsigned char>&,
+                                                   std::optional<unsigned char>&) -> void;
   auto getDeviceProperties(GDBusObject*, DeviceInfo&) -> bool;
   auto getControllerProperties(GDBusObject*, ControllerInfo&) -> bool;
 

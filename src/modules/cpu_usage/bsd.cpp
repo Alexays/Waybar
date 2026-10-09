@@ -33,7 +33,7 @@ std::vector<std::tuple<size_t, size_t>> waybar::modules::CpuUsage::parseCpuinfo(
   size_t sum_sz = sizeof(sum_cp_time);
   int ncpu = sysconf(_SC_NPROCESSORS_CONF);
   size_t sz = CPUSTATES * (ncpu + 1) * sizeof(pcp_time_t);
-  pcp_time_t *cp_time = static_cast<pcp_time_t *>(malloc(sz)), *pcp_time = cp_time;
+  pcp_time_t *cp_time = static_cast<pcp_time_t*>(malloc(sz)), *pcp_time = cp_time;
   waybar::util::ScopeGuard cp_time_deleter([cp_time]() {
     if (cp_time) {
       free(cp_time);

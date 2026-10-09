@@ -10,7 +10,8 @@
 namespace waybar::modules {
 
 CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& config)
-    : AModule(config, name, id, true, true) {
+    : AModule(config, name, id, true, true), box_{Gtk::Orientation::HORIZONTAL, 0} {
+  w_ = &box_;
   const auto dynlib_path = config_["module_path"].asString();
   if (dynlib_path.empty()) {
     throw std::runtime_error{"Missing or empty 'module_path' in module config"};
@@ -28,22 +29,22 @@ CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& co
   }
 
   // Fetch functions
-  if (*wbcffi_version == 1) {
+  if (*wbcffi_version == 1 || *wbcffi_version == 2) {
     // Mandatory functions
     hooks_.init = reinterpret_cast<InitFn*>(dlsym(handle, "wbcffi_init"));
     if (!hooks_.init) {
       throw std::runtime_error{std::string{"Missing wbcffi_init function: "} + dlerror()};
     }
     hooks_.deinit = reinterpret_cast<DenitFn*>(dlsym(handle, "wbcffi_deinit"));
-    if (!hooks_.init) {
+    if (!hooks_.deinit) {
       throw std::runtime_error{std::string{"Missing wbcffi_deinit function: "} + dlerror()};
     }
     // Optional functions
     if (auto fn = reinterpret_cast<UpdateFn*>(dlsym(handle, "wbcffi_update"))) {
-      hooks_.update = fn;
+      hooks_.doUpdate = fn;
     }
     if (auto fn = reinterpret_cast<RefreshFn*>(dlsym(handle, "wbcffi_refresh"))) {
-      hooks_.refresh = fn;
+      hooks_.doRefresh = fn;
     }
     if (auto fn = reinterpret_cast<DoActionFn*>(dlsym(handle, "wbcffi_doaction"))) {
       hooks_.doAction = fn;
@@ -58,15 +59,20 @@ CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& co
   const auto& keys = config.getMemberNames();
   for (size_t i = 0; i < keys.size(); i++) {
     const auto& value = config[keys[i]];
-    if (value.isConvertibleTo(Json::ValueType::stringValue)) {
-      config_entries_stringstor.push_back(config[keys[i]].asString());
+    if (*wbcffi_version == 1) {
+      if (value.isConvertibleTo(Json::ValueType::stringValue)) {
+        config_entries_stringstor.push_back(value.asString());
+      } else {
+        config_entries_stringstor.push_back(value.toStyledString());
+      }
     } else {
-      config_entries_stringstor.push_back(config[keys[i]].toStyledString());
+      config_entries_stringstor.push_back(value.toStyledString());
     }
   }
 
   // Prepare config_entries array
   std::vector<ffi::wbcffi_config_entry> config_entries;
+  config_entries.reserve(keys.size());
   for (size_t i = 0; i < keys.size(); i++) {
     config_entries.push_back({keys[i].c_str(), config_entries_stringstor[i].c_str()});
   }
@@ -76,7 +82,7 @@ CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& co
       .waybar_version = VERSION,
       .get_root_widget =
           [](ffi::wbcffi_module* obj) {
-            return dynamic_cast<Gtk::Container*>(&((CFFI*)obj)->event_box_)->gobj();
+            return dynamic_cast<Gtk::Widget*>(&((CFFI*)obj)->operator Gtk::Widget&())->gobj();
           },
       .queue_update = [](ffi::wbcffi_module* obj) { ((CFFI*)obj)->dp.emit(); },
   };
@@ -96,17 +102,17 @@ CFFI::~CFFI() {
   }
 }
 
-auto CFFI::update() -> void {
+auto CFFI::doUpdate() -> void {
   assert(cffi_instance_ != nullptr);
-  hooks_.update(cffi_instance_);
+  hooks_.doUpdate(cffi_instance_);
 
   // Execute the on-update command set in config
-  AModule::update();
+  AModule::doUpdate();
 }
 
-auto CFFI::refresh(int signal) -> void {
+auto CFFI::doRefresh(int signal) -> void {
   assert(cffi_instance_ != nullptr);
-  hooks_.refresh(cffi_instance_, signal);
+  hooks_.doRefresh(cffi_instance_, signal);
 }
 
 auto CFFI::doAction(const std::string& name) -> void {

@@ -8,17 +8,19 @@ waybar - mpd module
 
 The *mpd* module displays information about a running "Music Player Daemon" instance.
 
+Note that Waybar must be compiled with MPD support in order to use this module.
+
 # CONFIGURATION
 
 Addressed by *mpd*
 
 *server*: ++
 	typeof: string ++
-	The network address or Unix socket path of the MPD server. If empty, connect to the default host.
+	The network address or Unix socket path of the MPD server. If empty, connect to the default host (`MPD_HOST`).
 
 *port*: ++
 	typeof: integer ++
-	The port MPD listens to. If empty, use the default port.
+	The port MPD listens to. If empty, use the default port (`MPD_PORT`).
 
 *password*: ++
 	typeof: string ++
@@ -28,6 +30,11 @@ Addressed by *mpd*
 	typeof: integer++
 	default: 5 ++
 	The interval in which the connection to the MPD server is retried
+
+*playing-interval*: ++
+	typeof: integer++
+	default: 1000 ++
+	The interval (in milliseconds) in which the playing state is updated.
 
 *timeout*: ++
 	typeof: integer++
@@ -89,9 +96,14 @@ Addressed by *mpd*
 	typeof: integer ++
 	Maximum length of the Title tag.
 
+*ellipsis*: ++
+	typeof: string ++
+	default: "" ++
+	The string appended to the Artist, Album, Album Artist and Title tags when they are truncated by the corresponding length option (`artist-len`, `album-len`, `album-artist-len`, `title-len`).
+
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
@@ -103,7 +115,11 @@ Addressed by *mpd*
 
 *align*: ++
 	typeof: float ++
-	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *on-click*: ++
 	typeof: string ++
@@ -158,6 +174,24 @@ Addressed by *mpd*
 	default: {} ++
 	Icon to show depending on the "single" option (*{ "on": "...", "off": "..." }*)
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 ## WHEN PLAYING/PAUSED
@@ -181,6 +215,10 @@ Addressed by *mpd*
 *{songPosition}*: The position of the current song.
 
 *{queueLength}*: The length of the current queue.
+
+*{uri}*: The URI of the song relative to the MPD music directory.
+
+*{filename}* The last part of the URI.
 
 *{stateIcon}*: The icon corresponding to the playing or paused status of the player (see *state-icons* option)
 

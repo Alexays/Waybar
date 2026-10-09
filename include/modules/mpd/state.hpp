@@ -82,6 +82,7 @@ class Idle : public State {
 class Playing : public State {
   Context* const ctx_;
   sigc::connection timer_connection_;
+  sigc::connection idle_connection_;
 
  public:
   Playing(Context* const ctx) : ctx_{ctx} {}
@@ -98,7 +99,10 @@ class Playing : public State {
   Playing(Playing const&) = delete;
   Playing& operator=(Playing const&) = delete;
 
+  void timer() noexcept;
+  void idle() noexcept;
   bool on_timer();
+  bool on_io(Glib::IOCondition const&);
 };
 
 class Paused : public State {
@@ -148,6 +152,7 @@ class Stopped : public State {
 class Disconnected : public State {
   Context* const ctx_;
   sigc::connection timer_connection_;
+  int last_interval_;
 
  public:
   Disconnected(Context* const ctx) : ctx_{ctx} {}
@@ -162,7 +167,7 @@ class Disconnected : public State {
   Disconnected(Disconnected const&) = delete;
   Disconnected& operator=(Disconnected const&) = delete;
 
-  void arm_timer(int interval) noexcept;
+  bool arm_timer(int interval) noexcept;
   void disarm_timer() noexcept;
 
   bool on_timer();
@@ -193,10 +198,10 @@ class Context {
   bool is_paused() const;
   bool is_stopped() const;
   constexpr std::size_t interval() const;
+  unsigned playing_interval() const;
   void tryConnect() const;
   void checkErrors(mpd_connection*) const;
   void do_update();
-  void queryMPD() const;
   void fetchState() const;
   constexpr mpd_state state() const;
   void emit() const;

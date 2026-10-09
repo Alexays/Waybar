@@ -11,16 +11,15 @@
 
 namespace waybar::modules::hyprland {
 
-class Language : public waybar::ALabel, public EventHandler {
+class Language final : public waybar::ALabel, public EventHandler {
  public:
   Language(const std::string&, const waybar::Bar&, const Json::Value&);
   virtual ~Language();
 
-  auto update() -> void override;
-
  private:
-  void onEvent(const std::string&) override;
+  auto doUpdate() -> void override;
 
+  void onEvent(const std::string&) override;
   void initLanguage();
 
   struct Layout {
@@ -30,13 +29,16 @@ class Language : public waybar::ALabel, public EventHandler {
     std::string short_description;
   };
 
-  auto getLayout(const std::string&) -> Layout;
+  static auto getLayout(const std::string&) -> Layout;
 
   std::mutex mutex_;
   const Bar& bar_;
   util::JsonParser parser_;
 
   Layout layout_;
+  std::string prev_short_name_;  // applied CSS class; touched only in update() (#4665)
+
+  IPC& m_ipc_;
 };
 
 }  // namespace waybar::modules::hyprland
