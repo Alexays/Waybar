@@ -31,10 +31,10 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
       dynamic_separator_(" - "),
       truncate_hours_(true),
       tooltip_len_limits_(false),
-      prefer_album_artist_(false),
       // this character is used in Gnome so it's fine to use it here
       ellipsis_("\u2026"),
       player_("playerctld"),
+      prefer_album_artist_(false),
       manager(),
       player(),
       last_update_(std::chrono::system_clock::now() - interval_) {
