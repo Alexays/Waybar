@@ -53,6 +53,9 @@ Host::~Host() {
   }
   g_cancellable_cancel(cancellable_);
   g_clear_object(&cancellable_);
+  if (watcher_ != nullptr) {
+    g_signal_handlers_disconnect_by_data(watcher_, this);
+  }
   g_clear_object(&watcher_);
 }
 

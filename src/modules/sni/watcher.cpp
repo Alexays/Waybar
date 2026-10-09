@@ -25,8 +25,12 @@ Watcher::~Watcher() {
     items_ = nullptr;
   }
   Gio::DBus::unown_name(bus_name_id_);
-  auto* iface = G_DBUS_INTERFACE_SKELETON(watcher_);
-  g_dbus_interface_skeleton_unexport(iface);
+  if (watcher_ != nullptr) {
+    g_signal_handlers_disconnect_by_data(watcher_, this);
+    auto* iface = G_DBUS_INTERFACE_SKELETON(watcher_);
+    g_dbus_interface_skeleton_unexport(iface);
+    g_clear_object(&watcher_);
+  }
 }
 
 void Watcher::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn,
