@@ -23,6 +23,11 @@ test_src = files(
     '../../src/util/command_line_stream.cpp',
 )
 
+if libnl.found() and libnlgen.found()
+  test_dep += [libnl, libnlgen]
+  test_src += files('netlink.cpp', '../../src/util/netlink.cpp')
+endif
+
 if tz_dep.found()
   test_dep += tz_dep
   test_src += files('date.cpp')
