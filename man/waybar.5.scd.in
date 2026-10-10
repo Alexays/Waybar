@@ -169,6 +169,13 @@ The visual display elements for waybar use a CSS stylesheet. Waybar supports *st
 	Possible values: *show*, *hide*, *toggle*, *reload*, *noop*. ++
 	Default value: *reload*.
 
+*blur* ++
+	typeof: bool ++
+	default: false ++
+	Requests blur-behind for the bar's own background, via the standard
+	*ext-background-effect-v1* Wayland protocol. Has no effect if the
+	compositor doesn't support it.
+
 # MODULE FORMAT
 
 You can use PangoMarkupFormat (See https://developer.gnome.org/pango/stable/PangoMarkupFormat.html#PangoMarkupFormat).

@@ -392,6 +392,10 @@ if get_option('mango')
     )
 endif
 
+if wayland_protos.version().version_compare('>=1.41')
+    # Bar-level blur-behind support (ext-background-effect-v1)
+    add_project_arguments('-DHAVE_BAR_BLUR', language: 'cpp')
+endif
 if true
     add_project_arguments('-DHAVE_WAYFIRE', language: 'cpp')
     src_files += files(

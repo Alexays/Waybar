@@ -3,6 +3,7 @@
 #include <gtk-layer-shell.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <ostream>
 #include <type_traits>
 
@@ -15,6 +16,11 @@
 
 #ifdef HAVE_SWAY
 #include "modules/sway/bar.hpp"
+#endif
+#ifdef HAVE_BAR_BLUR
+#include <gtk/gtk.h>
+
+#include "ext-background-effect-v1-client-protocol.h"
 #endif
 
 namespace waybar {
@@ -181,6 +187,10 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   height_ = config["height"].isUInt() ? config["height"].asUInt() : 0;
   width_ = config["width"].isUInt() ? config["width"].asUInt() : 0;
 
+#ifdef HAVE_BAR_BLUR
+  blur_enabled_ = config["blur"].isBool() && config["blur"].asBool();
+#endif
+
   if (config["margin-top"].isInt() || config["margin-right"].isInt() ||
       config["margin-bottom"].isInt() || config["margin-left"].isInt()) {
     margins_ = {
@@ -301,7 +311,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     auto strSigusr1 = configSigusr1.asString();
     try {
       onSigusr1 =
-        util::parseStringToEnum<util::KillSignalAction>(strSigusr1, util::userKillSignalActions);
+          util::parseStringToEnum<util::KillSignalAction>(strSigusr1, util::userKillSignalActions);
     } catch (const std::invalid_argument& e) {
       onSigusr1 = util::SIGNALACTION_DEFAULT_SIGUSR1;
       spdlog::warn(
@@ -313,7 +323,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     auto strSigusr2 = configSigusr2.asString();
     try {
       onSigusr2 =
-        util::parseStringToEnum<util::KillSignalAction>(strSigusr2, util::userKillSignalActions);
+          util::parseStringToEnum<util::KillSignalAction>(strSigusr2, util::userKillSignalActions);
     } catch (const std::invalid_argument& e) {
       onSigusr2 = util::SIGNALACTION_DEFAULT_SIGUSR2;
       spdlog::warn(
@@ -356,6 +366,12 @@ waybar::Bar::~Bar() {
    * modules_all_ -- already freed by this point. Disconnect first (#5182). */
   unmap_conn_.disconnect();
   map_conn_.disconnect();
+#ifdef HAVE_BAR_BLUR
+  if (background_effect_surface_) {
+    ext_background_effect_surface_v1_destroy(background_effect_surface_);
+    background_effect_surface_ = nullptr;
+  }
+#endif
 }
 
 void waybar::Bar::setMode(const std::string& mode) {
@@ -492,7 +508,95 @@ void waybar::Bar::onMap(GdkEventAny* /*unused*/) {
   configureGlobalOffset(gdk_window_get_width(gdk_window), gdk_window_get_height(gdk_window));
 
   setPassThrough(passthrough_);
+#ifdef HAVE_BAR_BLUR
+  setupBackgroundBlur();
+#endif
 }
+
+#ifdef HAVE_BAR_BLUR
+// Requests blur-behind for this bar's own surface, via the standard
+// ext-background-effect-v1 protocol.
+void waybar::Bar::setupBackgroundBlur() {
+  if (!blur_enabled_ || background_effect_surface_ || !surface) {
+    return;
+  }
+  auto* manager = Client::inst()->background_effect_manager;
+  if (!manager) {
+    spdlog::warn("[bar]: Compositor does not support ext-background-effect-v1; blur disabled");
+    return;
+  }
+  background_effect_surface_ =
+      ext_background_effect_manager_v1_get_background_effect(manager, surface);
+  updateBlurRegion();
+}
+
+// Re-applies the blur region to match the bar's current pixel size, clipped to the bar's
+// actual rendered CSS background shape (rounded corners, including asymmetric top/bottom
+// radii) so blur doesn't leak past it as a rectangular "ghost".
+void waybar::Bar::updateBlurRegion() {
+  if (!blur_enabled_ || !background_effect_surface_ || !surface) {
+    return;
+  }
+  // Query the live GDK window size rather than width_/height_: those track the
+  // user-requested config size and may still be unset (0) the first time we're
+  // called, from onMap, before any configure event has landed.
+  auto gdk_window_ref = window.get_window();
+  if (!gdk_window_ref) {
+    return;
+  }
+  auto* gdk_window = gdk_window_ref->gobj();
+  const int32_t w = gdk_window_get_width(gdk_window);
+  const int32_t h = gdk_window_get_height(gdk_window);
+  if (w <= 0 || h <= 0) {
+    return;
+  }
+  auto* compositor = gdk_wayland_display_get_wl_compositor(window.get_display()->gobj());
+  if (!compositor) {
+    return;
+  }
+
+  auto* style_context = window.get_style_context()->gobj();
+  gint radius = 0;
+  gtk_style_context_get(style_context, GTK_STATE_FLAG_NORMAL, GTK_STYLE_PROPERTY_BORDER_RADIUS,
+                        &radius, nullptr);
+  radius = std::clamp<gint>(radius, 0, std::min(w, h) / 2);
+
+  wl_region* region = wl_compositor_create_region(compositor);
+  if (radius <= 0) {
+    wl_region_add(region, 0, 0, w, h);
+  } else {
+    // Middle band, full width, between the two corner strips.
+    wl_region_add(region, 0, radius, w, h - 2 * radius);
+    // Rasterize the actual CSS background to find each corner row's opaque span, so
+    // top and bottom corners are clipped correctly even when their radii differ.
+    cairo_surface_t* mask = cairo_image_surface_create(CAIRO_FORMAT_A8, w, h);
+    cairo_t* cr = cairo_create(mask);
+    gtk_render_background(style_context, cr, 0, 0, w, h);
+    cairo_surface_flush(mask);
+    const unsigned char* data = cairo_image_surface_get_data(mask);
+    const int stride = cairo_image_surface_get_stride(mask);
+
+    auto add_opaque_span = [&](int32_t y) {
+      const unsigned char* row = data + static_cast<size_t>(y) * stride;
+      int32_t left = 0;
+      while (left < w && row[left] == 0) ++left;
+      int32_t right = w;
+      while (right > left && row[right - 1] == 0) --right;
+      if (right > left) {
+        wl_region_add(region, left, y, right - left, 1);
+      }
+    };
+    for (int32_t y = 0; y < radius; ++y) add_opaque_span(y);
+    for (int32_t y = h - radius; y < h; ++y) add_opaque_span(y);
+
+    cairo_destroy(cr);
+    cairo_surface_destroy(mask);
+  }
+  ext_background_effect_surface_v1_set_blur_region(background_effect_surface_, region);
+  wl_region_destroy(region);
+  wl_surface_commit(surface);
+}
+#endif
 
 void waybar::Bar::setVisible(bool value) {
   visible = value;
@@ -700,6 +804,9 @@ void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
 
   configureGlobalOffset(ev->width, ev->height);
   spdlog::info(BAR_SIZE_MSG, ev->width, ev->height, output->name);
+#ifdef HAVE_BAR_BLUR
+  updateBlurRegion();
+#endif
 
   /*
    * gtk-layer-shell waits for the compositor's initial configure while realizing the window. On a
