@@ -62,10 +62,12 @@ long User::uptime_as_seconds() {
 #if HAVE_CPU_BSD
   struct timespec s_info;
   int flags = 0;
-#ifndef __OpenBSD__
+#ifdef CLOCK_UPTIME_PRECISE
   flags = CLOCK_UPTIME_PRECISE;
-#else
+#elif defined(CLOCK_UPTIME)
   flags = CLOCK_UPTIME;
+#else
+  flags = CLOCK_MONOTONIC;
 #endif
   if (0 == clock_gettime(flags, &s_info)) {
     uptime = s_info.tv_sec;
