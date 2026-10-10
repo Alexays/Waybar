@@ -468,6 +468,13 @@ void Workspaces::onWorkspaceIdChanged(std::string const& payload) {
     if (workspace->id() == *oldId) {
       spdlog::debug("Changing workspace ID from {} to {}", *oldId, *newId);
       workspace->setId(*newId);
+      // Hyprland renames numeric workspaces to the new id as part of
+      // changeID, but does not emit renameworkspace. Without mirroring that
+      // here, {name} keeps the old label and updateWorkspaceStates marks
+      // every workspace whose stale name matches the current one as active.
+      if (!workspace->isSpecial()) {
+        workspace->setName(std::to_string(*newId));
+      }
       break;
     }
   }
