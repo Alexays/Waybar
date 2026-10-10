@@ -51,6 +51,7 @@ class Workspaces : public AModule, public EventHandler {
   auto getBarOutput() const -> std::string { return m_bar.output->name; }
   auto formatBefore() const -> std::string { return m_formatBefore; }
   auto formatAfter() const -> std::string { return m_formatAfter; }
+  auto formatWindowActive() const -> const std::string& { return m_formatWindowActive; }
   auto taskbarFormatBefore() const -> std::string { return m_taskbarFormatBefore; }
   auto taskbarFormatAfter() const -> std::string { return m_taskbarFormatAfter; }
   auto taskbarIconSize() const -> int { return m_taskbarIconSize; }
@@ -185,6 +186,7 @@ class Workspaces : public AModule, public EventHandler {
   util::RegexCollection m_windowRewriteRules;
   bool m_anyWindowRewriteRuleUsesTitle = false;
   std::string m_formatWindowSeparator;
+  std::string m_formatWindowActive;
   int m_windowRewriteGroupThreshold = 0;
   std::string m_windowRewriteGroupFormat = "{icon}×{count}";
 
