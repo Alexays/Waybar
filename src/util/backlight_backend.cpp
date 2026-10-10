@@ -8,6 +8,7 @@
 #include <optional>
 #include <utility>
 
+#include "util/backlight_brightness.hpp"
 #include "util/udev_deleter.hpp"
 
 namespace {
@@ -314,17 +315,15 @@ void BacklightBackend::set_scaled_brightness(const std::string& preferred_device
 }
 
 void BacklightBackend::set_brightness(const std::string& preferred_device, ChangeType change_type,
-                                      double step) {
+                                      double step, double minimum) {
   GET_BEST_DEVICE(best, (*this), preferred_device);
 
   if (best != nullptr) {
-    const auto max = best->get_max();
-
-    const auto abs_step = static_cast<int>(round(step * max / 100.0F));
-
-    const int new_brightness = change_type == ChangeType::Increase ? best->get_actual() + abs_step
-                                                                   : best->get_actual() - abs_step;
-    set_brightness_internal(best->name(), new_brightness, max, best->subsystem());
+    scroll_brightness(best->get_actual(), best->get_max(), change_type == ChangeType::Increase,
+                      step, minimum, [&](int target) {
+                        set_brightness_internal(best->name(), target, best->get_max(),
+                                                best->subsystem());
+                      });
   }
 }
 
