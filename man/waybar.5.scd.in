@@ -313,6 +313,21 @@ When positioning Waybar on the left or right side of the screen, sometimes it's 
 
 Valid options for the "rotate" property are: 0, 90, 180, and 270.
 
+## Fitting multi-line labels
+
+A "\\n" in a module's format shows the text on several lines. By default such a label makes the bar taller. With the "fit-height" property set to true, the label asks for no more height than one line of its text, and scales its font down until all lines fit the height the bar gives it. Example:
+
+```
+{
+	"network": {
+		"format-wifi": "{bandwidthDownBytes}\n{bandwidthUpBytes}",
+		"fit-height": true
+	}
+}
+```
+
+"max-length" puts the label in single-line mode, so do not use it together with a multi-line format.
+
 ## Swapping icon and label
 
 If a module displays both a label and an icon, it might be desirable to swap them (for instance, for panels on the left or right of the screen, or for user adopting a right-to-left script). This can be achieved with the "swap-icon-label" property, taking a boolean. Example:
