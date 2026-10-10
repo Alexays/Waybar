@@ -119,7 +119,7 @@ auto waybar::modules::Disk::update() -> void {
 
     if (!tooltip_format.empty()) {
       try {
-        if (had_valid_disk) {
+        if (had_valid_disk && i > 0) {
           tooltip_label += "\n";
         }
 
