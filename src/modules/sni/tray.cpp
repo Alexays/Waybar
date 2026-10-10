@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cctype>
 
 #include "modules/sni/icon_manager.hpp"
 
@@ -118,9 +119,19 @@ void Tray::onRemove(std::unique_ptr<Item>& item) {
 void Tray::reorderBox() {
   const bool reverse =
       config_["reverse-direction"].isBool() && config_["reverse-direction"].asBool();
-  // Stable sort keeps insertion order among items sharing the same order value.
-  std::stable_sort(items_.begin(), items_.end(),
-                   [](const Item* a, const Item* b) { return a->order_ < b->order_; });
+  // Items sharing an order value -- in particular every item without a
+  // configured one, which all sit at 0 -- are sorted by their key. Falling back
+  // to insertion order here would leave the tray layout up to the order in
+  // which applications happen to win the race to register on D-Bus, which
+  // differs between restarts and even between outputs of the same bar.
+  std::stable_sort(items_.begin(), items_.end(), [](const Item* a, const Item* b) {
+    if (a->order_ != b->order_) {
+      return a->order_ < b->order_;
+    }
+    return std::lexicographical_compare(
+        a->sort_key.begin(), a->sort_key.end(), b->sort_key.begin(), b->sort_key.end(),
+        [](unsigned char lhs, unsigned char rhs) { return std::tolower(lhs) < std::tolower(rhs); });
+  });
   for (std::size_t i = 0; i < items_.size(); ++i) {
     const int pos = reverse ? static_cast<int>(items_.size() - 1 - i) : static_cast<int>(i);
     box_.reorder_child(items_[i]->event_box, pos);

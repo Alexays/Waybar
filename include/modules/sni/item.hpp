@@ -14,6 +14,7 @@
 
 #include <functional>
 #include <set>
+#include <string>
 #include <string_view>
 
 #include "bar.hpp"
@@ -47,6 +48,10 @@ class Item : public sigc::trackable {
   Gtk::EventBox event_box;
   std::string category;
   std::string id;
+  // The key this item is addressed by in the tray config, and what items
+  // without a configured order are sorted by. Usually the SNI Id, but see the
+  // Chrome hack in setProperty().
+  std::string sort_key;
 
   std::string title;
   std::string icon_name;
