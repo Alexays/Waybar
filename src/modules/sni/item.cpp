@@ -96,7 +96,13 @@ Item::~Item() {
   }
   if (this->dbus_menu != nullptr) {
     g_object_weak_unref(G_OBJECT(this->dbus_menu), (GWeakNotify)onMenuDestroyed, this);
+    // makeMenu() holds a reference (g_object_ref_sink), and a GtkMenu is a toplevel that GTK keeps
+    // in its window list. Without destroying it and dropping the reference, the menu and its whole
+    // dbusmenu tree outlive the item, e.g. for every tray item of a removed bar.
+    gtk_widget_destroy(GTK_WIDGET(this->dbus_menu));
+    g_object_unref(this->dbus_menu);
     this->dbus_menu = nullptr;
+    this->gtk_menu = nullptr;
   }
 }
 
