@@ -141,6 +141,10 @@ jobs:
       - name: Layout matrix (top/bottom/left + scale 2)
         run: ./test/smoke/positions.sh layout-shots
 
+      # --- Tier 3: label alignment inside a module wider than its text ---
+      - name: Label alignment (align / justify)
+        run: ./test/smoke/align.sh align-shots
+
       # --- Tier 3: second compositor ---
       - name: Launch under labwc
         run: COMPOSITOR=labwc ./test/smoke/run.sh test/smoke/config.jsonc test/smoke/style.css labwc.png
@@ -157,4 +161,5 @@ jobs:
             module-shots/
             interaction-shots/
             layout-shots/
+            align-shots/
           if-no-files-found: warn
