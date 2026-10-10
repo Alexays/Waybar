@@ -24,10 +24,14 @@ class Group : public AModule {
  protected:
   Gtk::Box box;
   Gtk::Box revealer_box;
+  Gtk::Box leader_revealer_box;
   Gtk::Revealer revealer;
+  Gtk::Revealer leader_revealer;
   bool is_first_widget = true;
   bool is_drawer = false;
   bool click_to_reveal = false;
+  bool hide_leader_when_expanded = false;
+  bool drawer_left_to_right = true;
   std::string always_visible_class;
   bool empty_if_drawer_empty = false;
   int reveal_delay = 0;
