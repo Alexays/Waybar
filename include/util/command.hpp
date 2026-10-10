@@ -15,6 +15,9 @@
 
 #include <array>
 
+#include "util/scope_guard.hpp"
+#include "util/sleeper_thread.hpp"
+
 extern std::mutex reap_mtx;
 extern std::list<pid_t> reap;
 
@@ -72,6 +75,14 @@ inline int close(FILE* fp, pid_t pid) {
 
 inline FILE* open(const std::string& cmd, int& pid, const std::string& output_name) {
   if (cmd == "") return nullptr;
+  // Module workers are stopped with pthread_cancel() (SleeperThread::stop()). A cancel request
+  // that is pending when the worker forks is inherited by the child, which then acts on it at its
+  // first cancellation point (close() below) instead of reaching execlp(): it unwinds the copy of
+  // the worker's stack, and the exit of its only thread runs exit(0) with Waybar's static
+  // destructors. The parent is cancelled before close() calls waitpid(), so that child is left a
+  // zombie. Keep cancellation disabled until the pid and the pipe are handed back; the child
+  // inherits the disabled state.
+  CancellationGuard cancel_lock;
   int fd[2];
   // Open the pipe with the close-on-exec flag set, so it will not be inherited
   // by any other subprocesses launched by other threads (which could result in
@@ -127,12 +138,29 @@ inline FILE* open(const std::string& cmd, int& pid, const std::string& output_na
   return fdopen(fd[0], "r");
 }
 
+// Cleanup for exec()/execNoRead() when they are left early, which in practice means the worker was
+// cancelled while it read the output or waited for the child: nobody would call waitpid() for that
+// child, so close the pipe and hand a still running child over to signalThread() via reap.
+inline void abandon(FILE* fp, pid_t pid) {
+  CancellationGuard cancel_lock;
+  if (fp != nullptr) fclose(fp);
+  if (pid > 0 && waitpid(pid, nullptr, WNOHANG) == 0) {
+    std::lock_guard<std::mutex> lock(reap_mtx);
+    reap.push_back(pid);
+  }
+}
+
 inline struct res exec(const std::string& cmd, const std::string& output_name) {
   int pid;
   auto fp = command::open(cmd, pid, output_name);
   if (!fp) return {-1, ""};
+  FILE* pending_fp = fp;
+  pid_t pending_pid = pid;
+  ScopeGuard on_early_exit([&pending_fp, &pending_pid]() { abandon(pending_fp, pending_pid); });
   auto output = command::read(fp);
+  pending_fp = nullptr;  // close() owns fp from here on
   auto stat = command::close(fp, pid);
+  pending_pid = -1;
   return {WEXITSTATUS(stat), output};
 }
 
@@ -140,12 +168,17 @@ inline struct res execNoRead(const std::string& cmd) {
   int pid;
   auto fp = command::open(cmd, pid, "");
   if (!fp) return {-1, ""};
+  pid_t pending_pid = pid;
+  ScopeGuard on_early_exit([&pending_pid]() { abandon(nullptr, pending_pid); });
   auto stat = command::close(fp, pid);
+  pending_pid = -1;
   return {WEXITSTATUS(stat), ""};
 }
 
 inline int32_t forkExec(const std::string& cmd, const std::string& output_name) {
   if (cmd == "") return -1;
+  // See open(): the child inherits the disabled state and reaches execl().
+  CancellationGuard cancel_lock;
 
   pid_t pid = fork();
 
