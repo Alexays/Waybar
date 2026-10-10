@@ -1,7 +1,10 @@
 #pragma once
 
+#include <algorithm>
 #include <iostream>
 #include <string>
+#include <string_view>
+#include <vector>
 
 const std::string WHITESPACE = " \n\r\t\f\v";
 
@@ -29,6 +32,24 @@ inline std::string toLower(const std::string& str) {
   std::transform(result.begin(), result.end(), result.begin(),
                  [](unsigned char c) { return std::tolower(c); });
   return result;
+}
+
+// Finds the last occurrence of `c` that is not nested inside parentheses,
+// scanning from the end. Unbalanced brackets are tolerated: a stray '(' never
+// pushes the depth below zero, and a stray ')' only shields what precedes it.
+// Returns std::string::npos when there is no such occurrence.
+inline size_t rfindOutsideParens(std::string_view s, char c) {
+  int depth = 0;
+  for (size_t i = s.size(); i-- > 0;) {
+    if (s[i] == ')') {
+      ++depth;
+    } else if (s[i] == '(') {
+      if (depth > 0) --depth;
+    } else if (s[i] == c && depth == 0) {
+      return i;
+    }
+  }
+  return std::string::npos;
 }
 
 inline std::vector<std::string> split(std::string_view s, std::string_view delimiter,
