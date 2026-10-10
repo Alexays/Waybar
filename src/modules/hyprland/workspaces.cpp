@@ -668,6 +668,7 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
 
   m_persistentWorkspaceConfig = config.get("persistent-workspaces", Json::Value());
   populateSortByConfig(config);
+  populateActiveByConfig(config);
   populateIgnoreWorkspacesConfig(config);
   populateFormatWindowSeparatorConfig(config);
 
@@ -718,6 +719,20 @@ auto Workspaces::populateSortByConfig(const Json::Value& config) -> void {
       m_sortBy = SortMethod::DEFAULT;
       spdlog::warn(
           "Invalid string representation for sort-by. Falling back to default sort method.");
+    }
+  }
+}
+
+auto Workspaces::populateActiveByConfig(const Json::Value& config) -> void {
+  const auto& configActiveBy = config["active-by"];
+  if (configActiveBy.isString()) {
+    auto activeByStr = configActiveBy.asString();
+    try {
+      m_activeBy = waybar::util::parseStringToEnum<ActiveMethod>(activeByStr, m_activeMap);
+    } catch (const std::invalid_argument& e) {
+      m_activeBy = ActiveMethod::DEFAULT;
+      spdlog::warn(
+          "Invalid string representation for active-by. Falling back to default active method.");
     }
   }
 }
@@ -1134,12 +1149,18 @@ void Workspaces::updateWorkspaceStates() {
       currentWorkspace.isMember("name") ? currentWorkspace["name"].asString() : "";
 
   for (auto& workspace : m_workspaces) {
+    bool isActiveById = workspace->id() == m_activeWorkspaceId;
     bool isActiveByName =
-        !currentWorkspaceName.empty() && workspace->name() == currentWorkspaceName;
+        !currentWorkspaceName.empty() &&
+        workspace->name() == currentWorkspaceName;
 
-    workspace->setActive(
-        workspace->id() == m_activeWorkspaceId || isActiveByName ||
-        (workspace->isSpecial() && workspace->name() == m_activeSpecialWorkspaceName));
+    bool isActive =
+        (m_activeBy == ActiveMethod::ID && isActiveById) ||
+        (m_activeBy == ActiveMethod::NAME && isActiveByName) ||
+        (m_activeBy == ActiveMethod::DEFAULT && (isActiveById || isActiveByName)) ||
+        (workspace->isSpecial() && workspace->name() == m_activeSpecialWorkspaceName);
+
+    workspace->setActive(isActive);
     if (workspace->isActive() && workspace->isUrgent()) {
       workspace->setUrgent(false);
     }
