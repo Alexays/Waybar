@@ -10,8 +10,9 @@ RUN dnf install -y @c-development \
     'pkgconfig(fmt)' \
     'pkgconfig(gdk-pixbuf-2.0)' \
     'pkgconfig(gio-unix-2.0)' \
-    'pkgconfig(gtk-layer-shell-0)' \
-    'pkgconfig(gtkmm-3.0)' \
+    'pkgconfig(gtk4-layer-shell-0)' \
+    'pkgconfig(gtkmm-4.0)' \
+    'pkgconfig(glibmm2.4-devel)' \
     'pkgconfig(jack)' \
     'pkgconfig(jsoncpp)' \
     'pkgconfig(libevdev)' \
@@ -30,5 +31,7 @@ RUN dnf install -y @c-development \
     'pkgconfig(wayland-cursor)' \
     'pkgconfig(wayland-protocols)' \
     'pkgconfig(wireplumber-0.5)' \
-    'pkgconfig(xkbregistry)' && \
+    'pkgconfig(xkbregistry)' \
+    'pkgconfig(iniparser-devel)' && \
+    'pkgconfig(fftw-devel)' && \
     dnf clean all -y

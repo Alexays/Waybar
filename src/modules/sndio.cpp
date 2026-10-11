@@ -51,7 +51,7 @@ Sndio::Sndio(const std::string& id, const Json::Value& config)
       muted_(false) {
   connect_to_sndio();
 
-  getWidget().show();
+  w_->show();
 
   thread_ = [this] {
     dp.emit();
@@ -148,7 +148,7 @@ bool Sndio::handleScroll(double dx, double dy) {
   // only try to talk to sndio if connected
   if (hdl_ == nullptr) return true;
 
-  auto dir = AModule::getScrollDir(controllScroll_->get_current_event());
+  auto dir = AModule::getScrollDir(controller_scroll_->get_current_event());
   if (dir == SCROLL_DIR::NONE) {
     return true;
   }
@@ -178,10 +178,10 @@ bool Sndio::handleScroll(double dx, double dy) {
   return true;
 }
 
-void Sndio::handleToggle(int n_press, double x, double y) {
+void Sndio::handlePress(int n_press, double x, double y) {
   // toggle mute only when no user provided events are configured
   if (config_["on-click"].isString()) {
-    return AModule::handleToggle(n_press, x, y);
+    return AModule::handlePress(n_press, x, y);
   }
 
   // only try to talk to sndio if connected

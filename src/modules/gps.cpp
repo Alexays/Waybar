@@ -136,12 +136,12 @@ auto Gps::doUpdate() -> void {
 
   if ((gps_data_.fix.mode == MODE_NOT_SEEN && hideDisconnected) ||
       (gps_data_.fix.mode == MODE_NO_FIX && hideNoFix)) {
-    getWidget().set_visible(false);
+    w_->set_visible(false);
     return;
   }
 
   // Show the module
-  if (!getWidget().get_visible()) getWidget().set_visible(true);
+  if (!w_->get_visible()) w_->set_visible(true);
 
   std::string tooltip_state;
 

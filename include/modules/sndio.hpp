@@ -19,7 +19,7 @@ class Sndio final : public ALabel {
 
  private:
   bool handleScroll(double dx, double dy) override;
-  void handleToggle(int n_press, double x, double y) override;
+  void handlePress(int n_press, double x, double y) override;
 
   auto connect_to_sndio() -> void;
   util::SleeperThread thread_;

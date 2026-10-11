@@ -100,7 +100,8 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
   });
 
   bindEvents(box_);
-  controller_scroll_->set_propagation_phase(Gtk::PropagationPhase::BUBBLE);
+  if (controller_scroll_)
+    controller_scroll_->set_propagation_phase(Gtk::PropagationPhase::BUBBLE);
 }
 
 void Workspaces::onEvent(const struct Ipc::ipc_response& res) {
