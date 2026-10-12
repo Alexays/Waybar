@@ -65,6 +65,9 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
   if (config["show-passive-items"].isBool()) {
     show_passive_ = config["show-passive-items"].asBool();
   }
+  if (config["tooltip"].isBool()) {
+    show_tooltip_ = config["tooltip"].asBool();
+  }
 
   auto& window = const_cast<Bar&>(bar).window;
   window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Item::onConfigure));
@@ -93,7 +96,13 @@ Item::~Item() {
   }
   if (this->dbus_menu != nullptr) {
     g_object_weak_unref(G_OBJECT(this->dbus_menu), (GWeakNotify)onMenuDestroyed, this);
+    // makeMenu() holds a reference (g_object_ref_sink), and a GtkMenu is a toplevel that GTK keeps
+    // in its window list. Without destroying it and dropping the reference, the menu and its whole
+    // dbusmenu tree outlive the item, e.g. for every tray item of a removed bar.
+    gtk_widget_destroy(GTK_WIDGET(this->dbus_menu));
+    g_object_unref(this->dbus_menu);
     this->dbus_menu = nullptr;
+    this->gtk_menu = nullptr;
   }
 }
 
@@ -199,7 +208,7 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
     } else if (name == "Title") {
       title = get_variant<std::string>(value);
       if (tooltip.text.empty()) {
-        event_box.set_tooltip_markup(title);
+        setTooltipMarkup(title);
       }
     } else if (name == "Status") {
       setStatus(get_variant<Glib::ustring>(value));
@@ -228,7 +237,7 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
     } else if (name == "ToolTip") {
       tooltip = get_variant<ToolTip>(value);
       if (!tooltip.text.empty()) {
-        event_box.set_tooltip_markup(tooltip.text);
+        setTooltipMarkup(tooltip.text);
       }
     } else if (name == "IconThemePath") {
       icon_theme_path = get_variant<std::string>(value);
@@ -237,6 +246,8 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       }
     } else if (name == "Menu") {
       menu = get_variant<std::string>(value);
+      // Create the menu as soon as the path is known: libdbusmenu fetches the layout
+      // asynchronously, and a menu popped up before that completes renders empty.
       makeMenu();
     } else if (name == "ItemIsMenu") {
       item_is_menu = get_variant<bool>(value);
@@ -265,6 +276,12 @@ void Item::setStatus(const Glib::ustring& value) {
   }
   style->add_class(css_class);
   on_updated_();
+}
+
+void Item::setTooltipMarkup(const Glib::ustring& markup) {
+  if (show_tooltip_) {
+    event_box.set_tooltip_markup(markup);
+  }
 }
 
 void Item::setReady() {
@@ -595,6 +612,14 @@ void Item::makeMenu() {
   event_box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
 }
 
+bool Item::hasMenuLayout() const {
+  if (dbus_menu == nullptr) {
+    return false;
+  }
+  DbusmenuGtkClient* client = dbusmenu_gtkmenu_get_client(dbus_menu);
+  return client != nullptr && dbusmenu_client_get_root(DBUSMENU_CLIENT(client)) != nullptr;
+}
+
 bool Item::handleClick(GdkEventButton* const& ev) {
   if (!proxy_) {
     return false;
@@ -604,7 +629,10 @@ bool Item::handleClick(GdkEventButton* const& ev) {
        Glib::Variant<int>::create(ev->y_root + bar_.y_global)});
   if ((ev->button == 1 && item_is_menu) || ev->button == 3) {
     makeMenu();
-    if (gtk_menu != nullptr) {
+    // Some items advertise a Menu path without serving com.canonical.dbusmenu (e.g. Steam), so
+    // the client never gets a layout root. Use the item's own ContextMenu for those instead of
+    // popping up an empty GTK menu.
+    if (gtk_menu != nullptr && hasMenuLayout()) {
 #if GTK_CHECK_VERSION(3, 22, 0)
       gtk_menu->popup_at_pointer(reinterpret_cast<GdkEvent*>(ev));
 #else

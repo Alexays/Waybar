@@ -17,7 +17,17 @@ cpp_link_args = []
 
 if get_option('libcxx')
     cpp_args += ['-stdlib=libc++']
-    cpp_link_args += ['-stdlib=libc++', '-lc++abi']
+    cpp_link_args += ['-stdlib=libc++']
+    # glibc's pthread_cancel dlopens libgcc_s.so.1 and forces the unwind through
+    # that unwinder, while libc++abi's personality routine resolves the _Unwind_*
+    # accessors through the global scope, where LLVM libunwind wins. The two read
+    # each other's unwind context as their own, so cancelling a thread
+    # (SleeperThread::stop) segfaults. Pull libgcc_s into DT_NEEDED ahead of
+    # libc++abi/libunwind so every _Unwind_* symbol resolves to one unwinder.
+    if compiler.has_link_argument('-lgcc_s')
+        cpp_link_args += ['-Wl,--push-state,--no-as-needed', '-lgcc_s', '-Wl,--pop-state']
+    endif
+    cpp_link_args += ['-lc++abi']
 endif
 
 if compiler.has_link_argument('-lc++fs')
@@ -349,6 +359,7 @@ if true
         'src/modules/hyprland/window.cpp',
         'src/modules/hyprland/windowcount.cpp',
         'src/modules/hyprland/workspace.cpp',
+        'src/modules/hyprland/workspace_identity.cpp',
         'src/modules/hyprland/workspaces.cpp',
         'src/modules/hyprland/windowcreationpayload.cpp',
     )
@@ -395,6 +406,10 @@ if get_option('mango')
     )
 endif
 
+if wayland_protos.version().version_compare('>=1.41')
+    # Bar-level blur-behind support (ext-background-effect-v1)
+    add_project_arguments('-DHAVE_BAR_BLUR', language: 'cpp')
+endif
 if true
     add_project_arguments('-DHAVE_WAYFIRE', language: 'cpp')
     src_files += files(
@@ -414,7 +429,7 @@ endif
 
 if libnl.found() and libnlgen.found()
     add_project_arguments('-DHAVE_LIBNL', language: 'cpp')
-    src_files += files('src/modules/network.cpp')
+    src_files += files('src/modules/network.cpp', 'src/util/netlink.cpp')
     man_files += files('man/waybar-network.5.scd')
 endif
 

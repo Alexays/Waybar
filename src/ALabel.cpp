@@ -84,6 +84,10 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
     label_.set_width_chars(config_["min-length"].asUInt());
   }
 
+  if (config_["fit-height"].isBool()) {
+    label_.setFitHeight(config_["fit-height"].asBool());
+  }
+
   uint rotate = 0;
 
   if (config_["rotate"].isUInt()) {
@@ -187,6 +191,19 @@ bool ALabel::setLabelMarkup(const Glib::ustring& markup) {
   return true;
 }
 
+bool ALabel::pointerOverModule() const {
+  auto gdk_window = event_box_.get_window();
+  if (!gdk_window || !event_box_.get_mapped()) {
+    return false;
+  }
+  int x = 0;
+  int y = 0;
+  Gdk::ModifierType mask;
+  gdk_window->get_device_position(gdk_window->get_display()->get_default_seat()->get_pointer(), x,
+                                  y, mask);
+  return x >= 0 && y >= 0 && x < gdk_window->get_width() && y < gdk_window->get_height();
+}
+
 bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
   if (last_tooltip_markup_ == markup.raw()) {
     return false;
@@ -194,7 +211,13 @@ bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
 
   last_tooltip_markup_ = markup.raw();
   if (active_tooltip_) {
-    active_tooltip_->set_markup(markup);
+    // leave-notify is not always delivered when the pointer moves between
+    // adjacent modules, so active_tooltip_ may belong to another module.
+    if (pointerOverModule()) {
+      active_tooltip_->set_markup(markup);
+    } else {
+      active_tooltip_.reset();
+    }
   }
   return true;
 }

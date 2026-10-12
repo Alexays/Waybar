@@ -25,6 +25,7 @@ class Portal : private Gio::DBus::Proxy {
   Appearance currentMode;
   void on_signal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
                  const Glib::VariantContainerBase& parameters);
+  void onAppearanceReceived(Glib::RefPtr<Gio::AsyncResult>& result);
 };
 
 }  // namespace waybar

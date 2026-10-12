@@ -46,7 +46,7 @@ class Bluetooth : public ALabel {
 
  public:
   Bluetooth(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
-  virtual ~Bluetooth() = default;
+  virtual ~Bluetooth();
   auto update() -> void override;
 
  private:
