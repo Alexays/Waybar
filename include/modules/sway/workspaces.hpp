@@ -3,10 +3,12 @@
 #include <fmt/format.h>
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
+#include <gtkmm/menu.h>
 
 #include <optional>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "AModule.hpp"
 #include "bar.hpp"
@@ -41,6 +43,10 @@ class Workspaces : public AModule, public sigc::trackable {
   void updateWindows(const Json::Value&, std::string&);
   Gtk::Button& addButton(const Json::Value&);
   void onButtonReady(const Json::Value&, Gtk::Button&);
+  void onBarSizeAllocate(Gtk::Allocation& /*allocation*/);
+  void updateOverflow();
+  void rebuildOverflowMenu();
+  void switchToWorkspace(const Json::Value&);
   std::string getIcon(const std::string&, const Json::Value&);
   std::string getCycleWorkspace(std::vector<Json::Value>::iterator, bool prev) const;
   uint16_t getWorkspaceIndex(const std::string& name) const;
@@ -53,12 +59,15 @@ class Workspaces : public AModule, public sigc::trackable {
   std::vector<std::string> high_priority_named_;
   std::vector<std::string> workspaces_order_;
   Gtk::Box box_;
+  Gtk::Button overflow_button_{"…"};
+  Gtk::Menu overflow_menu_;
   std::string m_formatWindowSeparator;
   std::vector<std::regex> m_ignoreWorkspaces;
   util::RegexCollection m_windowRewriteRules;
   util::JsonParser parser_;
   std::unordered_map<std::string, Gtk::Button> buttons_;
   std::unordered_map<std::string, uint16_t> custom_sort_priorities_;
+  std::unordered_set<std::string> overflowed_;
   std::mutex mutex_;
   Ipc ipc_;
 };
