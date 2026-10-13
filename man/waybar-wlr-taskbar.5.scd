@@ -101,6 +101,14 @@ Addressed by *wlr/taskbar*
 	typeof: string ++
 	The action which should be triggered when clicking on the application button with the right mouse button.
 
+*on-scroll-up*: ++
+	typeof: string ++
+	The action which should be triggered when scrolling up on the application button.
+
+*on-scroll-down*: ++
+	typeof: string ++
+	The action which should be triggered when scrolling down on the application button.
+
 *on-update*: ++
 	typeof: string ++
 	Command to execute when the module is updated.
@@ -145,6 +153,10 @@ value that must be escaped in XML.
 *activate*: Bring the application into foreground.
 
 *minimize*: Toggle application's minimized state.
+
+*minimize-only*: Minimize the application, one-way does not toggle.
+
+*unminimize*: Restore the application from its minimized state.
 
 *minimize-raise*: Bring the application into foreground or toggle its minimized state.
 
