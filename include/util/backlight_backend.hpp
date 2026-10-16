@@ -59,7 +59,8 @@ class BacklightBackend {
 
   void set_previous_best_device(const BacklightDevice* device);
 
-  void set_brightness(const std::string& preferred_device, ChangeType change_type, double step);
+  void set_brightness(const std::string& preferred_device, ChangeType change_type, double step,
+                      double minimum);
 
   void set_scaled_brightness(const std::string& preferred_device, int brightness);
   int get_scaled_brightness(const std::string& preferred_device);

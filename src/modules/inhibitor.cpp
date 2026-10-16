@@ -8,26 +8,46 @@ namespace {
 
 using DBus = std::unique_ptr<GDBusConnection, void (*)(GDBusConnection*)>;
 
-auto dbus() -> DBus {
-  GError* error = nullptr;
-  GDBusConnection* connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
-
-  if (error) {
-    spdlog::error("g_bus_get_sync() failed: {}", error->message);
-    g_error_free(error);
-    connection = nullptr;
-  }
-
-  auto destructor = [](GDBusConnection* connection) {
+auto destroyDBus(GDBusConnection* connection) -> void {
+  if (!g_dbus_connection_is_closed(connection)) {
     GError* error = nullptr;
     g_dbus_connection_close_sync(connection, nullptr, &error);
     if (error) {
       spdlog::error("g_bus_connection_close_sync failed(): {}", error->message);
       g_error_free(error);
     }
-  };
+  }
+  g_object_unref(connection);
+}
 
-  return DBus{connection, destructor};
+// A connection of our own rather than the shared one from g_bus_get_sync(): the
+// destructor below closes it, and closing the shared connection would close it
+// for the whole process, with g_bus_get_sync() handing the same closed
+// connection back to every later caller.
+auto dbus() -> DBus {
+  GError* error = nullptr;
+  gchar* address = g_dbus_address_get_for_bus_sync(G_BUS_TYPE_SYSTEM, nullptr, &error);
+
+  if (error) {
+    spdlog::error("g_dbus_address_get_for_bus_sync() failed: {}", error->message);
+    g_error_free(error);
+    return DBus{nullptr, destroyDBus};
+  }
+
+  GDBusConnection* connection = g_dbus_connection_new_for_address_sync(
+      address,
+      static_cast<GDBusConnectionFlags>(G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT |
+                                        G_DBUS_CONNECTION_FLAGS_MESSAGE_BUS_CONNECTION),
+      nullptr, nullptr, &error);
+  g_free(address);
+
+  if (error) {
+    spdlog::error("g_dbus_connection_new_for_address_sync() failed: {}", error->message);
+    g_error_free(error);
+    connection = nullptr;
+  }
+
+  return DBus{connection, destroyDBus};
 }
 
 auto getLocks(const DBus& bus, const std::string& inhibitors) -> int {
@@ -135,7 +155,10 @@ auto Inhibitor::handleToggle(GdkEventButton* const& e) -> bool {
       ::close(handle_);
       handle_ = -1;
     } else {
-      handle_ = ::getLocks(dbus_, inhibitors_);
+      if (dbus_ == nullptr || g_dbus_connection_is_closed(dbus_.get())) {
+        dbus_ = ::dbus();
+      }
+      handle_ = dbus_ == nullptr ? -1 : ::getLocks(dbus_, inhibitors_);
       if (handle_ == -1) {
         spdlog::error("cannot get inhibitor locks");
       }

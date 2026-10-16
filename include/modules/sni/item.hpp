@@ -3,6 +3,7 @@
 #include <dbus-status-notifier-item.h>
 #include <giomm/dbusproxy.h>
 #include <glibmm/refptr.h>
+#include <glibmm/ustring.h>
 #include <gtkmm/eventbox.h>
 #include <gtkmm/icontheme.h>
 #include <gtkmm/image.h>
@@ -75,6 +76,7 @@ class Item : public sigc::trackable {
   void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
   void setProperty(const Glib::ustring& name, Glib::VariantBase& value);
   void setStatus(const Glib::ustring& value);
+  void setTooltipMarkup(const Glib::ustring& markup);
   void setReady();
   void invalidate();
   void setCustomIcon(const std::string& id);
@@ -94,9 +96,8 @@ class Item : public sigc::trackable {
   Glib::RefPtr<Gdk::Pixbuf> getIconByName(const std::string& name, int size);
   double getScaledIconSize();
   static void onMenuDestroyed(Item* self, GObject* old_menu_pointer);
-  void validateMenu();
-  void menuProbeReady(Glib::RefPtr<Gio::AsyncResult>& result, const std::string& menu_path);
   void makeMenu();
+  bool hasMenuLayout() const;
   bool handleClick(GdkEventButton* const& /*ev*/);
   bool handleScroll(GdkEventScroll* const&);
   bool handleMouseEnter(GdkEventCrossing* const&);
@@ -108,6 +109,7 @@ class Item : public sigc::trackable {
   gdouble distance_scrolled_y_ = 0;
   // visibility of items with Status == Passive
   bool show_passive_ = false;
+  bool show_tooltip_ = true;
   // hidden via config
   bool is_hidden_ = false;
   bool ready_ = false;
@@ -120,7 +122,6 @@ class Item : public sigc::trackable {
 
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
   Glib::RefPtr<Gio::Cancellable> cancellable_;
-  bool has_dbus_menu_ = false;
   std::set<std::string_view> update_pending_;
 
   Host& host_;

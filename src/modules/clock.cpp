@@ -2,21 +2,17 @@
 
 #include <glib.h>
 #include <gtkmm/tooltip.h>
+#include <langinfo.h>
 #include <spdlog/spdlog.h>
 
 #include <chrono>
+#include <clocale>
 #include <iomanip>
 #include <regex>
 #include <sstream>
 
 #include "util/command.hpp"
 #include "util/ustring_clen.hpp"
-
-#ifdef HAVE_LANGINFO_1STDAY
-#include <langinfo.h>
-
-#include <clocale>
-#endif
 
 using namespace date;
 namespace fmt_lib = waybar::util::date::format;
@@ -337,6 +333,26 @@ auto cldGetWeekForLine(const year_month& ym, const weekday& firstdow, const unsi
   return ym / indexed_first_day_of_week;
 }
 
+template <auto fn>
+using deleter_from_fn = std::integral_constant<decltype(fn), fn>;
+
+template <typename T, auto fn>
+using deleting_unique_ptr = std::unique_ptr<T, deleter_from_fn<fn>>;
+
+// Month name in the form used when the month is named by itself (strftime's %OB). In many Slavic
+// and Baltic locales %B yields the genitive instead. The chrono formatters have no %OB equivalent.
+auto getStandaloneMonthName(const std::locale& locale, const month& m) -> std::string {
+#ifdef ALTMON_1
+  deleting_unique_ptr<std::remove_pointer<locale_t>::type, freelocale> posix_locale{
+      newlocale(LC_TIME_MASK, locale.name().c_str(), nullptr)};
+  if (posix_locale) {
+    const char* name{nl_langinfo_l(ALTMON_1 + static_cast<unsigned>(m) - 1, posix_locale.get())};
+    if (name != nullptr && *name != '\0') return name;
+  }
+#endif
+  return date::format(locale, "{:L%B}", m);
+}
+
 auto getCalendarLine(const year_month_day& currDate, const year_month ym, const unsigned line,
                      const weekday& firstdow, const std::locale* const m_locale_) -> std::string {
   std::ostringstream os;
@@ -344,7 +360,8 @@ auto getCalendarLine(const year_month_day& currDate, const year_month ym, const 
   switch (line) {
     // Print month and year title
     case 0: {
-      os << date::format(*m_locale_, "{:L%B %Y}", ym);
+      os << getStandaloneMonthName(*m_locale_, ym.month()) << ' '
+         << date::format(*m_locale_, "{:L%Y}", ym);
       break;
     }
     // Print weekday names title
@@ -616,14 +633,6 @@ void waybar::modules::Clock::action_exec(const std::string& action) {
   }
   pid_children_.push_back(util::command::forkExec(action.substr(pos + 1)));
 }
-
-#ifdef HAVE_LANGINFO_1STDAY
-template <auto fn>
-using deleter_from_fn = std::integral_constant<decltype(fn), fn>;
-
-template <typename T, auto fn>
-using deleting_unique_ptr = std::unique_ptr<T, deleter_from_fn<fn>>;
-#endif
 
 // Computations done similarly to Linux cal utility.
 auto waybar::modules::Clock::first_day_of_week() -> weekday {

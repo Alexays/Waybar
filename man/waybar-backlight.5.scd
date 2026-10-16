@@ -91,11 +91,19 @@ The *backlight* module displays the current backlight level.
 	typeof: float ++
 	default: 1.0 ++
 	The speed at which to change the brightness when scrolling.
+	Expressed in percentage points of the device's maximum brightness. Positive
+	steps are rounded to the nearest device unit (half units round up), with a
+	minimum of one unit and a maximum of the full brightness range. Zero,
+	negative, or non-finite steps disable scroll adjustment.
 
 *min-brightness*: ++
 	typeof: double ++
 	default: 0.0 ++
-	The minimum brightness of the backlight.
+	The minimum brightness when scrolling down, as a percentage of the device's
+	maximum brightness. Values are clamped to [0, 100]. The lower limit is the
+	smallest device value whose percentage is at least the configured minimum.
+	Scrolling down leaves a brightness already below this limit unchanged.
+	Non-finite values disable scroll adjustment.
 
 *tooltip*: ++
 	typeof: bool ++

@@ -8,6 +8,7 @@
 #include <optional>
 #include <utility>
 
+#include "util/backlight_brightness.hpp"
 #include "util/udev_deleter.hpp"
 
 namespace {
@@ -183,6 +184,11 @@ BacklightBackend::BacklightBackend(std::chrono::milliseconds interval,
 #endif
 
   udev_thread_ = [this] {
+    // SleeperThread::stop() cancels this thread. Let the cancel act only while it blocks in
+    // epoll_wait() below: anywhere else it can land in a destructor on the way out (close() in
+    // ~FileDescriptor, udev_monitor_unref()/udev_unref()), and unwinding out of a noexcept
+    // destructor calls std::terminate.
+    CancellationGuard cancel_lock;
     std::unique_ptr<udev, UdevDeleter> udev{udev_new()};
     check_nn(udev.get(), "Udev new failed");
 
@@ -210,8 +216,10 @@ BacklightBackend::BacklightBackend(std::chrono::milliseconds interval,
     epoll_event events[EPOLL_MAX_EVENTS];
 
     while (udev_thread_.isRunning()) {
+      pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, nullptr);
       const int event_count =
           epoll_wait(epoll_fd.get(), events, EPOLL_MAX_EVENTS, this->polling_interval_.count());
+      pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, nullptr);
       if (!udev_thread_.isRunning()) {
         break;
       }
@@ -307,17 +315,15 @@ void BacklightBackend::set_scaled_brightness(const std::string& preferred_device
 }
 
 void BacklightBackend::set_brightness(const std::string& preferred_device, ChangeType change_type,
-                                      double step) {
+                                      double step, double minimum) {
   GET_BEST_DEVICE(best, (*this), preferred_device);
 
   if (best != nullptr) {
-    const auto max = best->get_max();
-
-    const auto abs_step = static_cast<int>(round(step * max / 100.0F));
-
-    const int new_brightness = change_type == ChangeType::Increase ? best->get_actual() + abs_step
-                                                                   : best->get_actual() - abs_step;
-    set_brightness_internal(best->name(), new_brightness, max, best->subsystem());
+    scroll_brightness(best->get_actual(), best->get_max(), change_type == ChangeType::Increase,
+                      step, minimum, [&](int target) {
+                        set_brightness_internal(best->name(), target, best->get_max(),
+                                                best->subsystem());
+                      });
   }
 }
 

@@ -18,6 +18,24 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
     on_click_middle_ = config_["on-click-middle"].asString();
   if (config_["on-click-right"].isString()) on_click_right_ = config_["on-click-right"].asString();
 
+  const auto& tag_filter_cfg = config_["tag-filter"];
+  if (tag_filter_cfg.isArray()) {
+    for (const auto& tag : tag_filter_cfg) {
+      if (tag.isUInt64()) {
+        tag_filter_.insert(tag.asUInt64());
+      }
+    }
+  } else if (tag_filter_cfg.isObject()) {
+    const auto& output_name = bar_.output->name;
+    if (tag_filter_cfg.isMember(output_name) && tag_filter_cfg[output_name].isArray()) {
+      for (const auto& tag : tag_filter_cfg[output_name]) {
+        if (tag.isUInt64()) {
+          tag_filter_.insert(tag.asUInt64());
+        }
+      }
+    }
+  }
+
   overview_button_ = new Gtk::Button("OVERVIEW");
   overview_button_->set_relief(Gtk::RELIEF_NONE);
   box_.pack_start(*overview_button_, false, false, 0);
@@ -44,6 +62,10 @@ Workspaces::~Workspaces() {
     box_.remove(btn);
   }
   buttons_.clear();
+}
+
+bool Workspaces::isTagVisible(uint64_t idx) const {
+  return tag_filter_.empty() || tag_filter_.contains(idx);
 }
 
 void Workspaces::onEvent(const Json::Value& ev) { dp.emit(); }
@@ -90,11 +112,12 @@ void Workspaces::doUpdate() {
 
     for (auto btn_it = buttons_.begin(); btn_it != buttons_.end();) {
       uint64_t id = btn_it->first;
+
       bool found = std::any_of(tags.begin(), tags.end(), [id](const Json::Value& tag) {
         return tag["index"].asUInt64() == id;
       });
 
-      if (!found) {
+      if (!isTagVisible(id) || !found) {
         box_.remove(btn_it->second);
         btn_it = buttons_.erase(btn_it);
       } else {
@@ -104,14 +127,29 @@ void Workspaces::doUpdate() {
 
     for (const auto& tag : tags) {
       uint64_t idx = tag["index"].asUInt64();
+
+      if (!isTagVisible(idx)) {
+        continue;
+      }
+
       auto btn_it = buttons_.find(idx);
       Gtk::Button& button = (btn_it == buttons_.end()) ? addButton(idx) : btn_it->second;
       updateButtonState(button, tag, monitor);
     }
 
     std::vector<uint64_t> indices;
-    for (const auto& tag : tags) indices.push_back(tag["index"].asUInt64());
+    for (const auto& tag : tags) {
+      uint64_t idx = tag["index"].asUInt64();
+
+      if (!isTagVisible(idx)) {
+        continue;
+      }
+
+      indices.push_back(idx);
+    }
+
     std::sort(indices.begin(), indices.end());
+
     int pos = 0;
     for (uint64_t idx : indices) {
       box_.reorder_child(buttons_[idx], pos + 1);
