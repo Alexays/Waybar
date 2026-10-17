@@ -48,7 +48,20 @@ void Window::doUpdate() {
       config_["rewrite"]));
 
   updateAppIconName(appid, "");
-  if (tooltipEnabled()) label_.set_tooltip_markup(title);
+
+  if (tooltipEnabled()) {
+    std::string tooltip_format;
+    if (config_["tooltip-format"].isString()) {
+      tooltip_format = config_["tooltip-format"].asString();
+    }
+    if (!tooltip_format.empty()) {
+      setTooltipMarkup(fmt::format(fmt::runtime(tooltip_format), fmt::arg("title", title),
+                                   fmt::arg("app_id", appid)));
+    } else {
+      // setTooltipMarkup(label_text);
+      label_.set_tooltip_markup(title);
+    }
+  }
 
   // Solo judgment
   bool solo = false;

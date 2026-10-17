@@ -40,6 +40,11 @@ Addressed by *mango/window*
 	typeof: integer ++
 	The maximum length in character the module should display.
 
+*tooltip-format*: ++
+	typeof: string ++
+	The format of the tooltip shown on hover. Supports the same replacements as *format*. Requires *tooltip* to be enabled. When unset, the tooltip falls back to the window title text. ++
+	default: (the formatted label text)
+
 # FORMAT REPLACEMENTS
 
 *{title}*: The current window title.
