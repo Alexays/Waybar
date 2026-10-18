@@ -461,10 +461,10 @@ Gtk::Button& Workspaces::addButton(const Json::Value& node) {
   if (!config_["disable-click"].asBool()) {
     button.signal_pressed().connect([this, node] {
       try {
-        if (node["target_output"].isString()) {
+        if (node["output"].isString()) {
           ipc_.sendCmd(IPC_COMMAND,
                        fmt::format(persistent_workspace_switch_cmd_, "--no-auto-back-and-forth",
-                                   node["name"].asString(), node["target_output"].asString(),
+                                   node["name"].asString(), node["output"].asString(),
                                    "--no-auto-back-and-forth", node["name"].asString()));
         } else {
           std::string flag =
