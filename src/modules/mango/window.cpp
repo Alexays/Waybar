@@ -2,10 +2,42 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+#include <cctype>
+
 #include "util/rewrite_string.hpp"
 #include "util/sanitize_str.hpp"
 
 namespace waybar::modules::mango {
+
+namespace {
+
+// Procura o ícone para um app_id no objeto "icons" da config.
+// Ordem: match exato -> match em minúsculas -> chave "default" -> "".
+std::string lookupIcon(const Json::Value& config, const std::string& appid) {
+  const Json::Value& icons = config["icons"];
+  if (!icons.isObject()) return "";
+
+  if (!appid.empty()) {
+    if (icons.isMember(appid) && icons[appid].isString()) {
+      return icons[appid].asString();
+    }
+
+    std::string lower = appid;
+    std::transform(lower.begin(), lower.end(), lower.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    if (icons.isMember(lower) && icons[lower].isString()) {
+      return icons[lower].asString();
+    }
+  }
+
+  if (icons.isMember("default") && icons["default"].isString()) {
+    return icons["default"].asString();
+  }
+  return "";
+}
+
+}  // namespace
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     : AAppIconLabel(config, "window", id, "{title}", 0, true), bar_(bar) {
@@ -41,11 +73,14 @@ void Window::doUpdate() {
   std::string appid = client["appid"].asString();
   std::string sanitized_title = waybar::util::sanitize_string(title);
   std::string sanitized_appid = waybar::util::sanitize_string(appid);
+  std::string icon = lookupIcon(config_, appid);
 
-  label_.set_markup(waybar::util::rewriteString(
+  std::string label_text = waybar::util::rewriteString(
       fmt::format(fmt::runtime(format_), fmt::arg("title", sanitized_title),
-                  fmt::arg("app_id", sanitized_appid)),
-      config_["rewrite"]));
+                  fmt::arg("app_id", sanitized_appid), fmt::arg("icon", icon)),
+      config_["rewrite"]);
+
+  label_.set_markup(label_text);
 
   updateAppIconName(appid, "");
 
@@ -56,10 +91,10 @@ void Window::doUpdate() {
     }
     if (!tooltip_format.empty()) {
       setTooltipMarkup(fmt::format(fmt::runtime(tooltip_format), fmt::arg("title", title),
-                                   fmt::arg("app_id", appid)));
+                                   fmt::arg("app_id", appid), fmt::arg("icon", icon)));
     } else {
-      // setTooltipMarkup(label_text);
-      label_.set_tooltip_markup(title);
+      // sem tooltip-format: usa o mesmo texto exibido no label
+      label_.set_tooltip_markup(label_text);
     }
   }
 
