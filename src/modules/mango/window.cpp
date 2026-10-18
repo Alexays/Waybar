@@ -12,8 +12,8 @@ namespace waybar::modules::mango {
 
 namespace {
 
-// Procura o ícone para um app_id no objeto "icons" da config.
-// Ordem: match exato -> match em minúsculas -> chave "default" -> "".
+// Looks up the icon for an app_id in the "icons" object of the config.
+// Order: exact match -> lowercase match -> "default" key -> "".
 std::string lookupIcon(const Json::Value& config, const std::string& appid) {
   const Json::Value& icons = config["icons"];
   if (!icons.isObject()) return "";
