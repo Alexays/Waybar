@@ -93,7 +93,7 @@ void Window::doUpdate() {
       setTooltipMarkup(fmt::format(fmt::runtime(tooltip_format), fmt::arg("title", title),
                                    fmt::arg("app_id", appid), fmt::arg("icon", icon)));
     } else {
-      // sem tooltip-format: usa o mesmo texto exibido no label
+      // without tooltip-format: use same text as label
       label_.set_tooltip_markup(label_text);
     }
   }
