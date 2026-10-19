@@ -35,6 +35,7 @@ class Wireplumber : public ALabel {
   static void onObjectManagerInstalled(waybar::modules::Wireplumber* self);
   static void onMixerChanged(waybar::modules::Wireplumber* self, uint32_t id);
   static void onDefaultNodesApiChanged(waybar::modules::Wireplumber* self);
+  static void onObjectAdded(waybar::modules::Wireplumber* self, WpObject* object);
 
   bool handleScroll(GdkEventScroll* e) override;
   std::vector<std::string> getWPIcon();
