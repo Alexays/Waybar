@@ -58,6 +58,7 @@ if wayland_protos.version().version_compare('>=1.41')
 #and events reference zcosmic_workspace_handle_v1_interface even though waybar
 #never constructs one, so this must be linked in too.
         ['cosmic-workspace-unstable-v1.xml'],
+        [wl_protocol_dir, 'staging/ext-background-effect/ext-background-effect-v1.xml'],
     ]
 endif
 

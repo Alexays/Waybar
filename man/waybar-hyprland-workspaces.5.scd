@@ -192,9 +192,9 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	default: "default" ++
 	If set to number, workspaces will sort by number.
 	If set to name, workspaces will sort by name.
-	If set to id, workspaces will sort by id.
+	If set to id, workspaces will sort numerically; workspaces that have no number are grouped after them as numbered, then named, then special.
 	If set to special-centered, workspaces will sort by default with special workspaces in the center.
-	If none of those, workspaces will sort with default behavior.
+	If none of those, workspaces will sort with default behavior: grouped as numbered, then named, then special, and within a group by number where there is one and by name otherwise.
 
 *tooltip*: ++
 	typeof: bool ++
@@ -212,7 +212,7 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 
 # FORMAT REPLACEMENTS
 
-*{id}*: id of workspace assigned by compositor
+*{id}*: Address of the workspace as reported by the compositor. For a numbered workspace this is its number; for named and special workspaces it is the address string (for example *special:magic*), where older Hyprland releases reported a negative id.
 
 *{name}*: workspace name assigned by compositor
 

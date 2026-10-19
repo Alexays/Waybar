@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fmt/format.h>
+#include <sigc++/trackable.h>
 
 #include "ALabel.hpp"
 #include "giomm/dbusproxy.h"
@@ -23,7 +24,7 @@ struct Profile {
         platformDriver(std::move(pd)) {}
 };
 
-class PowerProfilesDaemon : public ALabel {
+class PowerProfilesDaemon : public ALabel, public sigc::trackable {
  public:
   PowerProfilesDaemon(const std::string&, const Json::Value&);
   auto update() -> void override;
