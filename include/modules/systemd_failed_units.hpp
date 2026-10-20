@@ -41,6 +41,7 @@ class SystemdFailedUnits : public ALabel {
 
   void notify_cb(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
                  const Glib::VariantContainerBase& arguments);
+  void SubscribeManager(const char* kind, const Glib::RefPtr<Gio::DBus::Proxy>& proxy);
   void RequestFailedUnits();
   void RequestFailedUnitsList();
   void RequestSystemState();
