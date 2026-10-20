@@ -21,7 +21,7 @@ class ALabel : public AModule {
   ALabel(const Json::Value&, const std::string&, const std::string&, const std::string& format,
          uint16_t interval = 0, bool ellipsize = false, bool enable_click = false,
          bool enable_scroll = false);
-  virtual ~ALabel() = default;
+  virtual ~ALabel() { tooltip_requery_.disconnect(); }
   auto update() -> void override;
   virtual std::string getIcon(uint16_t, const std::string& alt = "", uint16_t max = 0);
   virtual std::string getIcon(uint16_t, const std::vector<std::string>& alts, uint16_t max = 0);
@@ -97,6 +97,7 @@ class ALabel : public AModule {
   std::optional<std::string> last_label_markup_;
   std::optional<std::string> last_tooltip_markup_;
   Glib::RefPtr<Gtk::Tooltip> active_tooltip_;
+  sigc::connection tooltip_requery_;
 };
 
 }  // namespace waybar
