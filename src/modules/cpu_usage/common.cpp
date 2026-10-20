@@ -9,8 +9,9 @@
 #include <fmt/core.h>
 #endif
 
-waybar::modules::CpuUsage::CpuUsage(const std::string& id, const Json::Value& config)
-    : ALabel(config, "cpu_usage", id, "{usage}%", 10) {
+waybar::modules::CpuUsage::CpuUsage(const std::string& id, const Json::Value& config,
+                                    std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "cpu_usage", id, "{usage}%", reap_mtx, reap, 10) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);

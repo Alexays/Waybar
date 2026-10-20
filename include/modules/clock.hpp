@@ -16,7 +16,7 @@ enum class WeekNumbering { LOCALE, ISO, MONDAY, SUNDAY };
 
 class Clock final : public ALabel {
  public:
-  Clock(const std::string&, const Json::Value&);
+  Clock(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~Clock() = default;
   auto update() -> void override;
   auto doAction(const std::string&) -> void override;

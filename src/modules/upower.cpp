@@ -6,8 +6,10 @@
 
 namespace waybar::modules {
 
-UPower::UPower(const std::string& id, const Json::Value& config)
-    : AIconLabel(config, "upower", id, "{percentage}", 0, true, true, true), sleeping_{false} {
+UPower::UPower(const std::string& id, const Json::Value& config, std::mutex& reap_mtx,
+               std::list<pid_t>& reap)
+    : AIconLabel(config, "upower", id, "{percentage}", reap_mtx, reap, 0, true, true, true),
+      sleeping_{false} {
   box_.set_name(name_);
   box_.set_spacing(0);
   // Tooltip box

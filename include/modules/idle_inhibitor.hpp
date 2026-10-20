@@ -16,7 +16,8 @@ class IdleInhibitor : public ALabel {
   uint32_t idle_timeout_ms_;
 
  public:
-  IdleInhibitor(const std::string&, const waybar::Bar&, const Json::Value&);
+  IdleInhibitor(const std::string&, const waybar::Bar&, const Json::Value&, std::mutex&,
+                std::list<pid_t>&);
   virtual ~IdleInhibitor();
   auto update() -> void override;
   auto refresh(int) -> void override;

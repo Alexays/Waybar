@@ -14,8 +14,9 @@
 
 namespace waybar::modules::hyprland {
 
-Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value& config)
-    : AModule(config, "workspaces", id, false, false),
+Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value& config,
+                       std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : AModule(config, "workspaces", id, reap_mtx, reap, false, false),
       m_bar(bar),
       m_box(bar.orientation, 0),
       m_ipc(IPC::inst()) {
