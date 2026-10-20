@@ -18,6 +18,30 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
     spdlog::warn("There is no configuration for 'custom/{}', element will be hidden", name);
   }
 
+  if (config_["image-path"].isString()) {
+    image_path_ = config_["image-path"].asString();
+  }
+  if (config_["image-name"].isString()) {
+    image_name_ = config_["image-name"].asString();
+  }
+
+  // Without a configured image the module renders as in 0.15.0, where it was a
+  // plain ALabel: the label carries the #custom-<name> widget name, the id and
+  // MODULE_CLASS, so selectors such as `label.module` keep matching. AIconLabel
+  // moved them onto box_; move them back so they live on exactly one widget.
+  if (image_path_.empty() && image_name_.empty() &&
+      !(config_["icon"].isBool() && config_["icon"].asBool())) {
+    box_.unset_name();
+    box_.get_style_context()->remove_class(MODULE_CLASS);
+    label_.set_name("custom-" + name);
+    label_.get_style_context()->add_class(MODULE_CLASS);
+    if (!id.empty()) {
+      box_.get_style_context()->remove_class(id);
+      label_.get_style_context()->add_class(id);
+    }
+    module_widget_ = &label_;
+  }
+
   if (!config_["signal"].empty() && config_["interval"].empty() &&
       config_["restart-interval"].empty()) {
     waitingWorker();
@@ -25,12 +49,6 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
     delayWorker();
   } else if (config_["exec"].isString()) {
     continuousWorker();
-  }
-  if (config_["image-path"].isString()) {
-    image_path_ = config_["image-path"].asString();
-  }
-  if (config_["image-name"].isString()) {
-    image_name_ = config_["image-name"].asString();
   }
   if (config["icon-size"].isUInt()) {
     app_icon_size_ = config["icon-size"].asUInt();
@@ -229,23 +247,23 @@ auto waybar::modules::Custom::update() -> void {
           setTooltipMarkup(tooltip_markup);
         }
         auto style = label_.get_style_context();
-        auto classes = style->list_classes();
-        for (auto const& c : classes) {
-          if (c == id_) continue;
-          style->remove_class(c);
+        if (module_widget_ != &label_) {
+          for (auto const& c : style->list_classes()) {
+            if (c == id_) continue;
+            style->remove_class(c);
+          }
         }
-        // Module-level classes belong on box_, which carries the #custom-<name>
-        // widget name and MODULE_CLASS (see AIconLabel). Adding them to label_
-        // as well makes box_ and label_ both match a .<class> selector, so any
-        // background, border or padding is applied twice, inset by the box's
-        // padding.
-        auto box_style = box_.get_style_context();
-        for (auto const& c : box_style->list_classes()) {
+        // Module-level classes belong only on the widget that carries the
+        // #custom-<name> widget name and MODULE_CLASS. Adding them to both box_
+        // and label_ makes both match a .<class> selector, so any background,
+        // border or padding is applied twice, inset by the box's padding.
+        auto module_style = module_widget_->get_style_context();
+        for (auto const& c : module_style->list_classes()) {
           if (c == id_ || c == MODULE_CLASS) continue;
-          box_style->remove_class(c);
+          module_style->remove_class(c);
         }
         for (auto const& c : class_) {
-          box_style->add_class(c);
+          module_style->add_class(c);
         }
         style->add_class("flat");
         style->add_class("text-button");
