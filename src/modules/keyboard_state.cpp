@@ -17,6 +17,8 @@ extern "C" {
 #include <unistd.h>
 }
 
+#include "util/scoped_fd.hpp"
+
 class errno_error : public std::runtime_error {
  public:
   int code;
@@ -244,19 +246,23 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
   };
 
   hotplug_thread_ = [this] {
-    int fd;
-    fd = inotify_init1(IN_CLOEXEC);
+    // The thread is cancelled while blocked in read() during module teardown. Keep the descriptor
+    // on the stack so cancellation unwinding closes it instead of leaking an inotify instance.
+    util::ScopedFd fd(inotify_init1(IN_CLOEXEC));
     if (fd < 0) {
-      fd = inotify_init();
+      fd.reset(inotify_init());
       if (fd < 0) {
         spdlog::error("Failed to initialize inotify: {}", strerror(errno));
+        // SleeperThread invokes this callback again whenever it returns while still running.
+        hotplug_thread_.stop();
         return;
       }
     }
     int wd = inotify_add_watch(fd, devices_path_.c_str(), IN_CREATE | IN_DELETE);
     if (wd < 0) {
       spdlog::error("Failed to add inotify watch for {}: {}", devices_path_, strerror(errno));
-      close(fd);
+      // Avoid continuously retrying and flooding the log when setting up the watch is impossible.
+      hotplug_thread_.stop();
       return;
     }
     while (1) {
@@ -266,7 +272,6 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
       if (length < 0) {
         if (errno == EINTR) continue;
         spdlog::error("Failed to read inotify: {}", strerror(errno));
-        close(fd);
         return;
       }
       if (length == 0) continue;

@@ -155,6 +155,11 @@ The *mpris* module displays currently playing media via libplayerctl.
 	default: false ++
 	When true, use the album artist instead of the track artist for the _{artist}_ and _{dynamic}_ tags, falling back to the track artist when no album artist is available.
 
+*hide-on-paused*: ++
+	typeof: bool ++
+	default: false ++
+	When true, hide the module entirely while the player is paused instead of rendering _format-paused_.
+
 *player-icons*: ++
 	typeof: map[string]string ++
 	Allows setting _{player_icon}_ based on player-name property.

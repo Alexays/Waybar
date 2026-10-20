@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "util/format.hpp"
+#include "util/netlink.hpp"
 #ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
 #endif
@@ -1163,10 +1164,9 @@ auto waybar::modules::Network::getInfo() -> void {
         nlmsg_free(nl_msg);
         return;
       }
-      // Use station_sock_ for NL80211_CMD_GET_STATION
-      err = nl_send_sync(station_sock_, nl_msg);
+      err = util::nl_send_and_wait_for_ack(station_sock_, nl_msg);
       if (err < 0) {
-        spdlog::warn("nl80211: nl_send_sync get_station error {}", err);
+        spdlog::warn("nl80211: get_station error: {}", nl_geterror(err));
       }
     } else {
       spdlog::warn("nl80211: Failed to parse BSSID string: {}", bssid_);

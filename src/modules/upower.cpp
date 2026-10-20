@@ -82,15 +82,23 @@ UPower::UPower(const std::string& id, const Json::Value& config)
 }
 
 UPower::~UPower() {
-  if (upDevice_.upDevice != NULL) g_object_unref(upDevice_.upDevice);
-  if (upClient_ != NULL) g_object_unref(upClient_);
+  removeDevices();
+  if (upDevice_.upDevice != NULL) {
+    g_signal_handlers_disconnect_by_data(upDevice_.upDevice, this);
+    g_object_unref(upDevice_.upDevice);
+    upDevice_.upDevice = NULL;
+  }
+  if (upClient_ != NULL) {
+    g_signal_handlers_disconnect_by_data(upClient_, this);
+    g_object_unref(upClient_);
+    upClient_ = NULL;
+  }
   if (subscrID_ > 0u) {
     conn_->signal_unsubscribe(subscrID_);
     subscrID_ = 0u;
   }
   Gio::DBus::unwatch_name(watcherID_);
   watcherID_ = 0u;
-  removeDevices();
 }
 
 static std::string_view getDeviceStatus(UpDeviceState& state) {
@@ -315,7 +323,10 @@ void UPower::addDevice(UpDevice* device) {
 
     if (devices_.find(objectPath) != devices_.cend()) {
       auto upDevice{devices_[objectPath]};
-      if (G_IS_OBJECT(upDevice.upDevice)) g_object_unref(upDevice.upDevice);
+      if (G_IS_OBJECT(upDevice.upDevice)) {
+        g_signal_handlers_disconnect_by_data(upDevice.upDevice, this);
+        g_object_unref(upDevice.upDevice);
+      }
       devices_.erase(objectPath);
     }
 
@@ -328,7 +339,10 @@ void UPower::removeDevice(const gchar* objectPath) {
   std::lock_guard<std::mutex> guard{mutex_};
   if (devices_.find(objectPath) != devices_.cend()) {
     auto upDevice{devices_[objectPath]};
-    if (G_IS_OBJECT(upDevice.upDevice)) g_object_unref(upDevice.upDevice);
+    if (G_IS_OBJECT(upDevice.upDevice)) {
+      g_signal_handlers_disconnect_by_data(upDevice.upDevice, this);
+      g_object_unref(upDevice.upDevice);
+    }
     devices_.erase(objectPath);
   }
 }
@@ -338,7 +352,10 @@ void UPower::removeDevices() {
   if (!devices_.empty()) {
     auto it{devices_.cbegin()};
     while (it != devices_.cend()) {
-      if (G_IS_OBJECT(it->second.upDevice)) g_object_unref(it->second.upDevice);
+      if (G_IS_OBJECT(it->second.upDevice)) {
+        g_signal_handlers_disconnect_by_data(it->second.upDevice, this);
+        g_object_unref(it->second.upDevice);
+      }
       devices_.erase(it++);
     }
   }
@@ -362,6 +379,7 @@ void UPower::setDisplayDevice() {
   std::lock_guard<std::mutex> guard{mutex_};
 
   if (upDevice_.upDevice != NULL) {
+    g_signal_handlers_disconnect_by_data(upDevice_.upDevice, this);
     g_object_unref(upDevice_.upDevice);
     upDevice_.upDevice = NULL;
   }

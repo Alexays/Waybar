@@ -36,6 +36,10 @@ Addressed by *mango/window*
 	default: false ++
 	Enables the module to consume all leftover space.
 
+*max-length*: ++
+	typeof: integer ++
+	The maximum length in character the module should display.
+
 # FORMAT REPLACEMENTS
 
 *{title}*: The current window title.

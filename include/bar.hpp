@@ -17,6 +17,10 @@
 #include "util/kill_signal.hpp"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
+#ifdef HAVE_BAR_BLUR
+struct ext_background_effect_surface_v1;
+#endif
+
 namespace waybar {
 
 class Factory;
@@ -79,6 +83,12 @@ class Bar : public sigc::trackable {
 
   void toggleSuspend(bool suspend);
 
+#ifdef HAVE_BAR_BLUR
+  // Re-applies the blur region; called after a CSS reload since the bar's
+  // border-radius may have changed without a resize event.
+  void updateBlurRegion();
+#endif
+
   struct waybar_output* output;
   Json::Value config;
   struct wl_surface* surface;
@@ -107,6 +117,9 @@ class Bar : public sigc::trackable {
   void onConfigure(GdkEventConfigure* ev);
   void configureGlobalOffset(int width, int height);
   void onOutputGeometryChanged();
+#ifdef HAVE_BAR_BLUR
+  void setupBackgroundBlur();
+#endif
 
   /* Copy initial set of modes to allow customization */
   bar_mode_map configured_modes = PRESET_MODES;
@@ -115,6 +128,10 @@ class Bar : public sigc::trackable {
   struct bar_margins margins_;
   uint32_t width_, height_;
   bool passthrough_;
+#ifdef HAVE_BAR_BLUR
+  bool blur_enabled_ = false;
+  struct ext_background_effect_surface_v1* background_effect_surface_ = nullptr;
+#endif
 
   Gtk::Box left_;
   Gtk::Box center_;
