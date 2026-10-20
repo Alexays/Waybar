@@ -399,7 +399,29 @@ void Workspaces::onSpecialWorkspaceActivated(std::string const& payload) {
 void Workspaces::onWorkspaceDestroyed(std::string const& payload) {
   const auto [workspaceAddress, workspaceName] = splitDoublePayload(payload);
   if (!isDoubleSpecial(workspaceName)) {
-    m_workspacesToRemove.push_back(workspaceAddress);
+    // Removals are applied before creations, so a creation queued earlier (by createworkspacev2
+    // or a configreloaded snapshot) would bring the workspace back. Config-persistent workspaces
+    // stay, as in removeWorkspace(). Both queues go by address, so neither the cancellation nor
+    // the removal can reach a workspace that merely displays the same name. onWorkspaceMoved()
+    // drops a workspace moved to another output the same way.
+    const auto output =
+        allOutputs() ? std::nullopt : std::optional<std::string_view>(m_bar.output->name);
+    for (const auto address : droppedWorkspaceAddresses(workspaceAddress, output, [this] {
+           return m_ipc.getSocket1JsonReply("workspaces");
+         })) {
+      if (address.empty()) {
+        continue;
+      }
+      std::erase_if(m_workspacesToCreate, [&](auto const& queued) {
+        auto const& data = queued.first;
+        if (data["persistent-config"].asBool()) {
+          return false;
+        }
+        const auto identity = parseWorkspaceIdentity(data);
+        return identity.has_value() && identity->address == address;
+      });
+      m_workspacesToRemove.emplace_back(address);
+    }
   }
 }
 
@@ -543,6 +565,17 @@ void Workspaces::onWindowClosed(std::string const& addr) {
   spdlog::trace("Window closed: {}", addr);
   updateWindowCount();
   m_orphanWindowMap.erase(addr);
+  // Nor may a closed window come back from the queues.
+  std::erase_if(m_windowsToCreate, [&](auto const& window) { return window.getAddress() == addr; });
+  const auto clientAddress = fmt::format("0x{}", addr);
+  for (auto& [workspaceData, clientsData] : m_workspacesToCreate) {
+    for (Json::ArrayIndex i = 0; i < clientsData.size(); ++i) {
+      if (clientsData[i]["address"].asString() == clientAddress) {
+        clientsData.removeIndex(i, nullptr);
+        break;
+      }
+    }
+  }
   for (auto& workspace : m_workspaces) {
     if (workspace->closeWindow(addr)) {
       break;
@@ -925,10 +958,13 @@ std::vector<std::unique_ptr<Workspace>>::iterator Workspaces::findWorkspace(
   });
 }
 
-void Workspaces::removeWorkspace(std::string const& workspaceString) {
-  spdlog::debug("Removing workspace {}", workspaceString);
+void Workspaces::removeWorkspace(std::string const& address) {
+  spdlog::debug("Removing workspace {}", address);
 
-  auto workspace = findWorkspace(workspaceString);
+  // Queued removals are addresses (see onWorkspaceDestroyed()), matched exactly: a selector could
+  // name another workspace.
+  auto workspace = std::ranges::find_if(
+      m_workspaces, [&](std::unique_ptr<Workspace> const& w) { return w->address() == address; });
 
   if (workspace == m_workspaces.end()) {
     // happens when a workspace on another monitor is destroyed
@@ -1132,6 +1168,18 @@ void Workspaces::updateWorkspaceStates() {
   const auto activeIdentity = parseWorkspaceIdentity(m_ipc.getSocket1JsonReply("activeworkspace"));
 
   for (auto& workspace : m_workspaces) {
+    // Hyprland's monitor and name first: the state, icon and tooltip below are worked out from the
+    // name, and onWorkspaceDestroyed() keeps a workspace that Hyprland created again before
+    // answering, which may have come back under another name.
+    auto updatedWorkspace = std::ranges::find_if(updatedWorkspaces, [&workspace](const auto& w) {
+      const auto identity = parseWorkspaceIdentity(w);
+      return identity.has_value() && identity->address == workspace->address();
+    });
+    if (updatedWorkspace != updatedWorkspaces.end()) {
+      workspace->setOutput((*updatedWorkspace)["monitor"].asString());
+      workspace->setName(
+          workspaceDisplayName((*updatedWorkspace)["name"].asString(), workspace->kind()));
+    }
     workspace->setActive(
         workspace->identity().matches(m_activeWorkspaceIdentifier) ||
         (activeIdentity.has_value() &&
@@ -1149,13 +1197,6 @@ void Workspaces::updateWorkspaceStates() {
     std::string& workspaceTooltip = m_tooltipMap[""];
     if (m_withTooltip) {
       workspaceTooltip = workspace->selectString(m_tooltipMap);
-    }
-    auto updatedWorkspace = std::ranges::find_if(updatedWorkspaces, [&workspace](const auto& w) {
-      const auto identity = parseWorkspaceIdentity(w);
-      return identity.has_value() && identity->address == workspace->address();
-    });
-    if (updatedWorkspace != updatedWorkspaces.end()) {
-      workspace->setOutput((*updatedWorkspace)["monitor"].asString());
     }
     workspace->update(workspaceIcon, workspaceTooltip);
   }
