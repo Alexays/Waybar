@@ -196,24 +196,34 @@ bool AModule::handleToggle(GdkEventButton* const& e) { return handleUserEvent(e)
 bool AModule::handleRelease(GdkEventButton* const& e) { return handleUserEvent(e); }
 
 bool AModule::handleUserEvent(GdkEventButton* const& e) {
+  bool handled = false;
   std::string format{};
   const std::map<std::pair<uint, GdkEventType>, std::string>::const_iterator& rec{
       eventMap_.find(std::pair(e->button, e->type))};
 
   if (rec != eventMap_.cend()) {
     // First call module actions
+    if (eventActionMap_.contains(rec->second)) {
+      handled = true;
+    }
     this->AModule::doAction(rec->second);
 
     format = rec->second;
+  } else {
+    // This button/event combination is not handled by this module. Return false
+    // so the event can propagate (e.g. to a parent group drawer).
+    dp.emit();
+    return false;
   }
 
   // Check that a menu has been configured
-  if (rec != eventMap_.cend() && config_["menu"].isString()) {
+  if (config_["menu"].isString()) {
     // Check if the event is the one specified for the "menu" option
     if (rec->second == config_["menu"].asString() && menu_ != nullptr) {
       // Popup the menu
       gtk_widget_show_all(GTK_WIDGET(menu_));
       gtk_menu_popup_at_pointer(GTK_MENU(menu_), reinterpret_cast<GdkEvent*>(e));
+      handled = true;
       // Manually reset prelight to make sure the module doesn't stay in a hover state
       if (auto* module = event_box_.get_child(); module != nullptr) {
         module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
@@ -230,12 +240,17 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
     const auto actionIt = eventActionMap_.find(format);
     const bool isModuleAction = actionIt != eventActionMap_.cend() && config_[format].isString() &&
                                 config_[format].asString() == actionIt->second;
-    if (isModuleAction || !config_[format].isString())
+    if (isModuleAction || !config_[format].isString()) {
+      if (isModuleAction || config_[format].isBool()) {
+        handled = true;
+      }
       format.clear();
-    else
+    } else {
       format = config_[format].asString();
+    }
   }
   if (!format.empty()) {
+    handled = true;
     const int width = gdk_window_get_width(e->window);
     const int height = gdk_window_get_height(e->window);
     // Substitute {x}/{y} with the click position. The configured command is
@@ -258,7 +273,7 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
     pid_children_.push_back(util::command::forkExec(cmd));
   }
   dp.emit();
-  return true;
+  return handled;
 }
 
 AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {

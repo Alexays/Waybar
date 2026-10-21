@@ -150,6 +150,7 @@ auto Inhibitor::update() -> void {
 }
 
 auto Inhibitor::handleToggle(GdkEventButton* const& e) -> bool {
+  bool handled = false;
   if (e->button == 1) {
     if (activated()) {
       ::close(handle_);
@@ -163,9 +164,10 @@ auto Inhibitor::handleToggle(GdkEventButton* const& e) -> bool {
         spdlog::error("cannot get inhibitor locks");
       }
     }
+    handled = true;
   }
 
-  return ALabel::handleToggle(e);
+  return ALabel::handleToggle(e) || handled;
 }
 
 }  // namespace waybar::modules

@@ -205,7 +205,7 @@ bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
 }
 
 bool Group::handleToggle(GdkEventButton* const& e) {
-  if (!click_to_reveal || e->button != 1) {
+  if (!click_to_reveal || e->button != 1 || e->type != GDK_BUTTON_PRESS) {
     return false;
   }
   if ((box.get_state_flags() & Gtk::StateFlags::STATE_FLAG_PRELIGHT) != 0U) {
