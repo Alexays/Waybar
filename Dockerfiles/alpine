@@ -2,6 +2,36 @@
 
 FROM alpine:latest
 
-RUN apk add --no-cache git meson alpine-sdk libinput-dev wayland-dev wayland-protocols mesa-dev libxkbcommon-dev eudev-dev \
-pixman-dev gtkmm4-dev jsoncpp-dev pugixml-dev libnl3-dev pulseaudio-dev libmpdclient-dev sndio-dev scdoc libxkbcommon tzdata \
-playerctl-dev iniparser-dev fftw-dev
+RUN apk add --no-cache \
+    alpine-sdk \
+    cmake \
+    eudev-dev \
+    fftw-dev \
+    git \
+    gpsd-dev \
+    gtkmm3-dev \
+    gtkmm4-dev \
+    iniparser-dev \
+    jack-dev \
+    jsoncpp-dev \
+    libdbusmenu-gtk3-dev \
+    libevdev-dev \
+    libinput-dev \
+    libmpdclient-dev \
+    libnl3-dev \
+    libxkbcommon-dev \
+    mesa-dev \
+    meson \
+    modemmanager-dev \
+    pipewire-dev \
+    pixman-dev \
+    pugixml-dev \
+    playerctl-dev \
+    pulseaudio-dev \
+    scdoc \
+    sndio-dev \
+    tzdata \
+    upower-dev \
+    wayland-dev \
+    wayland-protocols \
+    wireplumber-dev
