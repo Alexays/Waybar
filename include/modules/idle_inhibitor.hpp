@@ -20,7 +20,7 @@ class IdleInhibitor : public ALabel {
   virtual ~IdleInhibitor();
   auto update() -> void override;
   auto refresh(int) -> void override;
-  static std::list<waybar::AModule*> modules;
+  static std::list<IdleInhibitor*> modules;
   static bool status;
   static long deactivationTime;
 

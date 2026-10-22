@@ -1,10 +1,12 @@
 #include "modules/idle_inhibitor.hpp"
 
+#include <algorithm>
+
 #include "ext-idle-notify-v1-client-protocol.h"
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "util/command.hpp"
 
-std::list<waybar::AModule*> waybar::modules::IdleInhibitor::modules;
+std::list<waybar::modules::IdleInhibitor*> waybar::modules::IdleInhibitor::modules;
 bool waybar::modules::IdleInhibitor::status = false;
 long waybar::modules::IdleInhibitor::deactivationTime = time(nullptr);
 
@@ -104,13 +106,18 @@ auto waybar::modules::IdleInhibitor::update() -> void {
 
 auto waybar::modules::IdleInhibitor::refresh(int sig) -> void {
 #ifdef SIGRTMIN
-  if (config_["signal"].isInt() && sig == SIGRTMIN + config_["signal"].asInt()) {
-    toggleStatus();
+  auto first = std::find_if(modules.begin(), modules.end(), [sig](const IdleInhibitor* module) {
+    const auto& signal = module->config_["signal"];
+    return signal.isInt() && sig == SIGRTMIN + signal.asInt();
+  });
+  if (first == modules.end() || *first != this) {
+    return;
+  }
+  toggleStatus();
 
-    // Make all other idle inhibitor modules update
-    for (auto const& module : waybar::modules::IdleInhibitor::modules) {
-      module->update();
-    }
+  // Make all other idle inhibitor modules update
+  for (auto const& module : waybar::modules::IdleInhibitor::modules) {
+    module->update();
   }
 #endif
 }
