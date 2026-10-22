@@ -99,6 +99,10 @@ Addressed by *custom/<name>*
 	typeof: string ++
 	Command to execute when you right-click on the module.
 
+*on-mouse-exit*: ++
+	typeof: string ++
+	Command to execute when the mouse exits the module.
+
 *on-update*: ++
 	typeof: string ++
 	Command to execute when the module is updated.
