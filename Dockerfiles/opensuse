@@ -2,8 +2,46 @@
 
 FROM opensuse/tumbleweed:latest
 
-RUN zypper -n up && \
-    zypper addrepo https://download.opensuse.org/repositories/X11:Wayland/openSUSE_Tumbleweed/X11:Wayland.repo | echo 'a' && \
-    zypper -n refresh && \
-    zypper -n install -t pattern devel_C_C++ && \
-    zypper -n install git meson clang libinput10 libinput-devel pugixml-devel libwayland-client0 libwayland-cursor0 wayland-protocols-devel wayland-devel Mesa-libEGL-devel Mesa-libGLESv2-devel libgbm-devel libxkbcommon-devel libudev-devel libpixman-1-0-devel gtkmm3-devel jsoncpp-devel libxkbregistry-devel scdoc playerctl-devel python3-packaging
+RUN zypper addrepo -f https://download.opensuse.org/repositories/X11:Wayland/openSUSE_Tumbleweed/X11:Wayland.repo && \
+    zypper --gpg-auto-import-keys refresh -f && \
+    zypper --gpg-auto-import-keys dup -y && \
+    zypper --gpg-auto-import-keys install -y -t pattern devel_C_C++ && \
+    zypper --gpg-auto-import-keys install -y \
+        Mesa-libEGL-devel \
+        Mesa-libGLESv2-devel \
+        ModemManager-devel \
+        clang \
+		cmake \
+		fftw3-devel \
+		git \
+		glib2-devel \
+		gpsd-devel \
+		gtkmm3-devel \
+		gtkmm4-devel \
+		jack-devel \
+		jsoncpp-devel \
+		libdbusmenu-gtk3-devel \
+		libevdev-devel \
+		libgbm-devel \
+		libiniparser-devel \
+		libinput-devel \
+		libinput10 \
+		libmpdclient-devel \
+		libnl3-devel \
+		libpixman-1-0-devel \
+		libpulse-devel \
+		libwayland-client0 \
+		libwayland-cursor0 \
+		libxkbcommon-devel \
+		libxkbregistry-devel \
+		meson \
+		pipewire-devel \
+		playerctl-devel \
+		pugixml-devel \
+		scdoc \
+		sndio-devel \
+		systemd-devel \
+		upower-devel \
+		wayland-devel \
+		wayland-protocols-devel \
+		wireplumber-devel
