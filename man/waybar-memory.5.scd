@@ -29,7 +29,7 @@ Addressed by *memory*
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *states*: ++
 	typeof: object ++
@@ -45,7 +45,11 @@ Addressed by *memory*
 
 *align*: ++
 	typeof: float ++
-	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *on-click*: ++
 	typeof: string ++
@@ -80,23 +84,54 @@ Addressed by *memory*
 	default: true ++
 	Option to disable tooltip on hover.
 
+*tooltip-format*: ++
+	typeof: string ++
+	default: {used:0.1f}GiB used ++
+	The format of the tooltip shown on hover. Supports the same replacements as *format*.
+
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
+*unit*: ++
+	typeof: string ++
+	default: GiB ++
+	Used to specify unit for total, swapTotal, used, swapUsed, avail, swapAvail,
+	and swapState. Accepts B, kB, kiB, MB, MiB, GB, GiB, TB, and TiB.
+
 # FORMAT REPLACEMENTS
 
 *{percentage}*: Percentage of memory in use.
 
 *{swapPercentage}*: Percentage of swap in use.
 
-*{total}*: Amount of total memory available in GiB.
+*{total}*: Amount of total memory available. Defaults to GiB.
 
-*{swapTotal}*: Amount of total swap available in GiB.
+*{swapTotal}*: Amount of total swap available. Defaults to GiB.
 
-*{used}*: Amount of used memory in GiB.
+*{used}*: Amount of used memory. Defaults to GiB.
 
-*{swapUsed}*: Amount of used swap in GiB.
+*{swapUsed}*: Amount of used swap. Defaults to GiB.
 
-*{avail}*: Amount of available memory in GiB.
+*{avail}*: Amount of available memory. Defaults to GiB.
 
-*{swapAvail}*: Amount of available swap in GiB.
+*{swapAvail}*: Amount of available swap. Defaults to GiB.
+
+*{swapState}*: Signals if swap is activated or not
 
 # EXAMPLES
 

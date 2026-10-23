@@ -9,7 +9,9 @@
 #include <fmt/core.h>
 #endif
 
-waybar::modules::Load::Load(const std::string& id, const Json::Value& config)
+namespace waybar::modules {
+
+Load::Load(const std::string& id, const Json::Value& config)
     : ALabel(config, "load", id, "{load1}", 10) {
   thread_ = [this] {
     dp.emit();
@@ -17,12 +19,12 @@ waybar::modules::Load::Load(const std::string& id, const Json::Value& config)
   };
 }
 
-auto waybar::modules::Load::update() -> void {
+auto Load::doUpdate() -> void {
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
   auto [load1, load5, load15] = Load::getLoad();
   if (tooltipEnabled()) {
     auto tooltip = fmt::format("Load 1: {}\nLoad 5: {}\nLoad 15: {}", load1, load5, load15);
-    label_.set_tooltip_text(tooltip);
+    w_->set_tooltip_markup(tooltip);
   }
   auto format = format_;
   auto state = getState(load1);
@@ -31,9 +33,9 @@ auto waybar::modules::Load::update() -> void {
   }
 
   if (format.empty()) {
-    event_box_.hide();
+    w_->hide();
   } else {
-    event_box_.show();
+    w_->show();
     auto icons = std::vector<std::string>{state};
     fmt::dynamic_format_arg_store<fmt::format_context> store;
     store.push_back(fmt::arg("load1", load1));
@@ -46,10 +48,10 @@ auto waybar::modules::Load::update() -> void {
   }
 
   // Call parent update
-  ALabel::update();
+  ALabel::doUpdate();
 }
 
-std::tuple<double, double, double> waybar::modules::Load::getLoad() {
+std::tuple<double, double, double> Load::getLoad() {
   double load[3];
   if (getloadavg(load, 3) != -1) {
     double load1 = std::ceil(load[0] * 100.0) / 100.0;
@@ -59,3 +61,5 @@ std::tuple<double, double, double> waybar::modules::Load::getLoad() {
   }
   throw std::runtime_error("Can't get system load");
 }
+
+}  // namespace waybar::modules

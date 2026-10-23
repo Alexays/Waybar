@@ -2,25 +2,37 @@
 
 FROM fedora:latest
 
-RUN dnf install -y @c-development \
-    git-core glibc-langpack-en meson scdoc \
+RUN dnf upgrade -y && \
+    dnf install -y @c-development \
+    cmake \
+    git-core \
+    glibc-langpack-en \
+    meson \
+    scdoc \
     'pkgconfig(catch2)' \
     'pkgconfig(date)' \
     'pkgconfig(dbusmenu-gtk3-0.4)' \
+    'pkgconfig(fftw3)' \
     'pkgconfig(fmt)' \
     'pkgconfig(gdk-pixbuf-2.0)' \
     'pkgconfig(gio-unix-2.0)' \
+    'pkgconfig(glibmm-2.4)' \
     'pkgconfig(gtk-layer-shell-0)' \
+    'pkgconfig(gtk4-layer-shell-0)' \
     'pkgconfig(gtkmm-3.0)' \
+    'pkgconfig(gtkmm-4.0)' \
+    'pkgconfig(iniparser)' \
     'pkgconfig(jack)' \
     'pkgconfig(jsoncpp)' \
     'pkgconfig(libevdev)' \
+    'pkgconfig(libgps)' \
     'pkgconfig(libinput)' \
     'pkgconfig(libmpdclient)' \
     'pkgconfig(libnl-3.0)' \
     'pkgconfig(libnl-genl-3.0)' \
     'pkgconfig(libpulse)' \
     'pkgconfig(libudev)' \
+    'pkgconfig(mm-glib)' \
     'pkgconfig(playerctl)' \
     'pkgconfig(pugixml)' \
     'pkgconfig(sigc++-2.0)' \
@@ -29,6 +41,6 @@ RUN dnf install -y @c-development \
     'pkgconfig(wayland-client)' \
     'pkgconfig(wayland-cursor)' \
     'pkgconfig(wayland-protocols)' \
-    'pkgconfig(wireplumber-0.4)' \
+    'pkgconfig(wireplumber-0.5)' \
     'pkgconfig(xkbregistry)' && \
     dnf clean all -y

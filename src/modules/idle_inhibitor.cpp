@@ -1,44 +1,62 @@
 #include "modules/idle_inhibitor.hpp"
 
+#include "ext-idle-notify-v1-client-protocol.h"
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "util/command.hpp"
 
-std::list<waybar::AModule*> waybar::modules::IdleInhibitor::modules;
-bool waybar::modules::IdleInhibitor::status = false;
+namespace waybar::modules {
 
-waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar,
-                                              const Json::Value& config)
-    : ALabel(config, "idle_inhibitor", id, "{status}", 0, false, true),
-      bar_(bar),
-      idle_inhibitor_(nullptr),
-      pid_(-1) {
+std::list<waybar::AModule*> IdleInhibitor::modules;
+bool IdleInhibitor::status{false};
+long IdleInhibitor::deactivationTime{time(nullptr)};
+
+IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar, const Json::Value& config)
+    : ALabel(config, "idle_inhibitor", id, "{status}", 0, false, true, true),
+      idle_notification_{nullptr},
+      idle_timeout_ms_{0},
+      idle_inhibitor_{nullptr},
+      bar_{bar},
+      pid_{-1},
+      timeout{config_["timeout"].asDouble()},
+      timeout_step{config_["timeout-step"].isDouble() ? config_["timeout-step"].asDouble() : 10},
+      wait_for_activity_{false} {
   if (waybar::Client::inst()->idle_inhibit_manager == nullptr) {
     throw std::runtime_error("idle-inhibit not available");
   }
 
-  if (waybar::modules::IdleInhibitor::modules.empty() && config_["start-activated"].isBool() &&
+  // Read the wait-for-activity config option
+  if (config_["wait-for-activity"].isBool()) {
+    wait_for_activity_ = config_["wait-for-activity"].asBool();
+
+    // Check if ext-idle-notify protocol is available when wait-for-activity is enabled
+    if (wait_for_activity_ && waybar::Client::inst()->idle_notifier == nullptr) {
+      throw std::runtime_error("wait-for-activity requires ext-idle-notify-v1 protocol support");
+    }
+  }
+
+  if (IdleInhibitor::modules.empty() && config_["start-activated"].isBool() &&
       config_["start-activated"].asBool() != status) {
     toggleStatus();
   }
 
-  event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
-  event_box_.signal_button_press_event().connect(
-      sigc::mem_fun(*this, &IdleInhibitor::handleToggle));
+  deactivationTime = time(nullptr) + timeout * 60;
 
   // Add this to the modules list
-  waybar::modules::IdleInhibitor::modules.push_back(this);
+  IdleInhibitor::modules.push_back(this);
 
   dp.emit();
 }
 
-waybar::modules::IdleInhibitor::~IdleInhibitor() {
+IdleInhibitor::~IdleInhibitor() {
+  teardownIdleNotification();
+
   if (idle_inhibitor_ != nullptr) {
     zwp_idle_inhibitor_v1_destroy(idle_inhibitor_);
     idle_inhibitor_ = nullptr;
   }
 
   // Remove this from the modules list
-  waybar::modules::IdleInhibitor::modules.remove(this);
+  IdleInhibitor::modules.remove(this);
 
   if (pid_ != -1) {
     kill(-pid_, 9);
@@ -46,16 +64,16 @@ waybar::modules::IdleInhibitor::~IdleInhibitor() {
   }
 }
 
-auto waybar::modules::IdleInhibitor::update() -> void {
+auto IdleInhibitor::doUpdate() -> void {
   // Check status
   if (status) {
-    label_.get_style_context()->remove_class("deactivated");
+    w_->get_style_context()->remove_class("deactivated");
     if (idle_inhibitor_ == nullptr) {
       idle_inhibitor_ = zwp_idle_inhibit_manager_v1_create_inhibitor(
           waybar::Client::inst()->idle_inhibit_manager, bar_.surface);
     }
   } else {
-    label_.get_style_context()->remove_class("activated");
+    w_->get_style_context()->remove_class("activated");
     if (idle_inhibitor_ != nullptr) {
       zwp_idle_inhibitor_v1_destroy(idle_inhibitor_);
       idle_inhibitor_ = nullptr;
@@ -63,61 +81,228 @@ auto waybar::modules::IdleInhibitor::update() -> void {
   }
 
   std::string status_text = status ? "activated" : "deactivated";
-  label_.set_markup(fmt::format(fmt::runtime(format_), fmt::arg("status", status_text),
-                                fmt::arg("icon", getIcon(0, status_text))));
-  label_.get_style_context()->add_class(status_text);
-  if (tooltipEnabled()) {
-    auto config = config_[status ? "tooltip-format-activated" : "tooltip-format-deactivated"];
-    auto tooltip_format = config.isString() ? config.asString() : "{status}";
-    label_.set_tooltip_markup(fmt::format(fmt::runtime(tooltip_format),
-                                          fmt::arg("status", status_text),
-                                          fmt::arg("icon", getIcon(0, status_text))));
-  }
+  int timeleft = (deactivationTime - time(nullptr)) / 60;
+  updateLabelAndTooltipForState(status_text, format_, "{status}", fmt::arg("status", status_text),
+                                fmt::arg("timeout", timeout), fmt::arg("timeleft", timeleft),
+                                fmt::arg("icon", getIcon(0, status_text)));
+  w_->get_style_context()->add_class(status_text);
   // Call parent update
-  ALabel::update();
+  ALabel::doUpdate();
 }
 
-void waybar::modules::IdleInhibitor::toggleStatus() {
+auto IdleInhibitor::doRefresh(int sig) -> void {
+#ifdef SIGRTMIN
+  if (config_["signal"].isInt() && sig == SIGRTMIN + config_["signal"].asInt()) {
+    toggleStatus();
+
+    // Make all other idle inhibitor modules update
+    for (auto const& module : IdleInhibitor::modules) {
+      module->doUpdate();
+    }
+  }
+#endif
+}
+
+void IdleInhibitor::toggleStatus(int force_status) {
   status = !status;
+  if (force_status != -1) {
+    status = force_status;
+  }
 
   if (timeout_.connected()) {
     /* cancel any already active timeout handler */
     timeout_.disconnect();
   }
 
-  if (status && config_["timeout"].isNumeric()) {
-    auto timeoutMins = config_["timeout"].asDouble();
-    int timeoutSecs = timeoutMins * 60;
+  if (status && timeout) {
+    idle_timeout_ms_ = static_cast<int>(timeout * 60) * 1000;
 
-    timeout_ = Glib::signal_timeout().connect_seconds(
-        []() {
-          /* intentionally not tied to a module instance lifetime
-           * as the output with `this` can be disconnected
-           */
-          spdlog::info("deactivating idle_inhibitor by timeout");
-          status = false;
-          for (auto const& module : waybar::modules::IdleInhibitor::modules) {
-            module->update();
-          }
-          /* disconnect */
-          return false;
-        },
-        timeoutSecs);
+    // If wait-for-activity is enabled, set up idle notification
+    if (wait_for_activity_) {
+      spdlog::debug("idle_inhibitor: wait-for-activity enabled, timeout: {} ms", idle_timeout_ms_);
+      // Tear down any existing notification first to ensure fresh setup
+      teardownIdleNotification();
+      setupIdleNotification();
+    } else {
+      // Original behavior: countdown timeout with per-minute updates
+      deactivationTime = time(nullptr) + timeout * 60;
+      timeout_ = Glib::signal_timeout().connect_seconds(
+          []() {
+            /* intentionally not tied to a module instance lifetime
+             * as the output with `this` can be disconnected
+             */
+            bool continueRunning = true;
+            int timeleft = (deactivationTime - time(nullptr)) / 60;
+            spdlog::info("updating timeleft. deactivation timestamp: {}, minutes left: {}",
+                         deactivationTime, timeleft);
+            if (timeleft <= 0) {
+              spdlog::info("deactivating idle_inhibitor by timeout");
+              status = false;
+              continueRunning = false;
+            }
+            for (auto const& module : IdleInhibitor::modules) {
+              module->doUpdate();
+            }
+            return continueRunning;
+          },
+          60);
+    }
+  } else {
+    // When deactivated, tear down idle notification
+    teardownIdleNotification();
   }
 }
 
-bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
-  if (e->button == 1) {
-    toggleStatus();
+void IdleInhibitor::handlePress(int n_press, double x, double y) {
+  // Accept both the documented "dynamic-timeouts" (plural) and the legacy
+  // "dynamic-timeout" (singular) key spellings.
+  const bool dynamic = config_["dynamic-timeouts"].asBool() || config_["dynamic-timeout"].asBool();
+  auto button{gesture_click_->get_current_button()};
+
+  if (button == 1) {
+    if (dynamic) {
+      toggleStatus(1);
+    } else {
+      toggleStatus();
+    }
 
     // Make all other idle inhibitor modules update
-    for (auto const& module : waybar::modules::IdleInhibitor::modules) {
+    for (auto const& module : IdleInhibitor::modules) {
       if (module != this) {
-        module->update();
+        module->doUpdate();
       }
     }
   }
+  if (button == 3 && dynamic) {
+    toggleStatus(0);
 
-  ALabel::handleToggle(e);
+    // Make all other idle inhibitor modules update
+    for (auto const& module : IdleInhibitor::modules) {
+      if (module != this) {
+        module->doUpdate();
+      }
+    }
+  }
+  if (button == 2 && dynamic) {
+    toggleStatus(0);
+    timeout = config_["timeout"].asDouble();
+  }
+  ALabel::handlePress(n_press, x, y);
+}
+
+bool IdleInhibitor::handleScroll(double dx, double dy) {
+  // Accept both the documented "dynamic-timeouts" (plural) and the legacy
+  // "dynamic-timeout" (singular) key spellings.
+  if (!(config_["dynamic-timeouts"].asBool() || config_["dynamic-timeout"].asBool())) {
+    // Delegate to the base handler so any configured on-scroll-* command still runs.
+    ALabel::handleScroll(dx, dy);
+  }
+  auto dir = AModule::getScrollDir(controller_scroll_->get_current_event());
+  if (dir == SCROLL_DIR::NONE) {
+    return true;
+  }
+  toggleStatus(0);
+  double step = dir == SCROLL_DIR::UP ? 1 : -1;
+  step *= timeout_step;
+  timeout += step;
+  if (timeout < 0) {
+    timeout = 0;
+  }
+  deactivationTime = time(nullptr) + timeout * 60;
+
+  ALabel::handleScroll(dx, dy);
   return true;
 }
+
+void IdleInhibitor::handleIdled(void* data, ext_idle_notification_v1* /*notification*/) {
+  spdlog::info("deactivating idle_inhibitor due to user inactivity");
+  status = false;
+
+  // Clean up the notification since we're deactivating
+  auto* self = static_cast<IdleInhibitor*>(data);
+  if (self != nullptr) {
+    self->teardownIdleNotification();
+  }
+
+  for (auto const& module : IdleInhibitor::modules) {
+    module->doUpdate();
+  }
+}
+
+void IdleInhibitor::handleResumed(void* data, ext_idle_notification_v1* /*notification*/) {
+  // User became active again - notification will continue monitoring
+  spdlog::debug("user activity detected, idle_inhibitor still active");
+}
+
+void IdleInhibitor::setupIdleNotification() {
+  spdlog::debug("idle_inhibitor: setting up idle notification");
+
+  // Clean up any existing notification first
+  if (idle_notification_ != nullptr) {
+    spdlog::debug("idle_inhibitor: cleaning up existing notification before setup");
+    teardownIdleNotification();
+  }
+
+  auto* client = waybar::Client::inst();
+  if (client->idle_notifier == nullptr) {
+    spdlog::error("ext-idle-notify protocol not available");
+    return;
+  }
+
+  // Get the wayland seat from the display
+  auto* gdk_seat = gdk_display_get_default_seat(client->gdk_display->gobj());
+  if (gdk_seat == nullptr) {
+    spdlog::error("failed to get default seat");
+    return;
+  }
+  auto* wl_seat = gdk_wayland_seat_get_wl_seat(gdk_seat);
+
+  // Check protocol version to determine which function to use
+  uint32_t version =
+      wl_proxy_get_version(reinterpret_cast<struct wl_proxy*>(client->idle_notifier));
+
+  spdlog::debug("idle_inhibitor: creating notification with timeout {} ms (protocol version {})",
+                idle_timeout_ms_, version);
+
+  if (version >= 2) {
+    // Version 2+: Use get_input_idle_notification which ignores idle inhibitors
+    // This allows us to detect actual user inactivity even while the inhibitor is active
+    spdlog::debug("idle_inhibitor: using get_input_idle_notification (ignores inhibitors)");
+    idle_notification_ = ext_idle_notifier_v1_get_input_idle_notification(
+        client->idle_notifier, idle_timeout_ms_, wl_seat);
+  } else {
+    // Version 1: Fall back to get_idle_notification
+    // WARNING: This respects idle inhibitors, so it won't fire while inhibitor is active
+    spdlog::warn(
+        "idle_inhibitor: ext-idle-notifier-v1 version {} doesn't support "
+        "get_input_idle_notification, "
+        "wait-for-activity may not work correctly",
+        version);
+    idle_notification_ = ext_idle_notifier_v1_get_idle_notification(client->idle_notifier,
+                                                                    idle_timeout_ms_, wl_seat);
+  }
+
+  if (idle_notification_ == nullptr) {
+    spdlog::error("idle_inhibitor: failed to create idle notification");
+    return;
+  }
+
+  static const struct ext_idle_notification_v1_listener idle_notification_listener = {
+      .idled = &IdleInhibitor::handleIdled,
+      .resumed = &IdleInhibitor::handleResumed,
+  };
+
+  ext_idle_notification_v1_add_listener(idle_notification_, &idle_notification_listener, this);
+  wl_display_roundtrip(client->wl_display);
+  spdlog::debug("idle_inhibitor: idle notification setup complete");
+}
+
+void IdleInhibitor::teardownIdleNotification() {
+  if (idle_notification_ != nullptr) {
+    spdlog::debug("idle_inhibitor: tearing down idle notification");
+    ext_idle_notification_v1_destroy(idle_notification_);
+    idle_notification_ = nullptr;
+  }
+}
+
+}  // namespace waybar::modules

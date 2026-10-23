@@ -10,11 +10,11 @@
 
 namespace waybar::modules {
 
-class Memory : public ALabel {
+class Memory final : public ALabel {
  public:
   Memory(const std::string&, const Json::Value&);
   virtual ~Memory() = default;
-  auto update() -> void override;
+  auto doUpdate() -> void override;
 
  private:
   void parseMeminfo();
@@ -22,6 +22,8 @@ class Memory : public ALabel {
   std::unordered_map<std::string, unsigned long> meminfo_;
 
   util::SleeperThread thread_;
+
+  std::string unit_;
 };
 
 }  // namespace waybar::modules

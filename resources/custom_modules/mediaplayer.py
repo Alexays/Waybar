@@ -10,9 +10,13 @@ import signal
 import gi
 import json
 import os
+import dbus
+import dbus.service
+from dbus.mainloop.glib import DBusGMainLoop
 from typing import List
 
 logger = logging.getLogger(__name__)
+
 
 def signal_handler(sig, frame):
     logger.info("Received signal to stop, exiting")
@@ -23,7 +27,7 @@ def signal_handler(sig, frame):
 
 
 class PlayerManager:
-    def __init__(self, selected_player=None):
+    def __init__(self, selected_player=None, excluded_player=[]):
         self.manager = Playerctl.PlayerManager()
         self.loop = GLib.MainLoop()
         self.manager.connect(
@@ -35,11 +39,33 @@ class PlayerManager:
         signal.signal(signal.SIGTERM, signal_handler)
         signal.signal(signal.SIGPIPE, signal.SIG_DFL)
         self.selected_player = selected_player
+        self.excluded_player = excluded_player.split(',') if excluded_player else []
+
+        # use dbus to shift player (e.g. after playerctld shift)
+        bus = dbus.SessionBus(mainloop=DBusGMainLoop())
+        bus.add_signal_receiver(
+            lambda *args, **kwargs: self.on_dbus_shift(*args, **kwargs),
+            signal_name="Shift",
+            dbus_interface="org.waybar.Player")
+        # register well-known bus name
+        bus.request_name("org.waybar.Player")
 
         self.init_players()
 
+    def on_dbus_shift(self, *args, **kwargs):
+        # there is no implicit way to get current player,
+        # so we need to create a new manager to get the right order of players
+        new_manager = Playerctl.PlayerManager()
+        if len(new_manager.props.player_names) > 1:
+            current_player_name = new_manager.props.player_names[0].name
+            for player in self.get_players():
+                if player.props.player_name == current_player_name:
+                    self.on_metadata_changed(player, player.props.metadata)
+
     def init_players(self):
         for player in self.manager.props.player_names:
+            if player.name in self.excluded_player:
+                continue
             if self.selected_player is not None and self.selected_player != player.name:
                 logger.debug(f"{player.name} is not the filtered player, skipping it")
                 continue
@@ -102,22 +128,26 @@ class PlayerManager:
         current_player = self.get_first_playing_player()
         if current_player is not None:
             self.on_metadata_changed(current_player, current_player.props.metadata)
-        else:    
+        else:
             self.clear_output()
 
     def on_metadata_changed(self, player, metadata, _=None):
         logger.debug(f"Metadata changed for player {player.props.player_name}")
         player_name = player.props.player_name
         artist = player.get_artist()
+        artist = artist and artist.replace("&", "&amp;")
         title = player.get_title()
+        title = title and title.replace("&", "&amp;")
 
         track_info = ""
         if player_name == "spotify" and "mpris:trackid" in metadata.keys() and ":ad:" in player.props.metadata["mpris:trackid"]:
             track_info = "Advertisement"
         elif artist is not None and title is not None:
             track_info = f"{artist} - {title}"
-        else:
+        elif title is not None:
             track_info = title
+        elif artist is not None:
+            track_info = artist
 
         if track_info:
             if player.props.status == "Playing":
@@ -133,6 +163,10 @@ class PlayerManager:
 
     def on_player_appeared(self, _, player):
         logger.info(f"Player has appeared: {player.name}")
+        if player.name in self.excluded_player:
+            logger.debug(
+                "New player appeared, but it's in exclude player list, skipping")
+            return
         if player is not None and (self.selected_player is None or player.name == self.selected_player):
             self.init_player(player)
         else:
@@ -143,11 +177,14 @@ class PlayerManager:
         logger.info(f"Player {player.props.player_name} has vanished")
         self.show_most_important_player()
 
+
 def parse_arguments():
     parser = argparse.ArgumentParser()
 
     # Increase verbosity with every occurrence of -v
     parser.add_argument("-v", "--verbose", action="count", default=0)
+
+    parser.add_argument("-x", "--exclude", "- Comma-separated list of excluded player")
 
     # Define for which player we"re listening
     parser.add_argument("--player")
@@ -174,7 +211,10 @@ def main():
     logger.info("Creating player manager")
     if arguments.player:
         logger.info(f"Filtering for player: {arguments.player}")
-    player = PlayerManager(arguments.player)
+    if arguments.exclude:
+        logger.info(f"Exclude player {arguments.exclude}")
+
+    player = PlayerManager(arguments.player, arguments.exclude)
     player.run()
 
 

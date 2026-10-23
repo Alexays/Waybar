@@ -5,6 +5,7 @@
 #include <functional>
 #include <regex>
 #include <string>
+#include <utility>
 
 namespace waybar::util {
 
@@ -17,7 +18,7 @@ struct Rule {
   // See https://en.cppreference.com/w/cpp/compiler_support/20 "Parenthesized initialization of
   // aggregates"
   Rule(std::regex rule, std::string repr, int priority)
-      : rule(rule), repr(repr), priority(priority) {}
+      : rule(std::move(rule)), repr(std::move(repr)), priority(priority) {}
 };
 
 int default_priority_function(std::string& key);
@@ -36,12 +37,13 @@ class RegexCollection {
   std::map<std::string, std::string> regex_cache;
   std::string default_repr;
 
-  std::string& find_match(std::string& value, bool& matched_any);
+  std::string find_match(std::string& value, bool& matched_any);
 
  public:
   RegexCollection() = default;
-  RegexCollection(const Json::Value& map, std::string default_repr = "",
-                  std::function<int(std::string&)> priority_function = default_priority_function);
+  RegexCollection(
+      const Json::Value& map, std::string default_repr = "",
+      const std::function<int(std::string&)>& priority_function = default_priority_function);
   ~RegexCollection() = default;
 
   std::string& get(std::string& value, bool& matched_any);

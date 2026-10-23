@@ -17,10 +17,16 @@ compatible devices in the tooltip.
 	The battery to monitor. Refer to the https://upower.freedesktop.org/docs/UpDevice.html#UpDevice--native-path ++
 	Can be obtained using `upower --dump`
 
+*model*: ++
+	typeof: string ++
+	default: ++
+	The battery to monitor, based on the model. (this option is ignored if *native-path* is given). ++
+	Can be obtained using `upower --dump`
+
 *icon-size*: ++
 	typeof: integer ++
 	default: 20 ++
-	Defines the size of the icons.
+	Defines the size of the icons. Set to *0* for automatic sizing.
 
 *format*: ++
 	typeof: string ++
@@ -53,6 +59,12 @@ compatible devices in the tooltip.
 	default: 4 ++
 	Defines the spacing between the tooltip window edge and the tooltip content.
 
+*tooltip-format*: ++
+	typeof: string ++
+	default: ++
+	The format used for each device line shown in the tooltip. Accepts the ++
+	same replacements as *format*.
+
 *on-click*: ++
 	typeof: string ++
 	Command to execute when clicked on the module.
@@ -62,12 +74,31 @@ compatible devices in the tooltip.
 	default: true ++
 	Option to disable battery icon.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # FORMAT REPLACEMENTS
 
 *{percentage}*: The battery capacity in percentage
 
 *{time}*: An estimated time either until empty or until fully charged ++
 depending on the charging state.
+
+*{temperature}*: The battery temperature in degrees Celsius.
+
+*{model}*: The model name of the device.
+
+*{native-path}*: The native path of the device.
 
 # EXAMPLES
 

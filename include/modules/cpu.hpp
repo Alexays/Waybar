@@ -14,11 +14,11 @@
 
 namespace waybar::modules {
 
-class Cpu : public ALabel {
+class Cpu final : public ALabel {
  public:
   Cpu(const std::string&, const Json::Value&);
   virtual ~Cpu() = default;
-  auto update() -> void override;
+  auto doUpdate() -> void override;
 
  private:
   std::vector<std::tuple<size_t, size_t>> prev_times_;

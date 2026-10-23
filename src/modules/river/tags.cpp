@@ -8,23 +8,22 @@
 #include <algorithm>
 
 #include "client.hpp"
-#include "xdg-output-unstable-v1-client-protocol.h"
 
 namespace waybar::modules::river {
 
-static void listen_focused_tags(void *data, struct zriver_output_status_v1 *zriver_output_status_v1,
+static void listen_focused_tags(void* data, struct zriver_output_status_v1* zriver_output_status_v1,
                                 uint32_t tags) {
-  static_cast<Tags *>(data)->handle_focused_tags(tags);
+  static_cast<Tags*>(data)->handle_focused_tags(tags);
 }
 
-static void listen_view_tags(void *data, struct zriver_output_status_v1 *zriver_output_status_v1,
-                             struct wl_array *tags) {
-  static_cast<Tags *>(data)->handle_view_tags(tags);
+static void listen_view_tags(void* data, struct zriver_output_status_v1* zriver_output_status_v1,
+                             struct wl_array* tags) {
+  static_cast<Tags*>(data)->handle_view_tags(tags);
 }
 
-static void listen_urgent_tags(void *data, struct zriver_output_status_v1 *zriver_output_status_v1,
+static void listen_urgent_tags(void* data, struct zriver_output_status_v1* zriver_output_status_v1,
                                uint32_t tags) {
-  static_cast<Tags *>(data)->handle_urgent_tags(tags);
+  static_cast<Tags*>(data)->handle_urgent_tags(tags);
 }
 
 static const zriver_output_status_v1_listener output_status_listener_impl{
@@ -33,15 +32,42 @@ static const zriver_output_status_v1_listener output_status_listener_impl{
     .urgent_tags = listen_urgent_tags,
 };
 
-static void listen_command_success(void *data,
-                                   struct zriver_command_callback_v1 *zriver_command_callback_v1,
-                                   const char *output) {
+static void listen_focused_output(void* data, struct zriver_seat_status_v1* zriver_seat_status_v1,
+                                  struct wl_output* output) {
+  static_cast<Tags*>(data)->handle_focused_output(output);
+}
+
+static void listen_unfocused_output(void* data, struct zriver_seat_status_v1* zriver_seat_status_v1,
+                                    struct wl_output* output) {
+  static_cast<Tags*>(data)->handle_unfocused_output(output);
+}
+
+static void listen_focused_view(void* data, struct zriver_seat_status_v1* zriver_seat_status_v1,
+                                const char* title) {
+  // This module doesn't care
+}
+
+static void listen_mode(void* data, struct zriver_seat_status_v1* zriver_seat_status_v1,
+                        const char* mode) {
+  // This module doesn't care
+}
+
+static const zriver_seat_status_v1_listener seat_status_listener_impl{
+    .focused_output = listen_focused_output,
+    .unfocused_output = listen_unfocused_output,
+    .focused_view = listen_focused_view,
+    .mode = listen_mode,
+};
+
+static void listen_command_success(void* data,
+                                   struct zriver_command_callback_v1* zriver_command_callback_v1,
+                                   const char* output) {
   // Do nothing but keep listener to avoid crashing when command was successful
 }
 
-static void listen_command_failure(void *data,
-                                   struct zriver_command_callback_v1 *zriver_command_callback_v1,
-                                   const char *output) {
+static void listen_command_failure(void* data,
+                                   struct zriver_command_callback_v1* zriver_command_callback_v1,
+                                   const char* output) {
   spdlog::error("failure when selecting/toggling tags {}", output);
 }
 
@@ -50,47 +76,50 @@ static const zriver_command_callback_v1_listener command_callback_listener_impl{
     .failure = listen_command_failure,
 };
 
-static void handle_global(void *data, struct wl_registry *registry, uint32_t name,
-                          const char *interface, uint32_t version) {
+static void handle_global(void* data, struct wl_registry* registry, uint32_t name,
+                          const char* interface, uint32_t version) {
   if (std::strcmp(interface, zriver_status_manager_v1_interface.name) == 0) {
     version = std::min(version, 2u);
     if (version < ZRIVER_OUTPUT_STATUS_V1_URGENT_TAGS_SINCE_VERSION) {
       spdlog::warn("river server does not support urgent tags");
     }
-    static_cast<Tags *>(data)->status_manager_ = static_cast<struct zriver_status_manager_v1 *>(
+    static_cast<Tags*>(data)->status_manager_ = static_cast<struct zriver_status_manager_v1*>(
         wl_registry_bind(registry, name, &zriver_status_manager_v1_interface, version));
   }
 
   if (std::strcmp(interface, zriver_control_v1_interface.name) == 0) {
     version = std::min(version, 1u);
-    static_cast<Tags *>(data)->control_ = static_cast<struct zriver_control_v1 *>(
+    static_cast<Tags*>(data)->control_ = static_cast<struct zriver_control_v1*>(
         wl_registry_bind(registry, name, &zriver_control_v1_interface, version));
   }
 
   if (std::strcmp(interface, wl_seat_interface.name) == 0) {
     version = std::min(version, 1u);
-    static_cast<Tags *>(data)->seat_ = static_cast<struct wl_seat *>(
-        wl_registry_bind(registry, name, &wl_seat_interface, version));
+    static_cast<Tags*>(data)->seat_ =
+        static_cast<struct wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, version));
   }
 }
 
-static void handle_global_remove(void *data, struct wl_registry *registry, uint32_t name) {
+static void handle_global_remove(void* data, struct wl_registry* registry, uint32_t name) {
   /* Ignore event */
 }
 
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
-Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
+Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& config)
     : waybar::AModule(config, "tags", id, false, false),
       status_manager_{nullptr},
       control_{nullptr},
       seat_{nullptr},
       bar_(bar),
+      output_{nullptr},
       box_{bar.orientation, 0},
-      output_status_{nullptr} {
-  struct wl_display *display = Client::inst()->wl_display;
-  struct wl_registry *registry = wl_display_get_registry(display);
+      output_status_{nullptr},
+      seat_status_{nullptr} {
+  w_ = &box_;
+  struct wl_display* display = Client::inst()->wl_display;
+  struct wl_registry* registry = wl_display_get_registry(display);
   wl_registry_add_listener(registry, &registry_listener_impl, this);
   wl_display_roundtrip(display);
 
@@ -100,19 +129,33 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
   }
 
   if (!control_) {
+    // Keep going: without river_control_v1 the tags are still displayed read-only
+    // (0.15.0 behavior); only the click-to-select/toggle wiring is disabled below.
     spdlog::error("river_control_v1 not advertised");
   }
 
   if (!seat_) {
+    // Keep going: wl_seat is only required for the focused-output ("output") class
+    // and for issuing control commands. Read-only tag display still works without it.
     spdlog::error("wl_seat not advertised");
   }
+
+  // Store the output this module belongs to; the river_output_status and
+  // river_seat_status objects (and their listeners) are created lazily in
+  // handle_show() to avoid leaking objects without listeners here.
+  output_ = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
+
+  // Parse hide-vacant once here, not in the wl callbacks: jsoncpp's asBool()
+  // throws on a string value ("true"), and an exception unwinding through
+  // libwayland's C dispatch aborts (#4078). Accept the string form too.
+  const auto& hv = config_["hide-vacant"];
+  hide_vacant_ = hv.isString() ? hv.asString() == "true" : hv.asBool();
 
   box_.set_name("tags");
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
   box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
 
   // Default to 9 tags, cap at 32
   const int num_tags =
@@ -129,32 +172,33 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
       buttons_.emplace_back(std::to_string(tag + 1));
     }
 
-    auto &button = buttons_[tag];
-    button.set_relief(Gtk::RELIEF_NONE);
-    box_.pack_start(button, false, false, 0);
+    auto& button = buttons_[tag];
+    button.add_css_class("flat");
+    box_.append(button);
 
-    if (!config_["disable-click"].asBool()) {
+    if (control_ && seat_ && !config_["disable-click"].asBool()) {
+      auto controlClick = Gtk::GestureClick::create();
+      controlClick->set_propagation_phase(Gtk::PropagationPhase::TARGET);
+      controlClick->set_button(3u);
+      button.add_controller(controlClick);
+
       if (set_tags.isArray() && !set_tags.empty())
         button.signal_clicked().connect(sigc::bind(
             sigc::mem_fun(*this, &Tags::handle_primary_clicked), set_tags[tag].asUInt()));
       else
         button.signal_clicked().connect(
             sigc::bind(sigc::mem_fun(*this, &Tags::handle_primary_clicked), (1 << tag)));
-      if (toggle_tags.isArray() && !toggle_tags.empty())
-        button.signal_button_press_event().connect(sigc::bind(
-            sigc::mem_fun(*this, &Tags::handle_button_press), toggle_tags[tag].asUInt()));
-      else
-        button.signal_button_press_event().connect(
-            sigc::bind(sigc::mem_fun(*this, &Tags::handle_button_press), (1 << tag)));
+
+      controlClick->signal_pressed().connect(
+          sigc::bind(sigc::mem_fun(*this, &Tags::handle_button_press),
+                     (toggle_tags.isArray() && !toggle_tags.empty()) ? toggle_tags[tag].asUInt()
+                                                                     : (1 << tag)));
     }
+    button.get_style_context()->add_class("tag-" + std::to_string(tag + 1));
     button.show();
   }
 
-  struct wl_output *output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
-  output_status_ = zriver_status_manager_v1_get_river_output_status(status_manager_, output);
-  zriver_output_status_v1_add_listener(output_status_, &output_status_listener_impl, this);
-
-  zriver_status_manager_v1_destroy(status_manager_);
+  box_.signal_show().connect(sigc::mem_fun(*this, &Tags::handle_show));
 }
 
 Tags::~Tags() {
@@ -162,64 +206,132 @@ Tags::~Tags() {
     zriver_output_status_v1_destroy(output_status_);
   }
 
+  if (seat_status_) {
+    zriver_seat_status_v1_destroy(seat_status_);
+  }
+
   if (control_) {
     zriver_control_v1_destroy(control_);
   }
+
+  if (status_manager_) {
+    zriver_status_manager_v1_destroy(status_manager_);
+  }
+}
+
+void Tags::handle_show() {
+  if (!status_manager_) return;
+  output_status_ = zriver_status_manager_v1_get_river_output_status(status_manager_, output_);
+  zriver_output_status_v1_add_listener(output_status_, &output_status_listener_impl, this);
+
+  if (seat_) {
+    seat_status_ = zriver_status_manager_v1_get_river_seat_status(status_manager_, seat_);
+    zriver_seat_status_v1_add_listener(seat_status_, &seat_status_listener_impl, this);
+  }
+
+  zriver_status_manager_v1_destroy(status_manager_);
+  status_manager_ = nullptr;
 }
 
 void Tags::handle_primary_clicked(uint32_t tag) {
+  if (!control_ || !seat_) return;
   // Send river command to select tag on left mouse click
-  zriver_command_callback_v1 *callback;
+  zriver_command_callback_v1* callback;
   zriver_control_v1_add_argument(control_, "set-focused-tags");
   zriver_control_v1_add_argument(control_, std::to_string(tag).c_str());
   callback = zriver_control_v1_run_command(control_, seat_);
   zriver_command_callback_v1_add_listener(callback, &command_callback_listener_impl, nullptr);
 }
 
-bool Tags::handle_button_press(GdkEventButton *event_button, uint32_t tag) {
-  if (event_button->type == GDK_BUTTON_PRESS && event_button->button == 3) {
-    // Send river command to toggle tag on right mouse click
-    zriver_command_callback_v1 *callback;
-    zriver_control_v1_add_argument(control_, "toggle-focused-tags");
-    zriver_control_v1_add_argument(control_, std::to_string(tag).c_str());
-    callback = zriver_control_v1_run_command(control_, seat_);
-    zriver_command_callback_v1_add_listener(callback, &command_callback_listener_impl, nullptr);
-  }
-  return true;
+void Tags::handle_button_press(int n_press, double x, double y, uint32_t tag) {
+  if (!control_ || !seat_) return;
+  // Send river command to toggle tag on right mouse click
+  zriver_command_callback_v1* callback;
+  zriver_control_v1_add_argument(control_, "toggle-focused-tags");
+  zriver_control_v1_add_argument(control_, std::to_string(tag).c_str());
+  callback = zriver_control_v1_run_command(control_, seat_);
+  zriver_command_callback_v1_add_listener(callback, &command_callback_listener_impl, nullptr);
+  return;
 }
 
 void Tags::handle_focused_tags(uint32_t tags) {
+  const bool hide_vacant = hide_vacant_;
   for (size_t i = 0; i < buttons_.size(); ++i) {
+    bool visible = buttons_[i].is_visible();
+    bool occupied = buttons_[i].get_style_context()->has_class("occupied");
+    bool urgent = buttons_[i].get_style_context()->has_class("urgent");
     if ((1 << i) & tags) {
+      if (hide_vacant && !visible) {
+        buttons_[i].set_visible(true);
+      }
       buttons_[i].get_style_context()->add_class("focused");
     } else {
+      if (hide_vacant && !(occupied || urgent)) {
+        buttons_[i].set_visible(false);
+      }
       buttons_[i].get_style_context()->remove_class("focused");
     }
   }
 }
 
-void Tags::handle_view_tags(struct wl_array *view_tags) {
+void Tags::handle_view_tags(struct wl_array* view_tags) {
   uint32_t tags = 0;
-  auto view_tag = reinterpret_cast<uint32_t *>(view_tags->data);
+  auto view_tag = reinterpret_cast<uint32_t*>(view_tags->data);
   auto end = view_tag + (view_tags->size / sizeof(uint32_t));
   for (; view_tag < end; ++view_tag) {
     tags |= *view_tag;
   }
+  const bool hide_vacant = hide_vacant_;
   for (size_t i = 0; i < buttons_.size(); ++i) {
+    bool visible = buttons_[i].is_visible();
+    bool focused = buttons_[i].get_style_context()->has_class("focused");
+    bool urgent = buttons_[i].get_style_context()->has_class("urgent");
     if ((1 << i) & tags) {
+      if (hide_vacant && !visible) {
+        buttons_[i].set_visible(true);
+      }
       buttons_[i].get_style_context()->add_class("occupied");
     } else {
+      if (hide_vacant && !(focused || urgent)) {
+        buttons_[i].set_visible(false);
+      }
       buttons_[i].get_style_context()->remove_class("occupied");
     }
   }
 }
 
 void Tags::handle_urgent_tags(uint32_t tags) {
+  const bool hide_vacant = hide_vacant_;
   for (size_t i = 0; i < buttons_.size(); ++i) {
+    bool visible = buttons_[i].is_visible();
+    bool occupied = buttons_[i].get_style_context()->has_class("occupied");
+    bool focused = buttons_[i].get_style_context()->has_class("focused");
     if ((1 << i) & tags) {
+      if (hide_vacant && !visible) {
+        buttons_[i].set_visible(true);
+      }
       buttons_[i].get_style_context()->add_class("urgent");
     } else {
+      if (hide_vacant && !(occupied || focused)) {
+        buttons_[i].set_visible(false);
+      }
       buttons_[i].get_style_context()->remove_class("urgent");
+    }
+  }
+}
+
+void Tags::handle_focused_output(struct wl_output* output) {
+  if (output_ == output) {
+    for (size_t i = 0; i < buttons_.size(); ++i) {
+      buttons_[i].get_style_context()->add_class("output");
+    }
+  }
+}
+
+void Tags::handle_unfocused_output(struct wl_output* output) {
+  if (output_ == output) {
+    for (size_t i = 0; i < buttons_.size(); ++i) {
+      buttons_[i].get_style_context()->remove_class("output");
     }
   }
 }

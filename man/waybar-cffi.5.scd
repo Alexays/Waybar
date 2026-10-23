@@ -15,6 +15,11 @@ Addressed by *cffi/<name>*
 	typeof: string ++
 	The path to the dynamic library to load to control the widget.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 Some additional configuration may be required depending on the cffi dynamic library being used.
 
 
@@ -31,6 +36,19 @@ Waybar config to enable the module:
 }
 ```
 
+
+# DEVELOPING CFFI MODULES
+
+CFFI modules require a handful of functions and constants to be defined with C
+linkage. The way to achieve this depends on the programming language being used
+(search for FFI / Foreign Function Interface for that language).
+
+The complete list of symbols to define can be found in the header file shipped with
+Waybar at *resources/custom_modules/cffi_example/waybar_cffi_module.h*, and a full
+example written in C is provided in *resources/custom_modules/cffi_example/*.
+
+Language bindings exist for several languages, including Rust (the *waybar-cffi*
+crate) and Zig.
 
 # STYLE
 

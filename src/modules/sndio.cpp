@@ -9,8 +9,8 @@
 
 namespace waybar::modules {
 
-void ondesc(void *arg, struct sioctl_desc *d, int curval) {
-  auto self = static_cast<Sndio *>(arg);
+void ondesc(void* arg, struct sioctl_desc* d, int curval) {
+  auto self = static_cast<Sndio*>(arg);
   if (d == NULL) {
     // d is NULL when the list is done
     return;
@@ -18,8 +18,8 @@ void ondesc(void *arg, struct sioctl_desc *d, int curval) {
   self->set_desc(d, curval);
 }
 
-void onval(void *arg, unsigned int addr, unsigned int val) {
-  auto self = static_cast<Sndio *>(arg);
+void onval(void* arg, unsigned int addr, unsigned int val) {
+  auto self = static_cast<Sndio*>(arg);
   self->put_val(addr, val);
 }
 
@@ -40,8 +40,8 @@ auto Sndio::connect_to_sndio() -> void {
   pfds_.reserve(sioctl_nfds(hdl_));
 }
 
-Sndio::Sndio(const std::string &id, const Json::Value &config)
-    : ALabel(config, "sndio", id, "{volume}%", 1, false, true),
+Sndio::Sndio(const std::string& id, const Json::Value& config)
+    : ALabel(config, "sndio", id, "{volume}%", 1, false, true, true),
       hdl_(nullptr),
       pfds_(0),
       addr_(0),
@@ -51,11 +51,7 @@ Sndio::Sndio(const std::string &id, const Json::Value &config)
       muted_(false) {
   connect_to_sndio();
 
-  event_box_.show();
-
-  event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK | Gdk::BUTTON_PRESS_MASK);
-  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Sndio::handleScroll));
-  event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &Sndio::handleToggle));
+  w_->show();
 
   thread_ = [this] {
     dp.emit();
@@ -80,7 +76,7 @@ Sndio::Sndio(const std::string &id, const Json::Value &config)
       while (thread_.isRunning()) {
         try {
           connect_to_sndio();
-        } catch (std::runtime_error const &e) {
+        } catch (std::runtime_error const& e) {
           // avoid leaking hdl_
           if (hdl_) {
             sioctl_close(hdl_);
@@ -100,29 +96,31 @@ Sndio::Sndio(const std::string &id, const Json::Value &config)
 
 Sndio::~Sndio() { sioctl_close(hdl_); }
 
-auto Sndio::update() -> void {
+auto Sndio::doUpdate() -> void {
   auto format = format_;
-  unsigned int vol = 100. * static_cast<double>(volume_) / static_cast<double>(maxval_);
+  unsigned int vol = (maxval_ > 0) ? static_cast<unsigned int>(100. * static_cast<double>(volume_) /
+                                                               static_cast<double>(maxval_))
+                                   : 0;
 
   if (volume_ == 0) {
-    label_.get_style_context()->add_class("muted");
+    w_->get_style_context()->add_class("muted");
   } else {
-    label_.get_style_context()->remove_class("muted");
+    w_->get_style_context()->remove_class("muted");
   }
 
   auto text =
       fmt::format(fmt::runtime(format), fmt::arg("volume", vol), fmt::arg("raw_value", volume_));
   if (text.empty()) {
-    label_.hide();
+    w_->hide();
   } else {
     label_.set_markup(text);
-    label_.show();
+    w_->show();
   }
 
-  ALabel::update();
+  ALabel::doUpdate();
 }
 
-auto Sndio::set_desc(struct sioctl_desc *d, unsigned int val) -> void {
+auto Sndio::set_desc(struct sioctl_desc* d, unsigned int val) -> void {
   std::string name{d->func};
   std::string node_name{d->node0.name};
 
@@ -140,17 +138,17 @@ auto Sndio::put_val(unsigned int addr, unsigned int val) -> void {
   }
 }
 
-bool Sndio::handleScroll(GdkEventScroll *e) {
+bool Sndio::handleScroll(double dx, double dy) {
   // change the volume only when no user provided
   // events are configured
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
-    return AModule::handleScroll(e);
+    return AModule::handleScroll(dx, dy);
   }
 
   // only try to talk to sndio if connected
   if (hdl_ == nullptr) return true;
 
-  auto dir = AModule::getScrollDir(e);
+  auto dir = AModule::getScrollDir(controller_scroll_->get_current_event());
   if (dir == SCROLL_DIR::NONE) {
     return true;
   }
@@ -180,14 +178,14 @@ bool Sndio::handleScroll(GdkEventScroll *e) {
   return true;
 }
 
-bool Sndio::handleToggle(GdkEventButton *const &e) {
+void Sndio::handlePress(int n_press, double x, double y) {
   // toggle mute only when no user provided events are configured
   if (config_["on-click"].isString()) {
-    return AModule::handleToggle(e);
+    return AModule::handlePress(n_press, x, y);
   }
 
   // only try to talk to sndio if connected
-  if (hdl_ == nullptr) return true;
+  if (hdl_ == nullptr) return;
 
   muted_ = !muted_;
   if (muted_) {
@@ -197,8 +195,6 @@ bool Sndio::handleToggle(GdkEventButton *const &e) {
   } else {
     sioctl_setval(hdl_, addr_, old_volume_);
   }
-
-  return true;
 }
 
 } /* namespace waybar::modules */

@@ -17,6 +17,10 @@ Addressed by *hyprland/window*
 	default: {title} ++
 	The format, how information should be displayed. On {} the current window title is displayed.
 
+*max-length*: ++
+	typeof: integer ++
+	The maximum length in character the module should display.
+
 *rewrite*: ++
 	typeof: object ++
 	Rules to rewrite window title. See *rewrite rules*.
@@ -24,6 +28,15 @@ Addressed by *hyprland/window*
 *separate-outputs*: ++
 	typeof: bool ++
 	Show the active window of the monitor the bar belongs to, instead of the focused window.
+
+*fallback*: ++
+	typeof: string ++
+	Text to display when the focused window title is empty (for example when no window is focused).
+
+*tooltip-format*: ++
+	typeof: string ++
+	The format of the tooltip shown on hover. Supports the same replacements as *format*. Requires *tooltip* to be enabled. When unset, the tooltip falls back to the formatted label text. ++
+	default: (the formatted label text)
 
 *icon*: ++
 	typeof: bool ++
@@ -34,6 +47,11 @@ Addressed by *hyprland/window*
 	typeof: integer ++
 	default: 24 ++
 	Option to change the size of the application icon.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
 
 # FORMAT REPLACEMENTS
 See the output of "hyprctl clients" for examples

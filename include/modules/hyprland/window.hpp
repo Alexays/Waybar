@@ -11,54 +11,57 @@
 
 namespace waybar::modules::hyprland {
 
-class Window : public waybar::AAppIconLabel, public EventHandler {
+class Window final : public waybar::AAppIconLabel, public EventHandler {
  public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Window() override;
 
-  auto update() -> void override;
-
  private:
+  auto doUpdate() -> void override;
+
   struct Workspace {
-    int id;
-    int windows;
+    int id = 0;
+    int windows = 0;
     std::string last_window;
     std::string last_window_title;
 
-    static auto parse(const Json::Value&) -> Workspace;
+    static auto parse(const Json::Value& value) -> Workspace;
   };
 
   struct WindowData {
-    bool floating;
+    bool floating = false;
     int monitor = -1;
     std::string class_name;
     std::string initial_class_name;
     std::string title;
     std::string initial_title;
-    bool fullscreen;
-    bool grouped;
+    bool fullscreen = false;
+    bool grouped = false;
 
     static auto parse(const Json::Value&) -> WindowData;
   };
 
-  auto getActiveWorkspace(const std::string&) -> Workspace;
-  auto getActiveWorkspace() -> Workspace;
-  void onEvent(const std::string&) override;
+  static auto getActiveWorkspace(const std::string&) -> Workspace;
+  static auto getActiveWorkspace() -> Workspace;
+  void onEvent(const std::string& ev) override;
   void queryActiveWorkspace();
   void setClass(const std::string&, bool enable);
 
-  bool separate_outputs;
+  bool separateOutputs_{false};
   std::mutex mutex_;
   const Bar& bar_;
   util::JsonParser parser_;
-  WindowData window_data_;
+  WindowData windowData_;
   Workspace workspace_;
-  std::string solo_class_;
-  std::string last_solo_class_;
-  bool solo_;
-  bool all_floating_;
-  bool swallowing_;
-  bool fullscreen_;
+  std::string soloClass_;
+  std::string lastSoloClass_;
+  bool solo_{false};
+  bool allFloating_{false};
+  bool swallowing_{false};
+  bool fullscreen_{false};
+  bool focused_{false};
+
+  IPC& m_ipc_;
 };
 
 }  // namespace waybar::modules::hyprland

@@ -21,7 +21,7 @@ screensaver, also known as "presentation mode".
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
@@ -33,19 +33,23 @@ screensaver, also known as "presentation mode".
 
 *align*: ++
 	typeof: float ++
-	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *on-click*: ++
 	typeof: string ++
-	Command to execute when clicked on the module. A click also toggles the state
+	Command to execute when clicked on the module. A click also toggles the state (enable only if dynamic timeouts are enabled).
 
 *on-click-middle*: ++
 	typeof: string ++
-	Command to execute when middle-clicked on the module using mousewheel.
+	Command to execute when middle-clicked on the module using mousewheel. (reset the timeout to the initial value if dynamic timeouts are enabled).
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right-click on the module.
+	Command to execute when you right-click on the module. (deactivate the inhibit if dynamic timeouts are enabled).
 
 *on-update*: ++
 	typeof: string ++
@@ -53,11 +57,11 @@ screensaver, also known as "presentation mode".
 
 *on-scroll-up*: ++
 	typeof: string ++
-	Command to execute when scrolling up on the module.
+	Command to execute when scrolling up on the module. (increase the timeout if dynamic timeouts are enabled).
 
 *on-scroll-down*: ++
 	typeof: string ++
-	Command to execute when scrolling down on the module.
+	Command to execute when scrolling down on the module. (decrease the timeout if dynamic timeouts are enabled).
 
 *smooth-scrolling-threshold*: ++
 	typeof: double ++
@@ -72,6 +76,28 @@ screensaver, also known as "presentation mode".
 	typeof: double ++
 	The number of minutes the inhibition should last.
 
+*timeout-step*: ++
+	typeof: double ++
+	default: 10 ++
+	The number of minutes to add or subtract when scrolling (when dynamic timeouts are enabled).
+
+*dynamic-timeouts*: ++
+	typeof: bool ++
+	default: false ++
+	Option to enable dynamic timeouts. ++
+	The legacy singular spelling *dynamic-timeout* is also accepted as an alias.
+
+*wait-for-activity*: ++
+	typeof: bool ++
+	default: *false* ++
+	When enabled, the idle inhibitor remains active as long as there is keyboard or mouse activity on the bar. If there is no activity for the duration specified in *timeout*, the inhibitor will automatically toggle off. This option requires *timeout* to be set.
+
+*signal*: ++
+	typeof: integer ++
+	The signal number used to toggle the idle inhibitor externally. ++
+	The number is valid between 1 and N, where *SIGRTMIN+N* = *SIGRTMAX*. ++
+	Use `pkill -SIGRTMIN+N waybar` to toggle the idle inhibitor from scripts or keybindings.
+
 *tooltip*: ++
 	typeof: bool ++
 	default: true ++
@@ -85,21 +111,93 @@ screensaver, also known as "presentation mode".
 	typeof: string ++
 	This format is used when the inhibit is deactivated.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu. Cannot be "on-click".
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{status}*: status (*activated* or *deactivated*)
 
 *{icon}*: Icon, as defined in *format-icons*
 
+*{timeout}*: Timeout in minutes
+
+*{timeleft}*: Time left in minutes
+
 # EXAMPLES
+
+Basic usage with timeout:
 
 ```
 "idle_inhibitor": {
 	"format": "{icon}",
 	"format-icons": {
-		"activated": "",
-		"deactivated": ""
+		"activated": "",
+		"deactivated": ""
 	},
 	"timeout": 30.5
 }
 ```
+
+With dynamic timeouts (scroll to adjust the timeout):
+
+```
+"idle_inhibitor": {
+	"format": "{status} {timeleft}/{timeout}",
+	"format-icons": {
+		"activated": "",
+		"deactivated": ""
+	},
+	"timeout": 480,
+	"dynamic-timeouts": true,
+	"timeout-step": 10
+}
+```
+
+With external control via signals (can be toggled with `pkill -SIGRTMIN+8 waybar`):
+
+```
+"idle_inhibitor": {
+	"format": "{icon}",
+	"format-icons": {
+		"activated": "",
+		"deactivated": ""
+	},
+	"signal": 8
+}
+```
+
+With wait-for-activity feature:
+
+```
+"idle_inhibitor": {
+	"format": "{icon}",
+	"format-icons": {
+		"activated": "",
+		"deactivated": ""
+	},
+	"timeout": 5.0,
+	"wait-for-activity": true
+}
+```
+
+# STYLE
+
+- *#idle_inhibitor*
+- *#idle_inhibitor.activated*
+- *#idle_inhibitor.deactivated*

@@ -10,7 +10,7 @@ BacklightSlider::BacklightSlider(const std::string& id, const Json::Value& confi
       preferred_device_(config["device"].isString() ? config["device"].asString() : ""),
       backend(interval_, [this] { this->dp.emit(); }) {}
 
-void BacklightSlider::update() {
+void BacklightSlider::doUpdate() {
   uint16_t brightness = backend.get_scaled_brightness(preferred_device_);
   scale_.set_value(brightness);
 }

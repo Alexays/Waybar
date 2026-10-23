@@ -2,32 +2,53 @@
 
 #include <fmt/format.h>
 
+#include <algorithm>
+#include <fstream>
+#include <iostream>
 #include <util/command.hpp>
+
+#include "config.hpp"
 
 namespace waybar {
 
 ALabel::ALabel(const Json::Value& config, const std::string& name, const std::string& id,
                const std::string& format, uint16_t interval, bool ellipsize, bool enable_click,
                bool enable_scroll)
-    : AModule(config, name, id, config["format-alt"].isString() || enable_click, enable_scroll),
+    : AModule(config, name, id,
+              config["format-alt"].isString() || config["menu"].isString() || enable_click,
+              enable_scroll),
       format_(config_["format"].isString() ? config_["format"].asString() : format),
+
+      // Leave the default option outside of the std::max(1L, ...), because the zero value
+      // (default) is used in modules/custom.cpp to make the difference between
+      // two types of custom scripts. Fixes #4521.
       interval_(config_["interval"] == "once"
-                    ? std::chrono::seconds::max()
-                    : std::chrono::seconds(
-                          config_["interval"].isUInt() ? config_["interval"].asUInt() : interval)),
+                    ? std::chrono::milliseconds::max()
+                    : std::chrono::milliseconds(
+                          (config_["interval"].isNumeric()
+                               ? (config_["interval"].asDouble() > 0
+                                      // Minimum 1ms due to millisecond precision
+                                      ? std::max(1L, static_cast<long>(
+                                                         config_["interval"].asDouble() * 1000))
+                                      // Only modules with no periodic default use 0 as an
+                                      // event-driven sentinel. Periodic modules fall back to their
+                                      // default interval so interval:0 cannot busy-loop or hit
+                                      // modulo-by-zero clock code.
+                                      : (interval == 0 ? 0L : 1000L * static_cast<long>(interval)))
+                               : 1000 * (long)interval))),
       default_format_(format_) {
+  w_ = &label_;
   label_.set_name(name);
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
   }
   label_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(label_);
   if (config_["max-length"].isUInt()) {
     label_.set_max_width_chars(config_["max-length"].asInt());
-    label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
+    label_.set_ellipsize(Pango::EllipsizeMode::END);
     label_.set_single_line_mode(true);
   } else if (ellipsize && label_.get_max_width_chars() == -1) {
-    label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
+    label_.set_ellipsize(Pango::EllipsizeMode::END);
     label_.set_single_line_mode(true);
   }
 
@@ -37,10 +58,8 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
 
   uint rotate = 0;
 
-  if (config_["rotate"].isUInt()) {
-    rotate = config["rotate"].asUInt();
-    label_.set_angle(rotate);
-  }
+  // Rotation is deprecated in GTK4. CCS Transform is workaround
+  label_.add_css_class("rotated");
 
   if (config_["align"].isDouble()) {
     auto align = config_["align"].asFloat();
@@ -50,9 +69,40 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
       label_.set_xalign(align);
     }
   }
+
+  if (config_["justify"].isString()) {
+    auto justify_str = config_["justify"].asString();
+    if (justify_str == "left") {
+      label_.set_justify(Gtk::Justification::LEFT);
+    } else if (justify_str == "right") {
+      label_.set_justify(Gtk::Justification::RIGHT);
+    } else if (justify_str == "center") {
+      label_.set_justify(Gtk::Justification::CENTER);
+    }
+  }
+
+  AModule::bindEvents(*this);
 }
 
-auto ALabel::update() -> void { AModule::update(); }
+bool ALabel::setLabelMarkup(const Glib::ustring& markup) {
+  if (last_label_markup_ == markup.raw()) {
+    return false;
+  }
+
+  label_.set_markup(markup);
+  last_label_markup_ = markup.raw();
+  return true;
+}
+
+bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
+  if (last_tooltip_markup_ == markup.raw()) {
+    return false;
+  }
+
+  label_.set_tooltip_markup(markup);
+  last_tooltip_markup_ = markup.raw();
+  return true;
+}
 
 std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_t max) {
   auto format_icons = config_["format-icons"];
@@ -65,8 +115,30 @@ std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    if (size) {
-      auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
+    if (size != 0U && format_icons[0].isObject()) {
+      std::string last_icon;
+      for (const auto& threshold : format_icons) {
+        if (!threshold.isObject() || !threshold["icon"].isString() || !threshold["max"].isUInt()) {
+          static bool warned = false;
+          if (!warned) {
+            spdlog::warn(
+                "format-icons: skipping invalid threshold object, expected {\"icon\": \"...\", "
+                "\"max\": N}");
+            warned = true;
+          }
+          continue;
+        }
+        last_icon = threshold["icon"].asString();
+        if (percentage <= threshold["max"].asUInt()) {
+          return last_icon;
+        }
+      }
+      if (!last_icon.empty()) {
+        return last_icon;
+      }
+    } else if (size != 0U) {
+      auto divisor = std::max(1U, (max == 0 ? 100U : static_cast<unsigned>(max)) / size);
+      auto idx = std::clamp(percentage / divisor, 0U, size - 1);
       format_icons = format_icons[idx];
     }
   }
@@ -91,8 +163,30 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    if (size) {
-      auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
+    if (size != 0U && format_icons[0].isObject()) {
+      std::string last_icon;
+      for (const auto& threshold : format_icons) {
+        if (!threshold.isObject() || !threshold["icon"].isString() || !threshold["max"].isUInt()) {
+          static bool warned = false;
+          if (!warned) {
+            spdlog::warn(
+                "format-icons: skipping invalid threshold object, expected {\"icon\": \"...\", "
+                "\"max\": N}");
+            warned = true;
+          }
+          continue;
+        }
+        last_icon = threshold["icon"].asString();
+        if (percentage <= threshold["max"].asUInt()) {
+          return last_icon;
+        }
+      }
+      if (!last_icon.empty()) {
+        return last_icon;
+      }
+    } else if (size != 0U) {
+      auto divisor = std::max(1U, (max == 0 ? 100U : static_cast<unsigned>(max)) / size);
+      auto idx = std::clamp(percentage / divisor, 0U, size - 1);
       format_icons = format_icons[idx];
     }
   }
@@ -102,8 +196,13 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
   return "";
 }
 
-bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
-  if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
+void ALabel::copyToClipboard(const std::string& literal) {
+  label_.get_clipboard()->set_text(literal);
+}
+
+void waybar::ALabel::handlePress(int n_press, double x, double y) {
+  if (config_["format-alt-click"].isUInt() &&
+      gesture_click_->get_current_button() == config_["format-alt-click"].asUInt()) {
     alt_ = !alt_;
     if (alt_ && config_["format-alt"].isString()) {
       format_ = config_["format-alt"].asString();
@@ -111,7 +210,11 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
       format_ = default_format_;
     }
   }
-  return AModule::handleToggle(e);
+
+  if (config_["on-click-copy"].isBool() && config_["on-click-copy"].asBool()) {
+    copyToClipboard(label_.get_text());
+  }
+  AModule::handlePress(n_press, x, y);
 }
 
 std::string ALabel::getState(uint8_t value, bool lesser) {
@@ -128,7 +231,7 @@ std::string ALabel::getState(uint8_t value, bool lesser) {
     }
   }
   // Sort states
-  std::sort(states.begin(), states.end(), [&lesser](auto& a, auto& b) {
+  std::ranges::sort(states.begin(), states.end(), [&lesser](auto& a, auto& b) {
     return lesser ? a.second < b.second : a.second > b.second;
   });
   std::string valid_state;

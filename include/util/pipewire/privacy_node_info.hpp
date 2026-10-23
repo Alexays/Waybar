@@ -4,7 +4,7 @@
 
 #include <string>
 
-#include "util/gtk_icon.hpp"
+#include "util/gtk/gtk_icon.hpp"
 
 namespace waybar::util::PipewireBackend {
 
@@ -12,10 +12,11 @@ enum PrivacyNodeType {
   PRIVACY_NODE_TYPE_NONE,
   PRIVACY_NODE_TYPE_VIDEO_INPUT,
   PRIVACY_NODE_TYPE_AUDIO_INPUT,
-  PRIVACY_NODE_TYPE_AUDIO_OUTPUT
+  PRIVACY_NODE_TYPE_AUDIO_OUTPUT,
+  PRIVACY_NODE_TYPE_LOCATION
 };
 
-class PrivacyNodeInfo {
+class PWPrivacyNodeInfo {
  public:
   PrivacyNodeType type = PRIVACY_NODE_TYPE_NONE;
   uint32_t id;
@@ -25,6 +26,7 @@ class PrivacyNodeInfo {
   std::string media_name;
   std::string node_name;
   std::string application_name;
+  bool is_monitor = false;
 
   std::string pipewire_access_portal_app_id;
   std::string application_icon_name;
@@ -32,31 +34,14 @@ class PrivacyNodeInfo {
   struct spa_hook object_listener;
   struct spa_hook proxy_listener;
 
-  void *data;
+  void* data;
 
-  std::string get_name() {
-    const std::vector<std::string *> names{&application_name, &node_name};
-    std::string name = "Unknown Application";
-    for (auto &name_ : names) {
-      if (name_ != nullptr && name_->length() > 0) {
-        name = *name_;
-        name[0] = toupper(name[0]);
-        break;
-      }
-    }
-    return name;
-  }
+  std::string getName();
+  std::string getIconName();
 
-  std::string get_icon_name() {
-    const std::vector<std::string *> names{&application_icon_name, &pipewire_access_portal_app_id,
-                                           &application_name, &node_name};
-    const std::string name = "application-x-executable-symbolic";
-    for (auto &name_ : names) {
-      if (name_ != nullptr && name_->length() > 0 && DefaultGtkIconThemeWrapper::has_icon(*name_)) {
-        return *name_;
-      }
-    }
-    return name;
-  }
+  // Handlers for PipeWire events
+  void handleProxyEventDestroy();
+  void handleNodeEventInfo(const struct pw_node_info* info);
 };
+
 }  // namespace waybar::util::PipewireBackend

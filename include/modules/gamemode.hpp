@@ -1,45 +1,38 @@
 #pragma once
 
-#include <iostream>
-#include <map>
-#include <string>
-
-#include "ALabel.hpp"
+#include "AModule.hpp"
 #include "giomm/dbusconnection.h"
-#include "giomm/dbusproxy.h"
-#include "glibconfig.h"
 #include "gtkmm/box.h"
 #include "gtkmm/image.h"
 #include "gtkmm/label.h"
-#include "gtkmm/overlay.h"
 
 namespace waybar::modules {
 
-class Gamemode : public AModule {
+class Gamemode final : public AModule {
  public:
-  Gamemode(const std::string &, const Json::Value &);
+  Gamemode(const std::string&, const Json::Value&);
   virtual ~Gamemode();
-  auto update() -> void override;
+  auto doUpdate() -> void override;
 
  private:
   const std::string DEFAULT_ICON_NAME = "input-gaming-symbolic";
   const std::string DEFAULT_FORMAT = "{glyph}";
   const std::string DEFAULT_FORMAT_ALT = "{glyph} {count}";
   const std::string DEFAULT_TOOLTIP_FORMAT = "Games running: {count}";
-  const std::string DEFAULT_GLYPH = "";
+  const std::string DEFAULT_GLYPH = "󰊴";
 
-  void appear(const Glib::RefPtr<Gio::DBus::Connection> &connection, const Glib::ustring &name,
-              const Glib::ustring &name_owner);
-  void disappear(const Glib::RefPtr<Gio::DBus::Connection> &connection, const Glib::ustring &name);
-  void prepareForSleep_cb(const Glib::RefPtr<Gio::DBus::Connection> &connection,
-                          const Glib::ustring &sender_name, const Glib::ustring &object_path,
-                          const Glib::ustring &interface_name, const Glib::ustring &signal_name,
-                          const Glib::VariantContainerBase &parameters);
-  void notify_cb(const Glib::ustring &sender_name, const Glib::ustring &signal_name,
-                 const Glib::VariantContainerBase &arguments);
+  void appear(const Glib::RefPtr<Gio::DBus::Connection>& connection, const Glib::ustring& name,
+              const Glib::ustring& name_owner);
+  void disappear(const Glib::RefPtr<Gio::DBus::Connection>& connection, const Glib::ustring& name);
+  void prepareForSleep_cb(const Glib::RefPtr<Gio::DBus::Connection>& connection,
+                          const Glib::ustring& sender_name, const Glib::ustring& object_path,
+                          const Glib::ustring& interface_name, const Glib::ustring& signal_name,
+                          const Glib::VariantContainerBase& parameters);
+  void notify_cb(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
+                 const Glib::VariantContainerBase& arguments);
 
   void getData();
-  bool handleToggle(GdkEventButton *const &) override;
+  void handlePress(int n_press, double x, double y) override;
 
   // Config
   std::string format = DEFAULT_FORMAT;

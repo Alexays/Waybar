@@ -1,0 +1,7 @@
+[wrap-git]
+url = https://github.com/GNOME/gtkmm.git
+revision = 4.20.0
+depth = 1
+
+[provide]
+gtkmm = gtkmm_dep

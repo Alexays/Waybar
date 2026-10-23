@@ -12,11 +12,11 @@
 #include "util/json.hpp"
 
 namespace waybar::modules::sway {
-class Scratchpad : public ALabel {
+class Scratchpad final : public ALabel {
  public:
   Scratchpad(const std::string&, const Json::Value&);
   virtual ~Scratchpad() = default;
-  auto update() -> void override;
+  auto doUpdate() -> void override;
 
  private:
   auto getTree() -> void;

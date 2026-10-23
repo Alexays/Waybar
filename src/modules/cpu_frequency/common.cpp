@@ -9,7 +9,9 @@
 #include <fmt/core.h>
 #endif
 
-waybar::modules::CpuFrequency::CpuFrequency(const std::string& id, const Json::Value& config)
+namespace waybar::modules {
+
+CpuFrequency::CpuFrequency(const std::string& id, const Json::Value& config)
     : ALabel(config, "cpu_frequency", id, "{avg_frequency}", 10) {
   thread_ = [this] {
     dp.emit();
@@ -17,15 +19,10 @@ waybar::modules::CpuFrequency::CpuFrequency(const std::string& id, const Json::V
   };
 }
 
-auto waybar::modules::CpuFrequency::update() -> void {
+auto CpuFrequency::doUpdate() -> void {
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
   auto [max_frequency, min_frequency, avg_frequency] = CpuFrequency::getCpuFrequency();
-  if (tooltipEnabled()) {
-    auto tooltip =
-        fmt::format("Minimum frequency: {}\nAverage frequency: {}\nMaximum frequency: {}\n",
-                    min_frequency, avg_frequency, max_frequency);
-    label_.set_tooltip_text(tooltip);
-  }
+
   auto format = format_;
   auto state = getState(avg_frequency);
   if (!state.empty() && config_["format-" + state].isString()) {
@@ -33,23 +30,23 @@ auto waybar::modules::CpuFrequency::update() -> void {
   }
 
   if (format.empty()) {
-    event_box_.hide();
+    w_->hide();
   } else {
-    event_box_.show();
+    w_->show();
     auto icons = std::vector<std::string>{state};
-    fmt::dynamic_format_arg_store<fmt::format_context> store;
-    store.push_back(fmt::arg("icon", getIcon(avg_frequency, icons)));
-    store.push_back(fmt::arg("max_frequency", max_frequency));
-    store.push_back(fmt::arg("min_frequency", min_frequency));
-    store.push_back(fmt::arg("avg_frequency", avg_frequency));
-    label_.set_markup(fmt::vformat(format, store));
+    updateLabelAndTooltip(
+        format,
+        "Minimum frequency: {min_frequency}\nAverage frequency: {avg_frequency}\nMaximum "
+        "frequency: {max_frequency}\n",
+        fmt::arg("icon", getIcon(avg_frequency, icons)), fmt::arg("max_frequency", max_frequency),
+        fmt::arg("min_frequency", min_frequency), fmt::arg("avg_frequency", avg_frequency));
   }
 
   // Call parent update
-  ALabel::update();
+  ALabel::doUpdate();
 }
 
-std::tuple<float, float, float> waybar::modules::CpuFrequency::getCpuFrequency() {
+std::tuple<float, float, float> CpuFrequency::getCpuFrequency() {
   std::vector<float> frequencies = CpuFrequency::parseCpuFrequencies();
   if (frequencies.empty()) {
     return {0.f, 0.f, 0.f};
@@ -65,3 +62,5 @@ std::tuple<float, float, float> waybar::modules::CpuFrequency::getCpuFrequency()
 
   return {max_frequency, min_frequency, avg_frequency};
 }
+
+}  // namespace waybar::modules

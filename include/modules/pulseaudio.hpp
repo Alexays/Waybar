@@ -1,7 +1,5 @@
 #pragma once
 
-#include <fmt/format.h>
-
 #include <algorithm>
 #include <array>
 #include <memory>
@@ -11,17 +9,18 @@
 
 namespace waybar::modules {
 
-class Pulseaudio : public ALabel {
+class Pulseaudio final : public ALabel {
  public:
   Pulseaudio(const std::string&, const Json::Value&);
   virtual ~Pulseaudio() = default;
-  auto update() -> void override;
+  auto doUpdate() -> void override;
 
  private:
-  bool handleScroll(GdkEventScroll* e) override;
+  bool handleScroll(double dx, double dy) override;
   const std::vector<std::string> getPulseIcon() const;
 
   std::shared_ptr<util::AudioBackend> backend = nullptr;
+  util::PulseaudioTarget target = util::PulseaudioTarget::Sink;
 };
 
 }  // namespace waybar::modules

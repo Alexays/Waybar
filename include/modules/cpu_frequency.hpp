@@ -14,11 +14,11 @@
 
 namespace waybar::modules {
 
-class CpuFrequency : public ALabel {
+class CpuFrequency final : public ALabel {
  public:
   CpuFrequency(const std::string&, const Json::Value&);
   virtual ~CpuFrequency() = default;
-  auto update() -> void override;
+  auto doUpdate() -> void override;
 
   // This is a static member because it is also used by the cpu module.
   static std::tuple<float, float, float> getCpuFrequency();

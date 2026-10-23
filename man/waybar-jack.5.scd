@@ -6,7 +6,13 @@ waybar - JACK module
 
 # DESCRIPTION
 
-The *jack* module displays the current state of the JACK server.
+The *jack* module displays the current state of the JACK server. It supports both
+the JACK2 <https://github.com/jackaudio/jack2> and PipeWire <https://pipewire.org/>
+implementations of the JACK API.
+
+PipeWire users are advised to run at least v0.3.57; earlier versions cause the
+Waybar client to hang indefinitely if the server shuts down while the module is
+running.
 
 # CONFIGURATION
 
@@ -45,13 +51,13 @@ Addressed by *jack*
 	The format of information displayed in the tooltip.
 
 *interval*: ++
-	typeof: integer ++
+	typeof: integer or float ++
 	default: 1 ++
 	The interval in which the information gets polled.
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
@@ -63,7 +69,11 @@ Addressed by *jack*
 
 *align*: ++
 	typeof: float ++
-	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *on-click*: ++
 	typeof: string ++
@@ -80,6 +90,24 @@ Addressed by *jack*
 *on-update*: ++
 	typeof: string ++
 	Command to execute when the module is updated.
+
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
 
 # FORMAT REPLACEMENTS
 

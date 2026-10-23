@@ -37,7 +37,7 @@ class BarIpcClient {
   void onModeUpdate(bool visible_by_modifier);
   void onUrgencyUpdate(bool visible_by_urgency);
   void update();
-  bool isModuleEnabled(std::string name);
+  bool isModuleEnabled(const std::string& name);
 
   Bar& bar_;
   util::JsonParser parser_;

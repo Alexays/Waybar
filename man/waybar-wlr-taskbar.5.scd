@@ -18,6 +18,13 @@ Addressed by *wlr/taskbar*
 	default: false ++
 	If set to false applications on the waybar's current output will be shown. Otherwise, all applications are shown.
 
+*bar-css-states*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, application state is exposed as CSS classes on the Waybar
+	window. Maximized and fullscreen state is aggregated across applications
+	known to belong to the active workspace. See *Bar state style* below.
+
 *format*: ++
 	typeof: string ++
 	default: {icon} ++
@@ -52,10 +59,35 @@ Addressed by *wlr/taskbar*
 	default: false ++
 	If set to true, always reorder the tasks in the taskbar so that the currently active one is first. Otherwise don't reorder.
 
+*active-only*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, only the currently active application button is shown.
+	Other applications remain tracked and reappear when activated.
+
 *sort-by-app-id*: ++
 	typeof: bool ++
 	default: false ++
 	If set to true, group tasks by their app_id. Cannot be used with 'active-first'.
+
+*homogeneous*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, distribute every task button evenly across the taskbar's allocated width. Buttons will automatically resize so that 'N' visible tasks each take '1/N' of the width.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's box, allowing options 'left', 'right', or 'center' to define the positioning.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, task buttons stretch to fill the available space in the taskbar and long titles are ellipsized to fit. Only takes effect on a horizontal bar; on a vertical bar the buttons keep their content-based size. If set to false, buttons are sized to their content.
+
+*truncate*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, the task button text will be ellipsized (truncated with …) when the available button width is smaller than the label text.
 
 *on-click*: ++
 	typeof: string ++
@@ -76,6 +108,10 @@ Addressed by *wlr/taskbar*
 *ignore-list*: ++
 	typeof: array ++
 	List of app_id/titles to be invisible.
+
+*squash-list*: ++
+	typeof: array ++
+	List of app_id/titles whose multiple instances are collapsed into a single button. When more than one instance of a listed app is open, only one button is shown; when one instance closes, the next hidden instance reappears. The special value '\*' matches all applications.
 
 *app_ids-mapping*: ++
 	typeof: object ++
@@ -99,6 +135,11 @@ Addressed by *wlr/taskbar*
 
 *{short_state}*: The state (minimize == m, maximized == M, active == A, fullscreen == F) represented as one character of the application.
 
+As with all format replacements in Waybar, a length limit such as *{title:.15}* is
+measured in bytes, not characters. This may produce invalid text if a multi-byte
+character is split, or (when *markup* is true) if the truncation cuts through a
+value that must be escaped in XML.
+
 # CLICK ACTIONS
 
 *activate*: Bring the application into foreground.
@@ -120,6 +161,8 @@ rewrite rules if the expression matches. Rules may contain references to
 captures of the expression.
 
 Regular expression and replacement follow ECMA-script rules.
+
+An expression must match the format output *fully* to trigger its replacement.
 
 If no expression matches, the format output is left unchanged.
 
@@ -151,8 +194,41 @@ Invalid expressions (e.g., mismatched parentheses) are skipped.
 # Style
 
 - *#taskbar*
+- *#taskbar.empty*
 - *#taskbar button*
 - *#taskbar button.maximized*
 - *#taskbar button.minimized*
 - *#taskbar button.active*
 - *#taskbar button.fullscreen*
+
+# Bar state style
+
+When *bar-css-states* is enabled, the following classes are added to
+*window#waybar*:
+
+- *window#waybar.toplevel-active*
+- *window#waybar.toplevel-maximized*
+- *window#waybar.toplevel-minimized*
+- *window#waybar.toplevel-fullscreen*
+
+The active, minimized classes describe the active application. The maximized
+and fullscreen classes are set if any non-minimized application known to belong
+to the active workspace has that state.
+
+Workspace membership is learned when an application is activated and requires
+the compositor to support *ext-workspace-v1*. Before an application has been
+activated during the current Waybar session, its workspace may be unknown. On
+compositors without *ext-workspace-v1*, these classes fall back to the active
+application's state.
+
+For example:
+
+```
+window#waybar {
+	background-color: rgba(0, 0, 0, 0.5);
+}
+
+window#waybar.toplevel-maximized {
+	background-color: rgba(0, 0, 0, 1);
+}
+```

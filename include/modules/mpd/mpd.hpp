@@ -12,7 +12,7 @@
 
 namespace waybar::modules {
 
-class MPD : public ALabel {
+class MPD final : public ALabel {
   friend class detail::Context;
 
   // State machine
@@ -28,37 +28,44 @@ class MPD : public ALabel {
 
   unsigned timeout_;
 
+  unsigned playing_interval_;
+
   detail::unique_connection connection_;
 
   detail::unique_status status_;
   mpd_state state_;
   detail::unique_song song_;
+  std::string ellipsis_;
 
  public:
   MPD(const std::string&, const Json::Value&);
   virtual ~MPD() noexcept = default;
-  auto update() -> void override;
+  auto doUpdate() -> void override;
 
  private:
   std::string getTag(mpd_tag_type type, unsigned idx = 0) const;
   std::string getFilename() const;
   void setLabel();
   std::string getStateIcon() const;
-  std::string getOptionIcon(std::string optionName, bool activated) const;
+  std::string getOptionIcon(const std::string& optionName, bool activated) const;
+  std::string getArtistStr(bool truncated) const;
+  std::string getAlbumArtistStr(bool truncated) const;
+  std::string getAlbumStr(bool truncated) const;
+  std::string getTitleStr(bool truncated) const;
 
   // GUI-side methods
-  bool handlePlayPause(GdkEventButton* const&);
+  void handlePress(int n_press, double x, double y) override;
   void emit() { dp.emit(); }
 
   // MPD-side, Non-GUI methods.
   void tryConnect();
   void checkErrors(mpd_connection* conn);
   void fetchState();
-  void queryMPD();
 
   inline bool stopped() const { return connection_ && state_ == MPD_STATE_STOP; }
   inline bool playing() const { return connection_ && state_ == MPD_STATE_PLAY; }
   inline bool paused() const { return connection_ && state_ == MPD_STATE_PAUSE; }
+  inline unsigned playing_interval() const { return playing_interval_; }
 };
 
 #if !defined(MPD_NOINLINE)

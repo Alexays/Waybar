@@ -14,7 +14,7 @@ apply a class when the value matches the declared state value.
 Every entry (*state*) consists of a *<name>* (typeof: *string*) and a *<value>* (typeof: *integer*).
 
 - The state can be addressed as a CSS class in the *style.css*. The name of the CSS class is the *<name>* of the state.
-  Each class gets activated when the current value is equal to or less than the configured *<value>* for the *battery* module, or equal to or greater than the configured *<value>* for all other modules.
+  Each class gets activated when the current value is equal to or less than the configured *<value>* for the *battery*, *pulseaudio* and *wireplumber* modules, or equal to or greater than the configured *<value>* for all other modules.
 
 - Also, each state can have its own *format*.
   Those can be configured via *format-<name>*, or if you want to differentiate a bit more, as *format-<status>-<state>*.

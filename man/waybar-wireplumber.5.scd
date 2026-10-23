@@ -19,6 +19,37 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 	typeof: string ++
 	This format is used when the sound is muted.
 
+*format-bluetooth*: ++
+	typeof: string ++
+	This format is used when the active sink is a Bluetooth device (its node name contains *bluez* or *a2dp-sink*).
+
+*format-bluetooth-muted*: ++
+	typeof: string ++
+	This format is used when the active sink is a Bluetooth device and the sound is muted.
+
+*format-source*: ++
+	typeof: string ++
+	default: *{volume}%* ++
+	The format used to render the source (microphone) volume sub-string that is exposed through the *{format_source}* replacement.
+
+*format-source-muted*: ++
+	typeof: string ++
+	The format used for the *{format_source}* sub-string when the source (microphone) is muted.
+
+*format-icons*: ++
+	typeof: array ++
+	Based on the current volume, the corresponding icon gets selected. The order is *low* to *high*.
+
+*node-type*: ++
+	typeof: string ++
+	default: *Audio/Sink* ++
+	The WirePlumber node type to attach to. Use *Audio/Source* to manage microphones etc.
+
+*only-physical*: ++
+	typeof: bool ++
+	default: *false* ++
+	When enabled, resolve through virtual/filter-chain sinks to the underlying physical sink and report its volume instead.
+
 *tooltip*: ++
 	typeof: bool ++
 	default: *true* ++
@@ -31,7 +62,7 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *states*: ++
 	typeof: object ++
@@ -47,12 +78,29 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 
 *align*: ++
 	typeof: float ++
-	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *scroll-step*: ++
 	typeof: float ++
 	default: 1.0 ++
 	The speed at which to change the volume when scrolling.
+
+*scroll-scale*: ++
+	typeof: string ++
+	default: cubic_percent
+	The scale to use for the scrolling volume change. Options are 'linear', 'db', 'cubic', and 'cubic_percent'.
+
+*reverse-scrolling*: ++
+	typeof: bool ++
+	Option to reverse the scroll direction for touchpads.
+
+*reverse-mouse-scrolling*: ++
+	typeof: bool ++
+	Option to reverse the scroll direction for mice.
 
 *on-click*: ++
 	typeof: string ++
@@ -83,13 +131,48 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 	default: 100 ++
 	The maximum volume that can be set, in percentage.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # FORMAT REPLACEMENTS
 
-*{volume}*: Volume in percentage.
+*{volume}*: Volume in percentage, cubic scale as integer.
+
+*{volume_linear}*: Volume in linear scale as float.
+
+*{volume_cubic}*: Volume in cubic scale as float.
+
+*{volume_db}*: Volume in decibel scale as float.
+
+*{icon}*: Icon, as defined in *format-icons*.
 
 *{node_name}*: The node's nickname as reported by WirePlumber (*node.nick* property)
 
+*{source_volume}*: Source (microphone) volume in percentage, cubic scale as integer.
+
+*{source_volume_linear}*: Source (microphone) volume in linear scale as float.
+
+*{source_volume_cubic}*: Source (microphone) volume in cubic scale as float.
+
+*{source_volume_db}*: Source (microphone) volume in decibel scale as float.
+
+*{source_desc}*: The source node's nickname/description as reported by WirePlumber.
+
+*{format_source}*: The pre-rendered source (microphone) volume sub-string, formatted with *format-source*/*format-source-muted*.
+
 # EXAMPLES
+
+## Basic:
 
 ```
 "wireplumber": {
@@ -99,7 +182,40 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 }
 ```
 
+## Separate Sink and Source Widgets
+
+```
+"wireplumber#sink": {
+    "format": "{volume}% {icon}",
+    "format-muted": "󰅶",
+    "format-icons": ["", "", ""],
+    "on-click": "helvum",
+    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    "scroll-step": 5
+},
+"wireplumber#source": {
+    "node-type": "Audio/Source",
+    "format": "{volume}% ",
+    "format-muted": "",
+    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
+    "scroll-step": 5
+}
+```
+
+## Use a Different Scale
+
+```
+"wireplumber": {
+	"format": "{volume_db:.2f}dB",
+	"scroll-scale": "db",
+	"scroll-step": 2.5
+}
+```
+
 # STYLE
 
 - *#wireplumber*
 - *#wireplumber.muted*
+- *#wireplumber.sink-muted*
+- *#wireplumber.source-muted*
+- *#wireplumber.bluetooth*

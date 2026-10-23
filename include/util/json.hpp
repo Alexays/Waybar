@@ -3,6 +3,13 @@
 #include <fmt/ostream.h>
 #include <json/json.h>
 
+#include <algorithm>
+#include <codecvt>
+#include <iostream>
+#include <locale>
+#include <memory>
+#include <regex>
+
 #if (FMT_VERSION >= 90000)
 
 template <>
@@ -12,25 +19,36 @@ struct fmt::formatter<Json::Value> : ostream_formatter {};
 
 namespace waybar::util {
 
-struct JsonParser {
-  JsonParser() {}
+class JsonParser {
+ public:
+  JsonParser() = default;
 
-  const Json::Value parse(const std::string& data) const {
-    Json::Value root(Json::objectValue);
-    if (data.empty()) {
-      return root;
+  Json::Value parse(const std::string& jsonStr) {
+    Json::Value root;
+
+    // replace all occurrences of "\x" with "\u00", because JSON doesn't allow "\x" escape sequences
+    std::string modifiedJsonStr;
+    const std::string* json = &jsonStr;
+    if (jsonStr.find("\\x") != std::string::npos) {
+      modifiedJsonStr = replaceHexadecimalEscape(jsonStr);
+      json = &modifiedJsonStr;
     }
-    std::unique_ptr<Json::CharReader> const reader(builder_.newCharReader());
-    std::string err;
-    bool res = reader->parse(data.c_str(), data.c_str() + data.size(), &root, &err);
-    if (!res) throw std::runtime_error(err);
+
+    std::string errs;
+    // Use local CharReaderBuilder for thread safety - the IPC singleton's
+    // parser can be called concurrently from multiple module threads
+    Json::CharReaderBuilder readerBuilder;
+    auto reader = std::unique_ptr<Json::CharReader>(readerBuilder.newCharReader());
+    if (!reader->parse(json->data(), json->data() + json->size(), &root, &errs)) {
+      throw std::runtime_error("Error parsing JSON: " + errs);
+    }
     return root;
   }
 
-  ~JsonParser() = default;
-
  private:
-  Json::CharReaderBuilder builder_;
+  static std::string replaceHexadecimalEscape(const std::string& str) {
+    static std::regex re("\\\\x");
+    return std::regex_replace(str, re, "\\u00");
+  }
 };
-
 }  // namespace waybar::util

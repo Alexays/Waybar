@@ -7,11 +7,11 @@
 
 namespace waybar::modules {
 
-class Clock : public ALabel {
+class Clock final : public ALabel {
  public:
   Clock(const std::string&, const Json::Value&);
   virtual ~Clock() = default;
-  auto update() -> void override;
+  auto doUpdate() -> void override;
 
  private:
   util::SleeperThread thread_;
