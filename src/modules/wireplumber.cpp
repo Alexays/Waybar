@@ -802,7 +802,11 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
   if (scale == "cubic") {
     newVol = pow(newVol, 3);
   } else if (scale == "db") {
+#ifdef __FreeBSD__
+    newVol = std::pow(10.0, newVol / 20.0);
+#else
     newVol = exp10(newVol / 20.0);
+#endif
   } else if (scale == "cubic_percent") {
     newVol = pow(newVol / 100.0, 3);
   }
