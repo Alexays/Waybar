@@ -26,11 +26,10 @@ namespace waybar::modules {
 class Network : public ALabel {
  public:
   Network(const std::string&, const Json::Value&);
-  virtual ~Network();
+  ~Network() override;
   auto update() -> void override;
 
  private:
-  static const uint8_t MAX_RETRY{5};
   static const uint8_t EPOLL_MAX{200};
 
   static int handleEvents(struct nl_msg*, void*);
@@ -38,7 +37,7 @@ class Network : public ALabel {
   static int handleScan(struct nl_msg*, void*);
   static int handleStationGet(struct nl_msg *msg, void *data);
 
-  void askForStateDump(void);
+  void askForStateDump();
 
   void worker();
   void createInfoSocket();
@@ -52,14 +51,13 @@ class Network : public ALabel {
                       std::string& matched) const;
   auto getInfo() -> void;
   bool isWireless() const;
-  const std::string getNetworkState() const;
+  std::string getNetworkState() const;
   void clearIface();
   std::optional<std::pair<unsigned long long, unsigned long long>> readBandwidthUsage();
   uint32_t readLinkSpeed() const;
 
   int ifid_{-1};
   ip_addr_pref addr_pref_{ip_addr_pref::IPV4};
-  struct sockaddr_nl nladdr_{0};
   struct nl_sock* sock_{nullptr};
   struct nl_sock* ev_sock_{nullptr};
   struct nl_sock* station_sock_{nullptr};
@@ -95,7 +93,7 @@ class Network : public ALabel {
   int32_t signal_strength_dbm_;
   uint8_t signal_strength_;
   std::string signal_strength_app_;
-  uint32_t route_priority;
+  uint32_t route_priority_;
   uint32_t link_speed_{0};
 
   util::SleeperThread thread_;
