@@ -13,6 +13,7 @@ test_src = files(
     'config.cpp',
     'taskbar_dnd.cpp',
     'fit_label.cpp',
+    'hover_latch.cpp',
     '../src/config.cpp',
 )
 
