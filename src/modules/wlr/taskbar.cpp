@@ -221,6 +221,18 @@ Task::Task(const waybar::Bar& bar, const Json::Value& config, Taskbar* tbar,
         [this](GdkEventCrossing* ev) { return handle_crossing(ev, true); }, false);
     button.signal_leave_notify_event().connect(
         [this](GdkEventCrossing* ev) { return handle_crossing(ev, false); }, false);
+    /* A drag from another client sends no crossing events, only drag-motion
+     * and drag-leave, and only if the button tracks motion for every target */
+    gtk_drag_dest_set_track_motion(GTK_WIDGET(button.gobj()), true);
+    button.signal_drag_motion().connect(
+        [this](const Glib::RefPtr<Gdk::DragContext>& context, int, int, guint) {
+          /* Dragging a task button to reorder it is not a hover */
+          if (button.drag_dest_find_target(context) != "WAYBAR_TOPLEVEL") hover_.set(true);
+          return false;
+        },
+        false);
+    button.signal_drag_leave().connect(
+        [this](const Glib::RefPtr<Gdk::DragContext>&, guint) { hover_.set(false); }, false);
   }
 
   /* Re-rasterize the icon if the bar ends up on an output with a different scale
