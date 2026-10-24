@@ -107,11 +107,11 @@ Addressed by *wlr/taskbar*
 
 *on-enter*: ++
 	typeof: string ++
-	The action which should be triggered when the mouse enters the application button. Any other value is a command to execute when the mouse enters the module.
+	The action which should be triggered when the mouse enters the application button, or something dragged from another application is held over it. Any other value is a command to execute when the mouse enters the module.
 
 *on-leave*: ++
 	typeof: string ++
-	The action which should be triggered when the mouse leaves the application button. Any other value is a command to execute when the mouse leaves the module.
+	The action which should be triggered when the mouse, or something dragged from another application, leaves the application button. Any other value is a command to execute when the mouse leaves the module.
 
 *on-enter-delay*: ++
 	typeof: integer ++
