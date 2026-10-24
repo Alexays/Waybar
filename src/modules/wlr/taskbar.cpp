@@ -82,6 +82,11 @@ static const struct zwlr_foreign_toplevel_handle_v1_listener toplevel_handle_imp
 static const std::vector<Gtk::TargetEntry> target_entries = {
     Gtk::TargetEntry("WAYBAR_TOPLEVEL", Gtk::TARGET_SAME_APP, 0)};
 
+static bool is_builtin_action(const std::string& v) {
+  return v == "activate" || v == "minimize" || v == "minimize-raise" || v == "maximize" ||
+         v == "fullscreen" || v == "close";
+}
+
 Task::Task(const waybar::Bar& bar, const Json::Value& config, Taskbar* tbar,
            struct zwlr_foreign_toplevel_handle_v1* tl_handle, struct wl_seat* seat)
     : bar_{bar},
@@ -90,7 +95,12 @@ Task::Task(const waybar::Bar& bar, const Json::Value& config, Taskbar* tbar,
       handle_{tl_handle},
       seat_{seat},
       id_{global_id++},
-      content_{bar.orientation, 0} {
+      content_{bar.orientation, 0},
+      hover_{config["on-enter-delay"].isInt() ? config["on-enter-delay"].asInt() : 0,
+             [this](bool entering) {
+               const auto& action = entering ? on_enter_action_ : on_leave_action_;
+               if (!action.empty()) run_action(action);
+             }} {
   zwlr_foreign_toplevel_handle_v1_add_listener(handle_, &toplevel_handle_impl, this);
 
   button.set_relief(Gtk::RELIEF_NONE);
@@ -201,6 +211,17 @@ Task::Task(const waybar::Bar& bar, const Json::Value& config, Taskbar* tbar,
   button.signal_drag_data_get().connect(sigc::mem_fun(*this, &Task::handle_drag_data_get), false);
   button.signal_drag_data_received().connect(sigc::mem_fun(*this, &Task::handle_drag_data_received),
                                              false);
+
+  if (config_["on-enter"].isString() && is_builtin_action(config_["on-enter"].asString()))
+    on_enter_action_ = config_["on-enter"].asString();
+  if (config_["on-leave"].isString() && is_builtin_action(config_["on-leave"].asString()))
+    on_leave_action_ = config_["on-leave"].asString();
+  if (!on_enter_action_.empty() || !on_leave_action_.empty()) {
+    button.signal_enter_notify_event().connect(
+        [this](GdkEventCrossing* ev) { return handle_crossing(ev, true); }, false);
+    button.signal_leave_notify_event().connect(
+        [this](GdkEventCrossing* ev) { return handle_crossing(ev, false); }, false);
+  }
 
   /* Re-rasterize the icon if the bar ends up on an output with a different scale
    * than the one GTK guessed while the widget was not yet realized. */
@@ -415,6 +436,8 @@ void Task::hide_button() {
   tbar_->remove_button(button);
   button.hide();
   button_visible_ = false;
+  /* A removed button gets no leave event, so drop the hover here */
+  hover_.reset();
   spdlog::debug("{} now invisible on {}", repr(), bar_.output->name);
   tbar_->update_bar_css_classes();
 }
@@ -528,9 +551,15 @@ bool Task::handle_clicked(GdkEventButton* bt) {
   else if (config_["on-click-right"].isString() && bt->button == 3)
     action = config_["on-click-right"].asString();
 
-  if (action.empty())
-    return true;
-  else if (action == "activate")
+  if (action.empty()) return true;
+  run_action(action);
+
+  drag_start_button = -1;
+  return true;
+}
+
+void Task::run_action(const std::string& action) {
+  if (action == "activate")
     activate();
   else if (action == "minimize") {
     set_minimize_hint();
@@ -551,9 +580,11 @@ bool Task::handle_clicked(GdkEventButton* bt) {
     close();
   else
     spdlog::warn("Unknown action {}", action);
+}
 
-  drag_start_button = -1;
-  return true;
+bool Task::handle_crossing(GdkEventCrossing* ev, bool entering) {
+  if (ev->detail != GDK_NOTIFY_INFERIOR) hover_.set(entering);
+  return false;
 }
 
 bool Task::handle_motion_notify(GdkEventMotion* mn) {
@@ -713,16 +744,13 @@ Taskbar::Taskbar(const std::string& id, const waybar::Bar& bar, const Json::Valu
   box_.get_style_context()->add_class("empty");
   event_box_.add(box_);
 
-  // wlr/taskbar interprets on-click* config values as built-in actions, handled
-  // per-task in Task::handle_clicked. Register the recognized action names so
-  // AModule dispatches them via doAction() instead of also running them as shell
-  // commands (issue #3284). Values that are not built-in actions are left alone
-  // and still run as user shell commands.
-  const auto is_builtin_action = [](const std::string& v) {
-    return v == "activate" || v == "minimize" || v == "minimize-raise" || v == "maximize" ||
-           v == "fullscreen" || v == "close";
-  };
-  for (const auto* event : {"on-click", "on-click-middle", "on-click-right"}) {
+  // wlr/taskbar interprets on-click*, on-enter and on-leave config values as
+  // built-in actions, handled per-task in Task. Register the recognized action
+  // names so AModule dispatches them via doAction() instead of also running
+  // them as shell commands (issue #3284). Values that are not built-in actions
+  // are left alone and still run as user shell commands
+  for (const auto* event :
+       {"on-click", "on-click-middle", "on-click-right", "on-enter", "on-leave"}) {
     if (config_[event].isString() && is_builtin_action(config_[event].asString())) {
       eventActionMap_.insert({event, config_[event].asString()});
     }

@@ -42,6 +42,12 @@ class HoverLatch {
     handler_(hovered);
   }
 
+  // For a widget taken away from under the pointer, which gets no leave event
+  void reset() {
+    timeout_.disconnect();
+    hovered_ = false;
+  }
+
  private:
   const int delay_ms_;
   Handler handler_;
