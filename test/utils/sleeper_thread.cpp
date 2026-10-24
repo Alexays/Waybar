@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <chrono>
+#include <future>
 #include <thread>
 
 #include "util/sleeper_thread.hpp"
@@ -47,6 +48,25 @@ int run_reassignment_regression() {
   return 0;
 }
 
+int run_explicit_join_regression() {
+  std::promise<void> entered;
+  std::atomic<bool> exited{false};
+  waybar::util::SleeperThread thread;
+  thread = [&] {
+    struct ExitMarker {
+      std::atomic<bool>& exited;
+      ~ExitMarker() { exited.store(true); }
+    } marker{exited};
+    entered.set_value();
+    thread.sleep_for(std::chrono::hours(1));
+  };
+  entered.get_future().wait();
+  thread.stop();
+  thread.join();
+  // The callback must have unwound before its resources can be released.
+  return exited.load() ? 0 : 1;
+}
+
 int run_control_flag_stress() {
   for (int i = 0; i < 200; ++i) {
     waybar::util::SleeperThread thread;
@@ -72,6 +92,11 @@ int run_control_flag_stress() {
 
 TEST_CASE("SleeperThread reassignment does not terminate process", "[util][sleeper_thread]") {
   REQUIRE(run_in_subprocess(run_reassignment_regression) == 0);
+}
+
+TEST_CASE("SleeperThread can be joined before its owner releases resources",
+          "[util][sleeper_thread]") {
+  REQUIRE(run_in_subprocess(run_explicit_join_regression) == 0);
 }
 
 TEST_CASE("SleeperThread control flags are stable under concurrent wake and stop",

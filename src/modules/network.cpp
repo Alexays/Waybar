@@ -149,6 +149,11 @@ waybar::modules::Network::Network(const std::string& id, const Json::Value& conf
 }
 
 waybar::modules::Network::~Network() {
+  thread_.stop();
+  thread_timer_.stop();
+  thread_.join();
+  thread_timer_.join();
+
   if (ev_fd_ > -1) {
     close(ev_fd_);
   }
@@ -156,7 +161,7 @@ waybar::modules::Network::~Network() {
     close(efd_);
   }
   if (ev_sock_ != nullptr) {
-    nl_socket_drop_memberships(ev_sock_, RTNLGRP_LINK, RTNLGRP_IPV4_IFADDR, RTNLGRP_IPV6_IFADDR);
+    nl_socket_drop_memberships(ev_sock_, RTNLGRP_LINK, RTNLGRP_IPV4_IFADDR, RTNLGRP_IPV6_IFADDR, 0);
     nl_close(ev_sock_);
     nl_socket_free(ev_sock_);
   }
@@ -175,6 +180,7 @@ void waybar::modules::Network::createEventSocket() {
   nl_socket_disable_seq_check(ev_sock_);
   nl_socket_modify_cb(ev_sock_, NL_CB_VALID, NL_CB_CUSTOM, handleEvents, this);
   nl_socket_modify_cb(ev_sock_, NL_CB_FINISH, NL_CB_CUSTOM, handleEventsDone, this);
+  nl_socket_modify_cb(ev_sock_, NL_CB_DUMP_INTR, NL_CB_CUSTOM, handleDumpInterrupted, this);
   auto groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV6_IFADDR;
   nl_join_groups(ev_sock_, groups);  // Deprecated
   if (nl_connect(ev_sock_, NETLINK_ROUTE) != 0) {
@@ -281,7 +287,7 @@ void waybar::modules::Network::worker() {
               rc = 0;
               break;
             }
-            if (rc == -NLE_NOMEM || errno == ENOBUFS) {
+            if (rc == -NLE_MSG_OVERFLOW || errno == ENOBUFS) {
               // The kernel dropped multicast notifications because our receive
               // buffer overflowed. This happens during a burst of
               // link/address/route changes such as a router reboot or a PPPoE
@@ -301,6 +307,9 @@ void waybar::modules::Network::worker() {
               // Keep draining; the next recv proceeds normally now that the
               // overrun has been reported.
               continue;
+            }
+            if (rc < 0) {
+              break;
             }
           }
           if (rc < 0) {
@@ -386,11 +395,12 @@ auto waybar::modules::Network::update() -> void {
 
       bandwidth_down_prev_ = bandwidth_down;
       bandwidth_up_prev_ = bandwidth_up;
+      bandwidth_sample_seconds_ = elapsed_seconds;
     }
   } else {
     bandwidth_down = bandwidth_down_prev_;
     bandwidth_up = bandwidth_up_prev_;
-    elapsed_seconds = std::chrono::duration<double>(interval_).count();
+    elapsed_seconds = bandwidth_sample_seconds_;
   }
 
   link_speed_ = readLinkSpeed();
@@ -662,6 +672,8 @@ int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
               net->signal_strength_ = 0;
               net->signal_strength_app_.clear();
               net->frequency_ = 0.0;
+              net->tx_bitrate_ = 0;
+              net->rx_bitrate_ = 0;
             }
           }
           net->carrier_ = carrier.value();
@@ -761,17 +773,22 @@ int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
               switch (ifa->ifa_family) {
                 case AF_INET: {
                   struct in_addr netmask;
-                  netmask.s_addr = htonl(~0 << (32 - ifa->ifa_prefixlen));
+                  // Left-shifting a 32-bit int by 32 is undefined behavior
+                  netmask.s_addr = ifa->ifa_prefixlen == 0
+                                       ? 0
+                                       : htonl(~uint32_t{0} << (32 - ifa->ifa_prefixlen));
                   net->netmask_ = inet_ntop(ifa->ifa_family, &netmask, ipaddr, sizeof(ipaddr));
+                  break;
                 }
                 case AF_INET6: {
                   struct in6_addr netmask6;
                   for (int i = 0; i < 16; i++) {
                     int v = ((i + 1) * 8) - ifa->ifa_prefixlen;
                     v = std::clamp(v, 0, 8);
-                    netmask6.s6_addr[i] = ~0 << v;
+                    netmask6.s6_addr[i] = 0xffu << v;
                   }
                   net->netmask6_ = inet_ntop(ifa->ifa_family, &netmask6, ipaddr, sizeof(ipaddr));
+                  break;
                 }
               }
               if (addr_changed) {
@@ -961,6 +978,17 @@ int waybar::modules::Network::handleEventsDone(struct nl_msg* msg, void* data) {
   return NL_OK;
 }
 
+int waybar::modules::Network::handleDumpInterrupted(struct nl_msg*, void* data) {
+  auto* net = static_cast<waybar::modules::Network*>(data);
+  // State changed mid-dump: request another one right after this one.
+  net->want_link_dump_ = true;
+  net->want_addr_dump_ = true;
+  if (!net->config_["interface"].isString()) {
+    net->want_route_dump_ = true;
+  }
+  return NL_OK;
+}
+
 int waybar::modules::Network::handleScan(struct nl_msg* msg, void* data) {
   auto *net = static_cast<waybar::modules::Network*>(data);
   auto *gnlh = static_cast<genlmsghdr*>(nlmsg_data(nlmsg_hdr(msg)));
@@ -1021,9 +1049,9 @@ int waybar::modules::Network::handleStationGet(struct nl_msg* msg, void* data) {
     if (nla_parse_nested(tx_br_info, NL80211_RATE_INFO_MAX, sinfo[NL80211_STA_INFO_TX_BITRATE],
                          nullptr) == 0) {
       if (tx_br_info[NL80211_RATE_INFO_BITRATE32] != nullptr) {
-        net->tx_bitrate_ = nla_get_u32(tx_br_info[NL80211_RATE_INFO_BITRATE32]) * pow(10, 5);
+        net->tx_bitrate_ = nla_get_u32(tx_br_info[NL80211_RATE_INFO_BITRATE32]) * 100000ULL;
       } else if (tx_br_info[NL80211_RATE_INFO_BITRATE] != nullptr) {
-        net->tx_bitrate_ = nla_get_u16(tx_br_info[NL80211_RATE_INFO_BITRATE]) * pow(10, 5);
+        net->tx_bitrate_ = nla_get_u16(tx_br_info[NL80211_RATE_INFO_BITRATE]) * 100000ULL;
       }
     }
   }
@@ -1033,9 +1061,9 @@ int waybar::modules::Network::handleStationGet(struct nl_msg* msg, void* data) {
     if (nla_parse_nested(rx_br_info, NL80211_RATE_INFO_MAX, sinfo[NL80211_STA_INFO_RX_BITRATE],
                          nullptr) == 0) {
       if (rx_br_info[NL80211_RATE_INFO_BITRATE32] != nullptr) {
-        net->rx_bitrate_ = nla_get_u32(rx_br_info[NL80211_RATE_INFO_BITRATE32]) * pow(10, 5);
+        net->rx_bitrate_ = nla_get_u32(rx_br_info[NL80211_RATE_INFO_BITRATE32]) * 100000ULL;
       } else if (rx_br_info[NL80211_RATE_INFO_BITRATE] != nullptr) {
-        net->rx_bitrate_ = nla_get_u16(rx_br_info[NL80211_RATE_INFO_BITRATE]) * pow(10, 5);
+        net->rx_bitrate_ = nla_get_u16(rx_br_info[NL80211_RATE_INFO_BITRATE]) * 100000ULL;
       }
     }
   }
@@ -1044,19 +1072,21 @@ int waybar::modules::Network::handleStationGet(struct nl_msg* msg, void* data) {
 
 void waybar::modules::Network::parseEssid(struct nlattr** bss) {
   if (bss[NL80211_BSS_INFORMATION_ELEMENTS] != nullptr) {
-    auto *ies = static_cast<char*>(nla_data(bss[NL80211_BSS_INFORMATION_ELEMENTS]));
+    const auto* ies = static_cast<const uint8_t*>(nla_data(bss[NL80211_BSS_INFORMATION_ELEMENTS]));
     auto ies_len = nla_len(bss[NL80211_BSS_INFORMATION_ELEMENTS]);
     const auto hdr_len = 2;
-    while (ies_len > hdr_len && ies[0] != 0) {
-      ies_len -= ies[1] + hdr_len;
-      ies += ies[1] + hdr_len;
-    }
-    if (ies_len > hdr_len && ies_len > ies[1] + hdr_len) {
-      auto *essid_begin = ies + hdr_len;
-      auto *essid_end = essid_begin + ies[1];
-      std::string essid_raw;
-      std::copy(essid_begin, essid_end, std::back_inserter(essid_raw));
-      essid_ = Glib::Markup::escape_text(essid_raw);
+    while (ies_len >= hdr_len) {
+      const auto len = ies[1];
+      if (len > ies_len - hdr_len) {
+        return;
+      }
+      if (ies[0] == 0) {  // type 0 = SSID
+        essid_ = Glib::Markup::escape_text(
+            std::string(reinterpret_cast<const char*>(ies + hdr_len), len));
+        return;
+      }
+      ies_len -= hdr_len + len;
+      ies += hdr_len + len;
     }
   }
 }
