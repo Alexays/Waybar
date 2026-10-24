@@ -44,6 +44,19 @@ Addressed by *sway/language*
 	typeof: string ++
 	Command to execute when you right clicked on the module.
 
+*on-enter*: ++
+	typeof: string ++
+	Command to execute when the mouse enters the module.
+
+*on-leave*: ++
+	typeof: string ++
+	Command to execute when the mouse leaves the module.
+
+*on-enter-delay*: ++
+	typeof: integer ++
+	default: 0 ++
+	Milliseconds the mouse has to stay on the module before *on-enter* runs. If it leaves sooner, neither *on-enter* nor *on-leave* runs.
+
 *menu*: ++
 	typeof: string ++
 	Action that popups the menu.

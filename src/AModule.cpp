@@ -19,7 +19,11 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       isExpand{config_["expand"].isBool() ? config_["expand"].asBool() : false},
       distance_scrolled_y_(0.0),
       distance_scrolled_x_(0.0),
-      cursor_timeout_conn_() {
+      cursor_timeout_conn_(),
+      on_enter_cmd_{config_["on-enter"].isString() ? config_["on-enter"].asString() : ""},
+      on_leave_cmd_{config_["on-leave"].isString() ? config_["on-leave"].asString() : ""},
+      hover_{config_["on-enter-delay"].isInt() ? config_["on-enter-delay"].asInt() : 0,
+             [this](bool entering) { runCrossingEvent(entering); }} {
   // Configure module action Map
   const Json::Value actions{config_["actions"]};
 
@@ -113,10 +117,20 @@ AModule::~AModule() {
   }
 }
 
+// Forget process groups that have no members left, so frequent events like
+// on-enter don't grow the list for as long as the bar runs
+void AModule::trackChild(int pid) {
+  std::erase_if(pid_children_,
+                [](int p) { return p <= 0 || (killpg(p, 0) == -1 && errno == ESRCH); });
+  if (pid > 0) {
+    pid_children_.push_back(pid);
+  }
+}
+
 auto AModule::update() -> void {
   // Run user-provided update handler if configured
   if (config_["on-update"].isString()) {
-    pid_children_.push_back(util::command::forkExec(config_["on-update"].asString()));
+    trackChild(util::command::forkExec(config_["on-update"].asString()));
   }
   signal_updated.emit(this);
 }
@@ -175,6 +189,8 @@ bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
     setCursor("pointer");
   }
 
+  handleCrossingEvent(e, true);
+
   return false;
 }
 
@@ -188,7 +204,37 @@ bool AModule::handleMouseLeave(GdkEventCrossing* const& e) {
     setCursor("default");
   }
 
+  handleCrossingEvent(e, false);
+
   return false;
+}
+
+// GTK sends a leave/enter pair carrying GDK_NOTIFY_INFERIOR when the pointer
+// crosses into a child with its own GdkWindow. Pointer grabs add more pairs,
+// which the latch absorbs
+void AModule::handleCrossingEvent(GdkEventCrossing* const& e, bool entering) {
+  if (e != nullptr && e->detail == GDK_NOTIFY_INFERIOR) {
+    return;
+  }
+  hover_.set(entering);
+}
+
+void AModule::runCrossingEvent(bool entering) {
+  const auto* eventName = entering ? "on-enter" : "on-leave";
+  // An exception escaping a GTK signal handler aborts the bar
+  try {
+    this->AModule::doAction(eventName);
+    if (const auto& cmd = entering ? on_enter_cmd_ : on_leave_cmd_; !cmd.empty()) {
+      // A value naming a built-in action already ran through doAction (#3284)
+      const auto actionIt = eventActionMap_.find(eventName);
+      const bool isModuleAction = actionIt != eventActionMap_.cend() && cmd == actionIt->second;
+      if (!isModuleAction) {
+        trackChild(util::command::forkExec(cmd));
+      }
+    }
+  } catch (const std::exception& err) {
+    spdlog::warn("Module {}: {} handler failed: {}", name_, eventName, err.what());
+  }
 }
 
 bool AModule::handleToggle(GdkEventButton* const& e) { return handleUserEvent(e); }
@@ -255,7 +301,7 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
         cmd = format;
       }
     }
-    pid_children_.push_back(util::command::forkExec(cmd));
+    trackChild(util::command::forkExec(cmd));
   }
   dp.emit();
   return true;
@@ -340,7 +386,7 @@ bool AModule::handleScroll(GdkEventScroll* e) {
   this->AModule::doAction(eventName);
   // Second call user scripts
   if (config_[eventName].isString())
-    pid_children_.push_back(util::command::forkExec(config_[eventName].asString()));
+    trackChild(util::command::forkExec(config_[eventName].asString()));
 
   dp.emit();
   return true;
