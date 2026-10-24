@@ -22,7 +22,8 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       cursor_timeout_conn_(),
       on_enter_cmd_{config_["on-enter"].isString() ? config_["on-enter"].asString() : ""},
       on_leave_cmd_{config_["on-leave"].isString() ? config_["on-leave"].asString() : ""},
-      hover_{[this](bool entering) { runCrossingEvent(entering); }} {
+      hover_{config_["on-enter-delay"].isInt() ? config_["on-enter-delay"].asInt() : 0,
+             [this](bool entering) { runCrossingEvent(entering); }} {
   // Configure module action Map
   const Json::Value actions{config_["actions"]};
 

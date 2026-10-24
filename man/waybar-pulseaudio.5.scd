@@ -91,6 +91,11 @@ Additionally, you can control the volume by scrolling *up* or *down* while the c
 	typeof: string ++
 	Command to execute when the mouse leaves the module.
 
+*on-enter-delay*: ++
+	typeof: integer ++
+	default: 0 ++
+	Milliseconds the mouse has to stay on the module before *on-enter* runs. If it leaves sooner, neither *on-enter* nor *on-leave* runs.
+
 *on-scroll-up*: ++
 	typeof: string ++
 	Command to execute when scrolling up on the module. This replaces the default behaviour of volume control.
