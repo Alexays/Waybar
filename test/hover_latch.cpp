@@ -57,3 +57,17 @@ TEST_CASE("a hover shorter than the delay runs neither handler") {
 
   REQUIRE(log.empty());
 }
+
+TEST_CASE("reset drops the hover without running leave") {
+  std::string log;
+  HoverLatch latch{20, [&log](bool entering) { log += entering ? 'E' : 'L'; }};
+
+  latch.set(true);
+  latch.reset();
+  spin(60);
+  REQUIRE(log.empty());
+
+  latch.set(true);
+  spin(60);
+  REQUIRE(log == "E");
+}

@@ -107,16 +107,16 @@ Addressed by *wlr/taskbar*
 
 *on-enter*: ++
 	typeof: string ++
-	Command to execute when the mouse enters the module.
+	The action which should be triggered when the mouse enters the application button. Any other value is a command to execute when the mouse enters the module.
 
 *on-leave*: ++
 	typeof: string ++
-	Command to execute when the mouse leaves the module.
+	The action which should be triggered when the mouse leaves the application button. Any other value is a command to execute when the mouse leaves the module.
 
 *on-enter-delay*: ++
 	typeof: integer ++
 	default: 0 ++
-	Milliseconds the mouse has to stay on the module before *on-enter* runs. If it leaves sooner, neither *on-enter* nor *on-leave* runs.
+	Milliseconds the mouse has to stay on the button or module before *on-enter* runs. If it leaves sooner, neither *on-enter* nor *on-leave* runs.
 
 *ignore-list*: ++
 	typeof: array ++
@@ -154,6 +154,8 @@ character is split, or (when *markup* is true) if the truncation cuts through a
 value that must be escaped in XML.
 
 # CLICK ACTIONS
+
+These actions also work for *on-enter* and *on-leave*.
 
 *activate*: Bring the application into foreground.
 
