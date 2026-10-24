@@ -88,6 +88,14 @@ Addressed by *bluetooth*
 	typeof: string ++
 	Command to execute when you right-click on the module.
 
+*on-enter*: ++
+	typeof: string ++
+	Command to execute when the mouse enters the module.
+
+*on-leave*: ++
+	typeof: string ++
+	Command to execute when the mouse leaves the module.
+
 *on-scroll-up*: ++
 	typeof: string ++
 	Command to execute when scrolling up on the module.

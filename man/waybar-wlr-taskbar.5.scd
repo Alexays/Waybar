@@ -105,6 +105,14 @@ Addressed by *wlr/taskbar*
 	typeof: string ++
 	Command to execute when the module is updated.
 
+*on-enter*: ++
+	typeof: string ++
+	Command to execute when the mouse enters the module.
+
+*on-leave*: ++
+	typeof: string ++
+	Command to execute when the mouse leaves the module.
+
 *ignore-list*: ++
 	typeof: array ++
 	List of app_id/titles to be invisible.

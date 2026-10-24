@@ -55,6 +55,14 @@ Addressed by *river/layout*
 	typeof: string ++
 	Command to execute when you right-click on the module.
 
+*on-enter*: ++
+	typeof: string ++
+	Command to execute when the mouse enters the module.
+
+*on-leave*: ++
+	typeof: string ++
+	Command to execute when the mouse leaves the module.
+
 *menu*: ++
 	typeof: string ++
 	Action that popups the menu.

@@ -55,6 +55,14 @@ screensaver, also known as "presentation mode".
 	typeof: string ++
 	Command to execute when the module is updated.
 
+*on-enter*: ++
+	typeof: string ++
+	Command to execute when the mouse enters the module.
+
+*on-leave*: ++
+	typeof: string ++
+	Command to execute when the mouse leaves the module.
+
 *on-scroll-up*: ++
 	typeof: string ++
 	Command to execute when scrolling up on the module. (increase the timeout if dynamic timeouts are enabled).

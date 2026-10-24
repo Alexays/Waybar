@@ -140,6 +140,14 @@ The *mpris* module displays currently playing media via libplayerctl.
 	default: next track ++
 	Overwrite default action toggles.
 
+*on-enter*: ++
+	typeof: string ++
+	Command to execute when the mouse enters the module.
+
+*on-leave*: ++
+	typeof: string ++
+	Command to execute when the mouse leaves the module.
+
 *on-click-backward*: ++
 	typeof: string ++
 	default: previous track ++
