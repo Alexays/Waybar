@@ -117,10 +117,20 @@ AModule::~AModule() {
   }
 }
 
+// Forget process groups that have no members left, so frequent events like
+// on-enter don't grow the list for as long as the bar runs
+void AModule::trackChild(int pid) {
+  std::erase_if(pid_children_,
+                [](int p) { return p <= 0 || (killpg(p, 0) == -1 && errno == ESRCH); });
+  if (pid > 0) {
+    pid_children_.push_back(pid);
+  }
+}
+
 auto AModule::update() -> void {
   // Run user-provided update handler if configured
   if (config_["on-update"].isString()) {
-    pid_children_.push_back(util::command::forkExec(config_["on-update"].asString()));
+    trackChild(util::command::forkExec(config_["on-update"].asString()));
   }
   signal_updated.emit(this);
 }
@@ -219,7 +229,7 @@ void AModule::runCrossingEvent(bool entering) {
       const auto actionIt = eventActionMap_.find(eventName);
       const bool isModuleAction = actionIt != eventActionMap_.cend() && cmd == actionIt->second;
       if (!isModuleAction) {
-        pid_children_.push_back(util::command::forkExec(cmd));
+        trackChild(util::command::forkExec(cmd));
       }
     }
   } catch (const std::exception& err) {
@@ -291,7 +301,7 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
         cmd = format;
       }
     }
-    pid_children_.push_back(util::command::forkExec(cmd));
+    trackChild(util::command::forkExec(cmd));
   }
   dp.emit();
   return true;
@@ -376,7 +386,7 @@ bool AModule::handleScroll(GdkEventScroll* e) {
   this->AModule::doAction(eventName);
   // Second call user scripts
   if (config_[eventName].isString())
-    pid_children_.push_back(util::command::forkExec(config_[eventName].asString()));
+    trackChild(util::command::forkExec(config_[eventName].asString()));
 
   dp.emit();
   return true;

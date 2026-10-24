@@ -82,6 +82,7 @@ class AModule : public IModule {
   }
 
   std::vector<int> pid_children_;
+  void trackChild(int pid);
   const std::string name_;
   const Json::Value& config_;
   Gtk::EventBox event_box_;
