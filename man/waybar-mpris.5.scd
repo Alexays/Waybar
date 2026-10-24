@@ -148,6 +148,11 @@ The *mpris* module displays currently playing media via libplayerctl.
 	typeof: string ++
 	Command to execute when the mouse leaves the module.
 
+*on-enter-delay*: ++
+	typeof: integer ++
+	default: 0 ++
+	Milliseconds the mouse has to stay on the module before *on-enter* runs. If it leaves sooner, neither *on-enter* nor *on-leave* runs.
+
 *on-click-backward*: ++
 	typeof: string ++
 	default: previous track ++

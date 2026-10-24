@@ -63,6 +63,11 @@ screensaver, also known as "presentation mode".
 	typeof: string ++
 	Command to execute when the mouse leaves the module.
 
+*on-enter-delay*: ++
+	typeof: integer ++
+	default: 0 ++
+	Milliseconds the mouse has to stay on the module before *on-enter* runs. If it leaves sooner, neither *on-enter* nor *on-leave* runs.
+
 *on-scroll-up*: ++
 	typeof: string ++
 	Command to execute when scrolling up on the module. (increase the timeout if dynamic timeouts are enabled).
