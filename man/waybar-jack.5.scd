@@ -91,6 +91,14 @@ Addressed by *jack*
 	typeof: string ++
 	Command to execute when the module is updated.
 
+*on-enter*: ++
+	typeof: string ++
+	Command to execute when the mouse enters the module.
+
+*on-leave*: ++
+	typeof: string ++
+	Command to execute when the mouse leaves the module.
+
 *menu*: ++
 	typeof: string ++
 	Action that popups the menu.
