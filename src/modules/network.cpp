@@ -594,9 +594,9 @@ void waybar::modules::Network::clearIface() {
 }
 
 int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
-  auto *net = static_cast<waybar::modules::Network*>(data);
+  auto* net = static_cast<waybar::modules::Network*>(data);
   std::scoped_lock lock(net->mutex_);
-  auto *nh = nlmsg_hdr(msg);
+  auto* nh = nlmsg_hdr(msg);
   bool is_del_event = false;
 
   switch (nh->nlmsg_type) {
@@ -972,7 +972,7 @@ void waybar::modules::Network::askForStateDump() {
 }
 
 int waybar::modules::Network::handleEventsDone(struct nl_msg* msg, void* data) {
-  auto *net = static_cast<waybar::modules::Network*>(data);
+  auto* net = static_cast<waybar::modules::Network*>(data);
   net->dump_in_progress_ = false;
   net->askForStateDump();
   return NL_OK;
@@ -990,8 +990,8 @@ int waybar::modules::Network::handleDumpInterrupted(struct nl_msg*, void* data) 
 }
 
 int waybar::modules::Network::handleScan(struct nl_msg* msg, void* data) {
-  auto *net = static_cast<waybar::modules::Network*>(data);
-  auto *gnlh = static_cast<genlmsghdr*>(nlmsg_data(nlmsg_hdr(msg)));
+  auto* net = static_cast<waybar::modules::Network*>(data);
+  auto* gnlh = static_cast<genlmsghdr*>(nlmsg_data(nlmsg_hdr(msg)));
   struct nlattr* tb[NL80211_ATTR_MAX + 1];
   struct nlattr* bss[NL80211_BSS_MAX + 1];
   struct nla_policy bss_policy[NL80211_BSS_MAX + 1]{};
@@ -1026,8 +1026,8 @@ int waybar::modules::Network::handleScan(struct nl_msg* msg, void* data) {
 }
 
 int waybar::modules::Network::handleStationGet(struct nl_msg* msg, void* data) {
-  auto *net = static_cast<waybar::modules::Network*>(data);
-  auto *gnlh = static_cast<genlmsghdr*>(nlmsg_data(nlmsg_hdr(msg)));
+  auto* net = static_cast<waybar::modules::Network*>(data);
+  auto* gnlh = static_cast<genlmsghdr*>(nlmsg_data(nlmsg_hdr(msg)));
   struct nlattr* tb[NL80211_ATTR_MAX + 1];
 
   if (nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0), genlmsg_attrlen(gnlh, 0),
@@ -1102,8 +1102,10 @@ void waybar::modules::Network::parseSignal(struct nlattr** bss) {
     const int noise_floor_dbm = -90;
     const int signal_max_dbm = -20;
     signal_strength_dbm_ = std::clamp(signal_strength_dbm_, noise_floor_dbm, signal_max_dbm);
-    signal_strength_ = 100 - (70 * ((static_cast<float>(signal_max_dbm) - static_cast<float>(signal_strength_dbm_)) /
-                                    (static_cast<float>(signal_max_dbm) - static_cast<float>(noise_floor_dbm))));
+    signal_strength_ =
+        100 -
+        (70 * ((static_cast<float>(signal_max_dbm) - static_cast<float>(signal_strength_dbm_)) /
+               (static_cast<float>(signal_max_dbm) - static_cast<float>(noise_floor_dbm))));
 
     if (signal_strength_dbm_ >= -50) {
       signal_strength_app_ = "Great Connectivity";
@@ -1133,7 +1135,7 @@ void waybar::modules::Network::parseFreq(struct nlattr** bss) {
 
 void waybar::modules::Network::parseBssid(struct nlattr** bss) {
   if (bss[NL80211_BSS_BSSID] != nullptr) {
-    auto *bssid = static_cast<uint8_t*>(nla_data(bss[NL80211_BSS_BSSID]));
+    auto* bssid = static_cast<uint8_t*>(nla_data(bss[NL80211_BSS_BSSID]));
     auto bssid_len = nla_len(bss[NL80211_BSS_BSSID]);
     if (bssid_len == 6) {
       bssid_ = fmt::format("{:x}:{:x}:{:x}:{:x}:{:x}:{:x}", bssid[0], bssid[1], bssid[2], bssid[3],
