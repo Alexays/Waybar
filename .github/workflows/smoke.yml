@@ -105,6 +105,9 @@ jobs:
       - name: Lifecycle / teardown
         run: ./test/smoke/lifecycle.sh
 
+      - name: PulseAudio shared pools across reloads
+        run: ./test/smoke/pulseaudio-reload.sh
+
       # --- Tier 4: custom-backend fuzz (pathological exec output) ---
       - name: Custom-backend fuzz
         run: ./test/smoke/fuzz.sh

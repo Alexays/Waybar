@@ -19,6 +19,7 @@ AddressSanitizer** and runs the real binary inside a **headless** compositor
 | 3 | **Layout matrix** — top / bottom / left (vertical) + HiDPI (scale 2) | [`positions.sh`](positions.sh) |
 | 3 | **Second compositor** — same launch under `labwc` | workflow (`COMPOSITOR=labwc`) |
 | 4 | **Lifecycle / teardown** — clean SIGINT exit, runtime **output hotplug**, toggle + reload churn, fast-interval teardown (the C++ destructor path a `kill` never runs, #5182) | [`lifecycle.sh`](lifecycle.sh) |
+| 4 | **PulseAudio reload leak** — private null-sink server; Linux shared-pool mappings stay at baseline across eight SIGUSR2 reloads (#4888) | [`pulseaudio-reload.sh`](pulseaudio-reload.sh) |
 | 4 | **Custom-backend fuzz** — empty / non-zero-exit / invalid-JSON / huge / non-UTF8 / empty-format exec output | [`fuzz.sh`](fuzz.sh) |
 | 5 | **State transitions** *(best-effort)* — real `mpd` driven through an **empty queue** (#5183) + stop/clear, `pulseaudio` + slider on a null sink | [`state.sh`](state.sh) |
 | 6 | **Fake hardware** *(best-effort)* — `backlight`, `backlight/slider` (#5179) and `battery` via **umockdev** | [`hardware.sh`](hardware.sh) |
@@ -58,6 +59,7 @@ export WAYBAR_BIN=$PWD/build/waybar
 ./test/smoke/run.sh       test/smoke/config.jsonc test/smoke/style.css /tmp/bar.png
 ./test/smoke/modules.sh   /tmp/module-shots
 ./test/smoke/lifecycle.sh
+./test/smoke/pulseaudio-reload.sh            # Linux; needs pulseaudio + pactl
 ./test/smoke/fuzz.sh
 ./test/smoke/interact.sh  /tmp/interaction-shots
 ./test/smoke/positions.sh /tmp/layout-shots
