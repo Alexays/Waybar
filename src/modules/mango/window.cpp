@@ -82,7 +82,17 @@ void Window::doUpdate() {
 
   label_.set_markup(label_text);
 
-  updateAppIconName(appid, "");
+  // Icon priority:
+  //   1. icon configured for this app_id (exact or lowercase match)
+  //   2. "default" icon from the config
+  //   3. the application's own icon (resolved by AAppIconLabel)
+  // The app's own image is only used when no configured icon was found;
+  // otherwise it is hidden by passing empty identifiers.
+  if (icon.empty()) {
+    updateAppIconName(appid, "");
+  } else {
+    updateAppIconName("", "");
+  }
 
   if (tooltipEnabled()) {
     std::string tooltip_format;
