@@ -11,7 +11,7 @@ if [ "$(uname -s)" != Linux ]; then
     exit 0
 fi
 
-for tool in pulseaudio pactl; do
+for tool in pulseaudio pactl jq timeout; do
     command -v "$tool" >/dev/null || { echo "::error::$tool is required"; exit 1; }
 done
 
@@ -79,21 +79,48 @@ pulse_pool_count() {
          END { print count + 0 }' "/proc/$WAYBAR_PID/maps"
 }
 
-baseline=0
-for _ in $(seq 1 100); do
-    baseline="$(pulse_pool_count)"
-    [ "$baseline" -gt 0 ] && break
-    smoke::assert_alive >/dev/null
-    sleep 0.1
-done
-if [ "$baseline" -eq 0 ]; then
-    echo "::error::no PulseAudio shared pool was mapped; regression was not exercised"
+# GTK configuration can finish before the asynchronous PulseAudio connection.
+# Require a fresh client belonging to this Waybar process, then five unchanged
+# samples. Settle independently of the baseline so a stable leak still fails.
+pulse_wait_ready() {
+    local old_client="${1:-}" client="" current=0 last_sample="" stable=0
+    local deadline=$((SECONDS + 10))
+    while [ "$SECONDS" -lt "$deadline" ]; do
+        smoke::assert_alive >/dev/null
+        if client="$(timeout 1s pactl --format=json list clients 2>/dev/null |
+            jq -r --arg pid "$WAYBAR_PID" \
+                '[.[] | select(.properties["application.process.id"] == $pid)] |
+                 if length == 1 then .[0].index else empty end')" &&
+            [ -n "$client" ] && [ "$client" != "$old_client" ]; then
+            current="$(pulse_pool_count)"
+            if [ "$current" -gt 0 ] && [ "$client:$current" = "$last_sample" ]; then
+                stable=$((stable + 1))
+            else
+                stable=0
+            fi
+            last_sample="$client:$current"
+            if [ "$stable" -ge 5 ]; then
+                PULSE_CLIENT_ID="$client"
+                PULSE_POOLS="$current"
+                return 0
+            fi
+        else
+            last_sample=""
+            stable=0
+        fi
+        sleep 0.1
+    done
+    echo "::error::PulseAudio connection or shared pools did not settle (client: ${client:-none}, pools: $current)"
     smoke::log
-    exit 1
-fi
+    return 1
+}
+
+pulse_wait_ready
+baseline="$PULSE_POOLS"
 echo "PulseAudio shared pools before reload: $baseline"
 
 for reload in $(seq 1 8); do
+    previous_client="$PULSE_CLIENT_ID"
     before="$(grep -c 'Bar configured' "$SMOKE_LOG" || true)"
     kill -USR2 "$WAYBAR_PID"
     configured=0
@@ -108,7 +135,8 @@ for reload in $(seq 1 8); do
         smoke::log
         exit 1
     fi
-    pools="$(pulse_pool_count)"
+    pulse_wait_ready "$previous_client"
+    pools="$PULSE_POOLS"
     echo "PulseAudio shared pools after reload $reload: $pools"
     if [ "$pools" -ne "$baseline" ]; then
         echo "::error::PulseAudio pool count changed from $baseline to $pools"
