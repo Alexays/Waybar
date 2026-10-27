@@ -45,6 +45,10 @@ Addressed by *mango/window*
 	The format of the tooltip shown on hover. Supports the same replacements as *format*. Requires *tooltip* to be enabled. When unset, the tooltip falls back to the window title text. ++
 	default: (the formatted label text)
 
+*icons*: ++
+	typeof: object ++
+	Icons to be used according app_id
+
 # FORMAT REPLACEMENTS
 
 *{title}*: The current window title.
