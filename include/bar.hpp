@@ -7,13 +7,17 @@
 #include <gtkmm/main.h>
 #include <gtkmm/window.h>
 #include <json/json.h>
+#include <sigc++/connection.h>
 
 #include <memory>
 #include <optional>
+#include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "AModule.hpp"
 #include "group.hpp"
+#include "util/command_line_stream.hpp"
 #include "util/kill_signal.hpp"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
@@ -120,6 +124,9 @@ class Bar : public sigc::trackable {
 #ifdef HAVE_BAR_BLUR
   void setupBackgroundBlur();
 #endif
+  void initDynamicClassExec();
+  void onDynamicClassLine(const std::string& line);
+  void handleDynamicClassExit(int exit_code);
 
   /* Copy initial set of modes to allow customization */
   bar_mode_map configured_modes = PRESET_MODES;
@@ -152,6 +159,12 @@ class Bar : public sigc::trackable {
   /* Disconnected in ~Bar before the modules are destroyed (#5182). */
   sigc::connection map_conn_;
   sigc::connection unmap_conn_;
+
+  std::unique_ptr<waybar::util::command::LineStream> dynamic_class_stream_;
+  sigc::connection dynamic_class_restart_conn_;
+  sigc::connection dynamic_class_idle_conn_;
+  std::unordered_set<std::string> active_dynamic_classes_;
+  std::string last_raw_line_;
 };
 
 }  // namespace waybar

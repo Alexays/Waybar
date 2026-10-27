@@ -1,6 +1,7 @@
 #include "bar.hpp"
 
 #include <gtk-layer-shell.h>
+#include <libinput.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -10,6 +11,7 @@
 #include "client.hpp"
 #include "factory.hpp"
 #include "group.hpp"
+#include "util/command_line_stream.hpp"
 #include "util/enum.hpp"
 #include "util/hosts_check.hpp"
 #include "util/kill_signal.hpp"
@@ -358,10 +360,20 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     spdlog::debug("GTK widget tree:\n{}", gtk_tree);
     g_free(gtk_tree);
   }
+
+  if (config.isMember("class-exec") && config["class-exec"].isString()) {
+    initDynamicClassExec();
+  }
 }
 
 /* Need to define it here because of forward declared members */
 waybar::Bar::~Bar() {
+  dynamic_class_restart_conn_.disconnect();
+  dynamic_class_idle_conn_.disconnect();
+  if (dynamic_class_stream_) {
+    dynamic_class_stream_->stop();
+  }
+
   /* Destroying the window emits `unmap`, whose handler runs toggleSuspend() over
    * modules_all_ -- already freed by this point. Disconnect first (#5182). */
   unmap_conn_.disconnect();
@@ -878,4 +890,71 @@ void waybar::Bar::toggleSuspend(bool suspend) {
       }
     }
   }
+}
+
+void waybar::Bar::initDynamicClassExec() {
+  dynamic_class_stream_ = std::make_unique<waybar::util::command::LineStream>(
+      output->name, [this](const std::string& line) { onDynamicClassLine(line); },
+      [this](int exit_code) { handleDynamicClassExit(exit_code); });
+  const auto cmd = config["class-exec"].asString();
+  try {
+    dynamic_class_stream_->start(cmd);
+  } catch (const std::exception& e) {
+    spdlog::error("Failed to start dynamic class exec '{}': {}", cmd, e.what());
+  }
+}
+
+void waybar::Bar::onDynamicClassLine(const std::string& line) {
+  if (last_raw_line_ == line) {
+    return;
+  }
+  last_raw_line_ = line;
+
+  std::istringstream iss(line);
+  std::unordered_set<std::string> new_classes;
+  std::string cls;
+
+  while (iss >> cls) {
+    new_classes.insert(cls);
+  }
+
+  dynamic_class_idle_conn_.disconnect();
+
+  dynamic_class_idle_conn_ = Glib::signal_idle().connect([this, new_classes]() {
+    auto context = window.get_style_context();
+
+    for (const auto& old_cls : active_dynamic_classes_) {
+      if (!new_classes.contains(old_cls)) {
+        context->remove_class(old_cls);
+      }
+    }
+
+    for (const auto& new_cls : new_classes) {
+      if (!active_dynamic_classes_.contains(new_cls)) {
+        context->add_class(new_cls);
+      }
+    }
+
+    active_dynamic_classes_ = new_classes;
+    return false;
+  });
+}
+
+void waybar::Bar::handleDynamicClassExit(int exit_code) {
+  if (exit_code != 0) {
+    spdlog::error("Dynamic class exec exited with code {}", exit_code);
+  }
+  dynamic_class_restart_conn_.disconnect();
+  dynamic_class_restart_conn_ = Glib::signal_timeout().connect(
+      [this] {
+        if (config.isMember("class-exec") && config["class-exec"].isString()) {
+          try {
+            dynamic_class_stream_->start(config["class-exec"].asString());
+          } catch (...) {
+          }
+          return false;
+        }
+        return false;
+      },
+      1000);
 }
