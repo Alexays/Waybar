@@ -85,7 +85,7 @@ class IconManager {
 
   std::unordered_map<std::string, std::string> icons_map_;
   std::unordered_set<std::string> hidden_apps_;
-  // Wildcard keys, kept in the order the config lists them
+  // Wildcard keys; when several match an id, the first wins (jsoncpp lists keys alphabetically)
   std::vector<std::pair<std::string, std::string>> icon_patterns_;
   std::vector<std::string> hidden_patterns_;
 };
