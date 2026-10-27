@@ -47,13 +47,12 @@ class IPC {
   static std::filesystem::path socketFolder_;
 
   /// Detect whether the running Hyprland uses the Lua-based IPC protocol.
-  /// Resolved once from the config manager it reports, then cached.
+  /// Resolved once from a no-op "eval" request, then cached.
   static bool isLuaProtocol();
 
-  /// Whether a "systeminfo" reply reports the Lua config manager. An absent
-  /// "configProvider:" field means the instance predates the Lua config
-  /// manager (< 0.55) and therefore speaks the legacy protocol.
-  static bool isLuaConfigProvider(const std::string& systemInfo);
+  /// Whether a reply to a no-op "eval" request comes from the Lua config
+  /// manager, the only one that runs it.
+  static bool isLuaEvalReply(const std::string& reply);
 
   static std::optional<bool> s_luaProtocolDetected_;  // cached detection result
 
