@@ -2,6 +2,9 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+#include <cctype>
+
 #include "util/rewrite_string.hpp"
 #include "util/sanitize_str.hpp"
 
@@ -42,13 +45,46 @@ void Window::doUpdate() {
   std::string sanitized_title = waybar::util::sanitize_string(title);
   std::string sanitized_appid = waybar::util::sanitize_string(appid);
 
-  label_.set_markup(waybar::util::rewriteString(
-      fmt::format(fmt::runtime(format_), fmt::arg("title", sanitized_title),
-                  fmt::arg("app_id", sanitized_appid)),
-      config_["rewrite"]));
+  // Reuse ALabel::getIcon: tries app_id, then lowercase app_id, then "default"
+  // from the "format-icons" object of the config.
+  std::string lower = appid;
+  std::transform(lower.begin(), lower.end(), lower.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  std::string icon = getIcon(0, std::vector<std::string>{appid, lower});
 
-  updateAppIconName(appid, "");
-  if (tooltipEnabled()) label_.set_tooltip_markup(sanitized_title);
+  std::string label_text = waybar::util::rewriteString(
+      fmt::format(fmt::runtime(format_), fmt::arg("title", sanitized_title),
+                  fmt::arg("app_id", sanitized_appid), fmt::arg("icon", icon)),
+      config_["rewrite"]);
+
+  label_.set_markup(label_text);
+
+  // Icon priority:
+  //   1. icon configured for this app_id (exact or lowercase match)
+  //   2. "default" icon from the config
+  //   3. the application's own icon (resolved by AAppIconLabel)
+  // The app's own image is only used when no configured icon was found;
+  // otherwise it is hidden by passing empty identifiers.
+  if (icon.empty()) {
+    updateAppIconName(appid, "");
+  } else {
+    updateAppIconName("", "");
+  }
+
+  if (tooltipEnabled()) {
+    std::string tooltip_format;
+    if (config_["tooltip-format"].isString()) {
+      tooltip_format = config_["tooltip-format"].asString();
+    }
+    if (!tooltip_format.empty()) {
+      // Use sanitized values: tooltip text is parsed as Pango markup
+      setTooltipMarkup(fmt::format(fmt::runtime(tooltip_format), fmt::arg("title", sanitized_title),
+                                   fmt::arg("app_id", sanitized_appid), fmt::arg("icon", icon)));
+    } else {
+      // without tooltip-format: use same text as label
+      setTooltipMarkup(label_text);
+    }
+  }
 
   // Solo judgment
   bool solo = false;
