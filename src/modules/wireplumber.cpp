@@ -9,6 +9,26 @@
 
 bool isValidNodeId(uint32_t id) { return id > 0 && id < G_MAXUINT32; }
 
+// Returns a newly allocated copy of `node.name` for the node bound to `id`, or nullptr if the node
+// is unknown. WirePlumber's "get-default-configured-node-name" reports the *configured* default,
+// which is remembered across disconnections, so it keeps naming a Bluetooth sink that is no longer
+// present while WirePlumber itself has already fallen back to another node. Reading the name off
+// the node that "get-default-node" actually resolved to gives the name of the node in use.
+static gchar* dupEffectiveNodeName(WpObjectManager* om, uint32_t id) {
+  if (!isValidNodeId(id)) {
+    return nullptr;
+  }
+
+  g_autoptr(WpNode) node = static_cast<WpNode*>(wp_object_manager_lookup(
+      om, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id", "=u", id, nullptr));
+
+  if (node == nullptr) {
+    return nullptr;
+  }
+
+  return g_strdup(wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(node), "node.name"));
+}
+
 std::list<waybar::modules::Wireplumber*> waybar::modules::Wireplumber::modules;
 
 // Interval between reconnect attempts after PipeWire/WirePlumber goes away. Fixed (rather than
@@ -462,8 +482,6 @@ void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wir
   }
 
   // Get default sink
-  g_signal_emit_by_name(self->def_nodes_api_, "get-default-configured-node-name", self->type_,
-                        &self->default_node_name_);
   uint32_t initial_sink_id = 0;
   g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", self->type_, &initial_sink_id);
 
@@ -475,16 +493,28 @@ void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wir
     self->node_id_ = initial_sink_id;
   }
 
+  self->default_node_name_ = dupEffectiveNodeName(self->om_, self->node_id_);
+
+  if (self->default_node_name_ == nullptr) {
+    // The node is not in the object manager yet; fall back to the configured name, which the
+    // "changed" handler replaces with the effective one as soon as it resolves.
+    g_signal_emit_by_name(self->def_nodes_api_, "get-default-configured-node-name", self->type_,
+                          &self->default_node_name_);
+  }
+
   // Get default source
-  g_signal_emit_by_name(self->def_nodes_api_, "get-default-configured-node-name", "Audio/Source",
-                        &self->default_source_name_);
   g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", "Audio/Source",
                         &self->source_node_id_);
+  self->default_source_name_ = dupEffectiveNodeName(self->om_, self->source_node_id_);
+
+  if (self->default_source_name_ == nullptr) {
+    g_signal_emit_by_name(self->def_nodes_api_, "get-default-configured-node-name", "Audio/Source",
+                          &self->default_source_name_);
+  }
 
   if (self->default_node_name_ != nullptr) {
-    spdlog::debug(
-        "[{}]: (onObjectManagerInstalled: {}) - default configured node name: {} and id: {}",
-        self->name_, self->type_, self->default_node_name_, self->node_id_);
+    spdlog::debug("[{}]: (onObjectManagerInstalled: {}) - default node name: {} and id: {}",
+                  self->name_, self->type_, self->default_node_name_, self->node_id_);
   }
   if (self->default_source_name_ != nullptr) {
     spdlog::debug("[{}]: default source: {} (id: {})", self->name_, self->default_source_name_,
