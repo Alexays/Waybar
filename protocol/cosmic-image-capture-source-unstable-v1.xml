@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="cosmic_image_source_unstable_v1">
+  <copyright>
+    Copyright © 2025 System76
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice (including the next
+    paragraph) shall be included in all copies or substantial portions of the
+    Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+    THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+  </copyright>
+
+  <description summary="cosmic image capture sources">
+    This protocols `extends ext-image-capture-source-v1` with additional capture
+    sources.
+  </description>
+
+  <interface name="zcosmic_workspace_image_capture_source_manager_v1" version="1">
+    <description summary="image source manager for outputs">
+      A manager for creating image source objects for wl_output objects.
+    </description>
+
+    <request name="create_source">
+      <description summary="create source object for output">
+        Creates a source object for a workspaces. Images captured from this source
+        will show the same content as the workspace. Some elements may be omitted,
+        such as cursors and overlays that have been marked as transparent to
+        capturing.
+      </description>
+      <arg name="source" type="new_id" interface="ext_image_capture_source_v1"/>
+      <arg name="output" type="object" interface="ext_workspace_handle_v1"/>
+    </request>
+
+    <request name="destroy" type="destructor">
+      <description summary="delete this object">
+        Destroys the manager. This request may be sent at any time by the client
+        and objects created by the manager will remain valid after its
+        destruction.
+      </description>
+    </request>
+  </interface>
+</protocol>
