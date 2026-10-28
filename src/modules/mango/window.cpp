@@ -10,35 +10,6 @@
 
 namespace waybar::modules::mango {
 
-namespace {
-
-// Looks up the icon for an app_id in the "icons" object of the config.
-// Order: exact match -> lowercase match -> "default" key -> "".
-std::string lookupIcon(const Json::Value& config, const std::string& appid) {
-  const Json::Value& icons = config["icons"];
-  if (!icons.isObject()) return "";
-
-  if (!appid.empty()) {
-    if (icons.isMember(appid) && icons[appid].isString()) {
-      return icons[appid].asString();
-    }
-
-    std::string lower = appid;
-    std::transform(lower.begin(), lower.end(), lower.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
-    if (icons.isMember(lower) && icons[lower].isString()) {
-      return icons[lower].asString();
-    }
-  }
-
-  if (icons.isMember("default") && icons["default"].isString()) {
-    return icons["default"].asString();
-  }
-  return "";
-}
-
-}  // namespace
-
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     : AAppIconLabel(config, "window", id, "{title}", 0, true), bar_(bar) {
   IPC::getInstance().registerForIPC("monitor", this);
@@ -73,7 +44,13 @@ void Window::doUpdate() {
   std::string appid = client["appid"].asString();
   std::string sanitized_title = waybar::util::sanitize_string(title);
   std::string sanitized_appid = waybar::util::sanitize_string(appid);
-  std::string icon = lookupIcon(config_, appid);
+
+  // Reuse ALabel::getIcon: tries app_id, then lowercase app_id, then "default"
+  // from the "format-icons" object of the config.
+  std::string lower = appid;
+  std::transform(lower.begin(), lower.end(), lower.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  std::string icon = getIcon(0, std::vector<std::string>{appid, lower});
 
   std::string label_text = waybar::util::rewriteString(
       fmt::format(fmt::runtime(format_), fmt::arg("title", sanitized_title),
@@ -100,11 +77,13 @@ void Window::doUpdate() {
       tooltip_format = config_["tooltip-format"].asString();
     }
     if (!tooltip_format.empty()) {
-      setTooltipMarkup(fmt::format(fmt::runtime(tooltip_format), fmt::arg("title", title),
-                                   fmt::arg("app_id", appid), fmt::arg("icon", icon)));
+      // Use sanitized values: tooltip text is parsed as Pango markup
+      setTooltipMarkup(fmt::format(fmt::runtime(tooltip_format),
+                                   fmt::arg("title", sanitized_title),
+                                   fmt::arg("app_id", sanitized_appid), fmt::arg("icon", icon)));
     } else {
       // without tooltip-format: use same text as label
-      label_.set_tooltip_markup(label_text);
+      setTooltipMarkup(label_text);
     }
   }
 
