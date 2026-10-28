@@ -21,6 +21,7 @@
 #include "client.hpp"
 #include "ext-workspace-v1-client-protocol.h"
 #include "giomm/desktopappinfo.h"
+#include "util/hover_latch.hpp"
 #include "util/icon_loader.hpp"
 #include "util/json.hpp"
 #include "wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
@@ -93,6 +94,10 @@ class Task {
   int32_t drag_start_y;
   int32_t drag_start_button = -1;
 
+  std::string on_enter_action_;
+  std::string on_leave_action_;
+  util::HoverLatch hover_;
+
  private:
   std::string repr() const;
   std::string state_string(bool = false) const;
@@ -102,6 +107,7 @@ class Task {
   void hide_if_duplicate();
   void show_button();
   void hide_button();
+  void run_action(const std::string& action);
 
  public:
   /* Getter functions */
@@ -131,6 +137,7 @@ class Task {
   bool handle_clicked(GdkEventButton*);
   bool handle_button_release(GdkEventButton*);
   bool handle_motion_notify(GdkEventMotion*);
+  bool handle_crossing(GdkEventCrossing*, bool entering);
   void handle_drag_data_get(const Glib::RefPtr<Gdk::DragContext>& context,
                             Gtk::SelectionData& selection_data, guint info, guint time);
   void handle_drag_data_received(const Glib::RefPtr<Gdk::DragContext>& context, int x, int y,
