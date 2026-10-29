@@ -17,8 +17,9 @@
 using namespace date;
 namespace fmt_lib = waybar::util::date::format;
 
-waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
-    : ALabel(config, "clock", id, "{:%H:%M}", 60, false, false, true),
+waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config,
+                              std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "clock", id, "{:%H:%M}", reap_mtx, reap, 60, false, false, true),
       m_locale_{std::locale(config_["locale"].isString() ? config_["locale"].asString() : "")},
       m_tlpFmt_{(config_["tooltip-format"].isString()) ? config_["tooltip-format"].asString() : ""},
       m_tooltip_{new Gtk::Label()},
@@ -631,7 +632,8 @@ void waybar::modules::Clock::action_exec(const std::string& action) {
     spdlog::error("Clock: exec action requires a command argument");
     return;
   }
-  pid_children_.push_back(util::command::forkExec(action.substr(pos + 1)));
+  pid_children_.push_back(
+      util::command::forkExec(action.substr(pos + 1), this->reap_mtx, this->reap));
 }
 
 // Computations done similarly to Linux cal utility.

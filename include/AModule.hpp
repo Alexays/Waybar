@@ -31,6 +31,9 @@ class AModule : public IModule {
 
   bool expandEnabled() const;
 
+  std::mutex& reap_mtx;
+  std::list<pid_t>& reap;
+
   virtual void suspend() {};
   virtual void resume() {};
   bool shouldSuspend() const { return disable_on_sleep_; }
@@ -38,8 +41,8 @@ class AModule : public IModule {
  protected:
   // Don't need to make an object directly
   // Derived classes are able to use it
-  AModule(const Json::Value&, const std::string&, const std::string&, bool enable_click = false,
-          bool enable_scroll = false);
+  AModule(const Json::Value&, const std::string&, const std::string&, std::mutex& reap_mtx,
+          std::list<pid_t>& reap, bool enable_click = false, bool enable_scroll = false);
 
   enum SCROLL_DIR { NONE, UP, DOWN, LEFT, RIGHT };
 
@@ -76,8 +79,8 @@ class AModule : public IModule {
     if (!tooltipEnabled()) {
       return;
     }
-    widget.set_tooltip_markup(
-        fmt::format(fmt::runtime(resolveTooltipFormat(defaultFormat)), std::forward<Args>(args)...));
+    widget.set_tooltip_markup(fmt::format(fmt::runtime(resolveTooltipFormat(defaultFormat)),
+                                          std::forward<Args>(args)...));
   }
 
   std::vector<int> pid_children_;

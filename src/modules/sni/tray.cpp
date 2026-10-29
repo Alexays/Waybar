@@ -30,8 +30,9 @@ std::vector<std::string> Tray::parseIgnoreList(const Json::Value& config) {
   return ignore_list;
 }
 
-Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
-    : AModule(config, "tray", id),
+Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config, std::mutex& reap_mtx,
+           std::list<pid_t>& reap)
+    : AModule(config, "tray", id, reap_mtx, reap),
       box_(bar.orientation, 0),
       watcher_(SNI::Watcher::getInstance()),
       ignore_list_(parseIgnoreList(config)),

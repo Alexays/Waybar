@@ -26,7 +26,7 @@ struct Profile {
 
 class PowerProfilesDaemon : public ALabel, public sigc::trackable {
  public:
-  PowerProfilesDaemon(const std::string&, const Json::Value&);
+  PowerProfilesDaemon(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   auto update() -> void override;
   void profileChangedCb(const Gio::DBus::Proxy::MapChangedProperties&,
                         const std::vector<Glib::ustring>&);

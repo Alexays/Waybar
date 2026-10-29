@@ -14,7 +14,7 @@
 namespace waybar::modules::sway {
 class Scratchpad : public ALabel {
  public:
-  Scratchpad(const std::string&, const Json::Value&);
+  Scratchpad(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~Scratchpad() = default;
   auto update() -> void override;
 
