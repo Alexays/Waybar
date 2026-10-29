@@ -87,7 +87,7 @@ class Workspaces : public AModule, public EventHandler {
   // syntax for the identifiers that are not addresses.
   std::vector<std::unique_ptr<Workspace>>::iterator findWorkspace(
       std::string const& addressOrSelector);
-  void removeWorkspace(std::string const& workspaceString);
+  void removeWorkspace(std::string const& address);
   void setUrgentWorkspace(std::string const& windowaddress);
 
   // Config

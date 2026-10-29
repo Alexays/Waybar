@@ -4,9 +4,17 @@
 #include <catch2/catch.hpp>
 #endif
 
+#include <array>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
 #include "modules/hyprland/workspace_identity.hpp"
 
 namespace hyprland = waybar::modules::hyprland;
+using hyprland::droppedWorkspaceAddresses;
 using hyprland::parseWorkspaceIdentity;
 using hyprland::workspaceDisplayName;
 using hyprland::WorkspaceKind;
@@ -303,6 +311,80 @@ TEST_CASE("event identifiers resolve to the workspace they name", "[workspace_id
   REQUIRE(numberedIdentity.has_value());
   REQUIRE(numberedIdentity->matches("3"));
   REQUIRE_FALSE(numberedIdentity->matches("4"));
+}
+
+TEST_CASE("the addresses a bar drops for a destroyed or moved-away workspace",
+          "[workspace_identity]") {
+  // The queued and shown workspaces are reconciled by these addresses. No display name enters
+  // into it: that would also find a workspace renamed to that name, or stand in for one on another
+  // monitor.
+  using Dropped = std::array<std::string_view, 2>;
+  using Listed = std::vector<std::pair<std::string, std::string>>;  // address, monitor
+  int requests = 0;
+  // Requests a `workspaces` reply listing these workspaces, as Hyprland answers after the event.
+  const auto listing = [&requests](const Listed& listed) {
+    return [&requests, listed] {
+      ++requests;
+      Json::Value workspaces(Json::arrayValue);
+      for (const auto& [address, monitor] : listed) {
+        Json::Value workspace;
+        workspace["address"] = address;
+        workspace["type"] = "normal";
+        workspace["name"] = address;
+        workspace["monitor"] = monitor;
+        workspaces.append(workspace);
+      }
+      return workspaces;
+    };
+  };
+  const std::optional<std::string_view> allOutputs;
+
+  SECTION("an address is dropped as given, without asking Hyprland") {
+    REQUIRE(droppedWorkspaceAddresses("1", allOutputs, listing({})) == Dropped{"1"});
+    REQUIRE(droppedWorkspaceAddresses("web", "DP-1", listing({})) == Dropped{"web"});
+    REQUIRE(droppedWorkspaceAddresses("special:scratch", allOutputs, listing({})) ==
+            Dropped{"special:scratch"});
+    // A legacy named workspace, addressed by its negative id.
+    REQUIRE(droppedWorkspaceAddresses("-1337", allOutputs, listing({})) == Dropped{"-1337"});
+    // A bare selector prefix selects nothing.
+    REQUIRE(droppedWorkspaceAddresses("name:", allOutputs, listing({})) == Dropped{"name:"});
+    REQUIRE(requests == 0);
+  }
+
+  SECTION("a name: identifier or the address behind it, whichever Hyprland no longer lists") {
+    // From hyprwm/Hyprland#16140 until #16234, `web` by its selector; a workspace addressed
+    // `name:web` is still there.
+    REQUIRE(droppedWorkspaceAddresses("name:web", allOutputs,
+                                      listing({{"1", "DP-1"}, {"name:web", "DP-1"}})) ==
+            Dropped{"web"});
+    // Otherwise, the workspace addressed `name:web`; one addressed `web` is still there.
+    REQUIRE(droppedWorkspaceAddresses("name:web", allOutputs,
+                                      listing({{"1", "DP-1"}, {"web", "DP-1"}})) ==
+            Dropped{"name:web"});
+    // Neither is there any more, whichever was meant.
+    REQUIRE(droppedWorkspaceAddresses("name:web", allOutputs, listing({{"1", "DP-1"}})) ==
+            Dropped{"name:web", "web"});
+    // The selector of a workspace addressed `name:web`.
+    REQUIRE(droppedWorkspaceAddresses("name:name:web", allOutputs, listing({{"web", "DP-1"}})) ==
+            Dropped{"name:name:web", "name:web"});
+    REQUIRE(requests == 4);
+  }
+
+  SECTION("a bar on one output also drops what Hyprland lists on another") {
+    // moveworkspacev2 took `web` to DP-2, while a workspace addressed `name:web` stays on DP-1.
+    const Listed listed{{"web", "DP-2"}, {"name:web", "DP-1"}};
+    REQUIRE(droppedWorkspaceAddresses("name:web", "DP-1", listing(listed)) == Dropped{"web"});
+    // A bar showing every output keeps both.
+    REQUIRE(droppedWorkspaceAddresses("name:web", allOutputs, listing(listed)) == Dropped{});
+  }
+
+  SECTION("nothing Hyprland still lists there, nor anything if it doesn't answer") {
+    // The destroyed workspace has been created again since.
+    REQUIRE(droppedWorkspaceAddresses(
+                "name:web", "DP-1", listing({{"name:web", "DP-1"}, {"web", "DP-1"}})) == Dropped{});
+    REQUIRE(droppedWorkspaceAddresses("name:web", allOutputs, [] { return Json::Value(); }) ==
+            Dropped{});
+  }
 }
 
 TEST_CASE("a persistent-workspaces entry finds the live generic special workspace",
