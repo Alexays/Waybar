@@ -309,6 +309,7 @@ void ALabel::copyToClipboard(const std::string& literal) {
 }
 
 bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
+  bool handled = false;
   if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
     alt_ = !alt_;
     if (alt_ && config_["format-alt"].isString()) {
@@ -316,12 +317,14 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
     } else {
       format_ = default_format_;
     }
+    handled = true;
   }
 
   if (config_["on-click-copy"].isBool() && config_["on-click-copy"].asBool()) {
     copyToClipboard(label_.get_text());
+    handled = true;
   }
-  return AModule::handleToggle(e);
+  return AModule::handleToggle(e) || handled;
 }
 
 void ALabel::handleGtkMenuEvent(GtkMenuItem* /*menuitem*/, gpointer data) {
