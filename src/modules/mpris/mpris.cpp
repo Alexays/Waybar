@@ -32,6 +32,7 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
       truncate_hours_(true),
       tooltip_len_limits_(false),
       prefer_album_artist_(false),
+      hide_on_paused_(false),
       // this character is used in Gnome so it's fine to use it here
       ellipsis_("\u2026"),
       player_("playerctld"),
@@ -72,6 +73,9 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
     if (config_["prefer-album-artist"].isBool()) {
       prefer_album_artist_ = config["prefer-album-artist"].asBool();
     }
+  }
+  if (config_["hide-on-paused"].isBool()) {
+    hide_on_paused_ = config["hide-on-paused"].asBool();
   }
 
   if (config["artist-len"].isUInt()) {
@@ -682,6 +686,11 @@ auto Mpris::update() -> void {
     return;
   }
   auto info = *opt;
+  if (hide_on_paused_ && info.status == PLAYERCTL_PLAYBACK_STATUS_PAUSED) {
+    event_box_.set_visible(false);
+    ALabel::update();
+    return;
+  }
 
   if (info.status == PLAYERCTL_PLAYBACK_STATUS_STOPPED) {
     spdlog::debug("mpris[{}]: player stopped, skipping update", info.name);

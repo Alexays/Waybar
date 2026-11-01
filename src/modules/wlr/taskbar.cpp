@@ -19,6 +19,7 @@
 #include "glibmm/error.h"
 #include "glibmm/fileutils.h"
 #include "glibmm/refptr.h"
+#include "modules/wlr/taskbar_dnd.hpp"
 #include "util/format.hpp"
 #include "util/gtk_icon.hpp"
 #include "util/rewrite_string.hpp"
@@ -572,32 +573,21 @@ bool Task::handle_motion_notify(GdkEventMotion* mn) {
 void Task::handle_drag_data_get(const Glib::RefPtr<Gdk::DragContext>& context,
                                 Gtk::SelectionData& selection_data, guint info, guint time) {
   spdlog::debug("drag_data_get");
-  void* button_addr = (void*)&this->button;
-
-  selection_data.set("WAYBAR_TOPLEVEL", 32, (const guchar*)&button_addr, sizeof(gpointer));
+  selection_data.set("WAYBAR_TOPLEVEL", 32, reinterpret_cast<const guchar*>(&id_), sizeof(id_));
 }
 
 void Task::handle_drag_data_received(const Glib::RefPtr<Gdk::DragContext>& context, int x, int y,
                                      Gtk::SelectionData selection_data, guint info, guint time) {
   spdlog::debug("drag_data_received");
-  auto* raw = selection_data.get_data();
-  if (!raw || selection_data.get_length() < static_cast<int>(sizeof(gpointer))) return;
-  gpointer handle = *(gpointer*)raw;
-  auto dragged_button = (Gtk::Button*)handle;
+  auto dragged_id = dnd::decode_task_id(selection_data.get_data(), selection_data.get_length());
+  if (!dragged_id) {
+    spdlog::warn("Ignoring malformed taskbar drag payload");
+    return;
+  }
 
-  if (dragged_button == &this->button) return;
-
-  auto parent_of_dragged = dragged_button->get_parent();
-  auto parent_of_dest = this->button.get_parent();
-
-  if (parent_of_dragged != parent_of_dest) return;
-
-  auto box = (Gtk::Box*)parent_of_dragged;
-
-  auto position_prop = box->child_property_position(this->button);
-  auto position = position_prop.get_value();
-
-  box->reorder_child(*dragged_button, position);
+  if (!tbar_->reorder_task(*dragged_id, id_)) {
+    spdlog::debug("Ignoring stale taskbar drag from task {} to task {}", *dragged_id, id_);
+  }
 }
 
 bool Task::operator==(const Task& o) const { return o.id_ == id_; }
@@ -1084,6 +1074,27 @@ void Taskbar::add_button(Gtk::Button& bt) {
 }
 
 void Taskbar::move_button(Gtk::Button& bt, int pos) { box_.reorder_child(bt, pos); }
+
+bool Taskbar::reorder_task(uint32_t dragged_id, uint32_t destination_id) {
+  std::vector<uint32_t> task_ids;
+  task_ids.reserve(tasks_.size());
+  std::transform(tasks_.begin(), tasks_.end(), std::back_inserter(task_ids),
+                 [](const TaskPtr& task) { return task->id(); });
+
+  auto positions = dnd::reorder_positions(task_ids, dragged_id, destination_id);
+  if (!positions) return false;
+
+  auto* dragged = tasks_[positions->first].get();
+  auto* destination = tasks_[positions->second].get();
+  if (dragged == destination) return true;
+  if (dragged->button.get_parent() != &box_ || destination->button.get_parent() != &box_) {
+    return false;
+  }
+
+  auto position = box_.child_property_position(destination->button).get_value();
+  box_.reorder_child(dragged->button, position);
+  return true;
+}
 
 void Taskbar::remove_button(Gtk::Button& bt) {
   box_.remove(bt);

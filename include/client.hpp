@@ -13,6 +13,9 @@
 struct zwp_idle_inhibitor_v1;
 struct zwp_idle_inhibit_manager_v1;
 struct ext_idle_notifier_v1;
+#ifdef HAVE_BAR_BLUR
+struct ext_background_effect_manager_v1;
+#endif
 
 namespace waybar {
 
@@ -29,6 +32,9 @@ class Client {
   struct zxdg_output_manager_v1* xdg_output_manager = nullptr;
   struct zwp_idle_inhibit_manager_v1* idle_inhibit_manager = nullptr;
   struct ext_idle_notifier_v1* idle_notifier = nullptr;
+#ifdef HAVE_BAR_BLUR
+  struct ext_background_effect_manager_v1* background_effect_manager = nullptr;
+#endif
   std::vector<std::unique_ptr<Bar>> bars;
   Config config;
   std::string bar_id;

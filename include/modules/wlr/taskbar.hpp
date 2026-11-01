@@ -202,6 +202,7 @@ class Taskbar : public waybar::AModule {
  public:
   void add_button(Gtk::Button&);
   void move_button(Gtk::Button&, int);
+  bool reorder_task(uint32_t dragged_id, uint32_t destination_id);
   void remove_button(Gtk::Button&);
   void remove_task(uint32_t);
   void assign_current_workspace(Task&);

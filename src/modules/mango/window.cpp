@@ -48,7 +48,7 @@ void Window::doUpdate() {
       config_["rewrite"]));
 
   updateAppIconName(appid, "");
-  if (tooltipEnabled()) label_.set_tooltip_markup(title);
+  if (tooltipEnabled()) label_.set_tooltip_markup(sanitized_title);
 
   // Solo judgment
   bool solo = false;

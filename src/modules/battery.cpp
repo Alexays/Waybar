@@ -420,10 +420,12 @@ waybar::modules::Battery::getInfos() {
       bool capacity_exists = false;
       if (charge_now_exists && charge_full_exists && charge_full != 0) {
         capacity_exists = true;
-        capacity = 100 * (uint64_t)charge_now / (uint64_t)charge_full;
+        // Round, not truncate: full-at scales this up, so a battery stopped at
+        // 79.5% of an 80% threshold would otherwise never reach 100%.
+        capacity = std::lround(100.0 * charge_now / charge_full);
       } else if (energy_now_exists && energy_full_exists && energy_full != 0) {
         capacity_exists = true;
-        capacity = 100 * (uint64_t)energy_now / (uint64_t)energy_full;
+        capacity = std::lround(100.0 * energy_now / energy_full);
       } else if (std::ifstream f{bat / "capacity"}) {
         if (f >> capacity) {
           capacity_exists = true;

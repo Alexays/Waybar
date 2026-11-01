@@ -300,6 +300,7 @@ void WorkspaceGroup::handle_output_leave(wl_output* output) {
 
 void WorkspaceGroup::handle_workspace_enter(ext_workspace_handle_v1* handle) {
   workspaces_.push_back(handle);
+  workspaces_manager_.set_needs_sorting();
 }
 
 void WorkspaceGroup::handle_workspace_leave(ext_workspace_handle_v1* handle) {
@@ -307,6 +308,7 @@ void WorkspaceGroup::handle_workspace_leave(ext_workspace_handle_v1* handle) {
   if (it != workspaces_.end()) {
     workspaces_.erase(it);
   }
+  workspaces_manager_.set_needs_sorting();
 }
 
 void WorkspaceGroup::handle_removed() {

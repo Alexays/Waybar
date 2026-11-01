@@ -36,6 +36,15 @@ Addressed by *mango/workspaces*
 	default: false ++
 	If true, buttons for empty (client_count == 0) workspaces are hidden, unless the workspace is active.
 
+*tag-filter*: ++
+	typeof: array of uint64, or object of output name to array of uint64 ++
+	default: all tags ++
+	Only tags whose indices are included in this list are displayed. If omitted
+	or empty, all tags are displayed. If a plain array is given, the same filter
+	applies regardless of output. If an object is given, each key is an output
+	name (as reported by the compositor) and its value is the list of visible
+	tag indices for that output; outputs not present as a key are unfiltered.
+
 *on-click*: ++
 	typeof: string ++
 	Command to execute on left click. Typically set to *activate* or *toggle*.
@@ -95,6 +104,10 @@ When the overview button is clicked, the actions change to:
 		"default": "",
 		"urgent": "",
 		"empty": ""
+	},
+	"tag-filter": {
+		"DP-1": [1, 2, 3, 4, 5, 6],
+		"DP-2": [7, 8, 9]
 	},
 	"on-click": "activate",
 	"on-click-right": "toggle",

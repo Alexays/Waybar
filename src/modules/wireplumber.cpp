@@ -669,17 +669,17 @@ auto waybar::modules::Wireplumber::update() -> void {
     if (format_name != "format" && !config_[format_name + "-muted"].isString())
       format_name = "format";
     format_name += "-muted";
+    label_.get_style_context()->add_class("muted");
     if (is_source_type) {
       label_.get_style_context()->add_class("source-muted");
     } else {
-      label_.get_style_context()->add_class("muted");
       label_.get_style_context()->add_class("sink-muted");
     }
   } else {
+    label_.get_style_context()->remove_class("muted");
     if (is_source_type) {
       label_.get_style_context()->remove_class("source-muted");
     } else {
-      label_.get_style_context()->remove_class("muted");
       label_.get_style_context()->remove_class("sink-muted");
     }
   }
@@ -802,7 +802,11 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
   if (scale == "cubic") {
     newVol = pow(newVol, 3);
   } else if (scale == "db") {
+#ifdef __FreeBSD__
+    newVol = std::pow(10.0, newVol / 20.0);
+#else
     newVol = exp10(newVol / 20.0);
+#endif
   } else if (scale == "cubic_percent") {
     newVol = pow(newVol / 100.0, 3);
   }

@@ -215,6 +215,12 @@ waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& 
 #endif
 }
 
+waybar::modules::Bluetooth::~Bluetooth() {
+  if (manager_) {
+    g_signal_handlers_disconnect_by_data(manager_.get(), this);
+  }
+}
+
 auto waybar::modules::Bluetooth::update() -> void {
   // focussed device is either:
   // - the first device in the device_preference_ list that is connected to the

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "modules/hyprland/backend.hpp"
+#include "modules/hyprland/workspace_identity.hpp"
 
 namespace waybar::modules::hyprland {
 
@@ -82,21 +83,30 @@ auto WindowCount::getActiveWorkspace(const std::string& monitorName) -> Workspac
     if (monitor == std::end(monitors)) {
       spdlog::warn("Monitor not found: {}", monitorName);
       return Workspace{
-          .id = -1,
+          .address = "",
           .windows = 0,
           .hasfullscreen = false,
       };
     }
-    const int id = (*monitor)["activeWorkspace"]["id"].asInt();
+    const auto active = parseWorkspaceIdentity((*monitor)["activeWorkspace"]);
+    if (!active.has_value()) {
+      return Workspace{
+          .address = "",
+          .windows = 0,
+          .hasfullscreen = false,
+      };
+    }
 
     const auto workspaces = m_ipc.getSocket1JsonReply("workspaces");
     if (workspaces.isArray()) {
-      auto workspace = std::ranges::find_if(
-          workspaces, [&](const Json::Value& workspace) { return workspace["id"] == id; });
+      auto workspace = std::ranges::find_if(workspaces, [&](const Json::Value& workspace) {
+        const auto identity = parseWorkspaceIdentity(workspace);
+        return identity.has_value() && identity->address == active->address;
+      });
       if (workspace == std::end(workspaces)) {
-        spdlog::warn("No workspace with id {}", id);
+        spdlog::warn("No workspace with address {}", active->address);
         return Workspace{
-            .id = -1,
+            .address = "",
             .windows = 0,
             .hasfullscreen = false,
         };
@@ -110,7 +120,7 @@ auto WindowCount::getActiveWorkspace(const std::string& monitorName) -> Workspac
 
 auto WindowCount::Workspace::parse(const Json::Value& value) -> WindowCount::Workspace {
   return Workspace{
-      .id = value["id"].asInt(),
+      .address = parseWorkspaceIdentity(value).value_or(WorkspaceIdentity{}).address,
       .windows = value["windows"].asInt(),
       .hasfullscreen = value["hasfullscreen"].asBool(),
   };

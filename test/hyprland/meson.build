@@ -11,7 +11,10 @@ test_dep = [
 test_src = files(
     '../main.cpp',
     'backend.cpp',
-    '../../src/modules/hyprland/backend.cpp'
+    'workspace_identity.cpp',
+    'workspace_order.cpp',
+    '../../src/modules/hyprland/backend.cpp',
+    '../../src/modules/hyprland/workspace_identity.cpp'
 )
 
 hyprland_test = executable(

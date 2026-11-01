@@ -8,7 +8,9 @@
 namespace waybar::modules {
 
 PowerProfilesDaemon::PowerProfilesDaemon(const std::string& id, const Json::Value& config)
-    : ALabel(config, "power-profiles-daemon", id, "{icon}", 0, false, true), connected_(false) {
+    : ALabel(config, "power-profiles-daemon", id, "{icon}", 0, false, true),
+      connected_(false),
+      activeProfile_(availableProfiles_.end()) {
   if (config_["tooltip-format"].isString()) {
     tooltipFormat_ = config_["tooltip-format"].asString();
   } else {
