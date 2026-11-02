@@ -59,4 +59,9 @@ test(
     'utils',
     utils_test,
     workdir: meson.project_source_root(),
+    # Must stay above the in-test subprocess watchdog in utils/sleeper_thread.cpp,
+    # otherwise the harness kills the binary before the watchdog can report why. The
+    # stress case there needs 68.8s under one busy loop per core, against a default
+    # budget of 30s.
+    timeout: 360,
 )
