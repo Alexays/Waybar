@@ -237,6 +237,12 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   }
 
   window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Bar::onConfigure));
+  window.signal_draw().connect(
+      [this](const Cairo::RefPtr<Cairo::Context>&) {
+        painted_scale_ = window.get_scale_factor();
+        return false;
+      },
+      false);
   output->monitor->property_geometry().signal_changed().connect(
       sigc::mem_fun(*this, &Bar::onOutputGeometryChanged));
 
@@ -431,7 +437,18 @@ void waybar::Bar::setMode(const struct bar_mode& mode) {
 void waybar::Bar::forceLayerCommit() {
   auto* gtk_window = window.gobj();
   if (gtk_window != nullptr && gtk_widget_get_realized(GTK_WIDGET(gtk_window))) {
-    gtk_layer_try_force_commit(gtk_window);
+    /*
+     * On a scale change GTK sets the new buffer scale immediately but attaches a matching buffer
+     * only on its next paint. Committing in between applies the new scale to the old buffer, a
+     * protocol error that gets waybar disconnected. GTK commits itself once it has repainted.
+     */
+    int scale = window.get_scale_factor();
+    if (painted_scale_ != 0 && painted_scale_ != scale) {
+      spdlog::debug("Output {} scale changed {} -> {}, skipping forced commit until repainted",
+                    output->name, painted_scale_, scale);
+    } else {
+      gtk_layer_try_force_commit(gtk_window);
+    }
   }
   wl_display_flush(Client::inst()->wl_display);
 }
