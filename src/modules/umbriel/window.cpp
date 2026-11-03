@@ -37,9 +37,8 @@ void Window::doUpdate() {
 
   const auto findWorkspace = [&](const std::string& id) -> const Json::Value* {
     if (id.empty()) return nullptr;
-    const auto it = std::find_if(workspaces.cbegin(), workspaces.cend(), [&id](const auto& ws) {
-      return ws["id"].asString() == id;
-    });
+    const auto it = std::find_if(workspaces.cbegin(), workspaces.cend(),
+                                 [&id](const auto& ws) { return ws["id"].asString() == id; });
     return it != workspaces.cend() ? &*it : nullptr;
   };
 
@@ -90,8 +89,7 @@ void Window::doUpdate() {
 
     const auto sanitizedTitle = waybar::util::sanitize_string(title);
     const auto sanitizedAppId = waybar::util::sanitize_string(appId);
-    const auto workspaceName =
-        workspace != nullptr ? workspace->operator[]("name").asString() : "";
+    const auto workspaceName = workspace != nullptr ? workspace->operator[]("name").asString() : "";
     const auto workspaceLayout =
         workspace != nullptr ? workspace->operator[]("layout").asString() : "";
 
@@ -99,8 +97,8 @@ void Window::doUpdate() {
     label_.set_markup(waybar::util::rewriteString(
         fmt::format(fmt::runtime(format_), fmt::arg("title", sanitizedTitle),
                     fmt::arg("app_id", sanitizedAppId), fmt::arg("id", id),
-                    fmt::arg("workspace", workspaceName),
-                    fmt::arg("workspace_id", workspace_id), fmt::arg("layout", workspaceLayout),
+                    fmt::arg("workspace", workspaceName), fmt::arg("workspace_id", workspace_id),
+                    fmt::arg("layout", workspaceLayout),
                     fmt::arg("output", window->operator[]("output").asString()),
                     fmt::arg("column", column), fmt::arg("row", window->operator[]("row").asInt()),
                     fmt::arg("max_col", max_col)),

@@ -31,8 +31,7 @@ void Layout::doUpdate() {
     }
   }
 
-  const std::string layout =
-      workspace != nullptr ? workspace->operator[]("layout").asString() : "";
+  const std::string layout = workspace != nullptr ? workspace->operator[]("layout").asString() : "";
 
   if (layout.empty()) {
     if (!last_layout_.empty()) {

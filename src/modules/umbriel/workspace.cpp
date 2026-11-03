@@ -91,8 +91,8 @@ void Workspace::update(const Json::Value& data, const std::vector<Json::Value>& 
   setClass("current_output",
            data["output"].isString() && data["output"].asString() == manager_.bar().output->name);
 
-  std::string name = data["name"].isString() ? data["name"].asString()
-                                             : std::to_string(data["index"].asUInt());
+  std::string name =
+      data["name"].isString() ? data["name"].asString() : std::to_string(data["index"].asUInt());
 
   button_.set_name("umbriel-workspace-" + name);
 
@@ -120,7 +120,7 @@ void Workspace::update(const Json::Value& data, const std::vector<Json::Value>& 
     data[prop].asBool() ? button_.show() : button_.hide();
   } else if (cfg["hide-empty"].asBool()) {
     (data["window_count"].asInt() == 0 && !data["focused"].asBool()) ? button_.hide()
-                                                                      : button_.show();
+                                                                     : button_.show();
   } else {
     button_.show();
   }
@@ -177,9 +177,9 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
   for (const auto& win : my_windows) {
     const auto win_id = win["id"].asString();
     const std::string app_id = win["app_id"].isString() ? win["app_id"].asString() : "";
-    const std::string title =
-        win["title"].isString() && !win["title"].asString().empty() ? win["title"].asString()
-                                                                    : app_id;
+    const std::string title = win["title"].isString() && !win["title"].asString().empty()
+                                  ? win["title"].asString()
+                                  : app_id;
     const bool is_focused = win["focused"].asBool();
 
     auto* btn = Gtk::make_managed<Gtk::Button>();

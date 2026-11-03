@@ -101,12 +101,11 @@ void Workspaces::doUpdate() {
 
   workspaces_.erase(std::remove_if(workspaces_.begin(), workspaces_.end(),
                                    [&](const std::unique_ptr<Workspace>& w) {
-                                     const bool gone =
-                                         std::none_of(my_workspaces.begin(), my_workspaces.end(),
-                                                      [&](const Json::Value* ws) {
-                                                        return ws->operator[]("id").asString() ==
-                                                               w->id();
-                                                      });
+                                     const bool gone = std::none_of(
+                                         my_workspaces.begin(), my_workspaces.end(),
+                                         [&](const Json::Value* ws) {
+                                           return ws->operator[]("id").asString() == w->id();
+                                         });
                                      if (gone) box_.remove(w->button());
                                      return gone;
                                    }),
@@ -116,10 +115,9 @@ void Workspaces::doUpdate() {
     const auto& ws = *ws_ptr;
     const auto ws_id = ws["id"].asString();
 
-    auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
-                           [&ws_id](const std::unique_ptr<Workspace>& w) {
-                             return w->id() == ws_id;
-                           });
+    auto it =
+        std::find_if(workspaces_.begin(), workspaces_.end(),
+                     [&ws_id](const std::unique_ptr<Workspace>& w) { return w->id() == ws_id; });
 
     if (it == workspaces_.end()) {
       createWorkspace(ws);
@@ -134,10 +132,9 @@ void Workspaces::doUpdate() {
     const auto ws_id = (*pos_it)->operator[]("id").asString();
     const auto pos = static_cast<int>(std::distance(my_workspaces.cbegin(), pos_it));
 
-    auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
-                           [&ws_id](const std::unique_ptr<Workspace>& w) {
-                             return w->id() == ws_id;
-                           });
+    auto it =
+        std::find_if(workspaces_.begin(), workspaces_.end(),
+                     [&ws_id](const std::unique_ptr<Workspace>& w) { return w->id() == ws_id; });
     if (it != workspaces_.end()) {
       box_.reorder_child((*it)->button(), pos);
     }
@@ -168,8 +165,7 @@ void Workspaces::populateWindowRewriteConfig() {
     m_windowRewriteRules = util::RegexCollection(Json::Value(Json::objectValue));
   }
 
-  if (config_.isMember("window-rewrite-default") &&
-      config_["window-rewrite-default"].isString()) {
+  if (config_.isMember("window-rewrite-default") && config_["window-rewrite-default"].isString()) {
     m_windowRewriteDefault = config_["window-rewrite-default"].asString();
   } else {
     m_windowRewriteDefault = "?";
@@ -304,9 +300,8 @@ void Workspaces::sortWorkspaces(std::vector<const Json::Value*>& workspaces) con
   };
 
   const auto is_numeric = [](const std::string& value) {
-    return !value.empty() && std::all_of(value.begin(), value.end(), [](unsigned char c) {
-             return std::isdigit(c);
-           });
+    return !value.empty() &&
+           std::all_of(value.begin(), value.end(), [](unsigned char c) { return std::isdigit(c); });
   };
 
   const bool names_are_numeric =

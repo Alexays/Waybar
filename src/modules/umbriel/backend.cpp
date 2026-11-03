@@ -42,7 +42,7 @@ std::string IPC::socketPath() {
 int IPC::connectToSocket() {
   const auto path = socketPath();
 
-  struct sockaddr_un addr {};
+  struct sockaddr_un addr{};
   util::ScopedFd socketfd(socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0));
   if (socketfd == -1) {
     throw std::runtime_error("Umbriel IPC: socket() failed: " + std::string(strerror(errno)));
