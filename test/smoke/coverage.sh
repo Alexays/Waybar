@@ -31,6 +31,7 @@ COMPOSITOR=(sway/language sway/mode sway/scratchpad sway/window sway/workspaces
             niri/language niri/window niri/workspaces
             dwl/tags dwl/window
             mango/keymode mango/language mango/layout mango/window mango/workspaces
+            umbriel/workspaces
             wayfire/window wayfire/workspaces ext/workspaces wlr/taskbar)
 
 declare -A known=()

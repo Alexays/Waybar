@@ -392,6 +392,18 @@ if get_option('mango')
     )
 endif
 
+if get_option('umbriel')
+    add_project_arguments('-DHAVE_UMBRIEL', language: 'cpp')
+    src_files += files(
+        'src/modules/umbriel/backend.cpp',
+        'src/modules/umbriel/workspace.cpp',
+        'src/modules/umbriel/workspaces.cpp',
+    )
+    man_files += files(
+        'man/waybar-umbriel-workspaces.5.scd',
+    )
+endif
+
 if wayland_protos.version().version_compare('>=1.41')
     # Bar-level blur-behind support (ext-background-effect-v1)
     add_project_arguments('-DHAVE_BAR_BLUR', language: 'cpp')
