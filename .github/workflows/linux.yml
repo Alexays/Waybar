@@ -95,6 +95,7 @@ jobs:
             -Dwwan=enabled \
             -Dniri=true \
             -Dmango=true \
+            -Dumbriel=true \
             -Dlogin-proxy=true
       - name: build
         run: ninja -C build
