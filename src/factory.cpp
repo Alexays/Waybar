@@ -50,6 +50,7 @@
 #include "modules/mango/workspaces.hpp"
 #endif
 #ifdef HAVE_UMBRIEL
+#include "modules/umbriel/layout.hpp"
 #include "modules/umbriel/window.hpp"
 #include "modules/umbriel/workspaces.hpp"
 #endif
@@ -270,6 +271,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     }
     if (ref == "umbriel/workspaces") {
       return new waybar::modules::umbriel::Workspaces(id, bar_, config_[name]);
+    }
+    if (ref == "umbriel/layout") {
+      return new waybar::modules::umbriel::Layout(id, bar_, config_[name]);
     }
 #endif
 #ifdef HAVE_WAYFIRE
