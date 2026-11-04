@@ -52,7 +52,6 @@ class Item : public sigc::trackable {
   std::string icon_name;
   Glib::RefPtr<Gdk::Pixbuf> icon_pixmap;
   bool has_custom_icon_ = false;
-  Glib::RefPtr<Gtk::IconTheme> icon_theme;
   std::string overlay_icon_name;
   Glib::RefPtr<Gdk::Pixbuf> overlay_icon_pixmap;
   std::string attention_icon_name;

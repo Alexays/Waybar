@@ -1,17 +1,20 @@
 #include "modules/sni/item.hpp"
 
+#include <fcntl.h>
 #include <gdkmm/general.h>
-#include <giomm/file.h>
+#include <giomm/memoryinputstream.h>
+#include <giomm/unixinputstream.h>
 #include <glibmm/main.h>
 #include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
+#include <sys/stat.h>
 
 #include <algorithm>
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
-#include <fstream>
 #include <map>
 #include <typeinfo>
 #include <unordered_map>
@@ -48,6 +51,9 @@ static const unsigned UPDATE_DEBOUNCE_TIME = 10;
 static const int MAX_PIXMAP_SCALE = 4;
 // Widest icon an item may show, as a multiple of its height
 static const int MAX_ICON_ASPECT_RATIO = 4;
+// An icon file named by an item costs no more than an IconPixmap, which D-Bus bounds to 64 MiB
+static const goffset MAX_ICON_FILE_SIZE = 64 << 20;
+static const guint64 MAX_ICON_FILE_PIXELS = MAX_ICON_FILE_SIZE / 4;
 
 Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar,
            const std::function<void(Item&)>& on_ready,
@@ -57,7 +63,6 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
       object_path(op),
       icon_size(16),
       effective_icon_size(0),
-      icon_theme(Gtk::IconTheme::create()),
       bar_(bar),
       on_ready_(on_ready),
       on_invalidate_(on_invalidate),
@@ -560,15 +565,65 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getOverlayIconPixbuf() {
   return overlay_icon_pixmap;
 }
 
+// Loads an icon file an item named, at the given height, or returns null if it is refused. Only a
+// regular file is read, through the opened descriptor so it cannot be swapped for a FIFO, and only
+// PNG (size checked in its header) and SVG (rendered at that height) are decoded: gdk-pixbuf
+// decodes other formats at the size the file declares, whatever height is asked for.
+static Glib::RefPtr<Gdk::Pixbuf> loadIconFromFile(const std::string& path, int height) {
+  int fd = open(path.c_str(), O_RDONLY | O_NONBLOCK | O_NOCTTY | O_CLOEXEC);
+  if (fd == -1) {
+    return {};
+  }
+  auto file_stream = Gio::UnixInputStream::create(fd, true);
+  struct stat st;
+  if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_size <= 0 ||
+      st.st_size > MAX_ICON_FILE_SIZE) {
+    spdlog::warn("Tray: refusing icon file '{}': not a regular file of at most {} bytes", path,
+                 MAX_ICON_FILE_SIZE);
+    return {};
+  }
+  auto stream = Gio::MemoryInputStream::create();
+  auto* data = static_cast<guint8*>(g_malloc(st.st_size));
+  g_memory_input_stream_add_data(stream->gobj(), data, st.st_size, g_free);
+  gsize size = 0;
+  file_stream->read_all(data, st.st_size, size);
+  if (size != static_cast<gsize>(st.st_size)) {
+    return {};
+  }
+
+  static const guint8 png_header[] = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n',
+                                      0,    0,   0,   13,  'I',  'H',  'D',  'R'};
+  bool accepted = false;
+  if (size >= sizeof(png_header) + 8 && std::memcmp(data, png_header, sizeof(png_header)) == 0) {
+    guint32 width = 0;
+    guint32 png_height = 0;
+    std::memcpy(&width, data + sizeof(png_header), 4);
+    std::memcpy(&png_height, data + sizeof(png_header) + 4, 4);
+    accepted = static_cast<guint64>(GUINT32_FROM_BE(width)) * GUINT32_FROM_BE(png_height) <=
+               MAX_ICON_FILE_PIXELS;
+  } else {
+    // By content like gdk-pixbuf does; the file name is the item's choice
+    g_autofree gchar* type = g_content_type_guess(nullptr, data, size, nullptr);
+    accepted = g_content_type_is_a(type, "image/svg+xml") != FALSE;
+  }
+  if (!accepted) {
+    spdlog::warn("Tray: refusing icon file '{}': not a PNG of at most {} pixels or an SVG", path,
+                 MAX_ICON_FILE_PIXELS);
+    return {};
+  }
+  return Gdk::Pixbuf::create_from_stream_at_scale(stream, -1, height, true);
+}
+
 Glib::RefPtr<Gdk::Pixbuf> Item::loadIconFromNameOrFile(const std::string& name, bool log_failure) {
   if (name.empty()) {
     return {};
   }
 
   try {
-    std::ifstream temp(name);
-    if (temp.is_open()) {
-      return Gdk::Pixbuf::create_from_file(name);
+    if (name.front() == '/') {
+      if (auto pixbuf = loadIconFromFile(name, getScaledIconSize())) {
+        return pixbuf;
+      }
     }
   } catch (const Glib::Error& e) {
     if (log_failure) {
@@ -628,7 +683,7 @@ static std::string findIconInThemePath(const std::string& theme_path, const std:
   std::error_code ec;
   auto find_in_dir = [&name, &ec](const fs::path& dir) -> std::string {
     // Same order of preference as GTK
-    for (const auto* suffix : {".symbolic.png", ".png", ".svg", ".xpm"}) {
+    for (const auto* suffix : {".symbolic.png", ".png", ".svg"}) {
       auto file = dir / (name + suffix);
       if (fs::is_regular_file(file, ec)) {
         return file.string();
@@ -667,15 +722,28 @@ static std::string findIconInThemePath(const std::string& theme_path, const std:
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int request_size) {
   if (!icon_theme_path.empty()) {
     auto file = findIconInThemePath(icon_theme_path, name, request_size);
-    if (!file.empty()) {
-      // A file icon makes the theme scan no directory
-      auto icon = Glib::wrap(g_file_icon_new(Gio::File::create_for_path(file)->gobj()));
-      auto icon_info = icon_theme->lookup_icon(icon, request_size,
-                                               Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
-      if (icon_info) {
-        bool is_sym = false;
-        return icon_info.load_symbolic(event_box.get_style_context(), is_sym);
+    auto pixbuf = file.empty() ? Glib::RefPtr<Gdk::Pixbuf>() : loadIconFromFile(file, request_size);
+    if (pixbuf) {
+      // GTK draws symbolic icons in the foreground color; its other symbolic colors are not kept
+      if ((file.ends_with("-symbolic.svg") || file.ends_with(".symbolic.png")) &&
+          pixbuf->get_has_alpha() && pixbuf->get_n_channels() == 4) {
+        auto style = event_box.get_style_context();
+        auto color = style->get_color(style->get_state());
+        const auto red = static_cast<guint8>(color.get_red() * 255);
+        const auto green = static_cast<guint8>(color.get_green() * 255);
+        const auto blue = static_cast<guint8>(color.get_blue() * 255);
+        const double alpha = color.get_alpha();
+        for (int y = 0; y < pixbuf->get_height(); ++y) {
+          guint8* pixel = pixbuf->get_pixels() + (y * pixbuf->get_rowstride());
+          for (int x = 0; x < pixbuf->get_width(); ++x, pixel += 4) {
+            pixel[0] = red;
+            pixel[1] = green;
+            pixel[2] = blue;
+            pixel[3] = static_cast<guint8>(pixel[3] * alpha);
+          }
+        }
       }
+      return pixbuf;
     }
   }
   return DefaultGtkIconThemeWrapper::load_icon(name.c_str(), request_size,
