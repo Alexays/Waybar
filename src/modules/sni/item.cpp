@@ -123,6 +123,18 @@ bool Item::handleMouseLeave(GdkEventCrossing* const& e) {
 
 void Item::onConfigure(GdkEventConfigure* ev) { this->updateImage(); }
 
+// The proxy caches whatever the item announces, of any name and size, and nothing reads it. A raw
+// handler: glibmm's signal_properties_changed() unpacks the names into a collating std::map.
+static void dropChangedProperties(GDBusProxy* proxy, GVariant* changed, GStrv /*invalidated*/,
+                                  gpointer /*data*/) {
+  GVariantIter iter;
+  const gchar* name = nullptr;
+  g_variant_iter_init(&iter, changed);
+  while (g_variant_iter_next(&iter, "{&sv}", &name, nullptr)) {
+    g_dbus_proxy_set_cached_property(proxy, name, nullptr);
+  }
+}
+
 void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
   try {
     this->proxy_ = Gio::DBus::Proxy::create_for_bus_finish(result);
@@ -133,6 +145,12 @@ void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
       this->proxy_->get_cached_property(value, name);
       setProperty(name.raw(), value);
     }
+    // Updates are fetched with GetAll, so nothing reads the proxy's cache again: don't keep it.
+    for (const auto& name : cached_properties) {
+      this->proxy_->set_cached_property(name, Glib::VariantBase());
+    }
+    g_signal_connect(proxy_->gobj(), "g-properties-changed", G_CALLBACK(dropChangedProperties),
+                     nullptr);
 
     this->proxy_->signal_signal().connect(sigc::mem_fun(*this, &Item::onSignal));
 
