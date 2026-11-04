@@ -2,8 +2,11 @@
 
 #include <json/value.h>
 
+#include <array>
+#include <functional>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace waybar::modules::hyprland {
@@ -109,6 +112,19 @@ struct WorkspaceIdentity {
 // neither schema's identity fields -- a parse that can fail, so a factory
 // rather than a constructor.
 std::optional<WorkspaceIdentity> parseWorkspaceIdentity(const Json::Value& workspace);
+
+// The addresses a bar drops for `identifier`, the workspace in a destroyworkspacev2 event or in a
+// moveworkspacev2 event that takes it to another output. Hyprland names a workspace by its
+// address, except that from hyprwm/Hyprland#16140 until #16234 it named a named workspace by its
+// `name:` selector, the address behind that prefix. A `name:` identifier is thus the address it
+// spells or a selector, and nothing in the event tells which, so `requestWorkspaces` is asked for
+// Hyprland's workspaces: of the two addresses, those it no longer lists on `output` (anywhere, if
+// there is none) are dropped; if it doesn't answer with a list, neither is. Any other identifier
+// is the address, dropped as given. No display name is consulted. The result views `identifier`;
+// an unused entry is empty.
+std::array<std::string_view, 2> droppedWorkspaceAddresses(
+    std::string_view identifier, std::optional<std::string_view> output,
+    const std::function<Json::Value()>& requestWorkspaces);
 
 // Display grouping for the workspaces module: numbered -> named -> special.
 // Taken from WorkspaceKind's declaration order rather than a second, hand-kept

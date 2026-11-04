@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <string_view>
 
@@ -186,6 +187,36 @@ bool workspaceLessByDefault(const WorkspaceIdentity& a, const WorkspaceIdentity&
     return *numberA < *numberB;
   }
   return a.name < b.name;
+}
+
+std::array<std::string_view, 2> droppedWorkspaceAddresses(
+    std::string_view identifier, std::optional<std::string_view> output,
+    const std::function<Json::Value()>& requestWorkspaces) {
+  if (identifier.size() <= kNamePrefix.size() || !identifier.starts_with(kNamePrefix)) {
+    return {identifier};
+  }
+  const Json::Value workspaces = requestWorkspaces();
+  if (!workspaces.isArray()) {
+    return {};
+  }
+  const auto listed = [&](std::string_view address) {
+    for (const auto& workspace : workspaces) {
+      const auto identity = parseWorkspaceIdentity(workspace);
+      if (identity.has_value() && identity->address == address &&
+          (!output.has_value() || workspace["monitor"].asString() == *output)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  std::array<std::string_view, 2> dropped;
+  std::size_t count = 0;
+  for (const auto address : {identifier, identifier.substr(kNamePrefix.size())}) {
+    if (!listed(address)) {
+      dropped[count++] = address;
+    }
+  }
+  return dropped;
 }
 
 }  // namespace waybar::modules::hyprland
