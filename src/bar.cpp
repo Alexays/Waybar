@@ -316,16 +316,18 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     setVisible(false);
   }
 
-  window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
-
   unmap_conn_ = window.signal_unmap().connect([this]() {
     spdlog::debug("Output {} unmapped, suspending modules", output->name);
     painted_scale_ = 0;  // GTK detaches the buffer
+    surface = nullptr;   // and destroys the wl_surface; onMap() fetches the new one
     toggleSuspend(true);
   });
 
+  // `map` is emitted synchronously from show_all(), so modules have the surface in their first
+  // update(); the queued `map-event` only arrives after those updates.
   map_conn_ = window.signal_map().connect([this]() {
     spdlog::debug("Output {} mapped, resuming modules", output->name);
+    onMap();
     toggleSuspend(false);
   });
 
@@ -539,7 +541,7 @@ void waybar::Bar::setPosition(Gtk::PositionType position) {
   }
 }
 
-void waybar::Bar::onMap(GdkEventAny* /*unused*/) {
+void waybar::Bar::onMap() {
   /*
    * Obtain a pointer to the custom layer surface for modules that require it (idle_inhibitor).
    */

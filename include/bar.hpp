@@ -121,7 +121,7 @@ class Bar : public sigc::trackable {
 #endif
 
  private:
-  void onMap(GdkEventAny*);
+  void onMap();
   auto setupWidgets() -> void;
   void getModules(const Factory&, const std::string&, waybar::Group*);
   void setupAltFormatKeyForModule(const std::string& module_name);

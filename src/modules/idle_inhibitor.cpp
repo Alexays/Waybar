@@ -80,7 +80,7 @@ auto waybar::modules::IdleInhibitor::update() -> void {
   // Check status
   if (status) {
     label_.get_style_context()->remove_class("deactivated");
-    if (idle_inhibitor_ == nullptr) {
+    if (idle_inhibitor_ == nullptr && bar_.surface != nullptr) {
       idle_inhibitor_ = zwp_idle_inhibit_manager_v1_create_inhibitor(
           waybar::Client::inst()->idle_inhibit_manager, bar_.surface);
     }

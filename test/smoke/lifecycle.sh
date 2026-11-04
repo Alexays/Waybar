@@ -76,5 +76,25 @@ smoke::assert_alive || fail=1
 smoke::assert_clean_exit || fail=1   # SIGINT while worker threads are mid-tick
 echo "::endgroup::"
 
+# --- 5) bars created while the idle inhibitor is active ------------------
+# idle_inhibitor needs Bar::surface in its first update(); a null one kills the connection.
+echo "::group::idle inhibitor active at bar creation"
+cfg="$(mktemp --suffix=.json)"
+cat > "$cfg" <<'EOF'
+{
+  "layer": "top", "position": "top", "height": 30,
+  "modules-center": ["idle_inhibitor"],
+  "idle_inhibitor": { "start-activated": true }
+}
+EOF
+smoke::launch_waybar "$cfg" "$STYLE" 5
+smoke::assert_alive || fail=1
+smoke::add_output                                  # new Bar, inhibitor still on (sway only)
+smoke::assert_alive || fail=1
+smoke::reload                                      # the status survives a reload
+smoke::assert_alive || fail=1
+smoke::assert_clean_exit || fail=1
+echo "::endgroup::"
+
 [ "$fail" = 0 ] || { echo "::error::lifecycle tier failed"; exit 1; }
 echo "✓ lifecycle tier passed"
