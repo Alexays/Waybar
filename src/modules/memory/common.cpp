@@ -12,7 +12,7 @@ const std::unordered_map<std::string, float> kUnits = {
 }
 
 waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config)
-    : ALabel(config, "memory", id, "{}%", 30) {
+    : AIconLabel(config, "memory", id, "{}%", 30) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
@@ -91,5 +91,5 @@ auto waybar::modules::Memory::update() -> void {
     event_box_.hide();
   }
   // Call parent update
-  ALabel::update();
+  AIconLabel::update();
 }
