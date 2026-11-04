@@ -172,9 +172,7 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
     } else {
       btn.get_style_context()->remove_class("focused");
     }
-    std::string tooltip = title;
-    util::limit_tooltip_text(tooltip);
-    btn.set_tooltip_text(tooltip);
+    util::set_tooltip_markup(btn, Glib::Markup::escape_text(title));
 
     if (is_new || entry.app_id != app_id) {
       entry.app_id = app_id;

@@ -500,8 +500,7 @@ void Workspace::update(const std::string& workspace_icon, const std::string& wor
     auto tooltip = fmt::format(fmt::runtime(workspace_tooltip), fmt::arg("id", address()),
                                fmt::arg("name", name()), fmt::arg("icon", workspace_icon),
                                fmt::arg("windows", windows));
-    util::limit_tooltip_text(tooltip);
-    m_button.set_tooltip_text(tooltip);
+    util::set_tooltip_markup(m_button, Glib::Markup::escape_text(tooltip));
   }
 
   auto formatBefore = m_workspaceManager.formatBefore();

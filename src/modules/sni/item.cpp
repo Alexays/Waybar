@@ -326,9 +326,7 @@ void Item::setStatus(const Glib::ustring& value) {
 
 void Item::setTooltipMarkup(const Glib::ustring& markup) {
   if (show_tooltip_) {
-    std::string tooltip = markup.raw();
-    waybar::util::limit_tooltip_markup(tooltip);
-    event_box.set_tooltip_markup(tooltip);
+    waybar::util::set_tooltip_markup(event_box, markup);
   }
 }
 

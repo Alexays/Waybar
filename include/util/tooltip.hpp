@@ -1,7 +1,11 @@
 #pragma once
 
 #include <glibmm/markup.h>
+#include <glibmm/quark.h>
 #include <glibmm/ustring.h>
+#include <gtkmm/label.h>
+#include <gtkmm/tooltip.h>
+#include <gtkmm/widget.h>
 #include <pango/pango.h>
 
 #include <algorithm>
@@ -78,6 +82,39 @@ inline void limit_tooltip_markup(std::string& markup) {
 
   if (limit_tooltip_text(parser.text)) {
     markup = Glib::Markup::escape_text(parser.text).raw();
+  }
+}
+
+// Sets a bounded tooltip without writing the widget's tooltip-markup property: each write queues a
+// display-wide tooltip query, so other programs updating it often would keep every tooltip hidden.
+inline void set_tooltip_markup(Gtk::Widget& widget, const Glib::ustring& markup) {
+  static const Glib::Quark key{"waybar-tooltip-label"};
+  auto* label = static_cast<Gtk::Label*>(widget.get_data(key));
+  if (label == nullptr) {
+    label = new Gtk::Label();
+    // Like the label of GTK's own tooltip window
+    label->set_line_wrap(true);
+    label->set_max_width_chars(70);
+    widget.set_data(key, label, [](void* data) { delete static_cast<Gtk::Label*>(data); });
+    widget.set_has_tooltip(true);
+    widget.signal_query_tooltip().connect(
+        [label](int, int, bool, const Glib::RefPtr<Gtk::Tooltip>& tooltip) {
+          if (*gtk_label_get_label(label->gobj()) == '\0') {
+            return false;
+          }
+          tooltip->set_custom(*label);
+          return true;
+        });
+  }
+
+  const char* const current = gtk_label_get_label(label->gobj());
+  if (markup.raw() == current) {
+    return;
+  }
+  std::string tooltip = markup.validate() ? markup.raw() : markup.make_valid().raw();
+  limit_tooltip_markup(tooltip);
+  if (tooltip != current) {
+    label->set_markup(tooltip);
   }
 }
 

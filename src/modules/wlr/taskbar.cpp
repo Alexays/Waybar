@@ -657,11 +657,9 @@ void Task::update() {
     txt = waybar::util::rewriteString(txt, config_["rewrite"]);
 
     if (markup) {
-      waybar::util::limit_tooltip_markup(txt);
-      button.set_tooltip_markup(txt);
+      waybar::util::set_tooltip_markup(button, txt);
     } else {
-      waybar::util::limit_tooltip_text(txt);
-      button.set_tooltip_text(txt);
+      waybar::util::set_tooltip_markup(button, Glib::Markup::escape_text(txt));
     }
   }
 }
