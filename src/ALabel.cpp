@@ -186,12 +186,15 @@ bool ALabel::pointerOverModule() const {
   if (!gdk_window || !event_box_.get_mapped()) {
     return false;
   }
-  int x = 0;
-  int y = 0;
-  Gdk::ModifierType mask;
-  gdk_window->get_device_position(gdk_window->get_display()->get_default_seat()->get_pointer(), x,
-                                  y, mask);
-  return x >= 0 && y >= 0 && x < gdk_window->get_width() && y < gdk_window->get_height();
+  // On Wayland the pointer position is relative to whichever surface has the pointer, possibly
+  // another bar, so look for this window among the ancestors of the one under the pointer.
+  auto pointer = gdk_window->get_display()->get_default_seat()->get_pointer();
+  for (auto window = pointer->get_window_at_position(); window; window = window->get_parent()) {
+    if (window == gdk_window) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
