@@ -51,6 +51,13 @@ waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const J
 
 waybar::modules::Battery::~Battery() {
 #if defined(__linux__)
+  // The threads read from and add watches to the inotify descriptor closed below.
+  thread_.stop();
+  thread_battery_update_.stop();
+  thread_timer_.stop();
+  thread_.join();
+  thread_battery_update_.join();
+  thread_timer_.join();
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
 
   for (auto it = batteries_.cbegin(), next_it = it; it != batteries_.cend(); it = next_it) {
