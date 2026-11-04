@@ -8,12 +8,17 @@
 
 #ifdef __linux__
 #include <sys/prctl.h>
+#include <sys/syscall.h>
+#if __has_include(<linux/close_range.h>)
+#include <linux/close_range.h>
+#endif
 #endif
 #ifdef __FreeBSD__
 #include <sys/procctl.h>
 #endif
 
 #include <array>
+#include <string_view>
 
 #include "util/scope_guard.hpp"
 #include "util/sleeper_thread.hpp"
@@ -24,17 +29,42 @@ extern std::list<pid_t> reap;
 namespace waybar::util::command {
 
 constexpr int kExecFailureExitCode = 127;
+// How much of a command's output (of each line, for a continuous command) is kept
+constexpr size_t kMaxOutputSize = 256 * 1024;
 
 struct res {
   int exit_code;
   std::string out;
 };
 
+// Runs in a forked child before exec, so that commands do not inherit the bar's descriptors.
+inline void setInheritedFdsCloexec() {
+#if defined(__linux__) && defined(SYS_close_range) && defined(CLOSE_RANGE_CLOEXEC)
+  if (syscall(SYS_close_range, STDERR_FILENO + 1, ~0U, CLOSE_RANGE_CLOEXEC) == 0) return;
+#elif defined(__FreeBSD__) && defined(CLOSE_RANGE_CLOEXEC)
+  if (close_range(STDERR_FILENO + 1, ~0U, CLOSE_RANGE_CLOEXEC) == 0) return;
+#endif
+  const long max_fd = sysconf(_SC_OPEN_MAX);
+  for (int fd = STDERR_FILENO + 1; fd < max_fd; ++fd) {
+    fcntl(fd, F_SETFD, FD_CLOEXEC);
+  }
+}
+
+inline void truncateOutput(std::string& output) {
+  if (output.size() > kMaxOutputSize) {
+    spdlog::warn("Command output truncated to {} bytes", kMaxOutputSize);
+    output.resize(kMaxOutputSize);
+  }
+}
+
 inline std::string read(FILE* fp) {
   std::array<char, 128> buffer = {0};
   std::string output;
   while (fgets(buffer.data(), buffer.size(), fp) != nullptr) {
-    output += buffer.data();
+    // Past the limit, keep draining the pipe so that the command can still finish
+    if (output.size() <= kMaxOutputSize) {
+      output += buffer.data();
+    }
   }
   if (ferror(fp) != 0) {
     spdlog::error("Error reading command output: {}", strerror(errno));
@@ -44,7 +74,31 @@ inline std::string read(FILE* fp) {
   if (!output.empty() && output[output.length() - 1] == '\n') {
     output.erase(output.length() - 1);
   }
+  truncateOutput(output);
   return output;
+}
+
+// Like getline(3) without the newline, bounded. Returns false when there is nothing left to read.
+inline bool readLine(FILE* fp, std::string& line) {
+  std::array<char, 128> buffer = {0};
+  bool found = false;
+  line.clear();
+  while (fgets(buffer.data(), buffer.size(), fp) != nullptr) {
+    found = true;
+    std::string_view chunk = buffer.data();
+    const bool complete = chunk.ends_with('\n');
+    if (complete) {
+      chunk.remove_suffix(1);
+    }
+    if (line.size() <= kMaxOutputSize) {
+      line += chunk;
+    }
+    if (complete) {
+      break;
+    }
+  }
+  truncateOutput(line);
+  return found;
 }
 
 inline int close(FILE* fp, pid_t pid) {
@@ -123,6 +177,7 @@ inline FILE* open(const std::string& cmd, int& pid, const std::string& output_na
 #endif
     ::close(fd[0]);
     dup2(fd[1], 1);
+    setInheritedFdsCloexec();
     setpgid(child_pid, child_pid);
     if (!output_name.empty()) {
       setenv("WAYBAR_OUTPUT_NAME", output_name.c_str(), 1);
@@ -195,6 +250,7 @@ inline int32_t forkExec(const std::string& cmd, const std::string& output_name) 
     // Reset sigmask
     err = pthread_sigmask(SIG_UNBLOCK, &mask, nullptr);
     if (err != 0) spdlog::error("pthread_sigmask in forkExec failed: {}", strerror(err));
+    setInheritedFdsCloexec();
     setpgid(pid, pid);
     if (!output_name.empty()) {
       setenv("WAYBAR_OUTPUT_NAME", output_name.c_str(), 1);

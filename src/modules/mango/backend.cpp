@@ -24,7 +24,7 @@ int IPC::connectToSocket() {
   }
 
   struct sockaddr_un addr;
-  util::ScopedFd fd(socket(AF_UNIX, SOCK_STREAM, 0));
+  util::ScopedFd fd(socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0));
   if (fd == -1) throw std::runtime_error("socket() failed");
 
   addr.sun_family = AF_UNIX;

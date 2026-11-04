@@ -44,7 +44,7 @@ static void writeSignalToPipe(int signum) {
 // to `signal_handler`.
 static void catchSignals(waybar::SafeSignal<int>& signal_handler) {
   int fd[2];
-  if (pipe(fd) != 0) {
+  if (pipe2(fd, O_CLOEXEC) != 0) {
     spdlog::error("Failed to create signal pipe: {}", strerror(errno));
     return;
   }
@@ -158,7 +158,9 @@ static void handleSignalMainThread(int signum, bool& reload) {
       {
         std::lock_guard<std::mutex> lock(reap_mtx);
         for (auto it = reap.begin(); it != reap.end();) {
-          if (waitpid(*it, nullptr, WNOHANG) == *it) {
+          const auto ret = waitpid(*it, nullptr, WNOHANG);
+          // ECHILD: already waited for elsewhere, so it must leave the list all the same
+          if (ret == *it || (ret == -1 && errno == ECHILD)) {
             spdlog::debug("Reaped child with PID: {}", *it);
             it = reap.erase(it);
           } else {
@@ -220,10 +222,11 @@ int main(int argc, char* argv[]) {
 
     bool reload;
 
-    waybar::SafeSignal<int> posix_signal_received;
-    posix_signal_received.connect([&](int signum) { handleSignalMainThread(signum, reload); });
+    // Never freed: the detached signal thread still emits on it while exit() runs after main()
+    auto* posix_signal_received = new waybar::SafeSignal<int>();
+    posix_signal_received->connect([&](int signum) { handleSignalMainThread(signum, reload); });
 
-    std::thread signal_thread([&]() { catchSignals(posix_signal_received); });
+    std::thread signal_thread([posix_signal_received]() { catchSignals(*posix_signal_received); });
 
     // Every `std::thread` must be joined or detached.
     // This thread should run forever, so detach it.

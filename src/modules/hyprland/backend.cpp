@@ -135,7 +135,7 @@ void IPC::socketListener() {
 
 bool IPC::readEvents(const char* his, bool reconnected) {
   struct sockaddr_un addr = {};
-  const int socketfd = socket(AF_UNIX, SOCK_STREAM, 0);
+  const int socketfd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 
   if (socketfd == -1) {
     spdlog::error("Hyprland IPC: socketfd failed");
@@ -279,7 +279,7 @@ void IPC::unregisterForIPC(EventHandler* ev_handler) {
 std::string IPC::getSocket1Reply(const std::string& rq) {
   // basically hyprctl
 
-  util::ScopedFd serverSocket(socket(AF_UNIX, SOCK_STREAM, 0));
+  util::ScopedFd serverSocket(socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0));
 
   if (serverSocket < 0) {
     throw std::runtime_error("Hyprland IPC: Couldn't open a socket (1)");

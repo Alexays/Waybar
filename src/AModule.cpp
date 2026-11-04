@@ -4,12 +4,21 @@
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <util/command.hpp>
 
 #include "gdk/gdk.h"
 #include "gdkmm/cursor.h"
 
 namespace waybar {
+
+// Once main.cpp has reaped a child and dropped it from reap, its pid may be reused by an unrelated
+// process, so it must not be signalled any more.
+static void forgetReapedChildren(std::vector<int>& pids) {
+  std::lock_guard<std::mutex> lock(reap_mtx);
+  std::erase_if(pids,
+                [](int pid) { return std::find(reap.cbegin(), reap.cend(), pid) == reap.cend(); });
+}
 
 AModule::AModule(const Json::Value& config, const std::string& name, const std::string& id,
                  bool enable_click, bool enable_scroll)
@@ -102,6 +111,7 @@ AModule::~AModule() {
   if (cursor_timeout_conn_.connected()) {
     cursor_timeout_conn_.disconnect();
   }
+  forgetReapedChildren(pid_children_);
   for (const auto& pid : pid_children_) {
     if (pid != -1) {
       killpg(pid, SIGTERM);
@@ -116,6 +126,7 @@ AModule::~AModule() {
 auto AModule::update() -> void {
   // Run user-provided update handler if configured
   if (config_["on-update"].isString()) {
+    forgetReapedChildren(pid_children_);
     pid_children_.push_back(util::command::forkExec(config_["on-update"].asString()));
   }
   signal_updated.emit(this);
@@ -255,6 +266,7 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
         cmd = format;
       }
     }
+    forgetReapedChildren(pid_children_);
     pid_children_.push_back(util::command::forkExec(cmd));
   }
   dp.emit();
@@ -339,8 +351,10 @@ bool AModule::handleScroll(GdkEventScroll* e) {
   // First call module actions
   this->AModule::doAction(eventName);
   // Second call user scripts
-  if (config_[eventName].isString())
+  if (config_[eventName].isString()) {
+    forgetReapedChildren(pid_children_);
     pid_children_.push_back(util::command::forkExec(config_[eventName].asString()));
+  }
 
   dp.emit();
   return true;
