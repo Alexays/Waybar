@@ -77,6 +77,10 @@ void waybar::Portal::onAppearanceReceived(Glib::RefPtr<Gio::AsyncResult>& result
   // xdg-desktop-portal 1.17 will fix this issue with a new `ReadOne` method,
   // but this version is not yet released.
   // TODO(xdg-desktop-portal v1.17): switch to ReadOne
+  if (!response.is_of_type(Glib::VariantType("(v)"))) {
+    spdlog::error("Unexpected appearance reply type: {}", std::string(response.get_type_string()));
+    return;
+  }
   try {
     auto container = Glib::VariantBase::cast_dynamic<Glib::VariantContainerBase>(response);
     Glib::VariantBase modev;
@@ -105,7 +109,8 @@ waybar::Appearance waybar::Portal::getAppearance() { return currentMode; };
 void waybar::Portal::on_signal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
                                const Glib::VariantContainerBase& parameters) {
   spdlog::debug("Received signal {}", (std::string)signal_name);
-  if (signal_name != "SettingChanged" || parameters.get_n_children() != 3) {
+  // The casts below throw on a type mismatch, which aborts the bar from a signal handler
+  if (signal_name != "SettingChanged" || !parameters.is_of_type(Glib::VariantType("(ssv)"))) {
     return;
   }
   Glib::VariantBase nspcv;
@@ -120,8 +125,11 @@ void waybar::Portal::on_signal(const Glib::ustring& sender_name, const Glib::ust
     return;
   }
   auto value =
-      Glib::VariantBase::cast_dynamic<Glib::Variant<Glib::Variant<uint32_t>>>(valuev).get().get();
-  auto newMode = Appearance(value);
+      Glib::VariantBase::cast_dynamic<Glib::Variant<Glib::Variant<uint32_t>>>(valuev).get();
+  if (!value.is_of_type(Glib::VARIANT_TYPE_UINT32)) {
+    return;
+  }
+  auto newMode = Appearance(value.get());
   if (newMode == currentMode) {
     return;
   }
