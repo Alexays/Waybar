@@ -158,7 +158,9 @@ static void handleSignalMainThread(int signum, bool& reload) {
       {
         std::lock_guard<std::mutex> lock(reap_mtx);
         for (auto it = reap.begin(); it != reap.end();) {
-          if (waitpid(*it, nullptr, WNOHANG) == *it) {
+          const auto ret = waitpid(*it, nullptr, WNOHANG);
+          // ECHILD: already waited for elsewhere, so it must leave the list all the same
+          if (ret == *it || (ret == -1 && errno == ECHILD)) {
             spdlog::debug("Reaped child with PID: {}", *it);
             it = reap.erase(it);
           } else {
