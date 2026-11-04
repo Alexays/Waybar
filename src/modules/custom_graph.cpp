@@ -37,7 +37,8 @@ waybar::modules::CustomGraph::~CustomGraph() {
   if (pid_ != -1) {
     killpg(pid_, SIGTERM);
     waitpid(pid_, NULL, 0);
-    pid_ = -1;
+    // pid_ is left as is: the continuous worker runs until thread_ is destroyed and, on EOF from
+    // the killed command, passes pid_ to command::close(); -1 would make that waitpid(-1).
   }
 }
 
@@ -97,6 +98,11 @@ void waybar::modules::CustomGraph::continuousWorker() {
       if (config_["restart-interval"].isUInt()) {
         pid_ = -1;
         thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
+        // stop() cuts the sleep short when the module is destroyed (e.g. its bar is removed); the
+        // command was just killed by the destructor, so don't start a copy nobody will stop.
+        if (!thread_.isRunning()) {
+          return;
+        }
         fp_ = util::command::open(cmd, pid_, output_name_);
         if (!fp_) {
           // Letting this exception escape the SleeperThread would call
