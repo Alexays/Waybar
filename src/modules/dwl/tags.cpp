@@ -74,7 +74,7 @@ static void handle_global(void* data, struct wl_registry* registry, uint32_t nam
     auto* self = static_cast<Tags*>(data);
 
     if (self->status_manager_) {
-      zdwl_ipc_manager_v2_destroy(self->status_manager_);
+      zdwl_ipc_manager_v2_release(self->status_manager_);
       self->status_manager_ = nullptr;
     }
 
@@ -102,6 +102,17 @@ static void handle_global_remove(void* data, struct wl_registry* registry, uint3
 
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
+
+// dwl destroys the zdwl_ipc_output_v2 objects of a removed monitor; a request on one is fatal
+static bool monitor_present(const Glib::RefPtr<Gdk::Monitor>& monitor) {
+  auto display = monitor->get_display();
+  for (int i = 0; i < display->get_n_monitors(); ++i) {
+    if (display->get_monitor(i) == monitor) {
+      return true;
+    }
+  }
+  return false;
+}
 
 Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& config)
     : waybar::AModule(config, "tags", id, false, false),
@@ -172,16 +183,20 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
   output_status_ = zdwl_ipc_manager_v2_get_output(status_manager_, output);
   zdwl_ipc_output_v2_add_listener(output_status_, &output_status_listener_impl, this);
 
-  zdwl_ipc_manager_v2_destroy(status_manager_);
+  zdwl_ipc_manager_v2_release(status_manager_);
   status_manager_ = nullptr;
 }
 
 Tags::~Tags() {
   if (output_status_) {
-    zdwl_ipc_output_v2_destroy(output_status_);
+    if (monitor_present(bar_.output->monitor)) {
+      zdwl_ipc_output_v2_release(output_status_);
+    } else {
+      zdwl_ipc_output_v2_destroy(output_status_);
+    }
   }
   if (status_manager_) {
-    zdwl_ipc_manager_v2_destroy(status_manager_);
+    zdwl_ipc_manager_v2_release(status_manager_);
   }
 }
 

@@ -73,6 +73,17 @@ static void handle_global_remove(void* data, struct wl_registry* registry, uint3
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
+// dwl destroys the zdwl_ipc_output_v2 objects of a removed monitor; a request on one is fatal
+static bool monitor_present(const Glib::RefPtr<Gdk::Monitor>& monitor) {
+  auto display = monitor->get_display();
+  for (int i = 0; i < display->get_n_monitors(); ++i) {
+    if (display->get_monitor(i) == monitor) {
+      return true;
+    }
+  }
+  return false;
+}
+
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     : AAppIconLabel(config, "window", id, "{}", 0, true),
       bar_(bar),
@@ -101,12 +112,16 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
   struct wl_output* output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
   output_status_ = zdwl_ipc_manager_v2_get_output(status_manager_, output);
   zdwl_ipc_output_v2_add_listener(output_status_, &output_status_listener_impl, this);
-  zdwl_ipc_manager_v2_destroy(status_manager_);
+  zdwl_ipc_manager_v2_release(status_manager_);
 }
 
 Window::~Window() {
   if (output_status_ != nullptr) {
-    zdwl_ipc_output_v2_destroy(output_status_);
+    if (monitor_present(bar_.output->monitor)) {
+      zdwl_ipc_output_v2_release(output_status_);
+    } else {
+      zdwl_ipc_output_v2_destroy(output_status_);
+    }
   }
 }
 
