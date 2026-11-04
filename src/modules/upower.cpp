@@ -475,8 +475,11 @@ bool UPower::queryTooltipCb(int x, int y, bool keyboard_tooltip,
                             const Glib::RefPtr<Gtk::Tooltip>& tooltip) {
   std::lock_guard<std::mutex> guard{mutex_};
 
-  // Clear content box
-  contentBox_.forall([this](Gtk::Widget& wg) { contentBox_.remove(wg); });
+  // remove() only unparents a record; deleting it also destroys its managed children
+  for (auto* child : contentBox_.get_children()) {
+    contentBox_.remove(*child);
+    delete child;
+  }
 
   // Fill content box with the content
   for (auto pairDev : devices_) {
@@ -486,33 +489,33 @@ bool UPower::queryTooltipCb(int x, int y, bool keyboard_tooltip,
     if (pairDev.second.kind != UpDeviceKind::UP_DEVICE_KIND_UNKNOWN &&
         pairDev.second.kind != UpDeviceKind::UP_DEVICE_KIND_LINE_POWER) {
       // Make box record
-      Gtk::Box* boxRec{new Gtk::Box{box_.get_orientation(), tooltip_spacing_}};
+      Gtk::Box* boxRec{Gtk::make_managed<Gtk::Box>(box_.get_orientation(), tooltip_spacing_)};
       contentBox_.add(*boxRec);
-      Gtk::Box* boxDev{new Gtk::Box{box_.get_orientation()}};
-      Gtk::Box* boxUsr{new Gtk::Box{box_.get_orientation()}};
+      Gtk::Box* boxDev{Gtk::make_managed<Gtk::Box>(box_.get_orientation())};
+      Gtk::Box* boxUsr{Gtk::make_managed<Gtk::Box>(box_.get_orientation())};
       boxRec->add(*boxDev);
       boxRec->add(*boxUsr);
       // Construct device box
       // Set icon from kind
       std::string iconNameDev{getDeviceIcon(pairDev.second.kind)};
       if (!gtkTheme_->has_icon(iconNameDev)) iconNameDev = (char*)NO_BATTERY.c_str();
-      Gtk::Image* iconDev{new Gtk::Image{}};
+      Gtk::Image* iconDev{Gtk::make_managed<Gtk::Image>()};
       iconDev->set_from_icon_name(iconNameDev, Gtk::ICON_SIZE_INVALID);
       iconDev->set_pixel_size(iconSize_);
       boxDev->add(*iconDev);
       // Set label from model
-      Gtk::Label* labelDev{new Gtk::Label{pairDev.second.model}};
+      Gtk::Label* labelDev{Gtk::make_managed<Gtk::Label>(pairDev.second.model)};
       boxDev->add(*labelDev);
       // Construct user box
       // Set icon from icon state
       if (pairDev.second.icon_name.empty() || !gtkTheme_->has_icon(pairDev.second.icon_name))
         pairDev.second.icon_name = NO_BATTERY;
-      Gtk::Image* iconTooltip{new Gtk::Image{}};
+      Gtk::Image* iconTooltip{Gtk::make_managed<Gtk::Image>()};
       iconTooltip->set_from_icon_name(pairDev.second.icon_name, Gtk::ICON_SIZE_INVALID);
       iconTooltip->set_pixel_size(iconSize_);
       boxUsr->add(*iconTooltip);
       // Set markup text
-      Gtk::Label* labelTooltip{new Gtk::Label{}};
+      Gtk::Label* labelTooltip{Gtk::make_managed<Gtk::Label>()};
       labelTooltip->set_markup(getText(pairDev.second, tooltipFormat_));
       boxUsr->add(*labelTooltip);
     }
