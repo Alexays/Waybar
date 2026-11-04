@@ -2,7 +2,6 @@
 
 #include <spdlog/spdlog.h>
 
-#include <cerrno>
 #include <stdexcept>
 #include <utility>
 
@@ -51,21 +50,6 @@ void waybar::modules::Custom::delayWorker() {
   }
 
   thread_ = [this] {
-    for (auto it = this->pid_children_.begin(); it != this->pid_children_.end();) {
-      int status = 0;
-      const auto pid = static_cast<pid_t>(*it);
-      const auto waited = waitpid(pid, &status, WNOHANG);
-      if (waited == 0) {
-        ++it;
-        continue;
-      }
-      if (waited == -1 && errno != ECHILD) {
-        ++it;
-        continue;
-      }
-      it = this->pid_children_.erase(it);
-    }
-
     bool can_update = true;
     if (config_["exec-if"].isString()) {
       output_ = util::command::execNoRead(config_["exec-if"].asString());
