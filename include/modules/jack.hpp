@@ -14,7 +14,7 @@ namespace waybar::modules {
 class JACK : public ALabel {
  public:
   JACK(const std::string&, const Json::Value&);
-  virtual ~JACK() = default;
+  virtual ~JACK();
   auto update() -> void override;
 
   int bufSize(jack_nframes_t size);

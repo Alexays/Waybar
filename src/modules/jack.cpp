@@ -13,6 +13,14 @@ JACK::JACK(const std::string& id, const Json::Value& config)
   };
 }
 
+// The callbacks registered in JACKState() get `this` until the client is closed.
+JACK::~JACK() {
+  if (client_) {
+    jack_client_close(client_);
+    client_ = NULL;
+  }
+}
+
 std::string JACK::JACKState() {
   std::lock_guard<std::mutex> lock(mutex_);
   if (running_) {
