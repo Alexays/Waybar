@@ -76,5 +76,28 @@ smoke::assert_alive || fail=1
 smoke::assert_clean_exit || fail=1   # SIGINT while worker threads are mid-tick
 echo "::endgroup::"
 
+# --- keyboard-state: descriptors stay flat across reloads -----------------
+# Without a usable keyboard (as in CI) the module constructor throws; nothing it
+# opened may stay behind, or every reload leaks descriptors until EMFILE.
+echo "::group::keyboard-state descriptor count across reloads"
+cfg="$(mktemp --suffix=.json)"
+cat > "$cfg" <<'EOF'
+{
+  "layer": "top", "position": "top", "height": 30,
+  "modules-center": ["keyboard-state", "clock"],
+  "keyboard-state": { "numlock": true, "capslock": true }
+}
+EOF
+smoke::launch_waybar "$cfg" "$STYLE" 5
+smoke::assert_alive || fail=1
+before="$(find "/proc/$WAYBAR_PID/fd" -mindepth 1 | wc -l)"
+for _ in 1 2 3; do smoke::reload 5; done
+after="$(find "/proc/$WAYBAR_PID/fd" -mindepth 1 | wc -l)"
+if [ "$after" -gt "$before" ]; then
+    echo "::error::open descriptors grew from $before to $after over 3 reloads"; fail=1
+fi
+smoke::assert_clean_exit || fail=1
+echo "::endgroup::"
+
 [ "$fail" = 0 ] || { echo "::error::lifecycle tier failed"; exit 1; }
 echo "✓ lifecycle tier passed"
