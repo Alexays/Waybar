@@ -73,6 +73,11 @@ gboolean Watcher::handleRegisterHost(Watcher* obj, GDBusMethodInvocation* invoca
                                           "D-Bus bus name '%s' is not valid", bus_name);
     return TRUE;
   }
+  if (g_variant_is_object_path(object_path) == FALSE) {
+    g_dbus_method_invocation_return_error(invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                                          "D-Bus object path '%s' is not valid", object_path);
+    return TRUE;
+  }
   auto* watch = gfWatchFind(obj->hosts_, bus_name, object_path);
   if (watch != nullptr) {
     g_warning("Status Notifier Host with bus name '%s' and object path '%s' is already registered",
@@ -108,6 +113,11 @@ gboolean Watcher::handleRegisterItem(Watcher* obj, GDBusMethodInvocation* invoca
   if (g_dbus_is_name(bus_name) == FALSE) {
     g_dbus_method_invocation_return_error(invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
                                           "D-Bus bus name '%s' is not valid", bus_name);
+    return TRUE;
+  }
+  if (g_variant_is_object_path(object_path) == FALSE) {
+    g_dbus_method_invocation_return_error(invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                                          "D-Bus object path '%s' is not valid", object_path);
     return TRUE;
   }
   auto* watch = gfWatchFind(obj->items_, bus_name, object_path);

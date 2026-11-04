@@ -287,6 +287,12 @@ void Host::addRegisteredItem(const std::string& service) {
   std::tie(bus_name, object_path) = getBusNameAndObjectPath(service);
   spdlog::debug("SNI item registered: bus_name={}, object_path={}, full_service={}", bus_name,
                 object_path, service);
+  // The watcher may be a foreign process, and a proxy for an invalid name or path never completes.
+  if (g_dbus_is_name(bus_name.c_str()) == FALSE ||
+      g_variant_is_object_path(object_path.c_str()) == FALSE) {
+    spdlog::warn("Host: Ignoring SNI item with invalid service string '{}'", service);
+    return;
+  }
   auto it = std::ranges::find_if(items_, [&bus_name, &object_path](const auto& item) {
     return bus_name == item->bus_name && object_path == item->object_path;
   });
