@@ -3,7 +3,7 @@
 #include "util/string.hpp"
 
 std::vector<std::string> IconLoader::search_prefix() {
-  std::vector<std::string> prefixes = {""};
+  std::vector<std::string> prefixes;
 
   const char* home_env = std::getenv("HOME");
   std::string home_dir = home_env ? home_env : "";
@@ -36,6 +36,11 @@ std::vector<std::string> IconLoader::search_prefix() {
 
 Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_by_name(const std::string& app_id) {
   static std::vector<std::string> prefixes = search_prefix();
+
+  // App ids come from other clients: they name a desktop entry and are never a path
+  if (app_id.empty() || app_id.find('/') != std::string::npos) {
+    return {};
+  }
 
   std::vector<std::string> app_folders = {"", "applications/", "applications/kde/",
                                           "applications/org.kde."};

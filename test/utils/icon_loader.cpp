@@ -29,3 +29,20 @@ TEST_CASE("IconLoader ignores app ids that are not UTF-8", "[util][icon_loader]"
     REQUIRE_FALSE(IconLoader::get_app_info_from_app_id_list(app_id));
   }
 }
+
+TEST_CASE("IconLoader resolves desktop entries by name only", "[util][icon_loader]") {
+  use_fixture_data_dirs();
+
+  SECTION("a bare name is looked up below the data dirs") {
+    auto info = IconLoader::get_app_info_from_app_id_list("waybar-test");
+    REQUIRE(info);
+    REQUIRE(info->get_name() == "Waybar Test");
+  }
+
+  SECTION("an app id that is a path is never opened") {
+    REQUIRE_FALSE(
+        IconLoader::get_app_info_from_app_id_list(fixtures + "/applications/waybar-test.desktop"));
+    REQUIRE_FALSE(
+        IconLoader::get_app_info_from_app_id_list("../fixtures/applications/waybar-test"));
+  }
+}
