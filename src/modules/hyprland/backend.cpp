@@ -11,9 +11,11 @@
 
 #include <array>
 #include <cerrno>
+#include <chrono>
 #include <cstring>
 #include <filesystem>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 
@@ -70,6 +72,7 @@ IPC::~IPC() {
       }
     }
   }
+  reconnectCv_.notify_all();
   if (ipcThread_.joinable()) {
     ipcThread_.join();
   }
@@ -91,12 +94,28 @@ void IPC::socketListener() {
 
   spdlog::info("Hyprland IPC starting");
 
+  // Hyprland drops an event client that falls too far behind, so a closed stream does not mean
+  // the compositor is gone: only a failing connect ends the listener.
+  bool reconnected = false;
+  while (readEvents(his, reconnected)) {
+    spdlog::info("Hyprland IPC: reconnecting");
+    std::unique_lock<std::mutex> lock(socketMutex_);
+    if (reconnectCv_.wait_for(lock, std::chrono::seconds(2),
+                              [this] { return !running_.load(std::memory_order_relaxed); })) {
+      break;
+    }
+    reconnected = true;
+  }
+  spdlog::debug("Hyprland IPC stopped");
+}
+
+bool IPC::readEvents(const char* his, bool reconnected) {
   struct sockaddr_un addr = {};
   const int socketfd = socket(AF_UNIX, SOCK_STREAM, 0);
 
   if (socketfd == -1) {
     spdlog::error("Hyprland IPC: socketfd failed");
-    return;
+    return false;
   }
 
   addr.sun_family = AF_UNIX;
@@ -105,7 +124,7 @@ void IPC::socketListener() {
   if (socketPath.native().size() >= sizeof(addr.sun_path)) {
     spdlog::error("Hyprland IPC: Socket path is too long: {}", socketPath.string());
     close(socketfd);
-    return;
+    return false;
   }
   strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
 
@@ -114,12 +133,16 @@ void IPC::socketListener() {
   if (connect(socketfd, (struct sockaddr*)&addr, l) == -1) {
     spdlog::error("Hyprland IPC: Unable to connect? {}", std::strerror(errno));
     close(socketfd);
-    return;
+    return false;
   }
 
   {
     std::lock_guard<std::mutex> lock(socketMutex_);
     socketfd_ = socketfd;
+  }
+
+  if (reconnected) {
+    notifyReconnect();
   }
 
   std::string pending;
@@ -173,7 +196,23 @@ void IPC::socketListener() {
       socketfd_ = -1;
     }
   }
-  spdlog::debug("Hyprland IPC stopped");
+  return running_.load(std::memory_order_relaxed);
+}
+
+void IPC::notifyReconnect() {
+  std::unique_lock lock(callbackMutex_);
+
+  std::set<EventHandler*> notified;  // a handler is listed once per event it registered for
+  for (auto& [eventname, handler] : callbacks_) {
+    if (!notified.insert(handler).second) {
+      continue;
+    }
+    try {
+      handler->onReconnect();
+    } catch (std::exception& e) {
+      spdlog::warn("Hyprland IPC: failed to refresh a module after reconnecting: {}", e.what());
+    }
+  }
 }
 
 void IPC::parseIPC(const std::string& ev) {

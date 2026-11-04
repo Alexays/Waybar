@@ -383,6 +383,21 @@ void Workspaces::onEvent(const std::string& ev) {
   dp.emit();
 }
 
+void Workspaces::onReconnect() {
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    spdlog::info("Hyprland IPC reconnected, reinitializing hyprland/workspaces module...");
+    // Not init(): its scroll setup touches GTK, which is off limits on the IPC listener thread.
+    if (const auto active = parseWorkspaceIdentity(m_ipc.getSocket1JsonReply("activeworkspace"));
+        active.has_value()) {
+      m_activeWorkspaceIdentifier = active->address;
+    }
+    initializeWorkspaces();
+  }
+
+  dp.emit();
+}
+
 void Workspaces::onWorkspaceActivated(std::string const& payload) {
   const auto [workspaceAddress, _] = splitDoublePayload(payload);
   if (workspaceAddress.empty()) {

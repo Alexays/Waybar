@@ -258,6 +258,8 @@ void Window::queryActiveWorkspace() {
 
 void Window::onEvent(const std::string& ev) { dp.emit(); }
 
+void Window::onReconnect() { dp.emit(); }
+
 void Window::setClass(const std::string& classname, bool enable) {
   if (enable) {
     if (!bar_.window.get_style_context()->has_class(classname)) {
