@@ -1,9 +1,18 @@
 #include "modules/image.hpp"
 
+#include <fcntl.h>
+#include <gdkmm/pixbufloader.h>
 #include <json/value.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
+#include <algorithm>
+#include <cerrno>
 #include <config.hpp>
+#include <cstdint>
+#include <cstring>
 #include <string_view>
+#include <utility>
 
 waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
     : AModule(config, "image", id) {
@@ -46,8 +55,8 @@ auto waybar::modules::Image::getStrategy(const std::string& id, const Json::Valu
 
 void waybar::modules::Image::delayWorker() {
   thread_ = [this] {
-    // Do the blocking work (e.g. running a user script) here on the worker
-    // thread; update() then only parses the result and draws on the main thread.
+    // Run the user script and decode the images here on the worker thread;
+    // update() then only draws the result on the main thread.
     strategy_->fetch();
     dp.emit();
     thread_.sleep_for(interval_);
@@ -63,12 +72,75 @@ void waybar::modules::Image::refresh(int sig) {
 }
 
 auto waybar::modules::Image::update() -> void {
-  strategy_->update();
+  if (!strategy_->update()) {
+    thread_.wake_up();
+  }
 
   AModule::update();
 }
 
 namespace waybar::modules::image {
+
+// Decodes the file at `path` scaled to fit in size x size, on the worker thread; empty on failure.
+static Glib::RefPtr<Gdk::Pixbuf> loadImage(const std::string& path, int size) {
+  constexpr off_t max_file_size = 64 << 20;
+  constexpr int64_t max_pixels = 1 << 26;
+  // SleeperThread::stop() cancels the worker: never inside gdk-pixbuf or with the fd open
+  util::CancellationGuard cancel_lock;
+
+  struct stat st;
+  if (stat(path.c_str(), &st) != 0) {
+    return {};
+  }
+  // A FIFO or a device could block forever; O_NONBLOCK and fstat() cover a swap after stat()
+  if (!S_ISREG(st.st_mode)) {
+    spdlog::warn("Failed to load image {}: not a regular file", path);
+    return {};
+  }
+  int fd = ::open(path.c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+  if (fd < 0) {
+    spdlog::warn("Failed to load image {}: {}", path, strerror(errno));
+    return {};
+  }
+  if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_size > max_file_size) {
+    spdlog::warn("Failed to load image {}: not a regular file of at most 64 MiB", path);
+    ::close(fd);
+    return {};
+  }
+
+  Glib::RefPtr<Gdk::Pixbuf> pixbuf;
+  bool too_large = false;
+  try {
+    auto loader = Gdk::PixbufLoader::create();
+    // Scale as gdk_pixbuf_new_from_file_at_size() does; refuse a huge picture before its decode
+    loader->signal_size_prepared().connect([&](int width, int height) {
+      if (width <= 0 || height <= 0 || static_cast<int64_t>(width) * height > max_pixels) {
+        spdlog::warn("Failed to load image {}: it declares {}x{} pixels", path, width, height);
+        too_large = true;
+        loader->set_size(0, 0);
+      } else if (height > width) {
+        loader->set_size(std::max(1, static_cast<int>(0.5 + 1.0 * width * size / height)), size);
+      } else {
+        loader->set_size(size, std::max(1, static_cast<int>(0.5 + 1.0 * height * size / width)));
+      }
+    });
+    guint8 buf[65536];
+    ssize_t n = 0;
+    while (!too_large && (n = ::read(fd, buf, sizeof(buf))) > 0) {
+      loader->write(buf, static_cast<gsize>(n));
+    }
+    loader->close();
+    if (!too_large && n == 0) {
+      pixbuf = loader->get_pixbuf();
+    }
+  } catch (const Glib::Error& e) {
+    if (!too_large) {
+      spdlog::warn("Failed to load image {}: {}", path, std::string(e.what()));
+    }
+  }
+  ::close(fd);
+  return pixbuf;
+}
 
 MultipleImageStrategy::MultipleImageStrategy(const std::string& id, const Json::Value& config,
                                              const std::string& module, Gtk::EventBox& evbox)
@@ -87,42 +159,40 @@ MultipleImageStrategy::MultipleImageStrategy(const std::string& id, const Json::
 }
 
 void MultipleImageStrategy::fetch() {
-  // Run the (blocking) user script off the GTK main thread so the bar doesn't
-  // freeze for the script's duration on every interval. update() consumes the
-  // captured output. The static "entries" path takes priority and needs no exec.
-  if (config_["entries"].empty() && !config_["exec"].empty()) {
-    exec_output_ = util::command::exec(config_["exec"].asString(), "").out;
-  }
-}
-
-void MultipleImageStrategy::update() {
-  // spdlog::info("update function run");
-
-  // clear box_, previous css classes and memory
-  if (box_.get_children().size() > 0) {
-    resetBoxAndMemory();
-  }
-
-  // set new images from config script
+  // The static "entries" path takes priority and needs no exec.
+  std::vector<ImageData> images_data;
   if (!config_["entries"].empty()) {
-    setImagesData(config_["entries"]);
+    setImagesData(config_["entries"], images_data);
   } else if (!config_["exec"].empty()) {
-    // exec output was captured by fetch() on the worker thread
+    auto exec_output = util::command::exec(config_["exec"].asString(), "").out;
     Json::Value as_json;
     Json::Reader reader;
 
-    if (!reader.parse(exec_output_, as_json)) {
-      spdlog::error("invalid json from exec {}", exec_output_);
-      return;
+    if (reader.parse(exec_output, as_json)) {
+      setImagesData(as_json, images_data);
+    } else {
+      spdlog::error("invalid json from exec {}", exec_output);
     }
-
-    setImagesData(as_json);
   } else {
     spdlog::error("no image files provded in config");
-    return;
   }
 
+  for (auto& data : images_data) {
+    data.pixbuf = loadImage(data.path, size_);
+  }
+
+  std::lock_guard<std::mutex> lock(mutex_);
+  fetched_images_data_.swap(images_data);
+}
+
+bool MultipleImageStrategy::update() {
+  resetBoxAndMemory();
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    images_data_ = fetched_images_data_;
+  }
   setupAndDraw();
+  return true;
 }
 
 void MultipleImageStrategy::setupAndDraw() {
@@ -137,14 +207,7 @@ void MultipleImageStrategy::setupAndDraw() {
     auto marker = data.marker;
     auto tooltip = data.tooltip;
     bool has_onclick = !data.on_click.empty();
-
-    Glib::RefPtr<Gdk::Pixbuf> pixbuf;
-    try {
-      pixbuf = Gdk::Pixbuf::create_from_file(path, size_, size_);
-    } catch (const Glib::Error& e) {
-      spdlog::error("failed to load image '{}': {}", path, std::string(e.what()));
-      pixbuf.reset();  // fall through to the .empty branch
-    }
+    auto pixbuf = data.pixbuf;
 
     if (has_onclick) {
       auto btn = images_data_[i].btn;
@@ -188,15 +251,25 @@ void MultipleImageStrategy::setupAndDraw() {
   }
 }
 
-void MultipleImageStrategy::setImagesData(const Json::Value& entries) {
+void MultipleImageStrategy::setImagesData(const Json::Value& entries,
+                                          std::vector<ImageData>& images_data) {
+  if (!entries.isArray()) {
+    spdlog::error("invalid input in images config -> {}", entries);
+    return;
+  }
   for (unsigned int i = 0; i < entries.size(); i++) {
+    // Indexing anything but an object by key throws
+    if (!entries[i].isObject()) {
+      spdlog::error("invalid input in images config -> {}", entries[i]);
+      return;
+    }
     auto path = entries[i]["path"];
     auto marker = entries[i]["marker"];
     auto tooltip = entries[i]["tooltip"];
     auto onclick = entries[i]["on-click"];
 
-    bool has_tooltip_err = !tooltip.empty() && !tooltip.isString();
-    bool has_onclick_err = !onclick.empty() && !onclick.isString();
+    bool has_tooltip_err = !tooltip.isNull() && !tooltip.isString();
+    bool has_onclick_err = !onclick.isNull() && !onclick.isString();
 
     if (!path.isString() || !marker.isString() || has_tooltip_err || has_onclick_err ||
         !Glib::file_test(path.asString(), Glib::FILE_TEST_EXISTS)) {
@@ -209,7 +282,7 @@ void MultipleImageStrategy::setImagesData(const Json::Value& entries) {
     data.tooltip = !tooltip.empty() ? tooltip.asString() : "";
     data.on_click = onclick.asString();
 
-    images_data_.push_back(data);
+    images_data.push_back(std::move(data));
   }
 }
 
@@ -247,6 +320,7 @@ SingleImageStrategy::SingleImageStrategy(const std::string& id, const Json::Valu
   if (size_ == 0) {
     size_ = 16;
   }
+  scale_factor_ = pixbuf_scale_factor_ = image_.get_scale_factor();
 }
 
 // Script output is data: unlike Config::tryExpandPath(), never hand it to wordexp().
@@ -259,7 +333,7 @@ static std::string expandHome(const std::string& path) {
   return path;
 }
 
-void SingleImageStrategy::update() {
+void SingleImageStrategy::fetch() {
   if (config_["path"].isString()) {
     auto p = config_["path"].asString();
     auto result = Config::tryExpandPath(p, "");
@@ -268,23 +342,26 @@ void SingleImageStrategy::update() {
     path_ = (result.size() == 1) ? result.front() : p;
   } else if (config_["exec"].isString()) {
     output_ = util::command::exec(config_["exec"].asString(), "");
+    std::lock_guard<std::mutex> lock(mutex_);
     parseOutputRaw();
     path_ = expandHome(path_);
   }
 
-  Glib::RefPtr<Gdk::Pixbuf> pixbuf;
-  if (Glib::file_test(path_, Glib::FILE_TEST_EXISTS)) {
-    int scaled_icon_size = size_ * image_.get_scale_factor();
-    try {
-      pixbuf = Gdk::Pixbuf::create_from_file(path_, scaled_icon_size, scaled_icon_size);
-    } catch (const Glib::Exception& e) {
-      // Existing but corrupt/non-image file: degrade to the empty state instead of crashing.
-      spdlog::warn("Failed to load image {}: {}", path_, std::string(e.what()));
-      pixbuf.reset();
-    }
-  }
+  std::unique_lock<std::mutex> lock(mutex_);
+  const int scale_factor = scale_factor_;
+  lock.unlock();
+  auto pixbuf = loadImage(path_, size_ * scale_factor);
+  lock.lock();
+  pixbuf_.swap(pixbuf);
+  pixbuf_scale_factor_ = scale_factor;
+}
 
-  if (pixbuf) {
+bool SingleImageStrategy::update() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  // Only the main thread may ask GTK; a changed scale factor makes fetch() decode again
+  scale_factor_ = image_.get_scale_factor();
+
+  if (pixbuf_) {
     // Building a HiDPI-aware cairo surface requires a realized widget: it reads the
     // GdkWindow and its scale factor. During startup update() can run before the
     // Gtk::Image is realized, in which case get_window() is null; feeding that path a
@@ -292,16 +369,16 @@ void SingleImageStrategy::update() {
     // widget is unrealized, and use the crisp surface path once a window is available.
     auto window = image_.get_window();
     if (window) {
-      auto surface =
-          Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(), window);
+      auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf_, pixbuf_scale_factor_, window);
       image_.set(surface);
     } else {
-      image_.set(pixbuf);
+      image_.set(pixbuf_);
     }
     image_.show();
 
     if (hasTooltip_ && !tooltip_.empty()) {
-      if (box_.get_tooltip_markup() != tooltip_) {
+      // ustring::operator!= collates, which crashes on invalid UTF-8; compare bytes
+      if (box_.get_tooltip_markup().raw() != tooltip_) {
         box_.set_tooltip_markup(tooltip_);
       }
     }
@@ -312,6 +389,7 @@ void SingleImageStrategy::update() {
     image_.hide();
     box_.get_style_context()->add_class("empty");
   }
+  return scale_factor_ == pixbuf_scale_factor_;
 }
 
 void SingleImageStrategy::parseOutputRaw() {
@@ -322,7 +400,12 @@ void SingleImageStrategy::parseOutputRaw() {
     if (i == 0) {
       path_ = line;
     } else if (i == 1) {
-      tooltip_ = line;
+      // Script output can be invalid UTF-8, which g_utf8_* functions do not accept
+      Glib::ustring validated_line = line;
+      if (!validated_line.validate()) {
+        validated_line = validated_line.make_valid();
+      }
+      tooltip_ = validated_line.raw();
     } else {
       break;
     }

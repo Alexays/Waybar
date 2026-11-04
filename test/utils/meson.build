@@ -44,6 +44,8 @@ test_src += files(
     '../../src/util/gtk_icon.cpp',
 )
 
+test_src += files('utf8_string.cpp', '../../src/util/utf8_string.cpp')
+
 utils_test = executable(
     'utils_test',
     test_src,

@@ -7,13 +7,13 @@
 std::list<waybar::AModule*> waybar::modules::IdleInhibitor::modules;
 bool waybar::modules::IdleInhibitor::status = false;
 long waybar::modules::IdleInhibitor::deactivationTime = time(nullptr);
+ext_idle_notification_v1* waybar::modules::IdleInhibitor::idle_notification_ = nullptr;
 
 waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar,
                                               const Json::Value& config)
     : ALabel(config, "idle_inhibitor", id, "{status}", 0, false, true),
       bar_(bar),
       idle_inhibitor_(nullptr),
-      idle_notification_(nullptr),
       idle_timeout_ms_(0),
       pid_(-1),
       timeout(config_["timeout"].asDouble()),
@@ -60,8 +60,6 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
 }
 
 waybar::modules::IdleInhibitor::~IdleInhibitor() {
-  teardownIdleNotification();
-
   if (idle_inhibitor_ != nullptr) {
     zwp_idle_inhibitor_v1_destroy(idle_inhibitor_);
     idle_inhibitor_ = nullptr;
@@ -80,7 +78,7 @@ auto waybar::modules::IdleInhibitor::update() -> void {
   // Check status
   if (status) {
     label_.get_style_context()->remove_class("deactivated");
-    if (idle_inhibitor_ == nullptr) {
+    if (idle_inhibitor_ == nullptr && bar_.surface != nullptr) {
       idle_inhibitor_ = zwp_idle_inhibit_manager_v1_create_inhibitor(
           waybar::Client::inst()->idle_inhibit_manager, bar_.surface);
     }
@@ -225,16 +223,13 @@ bool waybar::modules::IdleInhibitor::handleScroll(GdkEventScroll* e) {
   return true;
 }
 
-void waybar::modules::IdleInhibitor::handleIdled(void* data,
+void waybar::modules::IdleInhibitor::handleIdled(void* /*data*/,
                                                  ext_idle_notification_v1* /*notification*/) {
   spdlog::info("deactivating idle_inhibitor due to user inactivity");
   status = false;
 
   // Clean up the notification since we're deactivating
-  auto* self = static_cast<IdleInhibitor*>(data);
-  if (self != nullptr) {
-    self->teardownIdleNotification();
-  }
+  teardownIdleNotification();
 
   for (auto const& module : waybar::modules::IdleInhibitor::modules) {
     module->update();
@@ -305,7 +300,8 @@ void waybar::modules::IdleInhibitor::setupIdleNotification() {
       .resumed = &IdleInhibitor::handleResumed,
   };
 
-  ext_idle_notification_v1_add_listener(idle_notification_, &idle_notification_listener, this);
+  // Not tied to a module instance, like the timeout handler: its output can be disconnected
+  ext_idle_notification_v1_add_listener(idle_notification_, &idle_notification_listener, nullptr);
   wl_display_roundtrip(client->wl_display);
   spdlog::debug("idle_inhibitor: idle notification setup complete");
 }

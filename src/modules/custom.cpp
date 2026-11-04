@@ -13,6 +13,8 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
       id_(id),
       tooltip_format_enabled_{config_["tooltip-format"].isString()},
       percentage_(0) {
+  // Escaped output is plain text and embeds no icon
+  embedded_icon_enabled_ = !(config_["escape"].isBool() && config_["escape"].asBool());
   if (config.isNull()) {
     spdlog::warn("There is no configuration for 'custom/{}', element will be hidden", name);
   }

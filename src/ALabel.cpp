@@ -176,7 +176,12 @@ bool ALabel::setLabelMarkup(const Glib::ustring& markup) {
     return false;
   }
 
-  label_.set_markup(markup);
+  // GTK rejects markup that is not valid UTF-8 and keeps showing the previous text
+  if (markup.validate()) {
+    label_.set_markup(markup);
+  } else {
+    label_.set_markup(markup.make_valid());
+  }
   last_label_markup_ = markup.raw();
   return true;
 }
@@ -186,12 +191,15 @@ bool ALabel::pointerOverModule() const {
   if (!gdk_window || !event_box_.get_mapped()) {
     return false;
   }
-  int x = 0;
-  int y = 0;
-  Gdk::ModifierType mask;
-  gdk_window->get_device_position(gdk_window->get_display()->get_default_seat()->get_pointer(), x,
-                                  y, mask);
-  return x >= 0 && y >= 0 && x < gdk_window->get_width() && y < gdk_window->get_height();
+  // On Wayland the pointer position is relative to whichever surface has the pointer, possibly
+  // another bar, so look for this window among the ancestors of the one under the pointer.
+  auto pointer = gdk_window->get_display()->get_default_seat()->get_pointer();
+  for (auto window = pointer->get_window_at_position(); window; window = window->get_parent()) {
+    if (window == gdk_window) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
@@ -199,12 +207,17 @@ bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
     return false;
   }
 
-  last_tooltip_markup_ = markup.raw();
+  // Stored valid, since the query-tooltip handler hands it to GTK as well
+  if (markup.validate()) {
+    last_tooltip_markup_ = markup.raw();
+  } else {
+    last_tooltip_markup_ = markup.make_valid().raw();
+  }
   if (active_tooltip_) {
     // leave-notify is not always delivered when the pointer moves between
     // adjacent modules, so active_tooltip_ may belong to another module.
     if (pointerOverModule()) {
-      active_tooltip_->set_markup(markup);
+      active_tooltip_->set_markup(*last_tooltip_markup_);
     } else {
       active_tooltip_.reset();
     }

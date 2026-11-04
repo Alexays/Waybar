@@ -96,7 +96,8 @@ auto Window::update() -> void {
   }
 
   setLabelMarkup(waybar::util::rewriteString(
-      fmt::format(fmt::runtime(format_), fmt::arg("title", window_), fmt::arg("app_id", app_id_),
+      fmt::format(fmt::runtime(format_), fmt::arg("title", window_),
+                  fmt::arg("app_id", Glib::Markup::escape_text(app_id_).raw()),
                   fmt::arg("shell", shell_), fmt::arg("marks", marks_)),
       config_["rewrite"]));
   if (tooltipEnabled()) {
