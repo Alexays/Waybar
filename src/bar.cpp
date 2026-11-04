@@ -320,6 +320,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 
   unmap_conn_ = window.signal_unmap().connect([this]() {
     spdlog::debug("Output {} unmapped, suspending modules", output->name);
+    painted_scale_ = 0;  // GTK detaches the buffer
     toggleSuspend(true);
   });
 
@@ -644,7 +645,7 @@ void waybar::Bar::updateBlurRegion() {
   }
   ext_background_effect_surface_v1_set_blur_region(background_effect_surface_, region);
   wl_region_destroy(region);
-  wl_surface_commit(surface);
+  forceLayerCommit();
 }
 #endif
 
