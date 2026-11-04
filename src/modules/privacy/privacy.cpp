@@ -58,7 +58,7 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, Gtk::Orientat
     }
   }
 
-  std::map<std::string, std::tuple<std::list<PWPrivacyNodeInfo*>*, PrivacyNodeType>> typeMap = {
+  std::map<std::string, std::tuple<std::list<PWPrivacyNodeInfo>*, PrivacyNodeType>> typeMap = {
       {"screenshare", {&nodes_screenshare, PRIVACY_NODE_TYPE_VIDEO_INPUT}},
       {"audio-in", {&nodes_audio_in, PRIVACY_NODE_TYPE_AUDIO_INPUT}},
       {"audio-out", {&nodes_audio_out, PRIVACY_NODE_TYPE_AUDIO_OUTPUT}},
@@ -144,13 +144,13 @@ void Privacy::onPWPrivacyNodesChanged() {
       case PW_NODE_STATE_RUNNING:
         switch (node.second->type) {
           case PRIVACY_NODE_TYPE_VIDEO_INPUT:
-            nodes_screenshare.push_back(node.second);
+            nodes_screenshare.push_back(*node.second);
             break;
           case PRIVACY_NODE_TYPE_AUDIO_INPUT:
-            nodes_audio_in.push_back(node.second);
+            nodes_audio_in.push_back(*node.second);
             break;
           case PRIVACY_NODE_TYPE_AUDIO_OUTPUT:
-            nodes_audio_out.push_back(node.second);
+            nodes_audio_out.push_back(*node.second);
             break;
           default:
             continue;
