@@ -199,15 +199,17 @@ void Workspaces::extendOrphans(const std::string& workspaceAddress,
 
 std::string Workspaces::getRewrite(const std::string& window_class,
                                    const std::string& window_title) {
+  const std::string windowClass = toSingleLine(window_class);
+  const std::string windowTitle = toSingleLine(window_title);
   std::string windowReprKey;
   if (windowRewriteConfigUsesTitle()) {
-    windowReprKey = fmt::format("class<{}> title<{}>", window_class, window_title);
+    windowReprKey = fmt::format("class<{}> title<{}>", windowClass, windowTitle);
   } else {
-    windowReprKey = fmt::format("class<{}>", window_class);
+    windowReprKey = fmt::format("class<{}>", windowClass);
   }
   auto const rewriteRule = m_windowRewriteRules.get(windowReprKey);
-  return fmt::format(fmt::runtime(rewriteRule), fmt::arg("class", window_class),
-                     fmt::arg("title", window_title));
+  return fmt::format(fmt::runtime(rewriteRule), fmt::arg("class", windowClass),
+                     fmt::arg("title", windowTitle));
 }
 
 std::vector<std::string> Workspaces::getVisibleWorkspaces() {

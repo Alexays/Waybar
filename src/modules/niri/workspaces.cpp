@@ -7,6 +7,7 @@
 #include <cctype>
 
 #include "util/rewrite_string.hpp"  // Needed for rewrite logic
+#include "util/string.hpp"
 
 namespace waybar::modules::niri {
 
@@ -264,10 +265,10 @@ std::string Workspaces::getRewrite(const std::string& app_id, const std::string&
 std::string Workspaces::getWindowsRepresentation(const Json::Value& ws) {
   std::vector<std::string> window_reps;
   auto collect = [&](const Json::Value& win) {
-    std::string app_id =
-        win.isMember("app_id") && win["app_id"].isString() ? win["app_id"].asString() : "";
-    std::string title =
-        win.isMember("title") && win["title"].isString() ? win["title"].asString() : "";
+    std::string app_id = toSingleLine(
+        win.isMember("app_id") && win["app_id"].isString() ? win["app_id"].asString() : "");
+    std::string title = toSingleLine(
+        win.isMember("title") && win["title"].isString() ? win["title"].asString() : "");
     if (!app_id.empty() || !title.empty()) {
       window_reps.push_back(getRewrite(app_id, title));
     }

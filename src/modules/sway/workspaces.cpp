@@ -6,6 +6,8 @@
 #include <cctype>
 #include <string>
 
+#include "util/string.hpp"
+
 namespace waybar::modules::sway {
 
 // Helper function to assign a number to a workspace, just like sway. In fact
@@ -320,10 +322,10 @@ bool Workspaces::hasFlag(const Json::Value& node, const std::string& flag) {
 void Workspaces::updateWindows(const Json::Value& node, std::string& windows) {
   if ((node["type"].asString() == "con" || node["type"].asString() == "floating_con") &&
       node["name"].isString()) {
-    std::string title = Glib::Markup::escape_text(node["name"].asString()).raw();
-    std::string windowClass = node["app_id"].isString()
-                                  ? node["app_id"].asString()
-                                  : node["window_properties"]["class"].asString();
+    std::string title = Glib::Markup::escape_text(toSingleLine(node["name"].asString())).raw();
+    std::string windowClass =
+        toSingleLine(node["app_id"].isString() ? node["app_id"].asString()
+                                               : node["window_properties"]["class"].asString());
 
     // Only add window rewrites that can be looked up
     if (!windowClass.empty()) {

@@ -39,6 +39,18 @@ TEST_CASE("rfindOutsideParens", "[string]") {
   }
 }
 
+TEST_CASE("toSingleLine", "[string]") {
+  SECTION("leaves text without line breaks alone") {
+    REQUIRE(toSingleLine("") == "");
+    REQUIRE(toSingleLine("a b\tc \u00e9\u2027\u202a") == "a b\tc \u00e9\u2027\u202a");
+  }
+
+  SECTION("replaces each line break with one space") {
+    REQUIRE(toSingleLine("a\nb\rc\u2028d\u2029e") == "a b c d e");
+    REQUIRE(toSingleLine("\n\r\n\u2028\u2028") == "     ");
+  }
+}
+
 // Regression test for https://github.com/Alexays/Waybar/issues/4586
 TEST_CASE("hyprland activelayout payload split", "[string]") {
   SECTION("keyboard name containing brackets, layout without") {
