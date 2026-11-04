@@ -497,13 +497,12 @@ void Workspace::update(const std::string& workspace_icon, const std::string& wor
     }
   }
 
-  if (!workspace_tooltip.empty()) {
-    util::set_tooltip_markup(
-        m_button, fmt::format(fmt::runtime(workspace_tooltip),
-                              fmt::arg("id", Glib::Markup::escape_text(address()).raw()),
-                              fmt::arg("name", Glib::Markup::escape_text(name()).raw()),
-                              fmt::arg("icon", workspace_icon), fmt::arg("windows", windows)));
-  }
+  // Also when empty: an empty tooltip label shows no tooltip, which clears the previous one
+  util::set_tooltip_markup(
+      m_button, fmt::format(fmt::runtime(workspace_tooltip),
+                            fmt::arg("id", Glib::Markup::escape_text(address()).raw()),
+                            fmt::arg("name", Glib::Markup::escape_text(name()).raw()),
+                            fmt::arg("icon", workspace_icon), fmt::arg("windows", windows)));
 
   auto formatBefore = m_workspaceManager.formatBefore();
   m_labelBefore.set_markup(fmt::format(fmt::runtime(formatBefore), fmt::arg("id", address()),

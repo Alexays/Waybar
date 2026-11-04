@@ -28,7 +28,8 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
              bool vertical)
     : AModule(config, name, id, true, false),
       box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
-      revealer_box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
+      revealer_box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
+      leader_revealer_box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
   box.set_name(name_);
   box.get_style_context()->add_class("empty");
   if (!id.empty()) {
@@ -63,11 +64,13 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     const bool left_to_right = (drawer_config["transition-left-to-right"].isBool()
                                     ? drawer_config["transition-left-to-right"].asBool()
                                     : true);
+    drawer_left_to_right = left_to_right;
     const bool reveal_by_default =
         (drawer_config["reveal-by-default"].isBool() ? drawer_config["reveal-by-default"].asBool()
                                                      : false);
 
     click_to_reveal = drawer_config["click-to-reveal"].asBool();
+    hide_leader_when_expanded = drawer_config["hide-leader-when-expanded"].asBool();
     always_visible_class = (drawer_config["always-visible-class"].isString()
                                 ? drawer_config["always-visible-class"].asString()
                                 : "");
@@ -84,6 +87,11 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
 
     revealer.set_transition_type(transition_type);
     revealer.set_transition_duration(transition_duration);
+    leader_revealer.set_transition_type(
+        vertical ? Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_DOWN
+                 : Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_RIGHT);
+    leader_revealer.set_transition_duration(transition_duration);
+    leader_revealer.set_reveal_child(true);
     if ((click_to_reveal && reveal_by_default) || start_expanded) {
       box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
       revealer.set_reveal_child(true);
@@ -92,14 +100,22 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     }
 
     revealer.get_style_context()->add_class("drawer");
+    leader_revealer.get_style_context()->add_class("drawer-leader");
 
     revealer.add(revealer_box);
+    leader_revealer.add(leader_revealer_box);
 
     if (left_to_right) {
       box.pack_end(revealer);
     } else {
       box.pack_start(revealer);
     }
+
+    revealer.property_child_revealed().signal_changed().connect([this]() {
+      if (revealer.get_child_revealed()) {
+        event_box_.trigger_tooltip_query();
+      }
+    });
   }
 
   event_box_.add(box);
@@ -116,6 +132,9 @@ Group::~Group() {
 void Group::show_group() {
   box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   revealer.set_reveal_child(true);
+  if (hide_leader_when_expanded) {
+    leader_revealer.set_reveal_child(false);
+  }
   box.get_style_context()->add_class("expanded");
 }
 
@@ -168,6 +187,9 @@ void Group::manage_visibility(AModule* module) {
 }
 
 void Group::hide_group() {
+  if (hide_leader_when_expanded) {
+    leader_revealer.set_reveal_child(true);
+  }
   box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   revealer.set_reveal_child(false);
   box.get_style_context()->remove_class("expanded");
@@ -267,7 +289,16 @@ Gtk::Box& Group::getBox() { return is_drawer ? (is_first_widget ? box : revealer
 void Group::addWidget(AModule* module) {
   Gtk::Widget& widget = *module;
 
-  getBox().pack_start(widget, false, false);
+  if (is_drawer && is_first_widget && hide_leader_when_expanded) {
+    leader_revealer_box.pack_start(widget, false, false);
+    if (drawer_left_to_right) {
+      box.pack_start(leader_revealer, false, false);
+    } else {
+      box.pack_end(leader_revealer, false, false);
+    }
+  } else {
+    getBox().pack_start(widget, false, false);
+  }
 
   if (is_drawer && !is_first_widget) {
     widget.get_style_context()->add_class(add_class_to_drawer_children);
