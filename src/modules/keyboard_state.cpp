@@ -10,8 +10,10 @@ extern "C" {
 #include <fcntl.h>
 #include <libinput.h>
 #include <linux/input-event-codes.h>
+#include <linux/input.h>
 #include <poll.h>
 #include <sys/inotify.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -142,14 +144,24 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
       devices_path_("/dev/input/"),
       libinput_(nullptr),
       libinput_devices_({}) {
+  // Both callbacks run inside libinput_* calls, with devices_mutex_ held.
   static struct libinput_interface interface = {
-      [](const char* path, int flags, void* user_data) { return open(path, flags); },
-      [](int fd, void* user_data) { close(fd); }};
+      [](const char* path, int flags, void* user_data) {
+        int fd = open(path, flags);
+        if (fd >= 0) {
+          static_cast<KeyboardState*>(user_data)->device_leds_[fd] = 0;
+        }
+        return fd;
+      },
+      [](int fd, void* user_data) {
+        static_cast<KeyboardState*>(user_data)->device_leds_.erase(fd);
+        close(fd);
+      }};
   if (config_["interval"].isUInt()) {
     spdlog::warn("keyboard-state: interval is deprecated");
   }
 
-  libinput_ = libinput_path_create_context(&interface, NULL);
+  libinput_ = libinput_path_create_context(&interface, this);
 
   box_.set_name("keyboard-state");
   if (config_["numlock"].asBool()) {
@@ -245,6 +257,19 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
             }
           }
           libinput_event_destroy(event);
+        }
+        // The compositor switches the LEDs some time after the key event; libinput reports no
+        // event for that, but the LED write does wake this thread.
+        bool leds_changed = false;
+        for (auto& [device_fd, seen_leds] : device_leds_) {
+          unsigned long leds = 0;
+          if (ioctl(device_fd, EVIOCGLED(sizeof(leds)), &leds) >= 0 && leds != seen_leds) {
+            seen_leds = leds;
+            leds_changed = true;
+          }
+        }
+        if (leds_changed) {
+          dp.emit();
         }
       }
     }
@@ -349,7 +374,6 @@ auto waybar::modules::KeyboardState::releaseLibinput() -> void {
 }
 
 auto waybar::modules::KeyboardState::update() -> void {
-  sleep(0);  // Wait for keyboard status change
   int numl = 0, capsl = 0, scrolll = 0;
 
   std::vector<std::string> dev_paths;
