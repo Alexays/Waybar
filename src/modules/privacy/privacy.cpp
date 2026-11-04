@@ -135,7 +135,10 @@ void Privacy::onPWPrivacyNodesChanged() {
   nodes_screenshare.clear();
 
   for (auto& node : pw_backend->privacy_nodes) {
-    if (ignore_monitor && node.second->is_monitor) continue;
+    // stream.monitor is an audio capture hint and means nothing for video streams
+    if (ignore_monitor && node.second->is_monitor &&
+        node.second->type == PRIVACY_NODE_TYPE_AUDIO_INPUT)
+      continue;
 
     auto iter = ignore.find(std::pair(node.second->type, node.second->node_name));
     if (iter != ignore.end()) continue;
