@@ -25,9 +25,20 @@ extern "C" int waybar_test_execlp(const char* file, const char* arg, ...);
 #undef execl
 #undef execlp
 
+constexpr int kInheritedFdExitCode = 42;
+static int watched_fd = -1;
+
+// Exits instead of failing the exec if `watched_fd` would have survived it.
+static void checkWatchedFd() {
+  if (watched_fd != -1 && (fcntl(watched_fd, F_GETFD) & FD_CLOEXEC) == 0) {
+    _exit(kInheritedFdExitCode);
+  }
+}
+
 extern "C" int waybar_test_execl(const char* path, const char* arg, ...) {
   (void)path;
   (void)arg;
+  checkWatchedFd();
   errno = ENOENT;
   return -1;
 }
@@ -35,6 +46,7 @@ extern "C" int waybar_test_execl(const char* path, const char* arg, ...) {
 extern "C" int waybar_test_execlp(const char* file, const char* arg, ...) {
   (void)file;
   (void)arg;
+  checkWatchedFd();
   errno = ENOENT;
   return -1;
 }
@@ -53,6 +65,30 @@ TEST_CASE("command::forkExec child exits 127 when shell exec fails", "[util][com
   REQUIRE(waitpid(pid, &status, 0) == pid);
   REQUIRE(WIFEXITED(status));
   REQUIRE(WEXITSTATUS(status) == waybar::util::command::kExecFailureExitCode);
+
+  std::scoped_lock<std::mutex> lock(reap_mtx);
+  reap.remove(pid);
+}
+
+TEST_CASE("command children do not inherit descriptors lacking close-on-exec", "[util][command]") {
+  watched_fd = ::open("/dev/null", O_RDONLY);
+  REQUIRE(watched_fd > STDERR_FILENO);
+  REQUIRE((fcntl(watched_fd, F_GETFD) & FD_CLOEXEC) == 0);
+
+  const auto result = waybar::util::command::execNoRead("echo should-not-run");
+  const auto pid = waybar::util::command::forkExec("echo should-not-run");
+  int status = -1;
+  const auto waited = waitpid(pid, &status, 0);
+  const int parent_flags = fcntl(watched_fd, F_GETFD);
+  ::close(watched_fd);
+  watched_fd = -1;
+
+  REQUIRE(result.exit_code == waybar::util::command::kExecFailureExitCode);
+  REQUIRE(waited == pid);
+  REQUIRE(WIFEXITED(status));
+  REQUIRE(WEXITSTATUS(status) == waybar::util::command::kExecFailureExitCode);
+  // Only the children's copies are flagged
+  REQUIRE((parent_flags & FD_CLOEXEC) == 0);
 
   std::scoped_lock<std::mutex> lock(reap_mtx);
   reap.remove(pid);

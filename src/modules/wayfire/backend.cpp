@@ -111,7 +111,7 @@ auto IPC::connect() -> Sock {
     throw std::runtime_error{"Wayfire IPC: ipc not available"};
   }
 
-  util::ScopedFd sock(socket(AF_UNIX, SOCK_STREAM, 0));
+  util::ScopedFd sock(socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0));
   if (sock == -1) {
     throw std::runtime_error{"Wayfire IPC: socket() failed"};
   }

@@ -8,6 +8,10 @@
 
 #ifdef __linux__
 #include <sys/prctl.h>
+#include <sys/syscall.h>
+#if __has_include(<linux/close_range.h>)
+#include <linux/close_range.h>
+#endif
 #endif
 #ifdef __FreeBSD__
 #include <sys/procctl.h>
@@ -29,6 +33,19 @@ struct res {
   int exit_code;
   std::string out;
 };
+
+// Runs in a forked child before exec, so that commands do not inherit the bar's descriptors.
+inline void setInheritedFdsCloexec() {
+#if defined(__linux__) && defined(SYS_close_range) && defined(CLOSE_RANGE_CLOEXEC)
+  if (syscall(SYS_close_range, STDERR_FILENO + 1, ~0U, CLOSE_RANGE_CLOEXEC) == 0) return;
+#elif defined(__FreeBSD__) && defined(CLOSE_RANGE_CLOEXEC)
+  if (close_range(STDERR_FILENO + 1, ~0U, CLOSE_RANGE_CLOEXEC) == 0) return;
+#endif
+  const long max_fd = sysconf(_SC_OPEN_MAX);
+  for (int fd = STDERR_FILENO + 1; fd < max_fd; ++fd) {
+    fcntl(fd, F_SETFD, FD_CLOEXEC);
+  }
+}
 
 inline std::string read(FILE* fp) {
   std::array<char, 128> buffer = {0};
@@ -123,6 +140,7 @@ inline FILE* open(const std::string& cmd, int& pid, const std::string& output_na
 #endif
     ::close(fd[0]);
     dup2(fd[1], 1);
+    setInheritedFdsCloexec();
     setpgid(child_pid, child_pid);
     if (!output_name.empty()) {
       setenv("WAYBAR_OUTPUT_NAME", output_name.c_str(), 1);
@@ -195,6 +213,7 @@ inline int32_t forkExec(const std::string& cmd, const std::string& output_name) 
     // Reset sigmask
     err = pthread_sigmask(SIG_UNBLOCK, &mask, nullptr);
     if (err != 0) spdlog::error("pthread_sigmask in forkExec failed: {}", strerror(err));
+    setInheritedFdsCloexec();
     setpgid(pid, pid);
     if (!output_name.empty()) {
       setenv("WAYBAR_OUTPUT_NAME", output_name.c_str(), 1);

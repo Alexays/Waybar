@@ -39,7 +39,7 @@ int IPC::connectToSocket() {
   }
 
   struct sockaddr_un addr;
-  util::ScopedFd socketfd(socket(AF_UNIX, SOCK_STREAM, 0));
+  util::ScopedFd socketfd(socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0));
 
   if (socketfd == -1) {
     throw std::runtime_error("socketfd failed");

@@ -44,7 +44,7 @@ static void writeSignalToPipe(int signum) {
 // to `signal_handler`.
 static void catchSignals(waybar::SafeSignal<int>& signal_handler) {
   int fd[2];
-  if (pipe(fd) != 0) {
+  if (pipe2(fd, O_CLOEXEC) != 0) {
     spdlog::error("Failed to create signal pipe: {}", strerror(errno));
     return;
   }
