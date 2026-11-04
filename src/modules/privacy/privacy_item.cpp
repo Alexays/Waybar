@@ -153,17 +153,21 @@ void GeoCluePrivacyItem::set_tooltip() {
 }
 
 void PWPrivacyItem::set_tooltip() {
-  for (auto* node : *nodes) {
+  for (auto& node : *nodes) {
     auto* box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 4);
 
     // Set device icon
     auto* node_icon = Gtk::make_managed<Gtk::Image>();
     node_icon->set_pixel_size(tooltipIconSize);
-    node_icon->set_from_icon_name(node->getIconName(), Gtk::ICON_SIZE_INVALID);
+    node_icon->set_from_icon_name(node.getIconName(), Gtk::ICON_SIZE_INVALID);
     box->add(*node_icon);
 
     // Set model
-    auto* nodeName = Gtk::make_managed<Gtk::Label>(node->getName());
+    auto* nodeName = Gtk::make_managed<Gtk::Label>(node.getName());
+    // The client picks the name; past 32767 px GDK cannot allocate the tooltip and crashes
+    nodeName->set_max_width_chars(50);
+    nodeName->set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
+    nodeName->set_single_line_mode(true);
     box->add(*nodeName);
 
     tooltip_window.add(*box);

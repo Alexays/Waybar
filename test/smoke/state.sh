@@ -122,5 +122,47 @@ EOF
 mpd_tier
 pulse_tier
 
+# ---------------------------------------------- pulseaudio reconnect ------
+# A context that keeps failing after it connected must be retried at a bounded
+# pace, not in a busy loop. No daemon needed: a stand-in accepts and drops every
+# connection for as long as it runs.
+pulse_reconnect_tier() {
+    echo "::group::pulseaudio: reconnect after context failure is rate-limited"
+    local sock="$XDG_RUNTIME_DIR/pulse-drop.sock" hits standin; hits="$(mktemp)"
+    python3 - "$sock" >"$hits" <<'EOF' &
+import socket, sys
+srv = socket.socket(socket.AF_UNIX)
+srv.bind(sys.argv[1])
+srv.listen(64)
+while True:
+    conn, _ = srv.accept()
+    conn.close()
+    print("dropped", flush=True)
+EOF
+    standin=$!
+    local _; for _ in $(seq 1 20); do [ -S "$sock" ] && break; sleep 0.2; done
+
+    local cfg; cfg="$(mktemp --suffix=.json)"
+    cat > "$cfg" <<'EOF'
+{
+  "layer": "top", "position": "top", "height": 30,
+  "modules-center": ["pulseaudio"], "pulseaudio": { "format": "{volume}%" }
+}
+EOF
+    PULSE_SERVER="unix:$sock" smoke::launch_waybar "$cfg" "$DIR/style.css" 5
+    smoke::assert_alive || fail=1
+    local before after; before="$(wc -l <"$hits")"
+    sleep 5
+    after="$(wc -l <"$hits")"
+    echo "waybar reconnected $((after - before)) times in 5 s"
+    if [ "$((after - before))" -gt 50 ]; then
+        echo "::error::pulseaudio backend spins on a persistent context failure"; fail=1
+    fi
+    smoke::assert_clean_exit || fail=1   # SIGINT with a reconnect timer pending
+    kill "$standin" 2>/dev/null || true
+    echo "::endgroup::"
+}
+pulse_reconnect_tier
+
 [ "$fail" = 0 ] || { echo "::error::state tier failed"; exit 1; }
 echo "✓ state-transition tier passed"

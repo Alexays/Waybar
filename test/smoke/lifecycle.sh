@@ -99,5 +99,33 @@ fi
 smoke::assert_clean_exit || fail=1
 echo "::endgroup::"
 
+# --- pulseaudio constructor failure on every reload (descriptor leak) -----
+# PULSE_SERVER on a socket nobody listens on makes pa_context_connect() fail
+# synchronously, so the module constructor throws on each reload; what it
+# acquired must not pile up.
+echo "::group::failed pulseaudio construction on reload (fd leak)"
+cfg="$(mktemp --suffix=.json)"
+cat > "$cfg" <<'EOF'
+{
+  "layer": "top", "position": "top", "height": 30,
+  "modules-center": ["pulseaudio"]
+}
+EOF
+PULSE_SERVER="unix:$(mktemp -d)/no-such-socket" smoke::launch_waybar "$cfg" "$STYLE" 5
+smoke::assert_alive || fail=1
+grep -q 'pa_context_connect() failed' "$SMOKE_LOG" \
+    || echo "(pulseaudio connected or was not built in; leak check is vacuous)"
+fds_before="$(ls "/proc/$WAYBAR_PID/fd" | wc -l)"
+for _ in $(seq 1 10); do smoke::reload 1; done
+fds_after="$(ls "/proc/$WAYBAR_PID/fd" | wc -l)"
+if [ "$fds_after" -gt "$((fds_before + 5))" ]; then
+    echo "::error::descriptors leaked across 10 reloads: $fds_before -> $fds_after"
+    fail=1
+else
+    echo "descriptor count stable across reloads ($fds_before -> $fds_after)"
+fi
+smoke::assert_clean_exit || fail=1
+echo "::endgroup::"
+
 [ "$fail" = 0 ] || { echo "::error::lifecycle tier failed"; exit 1; }
 echo "✓ lifecycle tier passed"

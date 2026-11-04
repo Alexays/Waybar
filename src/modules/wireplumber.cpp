@@ -87,7 +87,10 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
 bool waybar::modules::Wireplumber::setupConnection() {
   // New connection generation: any async load/activate callback still in flight from a previous
   // connection will see a mismatched generation and bail out instead of mutating this one's state.
-  ++connection_generation_;
+  // Shared by all modules: a module built right after another was destroyed often gets its
+  // address, so isModuleAlive() plus a per-object counter could not tell the two apart.
+  static uint32_t last_generation = 0;
+  connection_generation_ = ++last_generation;
 
   wp_core_ = wp_core_new(nullptr, nullptr, nullptr);
   apis_ = g_ptr_array_new_with_free_func(g_object_unref);
@@ -197,9 +200,9 @@ void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* 
     return;
   }
 
-  auto* proxy = static_cast<WpProxy*>(wp_object_manager_lookup(self->om_, WP_TYPE_GLOBAL_PROXY,
-                                                               WP_CONSTRAINT_TYPE_G_PROPERTY,
-                                                               "bound-id", "=u", id, nullptr));
+  g_autoptr(WpProxy) proxy = static_cast<WpProxy*>(
+      wp_object_manager_lookup(self->om_, WP_TYPE_GLOBAL_PROXY, WP_CONSTRAINT_TYPE_G_PROPERTY,
+                               "bound-id", "=u", id, nullptr));
 
   if (proxy == nullptr) {
     auto err = fmt::format("Object '{}' not found\n", id);
@@ -257,9 +260,9 @@ void waybar::modules::Wireplumber::updateSourceName(waybar::modules::Wireplumber
     return;
   }
 
-  auto* proxy = static_cast<WpProxy*>(wp_object_manager_lookup(self->om_, WP_TYPE_GLOBAL_PROXY,
-                                                               WP_CONSTRAINT_TYPE_G_PROPERTY,
-                                                               "bound-id", "=u", id, nullptr));
+  g_autoptr(WpProxy) proxy = static_cast<WpProxy*>(
+      wp_object_manager_lookup(self->om_, WP_TYPE_GLOBAL_PROXY, WP_CONSTRAINT_TYPE_G_PROPERTY,
+                               "bound-id", "=u", id, nullptr));
 
   if (proxy == nullptr) {
     auto err = fmt::format("Source object '{}' not found\n", id);
@@ -1027,7 +1030,7 @@ uint32_t waybar::modules::Wireplumber::resolvePhysicalSink(uint32_t start_id) {
     current_id = next_id;
   }
 
-  GVariant* variant = nullptr;
+  g_autoptr(GVariant) variant = nullptr;
   g_signal_emit_by_name(mixer_api_, "get-volume", current_id, &variant);
 
   if (variant == nullptr) {

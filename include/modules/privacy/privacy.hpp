@@ -21,10 +21,11 @@ class Privacy : public AModule {
   auto update() -> void override;
 
  private:
-  std::list<PWPrivacyNodeInfo*> nodes_screenshare;  // Screen is being shared
-  std::list<PWPrivacyNodeInfo*> nodes_audio_in;     // Application is using the microphone
-  std::list<PWPrivacyNodeInfo*> nodes_audio_out;    // Application is outputting audio
-  std::atomic<bool> location_in_use;                // GeoClue is being used
+  // Copies guarded by mutex_: the backend destroys its nodes on the PipeWire thread.
+  std::list<PWPrivacyNodeInfo> nodes_screenshare;  // Screen is being shared
+  std::list<PWPrivacyNodeInfo> nodes_audio_in;     // Application is using the microphone
+  std::list<PWPrivacyNodeInfo> nodes_audio_out;    // Application is outputting audio
+  std::atomic<bool> location_in_use;               // GeoClue is being used
 
   std::mutex mutex_;
   sigc::connection visibility_conn;

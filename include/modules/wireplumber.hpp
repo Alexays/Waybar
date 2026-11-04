@@ -59,6 +59,7 @@ class Wireplumber : public ALabel {
   // Bumped on every (re)connection. The async load/activate callbacks capture the generation they
   // were scheduled under (via their user_data) and no-op if it no longer matches, so a completion
   // from a connection that was already torn down cannot corrupt the new generation's state (#2882).
+  // Unique across all modules, so a new module at a destroyed one's address is told apart.
   uint32_t connection_generation_{0};
   bool muted_;
   double volume_;
