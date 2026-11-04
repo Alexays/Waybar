@@ -1063,10 +1063,10 @@ void Workspaces::setUrgentWorkspace(std::string const& windowaddress) {
 auto Workspaces::update() -> void {
   // Debounce rapid events (e.g. out-of-order create/destroy workspace events from
   // Hyprland) to prevent workspace button flicker. This runs on the GTK main thread
-  // (invoked via the dp dispatcher), so arming/disconnecting the GLib timer here is
-  // thread-safe. Each event re-arms the timer, coalescing bursts into one refresh.
+  // (invoked via the dp dispatcher), so arming the GLib timer here is thread-safe.
+  // An armed timer is never pushed back, so a steady event stream cannot starve the refresh.
   if (m_debounceTimer.connected()) {
-    m_debounceTimer.disconnect();
+    return;
   }
   m_debounceTimer = Glib::signal_timeout().connect(
       [this]() {
