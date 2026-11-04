@@ -83,12 +83,9 @@ std::string RegexCollection::find_match(std::string& value, bool& matched_any) {
 }
 
 std::string& RegexCollection::get(std::string& value, bool& matched_any) {
-  if (regex_cache.contains(value)) {
-    return regex_cache[value];
+  if (auto it = regex_cache.find(value); it != regex_cache.end()) {
+    return it->second;
   }
-
-  // std::string repr =
-  // waybar::util::find_match(value, window_rewrite_rules_, matched_any);
 
   std::string repr = find_match(value, matched_any);
 
@@ -96,9 +93,12 @@ std::string& RegexCollection::get(std::string& value, bool& matched_any) {
     repr = default_repr;
   }
 
-  regex_cache.emplace(value, repr);
+  // Keys carry window titles, which clients change at will
+  if (regex_cache.size() >= MAX_CACHE_ENTRIES) {
+    regex_cache.clear();
+  }
 
-  return regex_cache[value];  // Necessary in order to return a reference to the heap
+  return regex_cache.emplace(value, std::move(repr)).first->second;
 }
 
 std::string& RegexCollection::get(std::string& value) {

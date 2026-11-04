@@ -42,3 +42,22 @@ TEST_CASE("RegexCollection escapes the braces of captured text", "[regex_collect
   key = "x{class<ab>y}";
   REQUIRE(references.get(key) == "class<ab> $ class<ab> x{{ y}} $x ab ");
 }
+
+TEST_CASE("RegexCollection keeps its answers past the cache bound", "[regex_collection]") {
+  Json::Value rules(Json::objectValue);
+  rules["class<firefox>"] = "ff";
+  rules["title<.*youtube.*>"] = "yt";
+  RegexCollection collection(rules, "{name}");
+
+  // A window that keeps changing its title gives a new key every time
+  for (std::size_t i = 0; i < 4 * RegexCollection::MAX_CACHE_ENTRIES + 1; ++i) {
+    std::string key = "class<firefox> title<" + std::to_string(i) + ">";
+    REQUIRE(collection.get(key) == "ff");
+    std::string miss = "class<kitty> title<" + std::to_string(i) + ">";
+    REQUIRE(collection.get(miss) == "{name}");
+  }
+
+  std::string youtube = "class<chromium> title<Cats - YouTube>";
+  REQUIRE(collection.get(youtube) == "yt");
+  REQUIRE(collection.get(youtube) == "yt");
+}
