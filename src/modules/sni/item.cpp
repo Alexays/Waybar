@@ -501,9 +501,14 @@ void Item::updateImage() {
   // requested icon size, but the width is allowed to be different. As such, if the
   // height of the image does not match the requested icon size, resize the icon such that
   // the aspect ratio is maintained, but the height matches the requested icon size.
-  if (pixbuf->get_height() > 0 && pixbuf->get_height() != scaled_icon_size) {
-    int width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
-    pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
+  // The width is bounded too: an arbitrarily wide icon would grow the bar past the output.
+  const double max_width = std::max(1.0, scaled_icon_size * MAX_ICON_ASPECT_RATIO);
+  if (pixbuf->get_height() > 0 &&
+      (pixbuf->get_height() != scaled_icon_size || pixbuf->get_width() > max_width)) {
+    double width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
+    pixbuf = pixbuf->scale_simple(static_cast<int>(std::clamp(width, 1.0, max_width)),
+                                  scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
+    if (!pixbuf) return;
   }
 
   pixbuf = overlayPixbufs(pixbuf, getOverlayIconPixbuf());
