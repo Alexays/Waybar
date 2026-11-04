@@ -150,6 +150,9 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
 
   } else {
     GList* players = playerctl_list_players(&error);
+    waybar::util::ScopeGuard players_deleter([players]() {
+      g_list_free_full(players, reinterpret_cast<GDestroyNotify>(playerctl_player_name_free));
+    });
     if (error) {
       throw std::runtime_error(fmt::format("unable to list players: {}", error->message));
     }
@@ -519,6 +522,9 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
   std::string player_name = player_;
   if (player_name == "playerctld") {
     GList* players = playerctl_list_players(&error);
+    waybar::util::ScopeGuard players_deleter([players]() {
+      g_list_free_full(players, reinterpret_cast<GDestroyNotify>(playerctl_player_name_free));
+    });
     if (error) {
       throw std::runtime_error(fmt::format("unable to list players: {}", error->message));
     }
@@ -589,6 +595,7 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
       .title = std::nullopt,
       .length = std::nullopt,
   };
+  g_free(player_status);
 
   auto sanitize = [ ]( char* raw_str ) {
       std::string s( raw_str );
