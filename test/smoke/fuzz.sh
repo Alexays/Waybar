@@ -38,6 +38,7 @@ run_case "huge output"       '{"exec":"yes A | head -c 100000","interval":"once"
 run_case "non-utf8 bytes"    '{"exec":"printf \\377\\376\\375","interval":"once"}'
 run_case "empty format"      '{"exec":"echo x","interval":"once","format":""}'
 run_case "newlines flood"    '{"exec":"yes | head -n 500","interval":"once"}'
+run_case "non-utf8 class"    '{"exec":"printf '\''{\"text\":\"x\",\"class\":\"\\351\"}\\n'\''","return-type":"json","interval":1}'
 
 [ "$fail" = 0 ] || { echo "::error::fuzz tier failed"; exit 1; }
 echo "✓ custom-backend fuzz passed"

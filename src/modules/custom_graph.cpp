@@ -297,10 +297,10 @@ void waybar::modules::CustomGraph::parseOutputJson() {
       tooltip_ = sanitize(parsed["tooltip"].asString());
     }
     if (parsed["class"].isString()) {
-      class_.push_back(parsed["class"].asString());
+      class_.push_back(sanitize(parsed["class"].asString()));
     } else if (parsed["class"].isArray()) {
       for (auto const& c : parsed["class"]) {
-        class_.push_back(c.asString());
+        class_.push_back(sanitize(c.asString()));
       }
     }
     if (!parsed["percentage"].asString().empty() && parsed["percentage"].isNumeric()) {
