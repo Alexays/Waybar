@@ -74,7 +74,7 @@ class Item : public sigc::trackable {
  private:
   void onConfigure(GdkEventConfigure* ev);
   void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
-  void setProperty(const Glib::ustring& name, Glib::VariantBase& value);
+  void setProperty(const std::string& name, Glib::VariantBase& value);
   void setStatus(const Glib::ustring& value);
   void setTooltipMarkup(const Glib::ustring& markup);
   void setReady();
@@ -113,7 +113,8 @@ class Item : public sigc::trackable {
   // hidden via config
   bool is_hidden_ = false;
   bool ready_ = false;
-  Glib::ustring status_ = "active";
+  // Not Glib::ustring: its comparisons collate, which costs time linear in the item's string.
+  std::string status_ = "active";
 
   const Bar& bar_;
   const std::function<void(Item&)> on_ready_;

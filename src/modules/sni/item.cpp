@@ -131,7 +131,7 @@ void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
     for (const auto& name : cached_properties) {
       Glib::VariantBase value;
       this->proxy_->get_cached_property(value, name);
-      setProperty(name, value);
+      setProperty(name.raw(), value);
     }
 
     this->proxy_->signal_signal().connect(sigc::mem_fun(*this, &Item::onSignal));
@@ -176,7 +176,9 @@ ToolTip get_variant<ToolTip>(const Glib::VariantBase& value) {
   return result;
 }
 
-void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
+// Names are compared as bytes: Glib::ustring compares with g_utf8_collate(), which normalizes the
+// item-supplied name on every comparison and lets look-alike names match.
+void Item::setProperty(const std::string& name, Glib::VariantBase& value) {
   try {
     spdlog::trace("Set tray item property: {}.{} = {}", id.empty() ? bus_name : id, name, value);
 
@@ -270,7 +272,7 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
 }
 
 void Item::setStatus(const Glib::ustring& value) {
-  status_ = value.lowercase();
+  status_ = value.lowercase().raw();
   event_box.set_visible(!is_hidden_ && (show_passive_ || status_.compare("passive") != 0));
 
   auto style = event_box.get_style_context();
@@ -350,12 +352,12 @@ void Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
   try {
     auto result = proxy_->call_finish(_result);
     // extract "a{sv}" from VariantContainerBase
-    Glib::Variant<std::map<Glib::ustring, Glib::VariantBase>> properties_variant;
+    Glib::Variant<std::map<std::string, Glib::VariantBase>> properties_variant;
     result.get_child(properties_variant);
     auto properties = properties_variant.get();
 
     for (const auto& [name, value] : properties) {
-      if (update_pending_.count(name.raw())) {
+      if (update_pending_.count(name)) {
         setProperty(name, const_cast<Glib::VariantBase&>(value));
       }
     }
