@@ -196,12 +196,17 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
       auto* img = Gtk::make_managed<Gtk::Image>(pixbuf);
       btn->add(*img);
     } else {
-      std::string fallback = app_id.empty() ? title : app_id;
-      if (!fallback.empty()) {
-        fallback = fallback.substr(0, 3);
-      } else {
-        fallback = "?";
+      // Three characters, not bytes, and none that break or widen the line
+      std::string fallback;
+      const char* p = (app_id.empty() ? title : app_id).c_str();
+      for (int n = 0; n < 3 && *p != '\0'; p = g_utf8_next_char(p)) {
+        const gunichar c = g_utf8_get_char_validated(p, -1);
+        if (c == static_cast<gunichar>(-1) || c == static_cast<gunichar>(-2)) break;
+        if (g_unichar_iscntrl(c) || c == 0x2028 || c == 0x2029) continue;
+        fallback.append(p, g_utf8_next_char(p) - p);
+        ++n;
       }
+      if (fallback.empty()) fallback = "?";
       auto* lbl = Gtk::make_managed<Gtk::Label>(fallback);
       btn->add(*lbl);
     }

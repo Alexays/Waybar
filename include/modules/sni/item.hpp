@@ -22,6 +22,8 @@ namespace waybar::modules::SNI {
 
 struct ToolTip {
   Glib::ustring icon_name;
+  Glib::ustring title;
+  // Pango markup
   Glib::ustring text;
 };
 

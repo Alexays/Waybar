@@ -206,7 +206,8 @@ ToolTip get_variant<ToolTip>(const Glib::VariantBase& value) {
   }
   auto container = value.cast_dynamic<Glib::VariantContainerBase>(value);
   result.icon_name = get_variant<Glib::ustring>(container.get_child(0));
-  result.text = get_variant<Glib::ustring>(container.get_child(2));
+  result.title = get_variant<Glib::ustring>(container.get_child(2));
+  result.text = Glib::Markup::escape_text(result.title);
   auto description = get_variant<Glib::ustring>(container.get_child(3));
   if (!description.empty()) {
     auto escapedDescription = Glib::Markup::escape_text(description);
@@ -241,8 +242,8 @@ void Item::setProperty(const std::string& name, Glib::VariantBase& value) {
         if (value) {
           tooltip = get_variant<ToolTip>(value);
         }
-        if (!tooltip.text.empty()) {
-          icon_id = tooltip.text.lowercase();
+        if (!tooltip.title.empty()) {
+          icon_id = tooltip.title.lowercase();
           setCustomIcon(icon_id);
         }
       } else {
@@ -257,7 +258,7 @@ void Item::setProperty(const std::string& name, Glib::VariantBase& value) {
     } else if (name == "Title") {
       title = get_variant<std::string>(value);
       if (tooltip.text.empty()) {
-        setTooltipMarkup(title);
+        setTooltipMarkup(Glib::Markup::escape_text(title));
       }
     } else if (name == "Status") {
       setStatus(get_variant<Glib::ustring>(value));

@@ -611,9 +611,9 @@ void Task::update() {
   }
 
   bool markup = config_["markup"].isBool() ? config_["markup"].asBool() : false;
-  std::string title = title_;
-  std::string name = name_;
-  std::string app_id = app_id_;
+  std::string title = toSingleLine(title_);
+  std::string name = toSingleLine(name_);
+  std::string app_id = toSingleLine(app_id_);
   if (markup) {
     title = Glib::Markup::escape_text(title);
     name = Glib::Markup::escape_text(name);

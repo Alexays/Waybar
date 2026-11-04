@@ -13,6 +13,7 @@
 #include "util/command.hpp"
 #include "util/icon_loader.hpp"
 #include "util/regex_input.hpp"
+#include "util/string.hpp"
 #include "util/tooltip.hpp"
 
 namespace {
@@ -587,10 +588,11 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
       windowSeparator->show();
     }
 
+    const std::string title = toSingleLine(window_repr->window_title);
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
-    std::string tooltip = window_repr->window_title;
-    util::limit_tooltip_markup(tooltip);
-    window_box->set_tooltip_markup(tooltip);
+    std::string tooltip = title;
+    util::limit_tooltip_text(tooltip);
+    window_box->set_tooltip_text(tooltip);
 
     auto button = Gtk::manage(new Gtk::Button());
     button->set_relief(Gtk::RELIEF_NONE);
@@ -605,7 +607,7 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
     }
 
     auto text_before = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatBefore()),
-                                   fmt::arg("title", window_repr->window_title));
+                                   fmt::arg("title", title));
     if (!text_before.empty()) {
       auto window_label_before = Gtk::make_managed<Gtk::Label>(text_before);
       window_box->pack_start(*window_label_before, true, true);
@@ -620,7 +622,7 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
     }
 
     auto text_after = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatAfter()),
-                                  fmt::arg("title", window_repr->window_title));
+                                  fmt::arg("title", title));
     if (!text_after.empty()) {
       auto window_label_after = Gtk::make_managed<Gtk::Label>(text_after);
       window_box->pack_start(*window_label_after, true, true);

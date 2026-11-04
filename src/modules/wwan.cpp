@@ -7,6 +7,7 @@
 
 #include "ModemManager.h"
 #include "libmm-glib.h"
+#include "util/string.hpp"
 
 // In the 80000 version of fmt library authors decided to optimize imports
 // and moved declarations required for fmt::dynamic_format_arg_store in new
@@ -277,9 +278,11 @@ auto waybar::modules::Wwan::update() -> void {
   gchar* imei_raw = mm_modem_dup_equipment_identifier(current_modem);
   std::string imei = imei_raw ? imei_raw : "";
   g_free(imei_raw);
-  store.push_back(fmt::arg("imei", imei));
+  store.push_back(fmt::arg("imei", Glib::Markup::escape_text(imei).raw()));
 
-  store.push_back(fmt::arg("operator_name", getOperatorNameString(current_modem)));
+  store.push_back(fmt::arg(
+      "operator_name",
+      Glib::Markup::escape_text(toSingleLine(getOperatorNameString(current_modem))).raw()));
 
   auto text = fmt::vformat(format, store);
 
