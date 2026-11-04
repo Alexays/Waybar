@@ -195,7 +195,10 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
 
   DIR* dev_dir = opendir(devices_path_.c_str());
   if (dev_dir == nullptr) {
-    throw errno_error(errno, "Failed to open " + devices_path_);
+    // ~KeyboardState() does not run when the constructor throws.
+    errno_error error(errno, "Failed to open " + devices_path_);
+    releaseLibinput();
+    throw error;
   }
   dirent* ep;
   while ((ep = readdir(dev_dir))) {
@@ -206,7 +209,9 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
   closedir(dev_dir);
 
   if (libinput_devices_.empty()) {
-    throw errno_error(errno, "Failed to find keyboard device");
+    errno_error error(errno, "Failed to find keyboard device");
+    releaseLibinput();
+    throw error;
   }
 
   libinput_thread_ = [this] {
@@ -320,7 +325,9 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
   };
 }
 
-waybar::modules::KeyboardState::~KeyboardState() {
+waybar::modules::KeyboardState::~KeyboardState() { releaseLibinput(); }
+
+auto waybar::modules::KeyboardState::releaseLibinput() -> void {
   // Stop background threads before touching libinput, which is not thread-safe.
   // SleeperThread::stop() cancels the blocking poll()/read() and marks do_run false.
   libinput_thread_.stop();

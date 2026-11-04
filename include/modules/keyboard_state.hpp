@@ -26,6 +26,7 @@ class KeyboardState : public AModule {
 
  private:
   auto tryAddDevice(const std::string&) -> void;
+  auto releaseLibinput() -> void;
 
   Gtk::Box box_;
   Gtk::Label numlock_label_;
