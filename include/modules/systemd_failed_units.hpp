@@ -1,6 +1,7 @@
 #pragma once
 
 #include <giomm/dbusproxy.h>
+#include <sigc++/trackable.h>
 
 #include <string>
 #include <vector>
@@ -9,7 +10,8 @@
 
 namespace waybar::modules {
 
-class SystemdFailedUnits : public ALabel {
+// sigc::trackable revokes the mem_fun slots (proxy signals, debounce timeout) on destruction
+class SystemdFailedUnits : public ALabel, public sigc::trackable {
  public:
   SystemdFailedUnits(const std::string&, const Json::Value&);
   virtual ~SystemdFailedUnits() = default;

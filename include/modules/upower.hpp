@@ -3,6 +3,7 @@
 #include <giomm/dbusconnection.h>
 #include <gtkmm/icontheme.h>
 #include <libupower-glib/upower.h>
+#include <sigc++/trackable.h>
 
 #include <unordered_map>
 
@@ -10,7 +11,8 @@
 
 namespace waybar::modules {
 
-class UPower final : public AIconLabel {
+// sigc::trackable revokes the pending Connection::get() slot on destruction
+class UPower final : public AIconLabel, public sigc::trackable {
  public:
   UPower(const std::string&, const Json::Value&);
   virtual ~UPower();
