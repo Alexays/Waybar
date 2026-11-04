@@ -6,6 +6,7 @@
 #include <pulse/introspect.h>
 #include <pulse/operation.h>
 #include <pulse/subscribe.h>
+#include <pulse/timeval.h>
 #include <pulse/volume.h>
 #include <spdlog/spdlog.h>
 
@@ -15,6 +16,10 @@
 #include <utility>
 
 namespace waybar::util {
+
+// Retrying at once turns a persistent failure (a server dropping every connection, a reply
+// libpulse rejects) into a connect/fail busy loop on the PulseAudio thread.
+static constexpr pa_usec_t kReconnectDelay = 1 * PA_USEC_PER_SEC;
 
 AudioBackend::AudioBackend(std::function<void()> on_updated_cb, private_constructor_tag tag)
     : mainloop_(nullptr),
@@ -60,6 +65,10 @@ AudioBackend::~AudioBackend() {
     // Lock the mainloop so we can safely disconnect the context.
     // This must be done before stopping the thread.
     pa_threaded_mainloop_lock(mainloop_);
+    if (reconnect_timer_ != nullptr) {
+      mainloop_api_->time_free(reconnect_timer_);
+      reconnect_timer_ = nullptr;
+    }
     if (context_ != nullptr) {
       pa_context_disconnect(context_);
       pa_context_unref(context_);
@@ -105,6 +114,35 @@ bool AudioBackend::reconnectContext() noexcept {
   }
 }
 
+// Called with the mainloop lock held.
+void AudioBackend::scheduleReconnect() {
+  if (reconnect_timer_ != nullptr) return;
+  struct timeval when;
+  pa_timeval_add(pa_gettimeofday(&when), kReconnectDelay);
+  reconnect_timer_ = mainloop_api_->time_new(mainloop_api_, &when, reconnectTimerCb, this);
+  if (reconnect_timer_ == nullptr) {
+    spdlog::error("PulseAudio reconnect could not be scheduled");
+  }
+}
+
+void AudioBackend::reconnectTimerCb(pa_mainloop_api* api, pa_time_event* e,
+                                    const struct timeval* /*tv*/, void* data) {
+  auto* backend = static_cast<AudioBackend*>(data);
+  api->time_free(e);
+  backend->reconnect_timer_ = nullptr;
+  backend->reconnecting_ = true;
+  // Never throw across the libpulse C callback boundary.
+  if (!backend->reconnectContext()) {
+    spdlog::warn("PulseAudio context reconnect failed; retrying");
+    if (backend->context_ != nullptr) {
+      pa_context_unref(backend->context_);
+      backend->context_ = nullptr;
+    }
+    backend->scheduleReconnect();
+  }
+  backend->reconnecting_ = false;
+}
+
 void AudioBackend::contextStateCb(pa_context* c, void* data) {
   auto* backend = static_cast<AudioBackend*>(data);
   switch (pa_context_get_state(c)) {
@@ -143,22 +181,14 @@ void AudioBackend::contextStateCb(pa_context* c, void* data) {
         if (backend->reconnecting_) {
           break;
         }
+        spdlog::debug("PulseAudio context failed: {}; reconnecting in {} s",
+                      pa_strerror(pa_context_errno(c)), kReconnectDelay / PA_USEC_PER_SEC);
         if (backend->context_ != nullptr) {
           pa_context_disconnect(backend->context_);
           pa_context_unref(backend->context_);
           backend->context_ = nullptr;
         }
-        backend->reconnecting_ = true;
-        // Never throw across the libpulse C callback boundary: a failed reconnect
-        // is logged and left for a later PA event to retry instead of aborting.
-        if (!backend->reconnectContext()) {
-          spdlog::warn("PulseAudio context reconnect failed; will retry on next event");
-          if (backend->context_ != nullptr) {
-            pa_context_unref(backend->context_);
-            backend->context_ = nullptr;
-          }
-        }
-        backend->reconnecting_ = false;
+        backend->scheduleReconnect();
       }
       break;
     case PA_CONTEXT_CONNECTING:

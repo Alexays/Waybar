@@ -23,6 +23,7 @@ class AudioBackend {
  private:
   static void subscribeCb(pa_context*, pa_subscription_event_type_t, uint32_t, void*);
   static void contextStateCb(pa_context*, void*);
+  static void reconnectTimerCb(pa_mainloop_api*, pa_time_event*, const struct timeval*, void*);
   static void sinkInfoCb(pa_context*, const pa_sink_info*, int, void*);
   static void sourceInfoCb(pa_context*, const pa_source_info* i, int, void* data);
   static void serverInfoCb(pa_context*, const pa_server_info*, void*);
@@ -33,6 +34,7 @@ class AudioBackend {
   // across the libpulse C callback boundary calls std::terminate, so this
   // swallows any failure and reports it via the return value instead.
   bool reconnectContext() noexcept;
+  void scheduleReconnect();
 
   pa_threaded_mainloop* mainloop_;
   pa_mainloop_api* mainloop_api_;
@@ -40,6 +42,8 @@ class AudioBackend {
   // Guards against the FAILED -> connect -> FAILED recursion / busy loop when a
   // reconnect attempt fails synchronously inside pa_context_connect().
   bool reconnecting_{false};
+  // Pending reconnect, or nullptr. Only touched with the mainloop lock held.
+  pa_time_event* reconnect_timer_{nullptr};
   pa_cvolume pa_volume_;
   pa_cvolume pa_source_volume_;
 
