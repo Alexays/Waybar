@@ -65,9 +65,10 @@ auto Scratchpad::onCmd(const struct Ipc::ipc_response& res) -> void {
     if (tooltip_enabled_) {
       tooltip_text_.clear();
       for (const auto& window : tree["nodes"][0]["nodes"][0]["floating_nodes"]) {
-        tooltip_text_.append(fmt::format(fmt::runtime(tooltip_format_ + '\n'),
-                                         fmt::arg("app", window["app_id"].asString()),
-                                         fmt::arg("title", window["name"].asString())));
+        tooltip_text_.append(fmt::format(
+            fmt::runtime(tooltip_format_ + '\n'),
+            fmt::arg("app", Glib::Markup::escape_text(window["app_id"].asString()).raw()),
+            fmt::arg("title", Glib::Markup::escape_text(window["name"].asString()).raw())));
       }
       if (!tooltip_text_.empty()) {
         tooltip_text_.pop_back();
