@@ -25,6 +25,7 @@ test_src = files(
 )
 
 test_src += files('regex_collection.cpp', '../../src/util/regex_collection.cpp')
+test_src += files('rewrite_string.cpp', '../../src/util/rewrite_string.cpp')
 
 if libnl.found() and libnlgen.found()
   test_dep += [libnl, libnlgen]

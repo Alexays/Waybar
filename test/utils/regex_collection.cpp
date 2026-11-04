@@ -61,3 +61,20 @@ TEST_CASE("RegexCollection keeps its answers past the cache bound", "[regex_coll
   REQUIRE(collection.get(youtube) == "yt");
   REQUIRE(collection.get(youtube) == "yt");
 }
+
+TEST_CASE("RegexCollection skips a rule that backtracks too much", "[regex_collection]") {
+  RegexCollection collection(rule("title<(.*) - (.*) - (.*) - Visual Studio Code>", "code $1"),
+                             "default");
+
+  std::string title = "title<a.cpp - src - work - Visual Studio Code>";
+  REQUIRE(collection.get(title) == "code a.cpp");
+
+  std::string long_title = "title<";
+  for (int i = 0; i < 1000; ++i) {
+    long_title += "a - ";
+  }
+  long_title += ">";
+  bool matched_any = false;
+  REQUIRE(collection.get(long_title, matched_any) == "default");
+  REQUIRE_FALSE(matched_any);
+}

@@ -12,6 +12,7 @@
 #include "modules/hyprland/workspaces.hpp"
 #include "util/command.hpp"
 #include "util/icon_loader.hpp"
+#include "util/regex_input.hpp"
 
 namespace {
 constexpr std::string_view kCssClassPrefix = "ws-";
@@ -653,9 +654,17 @@ bool Workspace::handleClick(const GdkEventButton* event_button, WindowAddress co
 
 bool Workspace::shouldSkipWindow(const WindowRepr& window_repr) const {
   auto ignore_list = m_workspaceManager.getIgnoredWindows();
-  auto it = std::ranges::find_if(ignore_list, [&window_repr](const auto& ignoreItem) {
-    return std::regex_match(window_repr.window_class, ignoreItem) ||
-           std::regex_match(window_repr.window_title, ignoreItem);
+  auto matches = [](const std::string& text, const std::regex& rule) {
+    try {
+      util::RegexInput input{text};
+      return std::regex_match(input.begin(), input.end(), rule);
+    } catch (const std::regex_error&) {
+      return false;
+    }
+  };
+  auto it = std::ranges::find_if(ignore_list, [&window_repr, &matches](const auto& ignoreItem) {
+    return matches(window_repr.window_class, ignoreItem) ||
+           matches(window_repr.window_title, ignoreItem);
   });
   return it != ignore_list.end();
 }

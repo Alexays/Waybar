@@ -8,13 +8,15 @@
 #include <iterator>
 #include <utility>
 
+#include "util/regex_input.hpp"
+
 namespace waybar::util {
 
 int default_priority_function(std::string& key) { return 0; }
 
 // match.format(repr), with the braces doubled in what each $ reference expands to. Each reference
 // is cut out as std::match_results::format parses it and expanded by format() itself.
-static std::string formatEscaped(const std::smatch& match, const std::string& repr) {
+static std::string formatEscaped(const RegexInput::Match& match, const std::string& repr) {
   std::string res;
   std::string expanded;
   size_t literal = 0;
@@ -72,10 +74,17 @@ RegexCollection::RegexCollection(const Json::Value& map, std::string default_rep
 
 std::string RegexCollection::find_match(std::string& value, bool& matched_any) {
   for (auto& rule : rules) {
-    std::smatch match;
-    if (std::regex_search(value, match, rule.rule)) {
-      matched_any = true;
-      return escape_captures ? formatEscaped(match, rule.repr) : match.format(rule.repr);
+    try {
+      RegexInput input{value};
+      RegexInput::Match match;
+      if (std::regex_search(input.begin(), input.end(), match, rule.rule)) {
+        std::string repr =
+            escape_captures ? formatEscaped(match, rule.repr) : match.format(rule.repr);
+        matched_any = true;
+        return repr;
+      }
+    } catch (const std::regex_error&) {
+      spdlog::warn("Rule for {} skipped: matching takes too long", rule.repr);
     }
   }
 
