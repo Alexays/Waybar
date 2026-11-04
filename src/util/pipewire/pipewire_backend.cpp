@@ -72,7 +72,15 @@ PipewireBackend::PipewireBackend(PrivateConstructorTag tag)
   spa_zero(registryListener_);
   pw_registry_add_listener(registry_, &registryListener_, &REGISTRY_EVENTS, this);
   if (pw_thread_loop_start(mainloop_) < 0) {
+    pw_proxy_destroy((struct pw_proxy*)registry_);
+    registry_ = nullptr;
+    pw_core_disconnect(core_);
+    core_ = nullptr;
+    pw_context_destroy(context_);
+    context_ = nullptr;
     pw_thread_loop_unlock(mainloop_);
+    pw_thread_loop_destroy(mainloop_);
+    mainloop_ = nullptr;
     throw std::runtime_error("pw_thread_loop_start() failed.");
   }
   pw_thread_loop_unlock(mainloop_);

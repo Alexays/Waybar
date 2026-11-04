@@ -34,9 +34,23 @@ AudioBackend::AudioBackend(std::function<void()> on_updated_cb, private_construc
   }
   pa_threaded_mainloop_lock(mainloop_);
   mainloop_api_ = pa_threaded_mainloop_get_api(mainloop_);
-  connectContext();
-  if (pa_threaded_mainloop_start(mainloop_) < 0) {
-    throw std::runtime_error("pa_mainloop_run() failed.");
+  try {
+    connectContext();
+    if (pa_threaded_mainloop_start(mainloop_) < 0) {
+      throw std::runtime_error("pa_mainloop_run() failed.");
+    }
+  } catch (...) {
+    // The destructor does not run for a throwing constructor; contextStateCb() may have
+    // already dropped context_ on a synchronous failure.
+    if (context_ != nullptr) {
+      pa_context_disconnect(context_);
+      pa_context_unref(context_);
+      context_ = nullptr;
+    }
+    pa_threaded_mainloop_unlock(mainloop_);
+    pa_threaded_mainloop_free(mainloop_);
+    mainloop_ = nullptr;
+    throw;
   }
   pa_threaded_mainloop_unlock(mainloop_);
 }
