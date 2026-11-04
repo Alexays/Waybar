@@ -28,7 +28,10 @@ Watcher::~Watcher() {
   if (watcher_ != nullptr) {
     g_signal_handlers_disconnect_by_data(watcher_, this);
     auto* iface = G_DBUS_INTERFACE_SKELETON(watcher_);
-    g_dbus_interface_skeleton_unexport(iface);
+    // Exported only once busAcquired() has run; unexporting before that is a GLib critical.
+    if (g_dbus_interface_skeleton_get_connection(iface) != nullptr) {
+      g_dbus_interface_skeleton_unexport(iface);
+    }
     g_clear_object(&watcher_);
   }
 }

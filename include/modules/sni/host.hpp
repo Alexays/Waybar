@@ -46,7 +46,8 @@ class Host {
   const std::string bus_name_;
   const std::string object_path_;
   std::size_t bus_name_id_;
-  std::size_t watcher_id_;
+  // Only set by busAcquired(), which never runs without a session bus.
+  std::size_t watcher_id_ = 0;
   GCancellable* cancellable_ = nullptr;
   SnWatcher* watcher_ = nullptr;
   sigc::connection retry_connection_;
