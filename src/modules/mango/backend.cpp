@@ -331,7 +331,6 @@ void IPC::updateFocusingClient(const Json::Value& client) {
       focusing_client_id_ = 0;
     } else {
       focusing_client_id_ = client["id"].asUInt64();
-      clients_[focusing_client_id_] = client;
     }
   }
 }

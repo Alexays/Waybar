@@ -75,6 +75,7 @@ class Workspaces : public AModule, public EventHandler {
 
  private:
   void onEvent(const std::string& e) override;
+  void onReconnect() override;
   void updateWindowCount();
   void sortSpecialCentered();
   void sortWorkspaces();

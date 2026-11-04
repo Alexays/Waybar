@@ -30,6 +30,15 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
 
   setCurrentMonitorId();
   init();
+
+  // Not in init(), which also runs on the IPC thread where GTK must not be touched.
+  if (barScroll()) {
+    auto& window = const_cast<Bar&>(m_bar).window;
+    window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+    m_scrollEventConnection_ =
+        window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
+  }
+
   registerIpc();
 }
 
@@ -54,17 +63,6 @@ void Workspaces::init() {
   }
 
   initializeWorkspaces();
-
-  if (m_scrollEventConnection_.connected()) {
-    m_scrollEventConnection_.disconnect();
-  }
-
-  if (barScroll()) {
-    auto& window = const_cast<Bar&>(m_bar).window;
-    window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    m_scrollEventConnection_ =
-        window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
-  }
 
   dp.emit();
 }
@@ -383,6 +381,12 @@ void Workspaces::onEvent(const std::string& ev) {
   dp.emit();
 }
 
+void Workspaces::onReconnect() {
+  std::lock_guard<std::mutex> lock(m_mutex);
+  spdlog::info("Hyprland IPC reconnected, reinitializing hyprland/workspaces module...");
+  init();
+}
+
 void Workspaces::onWorkspaceActivated(std::string const& payload) {
   const auto [workspaceAddress, _] = splitDoublePayload(payload);
   if (workspaceAddress.empty()) {
@@ -475,7 +479,6 @@ void Workspaces::onWorkspaceRenamed(std::string const& payload) {
   if (auto workspace = findWorkspace(workspaceAddress); workspace != m_workspaces.end()) {
     (*workspace)->setName(workspaceDisplayName(newName, (*workspace)->kind()));
   }
-  sortWorkspaces();
 }
 
 void Workspaces::onWorkspaceIdChanged(std::string const& payload) {
@@ -497,7 +500,6 @@ void Workspaces::onWorkspaceIdChanged(std::string const& payload) {
     }
   }
 
-  sortWorkspaces();
   updateWindowCount();
 }
 
@@ -543,6 +545,24 @@ void Workspaces::onWindowClosed(std::string const& addr) {
   spdlog::trace("Window closed: {}", addr);
   updateWindowCount();
   m_orphanWindowMap.erase(addr);
+
+  // A window closed before the next update must not be inserted from the queues.
+  std::erase_if(m_windowsToCreate,
+                [&addr](auto const& window) { return window.getAddress() == addr; });
+  const std::string jsonWindowAddress = fmt::format("0x{}", addr);
+  for (auto& [_, clientsData] : m_workspacesToCreate) {
+    if (!clientsData.isArray()) {
+      continue;
+    }
+    for (Json::ArrayIndex i = 0; i < clientsData.size(); ++i) {
+      if (clientsData[i]["address"].asString() == jsonWindowAddress) {
+        Json::Value removed;
+        clientsData.removeIndex(i, &removed);
+        break;
+      }
+    }
+  }
+
   for (auto& workspace : m_workspaces) {
     if (workspace->closeWindow(addr)) {
       break;
@@ -669,6 +689,8 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
     for (const auto& name : tooltipFormats.getMemberNames()) {
       m_tooltipMap.emplace(name, tooltipFormats[name].asString());
     }
+    // Without a default, selectString() returns the workspace name, used as a format string.
+    m_tooltipMap.emplace("default", "{name}");
     m_tooltipMap.emplace("", "");
   }
 
@@ -1063,10 +1085,10 @@ void Workspaces::setUrgentWorkspace(std::string const& windowaddress) {
 auto Workspaces::update() -> void {
   // Debounce rapid events (e.g. out-of-order create/destroy workspace events from
   // Hyprland) to prevent workspace button flicker. This runs on the GTK main thread
-  // (invoked via the dp dispatcher), so arming/disconnecting the GLib timer here is
-  // thread-safe. Each event re-arms the timer, coalescing bursts into one refresh.
+  // (invoked via the dp dispatcher), so arming the GLib timer here is thread-safe.
+  // An armed timer is never pushed back, so a steady event stream cannot starve the refresh.
   if (m_debounceTimer.connected()) {
-    m_debounceTimer.disconnect();
+    return;
   }
   m_debounceTimer = Glib::signal_timeout().connect(
       [this]() {
