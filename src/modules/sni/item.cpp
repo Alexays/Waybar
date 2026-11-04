@@ -41,6 +41,10 @@ namespace waybar::modules::SNI {
 
 static const Glib::ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
 static const unsigned UPDATE_DEBOUNCE_TIME = 10;
+// Icons are drawn icon-size high times the output scale; pixmaps keep no more than scale 4 needs.
+static const int MAX_PIXMAP_SCALE = 4;
+// Widest icon an item may show, as a multiple of its height
+static const int MAX_ICON_ASPECT_RATIO = 4;
 
 Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar,
            const std::function<void(Item&)>& on_ready,
@@ -471,8 +475,19 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
   }
   g_variant_iter_free(it);
   if (array != nullptr) {
-    return Gdk::Pixbuf::create_from_data(array, Gdk::Colorspace::COLORSPACE_RGB, true, 8, lwidth,
-                                         lheight, 4 * lwidth, &pixbuf_data_deleter);
+    auto pixbuf = Gdk::Pixbuf::create_from_data(array, Gdk::Colorspace::COLORSPACE_RGB, true, 8,
+                                                lwidth, lheight, 4 * lwidth, &pixbuf_data_deleter);
+    // The item picks the size (up to 64 MiB) and the pixmap lives as long as the item does
+    const int max_height = std::max(1, icon_size * MAX_PIXMAP_SCALE);
+    const int max_width = max_height * MAX_ICON_ASPECT_RATIO;
+    if (lheight > max_height || lwidth > max_width) {
+      const double factor = std::min(static_cast<double>(max_height) / lheight,
+                                     static_cast<double>(max_width) / lwidth);
+      pixbuf = pixbuf->scale_simple(std::max(1, static_cast<int>(lwidth * factor)),
+                                    std::max(1, static_cast<int>(lheight * factor)),
+                                    Gdk::InterpType::INTERP_BILINEAR);
+    }
+    return pixbuf;
   }
   return Glib::RefPtr<Gdk::Pixbuf>{};
 }

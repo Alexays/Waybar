@@ -86,7 +86,7 @@ class Item : public sigc::trackable {
                 const Glib::VariantContainerBase& arguments);
 
   void updateImage();
-  static Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
+  Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
   Glib::RefPtr<Gdk::Pixbuf> getIconPixbuf();
   Glib::RefPtr<Gdk::Pixbuf> getAttentionIconPixbuf();
   Glib::RefPtr<Gdk::Pixbuf> getOverlayIconPixbuf();
