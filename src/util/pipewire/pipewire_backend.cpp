@@ -17,7 +17,10 @@ static const struct pw_node_events NODE_EVENTS = {
 };
 
 static void proxyDestroy(void* data) {
-  static_cast<PWPrivacyNodeInfo*>(data)->handleProxyEventDestroy();
+  auto* pNodeInfo = static_cast<PWPrivacyNodeInfo*>(data);
+  pNodeInfo->handleProxyEventDestroy();
+  // Lives in the proxy's user data, which libpipewire frees after this event
+  pNodeInfo->~PWPrivacyNodeInfo();
 }
 
 static const struct pw_proxy_events PROXY_EVENTS = {
@@ -91,6 +94,11 @@ PipewireBackend::~PipewireBackend() {
     pw_thread_loop_lock(mainloop_);
   }
 
+  for (auto& node : privacy_nodes) {
+    pw_proxy_destroy(node.second->proxy);
+  }
+  privacy_nodes.clear();
+
   if (registry_ != nullptr) {
     pw_proxy_destroy((struct pw_proxy*)registry_);
   }
@@ -143,6 +151,7 @@ void PipewireBackend::handleRegistryEventGlobal(uint32_t id, uint32_t permission
   auto* pNodeInfo = (PWPrivacyNodeInfo*)pw_proxy_get_user_data(proxy);
   new (pNodeInfo) PWPrivacyNodeInfo{};
   pNodeInfo->id = id;
+  pNodeInfo->proxy = proxy;
   pNodeInfo->data = this;
   pNodeInfo->type = mediaType;
   pNodeInfo->media_class = mediaClass;
@@ -158,15 +167,23 @@ void PipewireBackend::handleRegistryEventGlobal(uint32_t id, uint32_t permission
 }
 
 void PipewireBackend::handleRegistryEventGlobalRemove(uint32_t id) {
+  pw_proxy* proxy = nullptr;
+
   mutex_.lock();
   auto iter = privacy_nodes.find(id);
   if (iter != privacy_nodes.end()) {
-    privacy_nodes[id]->~PWPrivacyNodeInfo();
-    privacy_nodes.erase(id);
+    proxy = iter->second->proxy;
+    privacy_nodes.erase(iter);
   }
   mutex_.unlock();
 
   privacy_nodes_changed_signal_event.emit();
+
+  // libpipewire leaves destroying a removed global's proxy to us. Its destroy event frees the node
+  // info, so only do it once the listeners have dropped the node.
+  if (proxy != nullptr) {
+    pw_proxy_destroy(proxy);
+  }
 }
 
 }  // namespace waybar::util::PipewireBackend
