@@ -6,6 +6,7 @@
 #endif
 #include <gio/gio.h>
 
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -44,6 +45,22 @@ class Bluetooth : public ALabel {
     std::optional<unsigned char> battery_percentage_peripheral;
   };
 
+  struct GattBatteryLevels {
+    std::optional<unsigned char> central;
+    std::optional<unsigned char> peripheral;
+    gint64 last_scan = 0;
+  };
+
+  struct GattBatteryScan {
+    std::string device_path;
+    unsigned characteristics_left;
+    bool central_requested = false;
+    bool peripheral_requested = false;
+    auto done() const -> bool {
+      return characteristics_left == 0 || (central_requested && peripheral_requested);
+    }
+  };
+
  public:
   Bluetooth(const std::string&, const Json::Value&);
   virtual ~Bluetooth();
@@ -60,12 +77,10 @@ class Bluetooth : public ALabel {
                                                 gpointer) -> void;
 
   auto getDeviceBatteryPercentage(GDBusObject*) -> std::optional<unsigned char>;
-  auto getDeviceGattBatteryLevels(GDBusObject*, std::optional<unsigned char>&,
-                                  std::optional<unsigned char>&) -> void;
-  static auto processBatteryServiceCharacteristics(GList*, const std::string&, const std::string&,
-                                                   const std::string&,
-                                                   std::optional<unsigned char>&,
-                                                   std::optional<unsigned char>&) -> void;
+  auto getDeviceGattBatteryLevels(GDBusObject*) -> const GattBatteryLevels&;
+  auto processBatteryServiceCharacteristics(GList*, const std::string&, const std::string&,
+                                            const std::string&, GattBatteryScan&) -> void;
+  static auto onGattBatteryLevelRead(GObject*, GAsyncResult*, gpointer) -> void;
   auto getDeviceProperties(GDBusObject*, DeviceInfo&) -> bool;
   auto getControllerProperties(GDBusObject*, ControllerInfo&) -> bool;
 
@@ -77,6 +92,9 @@ class Bluetooth : public ALabel {
   util::Rfkill rfkill_;
 #endif
   const std::unique_ptr<GDBusObjectManager, void (*)(GDBusObjectManager*)> manager_;
+  // Cancelled by the destructor so pending GATT reads never call back into a freed module
+  GCancellable* cancellable_;
+  std::map<std::string, GattBatteryLevels> gatt_battery_levels_;
 
   std::string state_;
   std::optional<ControllerInfo> cur_controller_;
