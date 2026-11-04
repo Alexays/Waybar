@@ -44,6 +44,8 @@ class Custom : public AIconLabel {
   std::string image_path_;
   std::string image_name_;
   unsigned app_icon_size_{24};
+  // Widget carrying the #custom-<name> name, MODULE_CLASS and script classes.
+  Gtk::Widget* module_widget_{&box_};
   const bool tooltip_format_enabled_;
   std::vector<std::string> class_;
   int percentage_;
