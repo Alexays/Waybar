@@ -85,7 +85,8 @@ std::string waybar::modules::MPD::getFilename() const {
 }
 
 void waybar::modules::MPD::setLabel() {
-  if (connection_ == nullptr) {
+  // status_ is null when a `status` command failed without closing the connection (an ACK).
+  if (connection_ == nullptr || status_ == nullptr) {
     label_.get_style_context()->add_class("disconnected");
     label_.get_style_context()->remove_class("stopped");
     label_.get_style_context()->remove_class("playing");
@@ -369,7 +370,11 @@ void waybar::modules::MPD::checkErrors(mpd_connection* conn) {
       if (conn) {
         auto error_message = mpd_connection_get_error_message(conn);
         std::string error(error_message);
-        mpd_connection_clear_error(conn);
+        // A fatal error, such as a malformed reply, cannot be cleared: later commands all fail.
+        if (!mpd_connection_clear_error(conn)) {
+          connection_.reset();
+          state_ = MPD_STATE_UNKNOWN;
+        }
         throw std::runtime_error(error);
       }
       throw std::runtime_error("Invalid connection");
