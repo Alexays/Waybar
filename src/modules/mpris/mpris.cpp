@@ -5,6 +5,8 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <thread>
+#include <utility>
 
 #include "util/scope_guard.hpp"
 #include "util/utf8_string.hpp"
@@ -35,10 +37,7 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
       hide_on_paused_(false),
       // this character is used in Gnome so it's fine to use it here
       ellipsis_("\u2026"),
-      player_("playerctld"),
-      manager(),
-      player(),
-      last_update_(std::chrono::system_clock::now() - interval_) {
+      player_("playerctld") {
   if (config_["format-playing"].isString()) {
     format_playing_ = config_["format-playing"].asString();
   }
@@ -126,6 +125,137 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
     }
   }
 
+  worker_ = std::make_shared<Worker>(dp, player_, ignored_players_, interval_);
+
+  // allow setting an interval count that triggers periodic refreshes
+  if (interval_.count() > 0) {
+    thread_ = [this] {
+      worker_->refresh();
+      thread_.sleep_for(interval_);
+    };
+  }
+
+  worker_->start();
+}
+
+Mpris::~Mpris() { worker_->stop(); }
+
+Mpris::Worker::Worker(Glib::Dispatcher& dp, std::string player_name,
+                      std::vector<std::string> ignored_players, std::chrono::milliseconds interval)
+    : player_(std::move(player_name)),
+      ignored_players_(std::move(ignored_players)),
+      interval_(interval),
+      context_(g_main_context_new()),
+      last_update_(std::chrono::system_clock::now() - interval_),
+      dp_(&dp) {}
+
+Mpris::Worker::~Worker() { g_main_context_unref(context_); }
+
+void Mpris::Worker::start() {
+  std::thread([self = shared_from_this()] { self->run(); }).detach();
+}
+
+// After this the thread no longer touches the dispatcher, which dies with the module.
+void Mpris::Worker::stop() {
+  {
+    std::lock_guard<std::mutex> lock(dp_mutex_);
+    dp_ = nullptr;
+  }
+  g_main_context_wakeup(context_);
+}
+
+void Mpris::Worker::refresh() {
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    const auto now = std::chrono::system_clock::now();
+    if (now - last_update_ < interval_) return;
+    last_update_ = now;
+    refresh_ = true;
+  }
+  g_main_context_wakeup(context_);
+}
+
+void Mpris::Worker::perform(Action action) {
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    actions_.push_back(action);
+  }
+  g_main_context_wakeup(context_);
+}
+
+auto Mpris::Worker::getInfo() -> std::optional<PlayerInfo> {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return info_;
+}
+
+void Mpris::Worker::run() {
+  // The playerctl objects deliver their signals to the context that is thread-default when they
+  // are created.
+  g_main_context_push_thread_default(context_);
+  try {
+    connect();
+    while (handleRequests()) {
+      g_main_context_iteration(context_, TRUE);
+    }
+  } catch (const std::exception& e) {
+    spdlog::error("mpris: {}", e.what());
+  }
+  disconnect();
+  g_main_context_pop_thread_default(context_);
+}
+
+// Runs between two iterations of context_: a burst of player events costs one getPlayerInfo().
+bool Mpris::Worker::handleRequests() {
+  {
+    std::lock_guard<std::mutex> lock(dp_mutex_);
+    if (dp_ == nullptr) return false;
+  }
+  bool refresh;
+  std::vector<Action> actions;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    refresh = std::exchange(refresh_, false);
+    actions.swap(actions_);
+  }
+
+  for (auto action : actions) {
+    waybar::util::ScopeGuard fallback_deleter([this]() { dropFallbackPlayer(); });
+    try {
+      auto info = getPlayerInfo();
+      if (!info) continue;
+      GError* error = nullptr;
+      action(last_active_player_, &error);
+      if (error) {
+        spdlog::error("mpris[{}]: error running builtin on-click action: {}", info->name,
+                      error->message);
+        g_error_free(error);
+      }
+    } catch (const std::exception& e) {
+      spdlog::error("mpris: {}", e.what());
+    }
+  }
+
+  if (refresh) {
+    std::optional<PlayerInfo> info;
+    {
+      waybar::util::ScopeGuard fallback_deleter([this]() { dropFallbackPlayer(); });
+      try {
+        info = getPlayerInfo();
+      } catch (const std::exception& e) {
+        spdlog::error("mpris: {}", e.what());
+      }
+    }
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      info_ = std::move(info);
+    }
+    std::lock_guard<std::mutex> lock(dp_mutex_);
+    if (dp_ != nullptr) dp_->emit();
+  }
+  return true;
+}
+
+void Mpris::Worker::connect() {
   GError* error = nullptr;
   waybar::util::ScopeGuard error_deleter([&error]() {
     if (error) {
@@ -151,8 +281,6 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
       g_list_free_full(players, reinterpret_cast<GDestroyNotify>(playerctl_player_name_free));
     });
     if (error) {
-      // ~Mpris() does not run when the constructor throws
-      g_clear_object(&manager);
       throw std::runtime_error(fmt::format("unable to list players: {}", error->message));
     }
 
@@ -166,13 +294,10 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   }
 
   if (error) {
-    g_clear_object(&manager);
     throw std::runtime_error(
         fmt::format("unable to connect to player {}: {}", player_, error->message));
   }
 
-  // Only hand `this` to GLib once nothing can throw: ~Mpris() disconnects it, a failed
-  // constructor would not.
   g_object_connect(manager, "signal::name-appeared", G_CALLBACK(onPlayerNameAppeared), this, NULL);
   g_object_connect(manager, "signal::name-vanished", G_CALLBACK(onPlayerNameVanished), this, NULL);
 
@@ -181,27 +306,28 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
                      G_CALLBACK(onPlayerPause), this, "signal::stop", G_CALLBACK(onPlayerStop),
                      this, "signal::metadata", G_CALLBACK(onPlayerMetadata), this, NULL);
   }
-
-  // allow setting an interval count that triggers periodic refreshes
-  if (interval_.count() > 0) {
-    thread_ = [this] {
-      dp.emit();
-      thread_.sleep_for(interval_);
-    };
-  }
 }
 
-Mpris::~Mpris() {
+void Mpris::Worker::disconnect() {
+  if (vanished_release_ != nullptr) {
+    g_source_destroy(vanished_release_);
+    g_source_unref(vanished_release_);
+    vanished_release_ = nullptr;
+  }
   if (manager != nullptr) {
     g_signal_handlers_disconnect_by_data(manager, this);
   }
   if (player != nullptr) {
     g_signal_handlers_disconnect_by_data(player, this);
   }
-  vanished_release_.disconnect();
-  dropFallbackPlayer();
+  // Free the players only once no event is ready, as releaseVanishedPlayer() does; their proxies
+  // then drop their D-Bus subscriptions from this context, hence the second flush.
+  while (g_main_context_iteration(context_, FALSE)) {
+  }
   g_clear_object(&manager);
   g_clear_object(&player);
+  while (g_main_context_iteration(context_, FALSE)) {
+  }
 }
 
 auto Mpris::getIconFromJson(const Json::Value& icons, const std::string& key) -> std::string {
@@ -380,9 +506,9 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
   return dynamic.str();
 }
 
-auto Mpris::onPlayerNameAppeared(PlayerctlPlayerManager* manager, PlayerctlPlayerName* player_name,
-                                 gpointer data) -> void {
-  auto* mpris = static_cast<Mpris*>(data);
+auto Mpris::Worker::onPlayerNameAppeared(PlayerctlPlayerManager* manager,
+                                         PlayerctlPlayerName* player_name, gpointer data) -> void {
+  auto* mpris = static_cast<Worker*>(data);
   if (!mpris) return;
 
   spdlog::debug("mpris: name-appeared callback: {}", player_name->name);
@@ -394,7 +520,7 @@ auto Mpris::onPlayerNameAppeared(PlayerctlPlayerManager* manager, PlayerctlPlaye
   // The followed player's proxy follows its bus name to the new owner by itself, and freeing it
   // here while it reloads would let libplayerctl's handlers run on the freed player.
   if (mpris->player != nullptr) {
-    mpris->dp.emit();
+    mpris->refresh();
     return;
   }
   mpris->player = playerctl_player_new_from_name(player_name, nullptr);
@@ -402,46 +528,44 @@ auto Mpris::onPlayerNameAppeared(PlayerctlPlayerManager* manager, PlayerctlPlaye
                    G_CALLBACK(onPlayerPause), mpris, "signal::stop", G_CALLBACK(onPlayerStop),
                    mpris, "signal::metadata", G_CALLBACK(onPlayerMetadata), mpris, NULL);
 
-  mpris->dp.emit();
+  mpris->refresh();
 }
 
-auto Mpris::onPlayerNameVanished(PlayerctlPlayerManager* manager, PlayerctlPlayerName* player_name,
-                                 gpointer data) -> void {
-  auto* mpris = static_cast<Mpris*>(data);
+auto Mpris::Worker::onPlayerNameVanished(PlayerctlPlayerManager* manager,
+                                         PlayerctlPlayerName* player_name, gpointer data) -> void {
+  auto* mpris = static_cast<Worker*>(data);
   if (!mpris) return;
 
   spdlog::debug("mpris: name-vanished callback: {}", player_name->name);
 
   if (mpris->player_ == "playerctld") {
-    mpris->dp.emit();
-  } else if (mpris->player_ == player_name->name) {
-    // Don't touch GTK widgets directly from the playerctl callback: on resume
-    // from suspend this can run in a re-entrant / torn-down state and crash in
-    // Gtk::Widget::set_visible. Only update state + emit; update() (on the main
-    // thread) hides the module when there is no player. See #5124.
-    if (!mpris->vanished_release_.connected()) {
-      mpris->vanished_release_ =
-          Glib::signal_idle().connect(sigc::mem_fun(*mpris, &Mpris::releaseVanishedPlayer));
-    }
+    mpris->refresh();
+  } else if (mpris->player_ == player_name->name && mpris->vanished_release_ == nullptr) {
+    mpris->vanished_release_ = g_idle_source_new();
+    g_source_set_callback(mpris->vanished_release_, releaseVanishedPlayer, mpris, nullptr);
+    g_source_attach(mpris->vanished_release_, mpris->context_);
   }
 }
 
 // Runs once no D-Bus event is pending, so the player's proxy has no reload in flight and the
 // player can be freed; a name that came back in the meantime keeps its player.
-bool Mpris::releaseVanishedPlayer() {
-  if (player == nullptr) return false;
+gboolean Mpris::Worker::releaseVanishedPlayer(gpointer data) {
+  auto* mpris = static_cast<Worker*>(data);
+  g_source_unref(mpris->vanished_release_);
+  mpris->vanished_release_ = nullptr;
+  if (mpris->player == nullptr) return G_SOURCE_REMOVE;
 
   // Instances of a player share its name (vlc, vlc.instance2): instance and bus identify it.
   gchar* instance = nullptr;
   auto source = PLAYERCTL_SOURCE_NONE;
-  g_object_get(player, "player-instance", &instance, "source", &source, NULL);
+  g_object_get(mpris->player, "player-instance", &instance, "source", &source, NULL);
   GList* names = nullptr;  // owned by the manager
-  g_object_get(manager, "player-names", &names, NULL);
+  g_object_get(mpris->manager, "player-names", &names, NULL);
   PlayerctlPlayerName* replacement = nullptr;
   bool still_listed = false;
   for (auto* l = names; l != nullptr; l = l->next) {
     auto* pn = static_cast<PlayerctlPlayerName*>(l->data);
-    if (player_ != pn->name) continue;
+    if (mpris->player_ != pn->name) continue;
     if (g_strcmp0(pn->instance, instance) == 0 && pn->source == source) {
       still_listed = true;
       break;
@@ -449,69 +573,67 @@ bool Mpris::releaseVanishedPlayer() {
     if (replacement == nullptr) replacement = pn;
   }
   g_free(instance);
-  if (still_listed) return false;
+  if (still_listed) return G_SOURCE_REMOVE;
 
-  g_signal_handlers_disconnect_by_data(player, this);
-  g_clear_object(&player);
+  g_signal_handlers_disconnect_by_data(mpris->player, mpris);
+  g_clear_object(&mpris->player);
   if (replacement != nullptr) {
-    player = playerctl_player_new_from_name(replacement, nullptr);
-    if (player != nullptr) {
-      g_object_connect(player, "signal::play", G_CALLBACK(onPlayerPlay), this, "signal::pause",
-                       G_CALLBACK(onPlayerPause), this, "signal::stop", G_CALLBACK(onPlayerStop),
-                       this, "signal::metadata", G_CALLBACK(onPlayerMetadata), this, NULL);
+    mpris->player = playerctl_player_new_from_name(replacement, nullptr);
+    if (mpris->player != nullptr) {
+      g_object_connect(mpris->player, "signal::play", G_CALLBACK(onPlayerPlay), mpris,
+                       "signal::pause", G_CALLBACK(onPlayerPause), mpris, "signal::stop",
+                       G_CALLBACK(onPlayerStop), mpris, "signal::metadata",
+                       G_CALLBACK(onPlayerMetadata), mpris, NULL);
     }
   }
-  dp.emit();
-  return false;
+  mpris->refresh();
+  return G_SOURCE_REMOVE;
 }
 
-auto Mpris::onPlayerPlay(PlayerctlPlayer* player, gpointer data) -> void {
-  auto* mpris = static_cast<Mpris*>(data);
+auto Mpris::Worker::onPlayerPlay(PlayerctlPlayer* player, gpointer data) -> void {
+  auto* mpris = static_cast<Worker*>(data);
   if (!mpris) return;
 
   spdlog::debug("mpris: player-play callback");
-  // update widget
-  mpris->dp.emit();
+  mpris->refresh();
 }
 
-auto Mpris::onPlayerPause(PlayerctlPlayer* player, gpointer data) -> void {
-  auto* mpris = static_cast<Mpris*>(data);
+auto Mpris::Worker::onPlayerPause(PlayerctlPlayer* player, gpointer data) -> void {
+  auto* mpris = static_cast<Worker*>(data);
   if (!mpris) return;
 
   spdlog::debug("mpris: player-pause callback");
-  // update widget
-  mpris->dp.emit();
+  mpris->refresh();
 }
 
-auto Mpris::onPlayerStop(PlayerctlPlayer* player, gpointer data) -> void {
-  auto* mpris = static_cast<Mpris*>(data);
+auto Mpris::Worker::onPlayerStop(PlayerctlPlayer* player, gpointer data) -> void {
+  auto* mpris = static_cast<Worker*>(data);
   if (!mpris) return;
 
   spdlog::debug("mpris: player-stop callback");
-  // update widget (update() handles visibility)
-  mpris->dp.emit();
+  mpris->refresh();
 }
 
-auto Mpris::onPlayerMetadata(PlayerctlPlayer* player, GVariant* metadata, gpointer data) -> void {
-  auto* mpris = static_cast<Mpris*>(data);
+auto Mpris::Worker::onPlayerMetadata(PlayerctlPlayer* player, GVariant* metadata, gpointer data)
+    -> void {
+  auto* mpris = static_cast<Worker*>(data);
   if (!mpris) return;
 
   spdlog::debug("mpris: player-metadata callback");
-  // update widget
-  mpris->dp.emit();
+  mpris->refresh();
 }
 
-// The fallback player must not outlive the update() or handleToggle() call that created it: once
-// the main loop runs, an owner change makes its proxy reload, and libplayerctl never disconnects
-// its handlers from that proxy, so they would run on the freed player.
-void Mpris::dropFallbackPlayer() {
+// The fallback player must not outlive the request that created it: once the context runs, an
+// owner change makes its proxy reload, and libplayerctl never disconnects its handlers from that
+// proxy, so they would run on the freed player.
+void Mpris::Worker::dropFallbackPlayer() {
   if (last_active_player_ != nullptr && last_active_player_ != player) {
     g_object_unref(last_active_player_);
   }
   last_active_player_ = nullptr;
 }
 
-auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
+auto Mpris::Worker::getPlayerInfo() -> std::optional<PlayerInfo> {
   if (!player) {
     return std::nullopt;
   }
@@ -687,31 +809,21 @@ bool Mpris::handleToggle(GdkEventButton* const& e) {
     return false;
   }
 
-  waybar::util::ScopeGuard fallback_deleter([this]() { dropFallbackPlayer(); });
-  auto info = getPlayerInfo();
-  if (!info) return false;
+  if (!worker_->getInfo()) return false;
 
   struct ButtonAction {
     guint button;
     const char* config_key;
-    std::function<void()> builtin_action;
+    Worker::Action builtin_action;
   };
 
-  GError* error = nullptr;
-  waybar::util::ScopeGuard error_deleter([&error]() {
-    if (error) {
-      g_error_free(error);
-    }
-  });
-
   // Command pattern: encapsulate each button's action
-  auto* target = last_active_player_ ? last_active_player_ : player;
   const ButtonAction actions[] = {
-      {1, "on-click", [&]() { playerctl_player_play_pause(target, &error); }},
-      {2, "on-click-middle", [&]() { playerctl_player_previous(target, &error); }},
-      {3, "on-click-right", [&]() { playerctl_player_next(target, &error); }},
-      {8, "on-click-backward", [&]() { playerctl_player_previous(target, &error); }},
-      {9, "on-click-forward", [&]() { playerctl_player_next(target, &error); }},
+      {1, "on-click", playerctl_player_play_pause},
+      {2, "on-click-middle", playerctl_player_previous},
+      {3, "on-click-right", playerctl_player_next},
+      {8, "on-click-backward", playerctl_player_previous},
+      {9, "on-click-forward", playerctl_player_next},
   };
 
   for (const auto& action : actions) {
@@ -719,32 +831,22 @@ bool Mpris::handleToggle(GdkEventButton* const& e) {
       if (config_[action.config_key].isString()) {
         return ALabel::handleToggle(e);
       }
-      action.builtin_action();
+      worker_->perform(action.builtin_action);
       break;
     }
   }
 
-  if (error) {
-    spdlog::error("mpris[{}]: error running builtin on-click action: {}", (*info).name,
-                  error->message);
-    return false;
-  }
   return true;
 }
 
 auto Mpris::update() -> void {
-  const auto now = std::chrono::system_clock::now();
-  if (now - last_update_ < interval_) return;
-  last_update_ = now;
-
-  waybar::util::ScopeGuard fallback_deleter([this]() { dropFallbackPlayer(); });
-  auto opt = getPlayerInfo();
+  auto opt = worker_->getInfo();
   if (!opt) {
     event_box_.set_visible(false);
     ALabel::update();
     return;
   }
-  auto info = *opt;
+  const auto& info = *opt;
   if (hide_on_paused_ && info.status == PLAYERCTL_PLAYBACK_STATUS_PAUSED) {
     event_box_.set_visible(false);
     ALabel::update();
