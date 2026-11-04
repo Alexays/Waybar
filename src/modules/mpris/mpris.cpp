@@ -431,8 +431,10 @@ auto Mpris::onPlayerNameVanished(PlayerctlPlayerManager* manager, PlayerctlPlaye
 bool Mpris::releaseVanishedPlayer() {
   if (player == nullptr) return false;
 
+  // Instances of a player share its name (vlc, vlc.instance2): instance and bus identify it.
   gchar* instance = nullptr;
-  g_object_get(player, "player-instance", &instance, NULL);
+  auto source = PLAYERCTL_SOURCE_NONE;
+  g_object_get(player, "player-instance", &instance, "source", &source, NULL);
   GList* names = nullptr;  // owned by the manager
   g_object_get(manager, "player-names", &names, NULL);
   PlayerctlPlayerName* replacement = nullptr;
@@ -440,7 +442,7 @@ bool Mpris::releaseVanishedPlayer() {
   for (auto* l = names; l != nullptr; l = l->next) {
     auto* pn = static_cast<PlayerctlPlayerName*>(l->data);
     if (player_ != pn->name) continue;
-    if (g_strcmp0(pn->instance, instance) == 0) {
+    if (g_strcmp0(pn->instance, instance) == 0 && pn->source == source) {
       still_listed = true;
       break;
     }
