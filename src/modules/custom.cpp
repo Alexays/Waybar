@@ -308,7 +308,6 @@ void waybar::modules::Custom::parseOutputRaw() {
         text_ = validated_line;
         tooltip_ = validated_line;
       }
-      tooltip_ = validated_line;
       class_.clear();
     } else if (i == 1) {
       if (config_["escape"].isBool() && config_["escape"].asBool()) {
