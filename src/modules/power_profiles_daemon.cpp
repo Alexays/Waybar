@@ -5,6 +5,8 @@
 #include <glibmm/variant.h>
 #include <spdlog/spdlog.h>
 
+#include <stdexcept>
+
 namespace waybar::modules {
 
 PowerProfilesDaemon::PowerProfilesDaemon(const std::string& id, const Json::Value& config)
@@ -24,9 +26,9 @@ PowerProfilesDaemon::PowerProfilesDaemon(const std::string& id, const Json::Valu
   // 2. In the system bus connect callback, try to call
   //    org.freedesktop.DBus.Properties.GetAll to see if
   //    power-profiles-daemon is able to respond.
-  // 3. In the GetAll callback, connect the activeProfile monitoring
-  //    callback, consider the init to be successful. Meaning start
-  //    drawing the module.
+  // 3. In the GetAll callback, read the initial state from the reply,
+  //    connect the activeProfile monitoring callback, consider the
+  //    init to be successful. Meaning start drawing the module.
   //
   // There's sadly no other way around that, we have to try to call a
   // method on the proxy to see whether or not something's responding
@@ -66,18 +68,17 @@ void PowerProfilesDaemon::busConnectedCb(Glib::RefPtr<Gio::AsyncResult>& r) {
 
 // Callback for the GetAll call.
 //
-// We're abusing this call to make sure power-profiles-daemon is
-// available on the host. We're not really using
+// We're using this call to make sure power-profiles-daemon is
+// available on the host and to retrieve the initial state.
 void PowerProfilesDaemon::getAllPropsCb(Glib::RefPtr<Gio::AsyncResult>& r) {
   try {
-    auto _ = powerProfilesProxy_->call_finish(r);
+    populateInitState(powerProfilesProxy_->call_finish(r));
     // Power-profiles-daemon responded something, we can assume it's
     // available, we can safely attach the activeProfile monitoring
     // now.
     connected_ = true;
     powerProfilesProxy_->signal_properties_changed().connect(
         sigc::mem_fun(*this, &PowerProfilesDaemon::profileChangedCb));
-    populateInitState();
   } catch (const std::exception& err) {
     spdlog::error("Failed to query power-profiles-daemon via dbus: {}", err.what());
   } catch (const Glib::Error& err) {
@@ -85,15 +86,29 @@ void PowerProfilesDaemon::getAllPropsCb(Glib::RefPtr<Gio::AsyncResult>& r) {
   }
 }
 
-void PowerProfilesDaemon::populateInitState() {
+void PowerProfilesDaemon::populateInitState(const Glib::VariantContainerBase& getAllReply) {
+  // The proxy's property cache is filled by a GetAll of its own that may have
+  // failed even though ours succeeded, so read our (a{sv}) reply instead.
+  if (!getAllReply.is_of_type(Glib::VariantType("(a{sv})"))) {
+    throw std::runtime_error("Unexpected GetAll reply type: " + getAllReply.get_type_string());
+  }
+  Glib::Variant<std::map<Glib::ustring, Glib::VariantBase>> propsVariant;
+  getAllReply.get_child(propsVariant);
+  auto props = propsVariant.get();
+  auto activeProfileProp = props.find("ActiveProfile");
+  auto profilesProp = props.find("Profiles");
+  if (activeProfileProp == props.end() || profilesProp == props.end()) {
+    throw std::runtime_error("ActiveProfile or Profiles property missing from the GetAll reply");
+  }
+
   // Retrieve current active profile
-  Glib::Variant<std::string> profileStr;
-  powerProfilesProxy_->get_cached_property(profileStr, "ActiveProfile");
+  auto profileStr =
+      Glib::VariantBase::cast_dynamic<Glib::Variant<std::string>>(activeProfileProp->second);
 
   // Retrieve profiles list, it's aa{sv}.
   using ProfilesType = std::vector<std::map<Glib::ustring, Glib::Variant<std::string>>>;
-  Glib::Variant<ProfilesType> profilesVariant;
-  powerProfilesProxy_->get_cached_property(profilesVariant, "Profiles");
+  auto profilesVariant =
+      Glib::VariantBase::cast_dynamic<Glib::Variant<ProfilesType>>(profilesProp->second);
   for (auto& variantDict : profilesVariant.get()) {
     Glib::ustring name;
     // Legacy single `Driver` property, still exposed by older
