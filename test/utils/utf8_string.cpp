@@ -63,6 +63,21 @@ TEST_CASE("utf8_truncate", "[utf8_string]") {
     REQUIRE(truncate(repeat("é", 401), 20) == repeat("é", 19) + ".");
   }
 
+  SECTION("does not put the ellipsis after whitespace") {
+    REQUIRE(truncate("ab cdef", 4) == "ab.");
+  }
+
+  SECTION("cuts leading whitespace and a first character wider than the limit") {
+    REQUIRE(truncate("    abcdef", 4) == ".");
+    REQUIRE(truncate("\t 　abcdef", 3) == ".");
+    REQUIRE(truncate("Ｗabc", 1) == ".");
+    REQUIRE(truncate("Ｗabc", 2) == ".");
+    for (size_t max_len = 1; max_len <= 20; ++max_len) {
+      REQUIRE(utf8_width(truncate(std::string(20, ' ') + std::string(300, 'W'), max_len)) <=
+              max_len);
+    }
+  }
+
   SECTION("does not let any number of zero-width characters through") {
     for (const char* zero_width : {"҉", "​", "­", "ᅠ", "؀"}) {
       const std::string zw = zero_width;

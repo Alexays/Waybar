@@ -14,7 +14,8 @@ namespace {
 size_t measure_and_truncate(std::string& str, size_t width = std::string::npos) {
   if (str.length() == 0) return 0;
 
-  const gchar* trunc_end = nullptr;
+  // With a width, keep nothing unless a non-space character fits, even after leading spaces
+  const gchar* trunc_end = width != std::string::npos ? str.data() : nullptr;
 
   size_t total_width = 0;
   size_t columns = 0;
