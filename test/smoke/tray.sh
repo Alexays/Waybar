@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Tier 4: tray input from session-bus clients. Waybar is the
 # StatusNotifierWatcher, so any client can register items with it.
-# Needs a session bus:  dbus-run-session -- test/smoke/tray.sh
+# Needs a session bus and gcc with gio-2.0 for the fake item (tray_item.c):
+#   dbus-run-session -- test/smoke/tray.sh
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
@@ -53,6 +54,35 @@ if ! grep -q 'itemRegistered called with service: .*/StatusNotifierItem' "$SMOKE
     echo "::error::host never saw the accepted item"; fail=1
 fi
 echo "oversized registration refused, watcher still answers"
+
+# --- oversized dbusmenu layout ----------------------------------------------
+# Waybar hands every item's Menu to libdbusmenu, which builds the whole layout
+# on the GTK main loop in time quadratic to its size.
+item="$(mktemp)"
+# shellcheck disable=SC2046
+gcc "$DIR/tray_item.c" -o "$item" $(pkg-config --cflags --libs gio-2.0)
+"$item" 20000 &
+ITEM_PID=$!
+trap 'kill $ITEM_PID 2>/dev/null || true; smoke::stop' EXIT
+for _ in $(seq 1 20); do
+    grep -q "Tray::onAdd" "$SMOKE_LOG" && break
+    sleep 0.5
+done
+# The watcher answers from the main loop that draws the bar: a liveness probe.
+for _ in $(seq 1 10); do
+    if ! "${WATCHER[@]}" --timeout 5 --method org.freedesktop.DBus.Properties.Get \
+            org.kde.StatusNotifierWatcher ProtocolVersion >/dev/null; then
+        echo "::error::main loop did not answer within 5 s of a 20000-entry tray menu"
+        fail=1
+        break
+    fi
+    sleep 1
+done
+if ! grep -q "Ignoring the tray menu" "$SMOKE_LOG"; then
+    echo "::error::oversized tray menu layout was not refused"; fail=1
+fi
+kill "$ITEM_PID" 2>/dev/null || true
+echo "oversized menu layout refused, main loop stays responsive"
 
 smoke::assert_clean_exit || fail=1
 [ "$fail" = 0 ] || { echo "::error::tray tier failed"; exit 1; }

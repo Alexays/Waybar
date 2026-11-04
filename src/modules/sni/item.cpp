@@ -54,6 +54,8 @@ static const int MAX_ICON_ASPECT_RATIO = 4;
 // An icon file named by an item costs no more than an IconPixmap, which D-Bus bounds to 64 MiB
 static const goffset MAX_ICON_FILE_SIZE = 64 << 20;
 static const guint64 MAX_ICON_FILE_PIXELS = MAX_ICON_FILE_SIZE / 4;
+// Largest dbusmenu layout accepted from an item, see filterMenuLayout()
+static const gsize MENU_MAX_ENTRIES = 1000;
 
 Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar,
            const std::function<void(Item&)>& on_ready,
@@ -763,8 +765,54 @@ void Item::onMenuDestroyed(Item* self, GObject* old_menu_pointer) {
   }
 }
 
+// Counts the entries below a "(ia{sv}av)" layout node, giving up once there are too many
+static gsize countMenuEntries(GVariant* node, gsize count = 0) {
+  g_autoptr(GVariant) children = g_variant_get_child_value(node, 2);
+  const gsize n_children = g_variant_n_children(children);
+  count += n_children;
+  for (gsize i = 0; i < n_children && count <= MENU_MAX_ENTRIES; ++i) {
+    g_autoptr(GVariant) boxed = g_variant_get_child_value(children, i);
+    g_autoptr(GVariant) child = g_variant_get_variant(boxed);
+    if (!g_variant_is_of_type(child, G_VARIANT_TYPE("(ia{sv}av)"))) {
+      return MENU_MAX_ENTRIES + 1;
+    }
+    count = countMenuEntries(child, count);
+  }
+  return count;
+}
+
+// libdbusmenu fetches an item's whole layout itself and builds it on the main loop in time
+// quadratic to its size, with no hook before that. So oversized GetLayout replies are turned into
+// an error before dispatch, on the GDBus worker thread.
+static GDBusMessage* filterMenuLayout(GDBusConnection* /*connection*/, GDBusMessage* message,
+                                      gboolean incoming, gpointer /*data*/) {
+  if (!incoming || g_dbus_message_get_message_type(message) != G_DBUS_MESSAGE_TYPE_METHOD_RETURN ||
+      g_strcmp0(g_dbus_message_get_signature(message), "u(ia{sv}av)") != 0) {
+    return message;
+  }
+  g_autoptr(GVariant) root = g_variant_get_child_value(g_dbus_message_get_body(message), 1);
+  if (countMenuEntries(root) <= MENU_MAX_ENTRIES) {
+    return message;
+  }
+  const gchar* sender = g_dbus_message_get_sender(message);
+  auto reason = fmt::format("Ignoring the tray menu of {}: malformed or more than {} entries",
+                            sender != nullptr ? sender : "", MENU_MAX_ENTRIES);
+  spdlog::warn("{}", reason);
+  // An error reply makes libdbusmenu give up at once instead of waiting for a timeout
+  GDBusMessage* error = g_dbus_message_new();
+  g_dbus_message_set_message_type(error, G_DBUS_MESSAGE_TYPE_ERROR);
+  g_dbus_message_set_reply_serial(error, g_dbus_message_get_reply_serial(message));
+  g_dbus_message_set_error_name(error, "org.freedesktop.DBus.Error.LimitsExceeded");
+  g_dbus_message_set_body(error, g_variant_new("(s)", reason.c_str()));
+  g_object_unref(message);
+  return error;
+}
+
 void Item::makeMenu() {
   if (gtk_menu == nullptr && !menu.empty()) {
+    // libdbusmenu uses the shared session bus connection of the proxies: one filter covers all
+    [[maybe_unused]] static const guint layout_filter = g_dbus_connection_add_filter(
+        proxy_->get_connection()->gobj(), filterMenuLayout, nullptr, nullptr);
     dbus_menu = dbusmenu_gtkmenu_new(bus_name.data(), menu.data());
     if (dbus_menu != nullptr) {
       g_object_ref_sink(G_OBJECT(dbus_menu));

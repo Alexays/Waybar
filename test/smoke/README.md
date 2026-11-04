@@ -23,7 +23,7 @@ AddressSanitizer** and runs the real binary inside a **headless** compositor
 | 5 | **State transitions** *(best-effort)* — real `mpd` driven through an **empty queue** (#5183) + stop/clear, `pulseaudio` + slider on a null sink | [`state.sh`](state.sh) |
 | 6 | **Fake hardware** *(best-effort)* — `backlight`, `backlight/slider` (#5179) and `battery` via **umockdev** | [`hardware.sh`](hardware.sh) |
 | — | **Leak check** *(report-only)* — clean-exit run under LSan | [`leakcheck.sh`](leakcheck.sh) |
-| 4 | **Tray hostile input** - oversized `RegisterStatusNotifierItem` call on the session bus; the bar must refuse it and keep answering | [`tray.sh`](tray.sh) |
+| 4 | **Tray hostile input** - oversized `RegisterStatusNotifierItem` call, and an item whose dbusmenu layout has 20000 entries; the bar must refuse both and keep answering | [`tray.sh`](tray.sh) / [`tray_item.c`](tray_item.c) |
 
 AddressSanitizer (plus `-D_GLIBCXX_ASSERTIONS`) runs under *all* of the above, so
 any memory bug in the real render/teardown path aborts the run. Tiers 5–6 and the
