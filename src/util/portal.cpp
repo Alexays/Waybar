@@ -1,6 +1,7 @@
 #include "util/portal.hpp"
 
 #include <giomm/dbusproxy.h>
+#include <glibmm/main.h>
 #include <glibmm/variant.h>
 #include <spdlog/spdlog.h>
 
@@ -15,6 +16,7 @@ static constexpr const char* PORTAL_OBJ_PATH = "/org/freedesktop/portal/desktop"
 static constexpr const char* PORTAL_INTERFACE = "org.freedesktop.portal.Settings";
 static constexpr const char* PORTAL_NAMESPACE = "org.freedesktop.appearance";
 static constexpr const char* PORTAL_KEY = "color-scheme";
+static constexpr unsigned APPEARANCE_HOLD_OFF_MS = 200;
 }  // namespace waybar
 
 auto fmt::formatter<waybar::Appearance>::format(waybar::Appearance c, format_context& ctx) const {
@@ -38,7 +40,8 @@ waybar::Portal::Portal()
                        PORTAL_BUS_NAME, PORTAL_OBJ_PATH, PORTAL_INTERFACE,
                        Glib::RefPtr<Gio::DBus::InterfaceInfo>(),
                        Gio::DBus::PROXY_FLAGS_DO_NOT_AUTO_START),
-      currentMode(Appearance::UNKNOWN) {
+      currentMode(Appearance::UNKNOWN),
+      pendingMode(Appearance::UNKNOWN) {
   // Without DO_NOT_AUTO_START the proxy asks the bus to spawn the portal and
   // waits for it, so a slow portal delays the whole bar. Watch for the name
   // instead, which also covers a portal that only shows up later.
@@ -47,6 +50,9 @@ waybar::Portal::Portal()
   connect_property_changed("g-name-owner", [this]() { refreshAppearance(); });
   refreshAppearance();
 };
+
+// The hold-off timer's lambda captures this
+waybar::Portal::~Portal() { holdOffTimer.disconnect(); }
 
 void waybar::Portal::refreshAppearance() {
   if (get_name_owner().empty()) {
@@ -91,13 +97,7 @@ void waybar::Portal::onAppearanceReceived(Glib::RefPtr<Gio::AsyncResult>& result
             .get()
             .get()
             .get();
-    auto newMode = Appearance(mode);
-    if (newMode == currentMode) {
-      return;
-    }
-    spdlog::info("Discovered appearance '{}'", newMode);
-    currentMode = newMode;
-    m_signal_appearance_changed.emit(currentMode);
+    setAppearance(Appearance(mode));
   } catch (const std::bad_cast& e) {
     spdlog::error("Unexpected appearance variant format: {}", e.what());
     return;
@@ -129,11 +129,26 @@ void waybar::Portal::on_signal(const Glib::ustring& sender_name, const Glib::ust
   if (!value.is_of_type(Glib::VARIANT_TYPE_UINT32)) {
     return;
   }
-  auto newMode = Appearance(value.get());
-  if (newMode == currentMode) {
-    return;
+  setAppearance(Appearance(value.get()));
+}
+
+// Each change reloads the theme and style sheet, so the first one is announced at once and the
+// ones that follow are coalesced into one per hold-off interval, for the latest value.
+void waybar::Portal::setAppearance(Appearance newMode) {
+  pendingMode = newMode;
+  if (!holdOffTimer.connected() && announceAppearance()) {
+    holdOffTimer = Glib::signal_timeout().connect([this]() { return announceAppearance(); },
+                                                  APPEARANCE_HOLD_OFF_MS);
   }
-  spdlog::info("Received new appearance '{}'", newMode);
-  currentMode = newMode;
+}
+
+// Returns whether there was a change, which keeps the hold-off timer running
+bool waybar::Portal::announceAppearance() {
+  if (pendingMode == currentMode) {
+    return false;
+  }
+  spdlog::info("Received new appearance '{}'", pendingMode);
+  currentMode = pendingMode;
   m_signal_appearance_changed.emit(currentMode);
+  return true;
 }
