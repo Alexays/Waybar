@@ -789,15 +789,6 @@ Taskbar::Taskbar(const std::string& id, const waybar::Bar& bar, const Json::Valu
 }
 
 Taskbar::~Taskbar() {
-  for (auto& workspace : workspaces_) {
-    ext_workspace_handle_v1_destroy(workspace->handle);
-  }
-  workspaces_.clear();
-  for (auto* group : workspace_groups_) {
-    ext_workspace_group_handle_v1_destroy(group);
-  }
-  workspace_groups_.clear();
-
   if (workspace_manager_) {
     struct wl_display* display = Client::inst()->wl_display;
     ext_workspace_manager_v1_stop(workspace_manager_);
@@ -809,6 +800,17 @@ Taskbar::~Taskbar() {
       workspace_manager_ = nullptr;
     }
   }
+
+  // Handle ids are server-allocated: destroyed before `stop` is processed, a late event naming one
+  // is a fatal protocol error
+  for (auto& workspace : workspaces_) {
+    ext_workspace_handle_v1_destroy(workspace->handle);
+  }
+  workspaces_.clear();
+  for (auto* group : workspace_groups_) {
+    ext_workspace_group_handle_v1_destroy(group);
+  }
+  workspace_groups_.clear();
 
   if (manager_) {
     struct wl_display* display = Client::inst()->wl_display;
