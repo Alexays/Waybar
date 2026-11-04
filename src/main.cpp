@@ -222,10 +222,11 @@ int main(int argc, char* argv[]) {
 
     bool reload;
 
-    waybar::SafeSignal<int> posix_signal_received;
-    posix_signal_received.connect([&](int signum) { handleSignalMainThread(signum, reload); });
+    // Never freed: the detached signal thread still emits on it while exit() runs after main()
+    auto* posix_signal_received = new waybar::SafeSignal<int>();
+    posix_signal_received->connect([&](int signum) { handleSignalMainThread(signum, reload); });
 
-    std::thread signal_thread([&]() { catchSignals(posix_signal_received); });
+    std::thread signal_thread([posix_signal_received]() { catchSignals(*posix_signal_received); });
 
     // Every `std::thread` must be joined or detached.
     // This thread should run forever, so detach it.
