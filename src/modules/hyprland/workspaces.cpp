@@ -669,6 +669,8 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
     for (const auto& name : tooltipFormats.getMemberNames()) {
       m_tooltipMap.emplace(name, tooltipFormats[name].asString());
     }
+    // Without a default, selectString() returns the workspace name, used as a format string.
+    m_tooltipMap.emplace("default", "{name}");
     m_tooltipMap.emplace("", "");
   }
 
