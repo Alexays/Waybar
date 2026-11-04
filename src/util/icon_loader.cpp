@@ -64,7 +64,8 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_by_name(const std::st
   return {};
 }
 
-Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_desktop_app_info(const std::string& app_id) {
+Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_desktop_app_info(const std::string& app_id,
+                                                                   guint& search_words_left) {
   auto app_info = get_app_info_by_name(app_id);
   if (app_info) {
     return app_info;
@@ -74,6 +75,15 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_desktop_app_info(const std::st
   if (!g_utf8_validate(app_id.c_str(), app_id.size(), nullptr)) {
     return {};
   }
+
+  // The search walks the index of every installed application once per word of app_id
+  gchar** search_words = g_str_tokenize_and_fold(app_id.c_str(), nullptr, nullptr);
+  const guint n_search_words = g_strv_length(search_words);
+  g_strfreev(search_words);
+  if (n_search_words == 0 || n_search_words > search_words_left) {
+    return {};
+  }
+  search_words_left -= n_search_words;
 
   std::string desktop_file = "";
 
@@ -194,12 +204,14 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_from_app_id_list(
     const std::string& app_id_list) {
   std::string app_id;
   std::istringstream stream(app_id_list);
+  // Bounds the cost of the desktop app searches of the whole list, whatever its shape
+  guint search_words_left = 32;
 
   /* Wayfire sends a list of app-id's in space separated format, other compositors
    * send a single app-id. The list comes from other clients and a miss costs hundreds of file
    * probes on the main thread, so only the first entries are tried */
   for (int i = 0; i < 8 && stream >> app_id; i++) {
-    auto app_info = get_desktop_app_info(app_id);
+    auto app_info = get_desktop_app_info(app_id, search_words_left);
     if (app_info) {
       return app_info;
     }
@@ -209,7 +221,7 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_from_app_id_list(
       return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     });
     if (lower_app_id != app_id) {
-      app_info = get_desktop_app_info(lower_app_id);
+      app_info = get_desktop_app_info(lower_app_id, search_words_left);
       if (app_info) {
         return app_info;
       }
@@ -218,7 +230,7 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_from_app_id_list(
     // npos + 1 wraps to 0: no '.' keeps the whole id
     auto app_name = app_id.substr(app_id.rfind('.') + 1);
     if (app_name != app_id) {
-      app_info = get_desktop_app_info(app_name);
+      app_info = get_desktop_app_info(app_name, search_words_left);
       if (app_info) {
         return app_info;
       }
@@ -226,7 +238,7 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_from_app_id_list(
 
     app_name = app_id.substr(0, app_id.find('-'));
     if (app_name != app_id) {
-      app_info = get_desktop_app_info(app_name);
+      app_info = get_desktop_app_info(app_name, search_words_left);
       if (app_info) {
         return app_info;
       }
