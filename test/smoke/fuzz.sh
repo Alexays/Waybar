@@ -62,5 +62,18 @@ fi
 smoke::assert_clean_exit || fail=1
 echo "::endgroup::"
 
+# image module: an invalid UTF-8 tooltip line (the 2nd) must not crash once the image loads
+echo "::group::fuzz: image non-utf8 tooltip"
+cfg="$(mktemp --suffix=.json)"
+cat > "$cfg" <<EOF
+{ "layer": "top", "position": "top", "height": 30,
+  "modules-center": ["image"],
+  "image": {"exec":"printf '$DIR/reference.png\\\\nCaf\\\\351\\\\n'","interval":"once"} }
+EOF
+smoke::launch_waybar "$cfg" "$DIR/style.css" 4
+smoke::assert_alive || fail=1
+smoke::assert_clean_exit || fail=1
+echo "::endgroup::"
+
 [ "$fail" = 0 ] || { echo "::error::fuzz tier failed"; exit 1; }
 echo "✓ custom-backend fuzz passed"

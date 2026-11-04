@@ -301,7 +301,8 @@ void SingleImageStrategy::update() {
     image_.show();
 
     if (hasTooltip_ && !tooltip_.empty()) {
-      if (box_.get_tooltip_markup() != tooltip_) {
+      // ustring::operator!= collates, which crashes on invalid UTF-8; compare bytes
+      if (box_.get_tooltip_markup().raw() != tooltip_) {
         box_.set_tooltip_markup(tooltip_);
       }
     }
@@ -322,7 +323,12 @@ void SingleImageStrategy::parseOutputRaw() {
     if (i == 0) {
       path_ = line;
     } else if (i == 1) {
-      tooltip_ = line;
+      // Script output can be invalid UTF-8, which g_utf8_* functions do not accept
+      Glib::ustring validated_line = line;
+      if (!validated_line.validate()) {
+        validated_line = validated_line.make_valid();
+      }
+      tooltip_ = validated_line.raw();
     } else {
       break;
     }
