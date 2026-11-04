@@ -368,11 +368,14 @@ void UPower::resetDevices() {
 
   // Adds all devices
   GPtrArray* newDevices = up_client_get_devices2(upClient_);
-  if (newDevices != NULL)
+  if (newDevices != NULL) {
     for (guint i{0}; i < newDevices->len; ++i) {
       UpDevice* device{(UpDevice*)g_ptr_array_index(newDevices, i)};
       if (device && G_IS_OBJECT(device)) addDevice(device);
     }
+    // addDevice() creates its own UpDevice, so release the array and its elements
+    g_ptr_array_unref(newDevices);
+  }
 }
 
 void UPower::setDisplayDevice() {
@@ -387,9 +390,9 @@ void UPower::setDisplayDevice() {
   if (nativePath_.empty() && model_.empty()) {
     upDevice_.upDevice = up_client_get_display_device(upClient_);
     getUpDeviceInfo(upDevice_);
-  } else {
+  } else if (GPtrArray* devices = up_client_get_devices2(upClient_); devices != NULL) {
     g_ptr_array_foreach(
-        up_client_get_devices2(upClient_),
+        devices,
         [](gpointer data, gpointer user_data) {
           upDevice_output upDevice;
           auto thisPtr{static_cast<UPower*>(user_data)};
@@ -405,12 +408,15 @@ void UPower::setDisplayDevice() {
               displayDevice = upDevice;
             }
           }
-          // Unref current upDevice if it exists
           if (displayDevice.upDevice != NULL) {
+            if (thisPtr->upDevice_.upDevice != NULL) g_object_unref(thisPtr->upDevice_.upDevice);
+            // The array owns its elements, so keep a reference of our own
+            g_object_ref(displayDevice.upDevice);
             thisPtr->upDevice_ = displayDevice;
           }
         },
         this);
+    g_ptr_array_unref(devices);
   }
 
   if (upDevice_.upDevice != NULL)
