@@ -2,8 +2,10 @@
 
 #include <gdkmm/pixbuf.h>
 #include <spdlog/spdlog.h>
-#include <regex>
+#include <algorithm>
 #include <string>
+#include <string_view>
+#include <utility>
 
 namespace waybar {
 
@@ -62,28 +64,49 @@ AIconLabel::AIconLabel(const Json::Value& config, const std::string& name, const
 }
 
 std::tuple<std::string, std::string> AIconLabel::extractIcon(const std::string& input) {
-  std::string icon_result = "";
-  std::string label_result = input;
-  try {
-    static const std::regex icon_search(R"((?=\\0icon\\1f).+?(?=\\n))");
-    std::smatch icon_match;
-    if (std::regex_search(input, icon_match, icon_search)) {
-      icon_result = icon_match[0].str().substr(9);
+  // A directive is "\0icon\1f<name>\n" (literal backslashes) and does not span lines. The label may
+  // hold foreign text, so this is one forward pass: a regex would rescan after every bare prefix.
+  static constexpr std::string_view prefix = R"(\0icon\1f)";
+  static constexpr std::string_view suffix = R"(\n)";
+  if (input.find(prefix) == std::string::npos) {
+    return {std::string(), input};
+  }
+  std::string icon_result;
+  std::string label_result;
+  label_result.reserve(input.size());
 
-      static const std::regex clean_label_pattern(R"(\\0icon\\1f.+?\\n)");
-      label_result = std::regex_replace(input, clean_label_pattern, "");
+  std::string::size_type pos = 0;
+  while (pos < input.size()) {
+    const auto eol = std::min(input.find_first_of("\r\n", pos), input.size());
+    const auto line = std::string_view(input).substr(0, eol);
+    for (auto start = line.find(prefix, pos); start != std::string_view::npos;
+         start = line.find(prefix, pos)) {
+      const auto name = start + prefix.size();
+      // An empty name in the first directive means no icon and an untouched label
+      if (icon_result.empty() && line.substr(name, suffix.size()) == suffix) {
+        return {std::string(), input};
+      }
+      const auto end = line.find(suffix, name + 1);
+      if (end == std::string_view::npos) {
+        break;  // no terminator left on this line, so none for a later prefix either
+      }
+      if (icon_result.empty()) {
+        icon_result = line.substr(name, end - name);
+      }
+      label_result.append(input, pos, start - pos);
+      pos = end + suffix.size();
     }
-  } catch (const std::exception& e) {
-      spdlog::warn("Error while parsing icon from label. {}", e.what());
+    label_result.append(input, pos, eol + 1 - pos);
+    pos = eol + 1;
   }
 
-  return std::make_tuple(icon_result, label_result);
+  return {std::move(icon_result), std::move(label_result)};
 }
 
 auto AIconLabel::update() -> void {
   label_contains_icon = false;
 
-  auto [iconLabel, cleanLabel] = extractIcon(label_.get_label().c_str());
+  auto [iconLabel, cleanLabel] = extractIcon(label_.get_label().raw());
   label_contains_icon = iconLabel.length() > 0;
 
   if (label_contains_icon) {
