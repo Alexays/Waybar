@@ -291,6 +291,7 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
           int timeout = 10;
           while (timeout--) {
             try {
+              waybar::util::CancellationGuard guard;
               int dev_fd = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
               closeFile(dev_fd);
               break;
@@ -328,10 +329,12 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
 waybar::modules::KeyboardState::~KeyboardState() { releaseLibinput(); }
 
 auto waybar::modules::KeyboardState::releaseLibinput() -> void {
-  // Stop background threads before touching libinput, which is not thread-safe.
-  // SleeperThread::stop() cancels the blocking poll()/read() and marks do_run false.
+  // Stop and join the threads before touching libinput, which is not thread-safe: the hotplug
+  // thread defers its cancellation while it holds a device descriptor.
   libinput_thread_.stop();
   hotplug_thread_.stop();
+  libinput_thread_.join();
+  hotplug_thread_.join();
   waybar::util::CancellationGuard guard;
   std::lock_guard<std::mutex> lock(devices_mutex_);
   for (const auto& [_, dev_ptr] : libinput_devices_) {
@@ -433,6 +436,9 @@ auto waybar::modules::KeyboardState::update() -> void {
 }
 
 auto waybar::modules ::KeyboardState::tryAddDevice(const std::string& dev_path) -> void {
+  // Runs on the hotplug thread too: open(), close() and logging are cancellation points, so defer
+  // cancellation until fd and dev are released.
+  waybar::util::CancellationGuard guard;
   try {
     int fd = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
     libevdev* dev;
@@ -445,7 +451,6 @@ auto waybar::modules ::KeyboardState::tryAddDevice(const std::string& dev_path) 
     }
     if (supportsLockStates(dev)) {
       spdlog::info("Found device {} at '{}'", libevdev_get_name(dev), dev_path);
-      waybar::util::CancellationGuard guard;
       std::lock_guard<std::mutex> lock(devices_mutex_);
       if (libinput_devices_.find(dev_path) == libinput_devices_.end()) {
         auto device = libinput_path_add_device(libinput_, dev_path.c_str());
