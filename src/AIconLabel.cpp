@@ -1,10 +1,13 @@
 #include "AIconLabel.hpp"
 
 #include <gdkmm/pixbuf.h>
+#include <glibmm/fileutils.h>
 #include <spdlog/spdlog.h>
+
 #include <algorithm>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <utility>
 
 namespace waybar {
@@ -106,14 +109,22 @@ std::tuple<std::string, std::string> AIconLabel::extractIcon(const std::string& 
 auto AIconLabel::update() -> void {
   label_contains_icon = false;
 
-  auto [iconLabel, cleanLabel] = extractIcon(label_.get_label().raw());
-  label_contains_icon = iconLabel.length() > 0;
+  std::string iconLabel;
+  std::string cleanLabel;
+  if (embedded_icon_enabled_) {
+    std::tie(iconLabel, cleanLabel) = extractIcon(label_.get_label().raw());
+  }
+  label_contains_icon = !iconLabel.empty();
 
   if (label_contains_icon) {
     label_.set_markup(cleanLabel);
 
     if (iconLabel.front() == '/') {
       try {
+        // A FIFO or a device would block the main loop in open() or read()
+        if (!Glib::file_test(iconLabel, Glib::FILE_TEST_IS_REGULAR)) {
+          throw Glib::FileError(Glib::FileError::INVALID_ARGUMENT, "not a regular file");
+        }
         int scaled_icon_size = app_icon_size_ * image_.get_scale_factor();
         auto pixbuf = Gdk::Pixbuf::create_from_file(iconLabel, scaled_icon_size, scaled_icon_size);
 
