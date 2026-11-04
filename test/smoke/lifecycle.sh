@@ -76,5 +76,30 @@ smoke::assert_alive || fail=1
 smoke::assert_clean_exit || fail=1   # SIGINT while worker threads are mid-tick
 echo "::endgroup::"
 
+# --- reload of two instances sharing one session bus ----------------------
+# Each reload runs a new Gtk::Application; the instance that does not own the
+# bus name must survive it.
+if command -v dbus-daemon >/dev/null 2>&1; then
+    echo "::group::reload of a second instance on the session bus"
+    addr_file="$(mktemp)"; pid_file="$(mktemp)"
+    dbus-daemon --session --fork --print-address=3 --print-pid=4 3>"$addr_file" 4>"$pid_file"
+    bus_pid="$(cat "$pid_file")"
+    export DBUS_SESSION_BUS_ADDRESS="$(cat "$addr_file")"
+    smoke::launch_waybar "$CFG" "$STYLE" 5
+    first_pid=$WAYBAR_PID; first_log=$SMOKE_LOG
+    smoke::launch_waybar "$CFG" "$STYLE" 5
+    smoke::assert_alive || fail=1
+    smoke::reload
+    smoke::assert_alive || fail=1
+    smoke::assert_clean_exit || fail=1
+    WAYBAR_PID=$first_pid; SMOKE_LOG=$first_log
+    smoke::reload
+    smoke::assert_alive || fail=1
+    smoke::assert_clean_exit || fail=1
+    kill "$bus_pid" 2>/dev/null || true
+    unset DBUS_SESSION_BUS_ADDRESS
+    echo "::endgroup::"
+fi
+
 [ "$fail" = 0 ] || { echo "::error::lifecycle tier failed"; exit 1; }
 echo "✓ lifecycle tier passed"
