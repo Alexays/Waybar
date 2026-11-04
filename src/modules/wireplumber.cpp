@@ -87,7 +87,10 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
 bool waybar::modules::Wireplumber::setupConnection() {
   // New connection generation: any async load/activate callback still in flight from a previous
   // connection will see a mismatched generation and bail out instead of mutating this one's state.
-  ++connection_generation_;
+  // Shared by all modules: a module built right after another was destroyed often gets its
+  // address, so isModuleAlive() plus a per-object counter could not tell the two apart.
+  static uint32_t last_generation = 0;
+  connection_generation_ = ++last_generation;
 
   wp_core_ = wp_core_new(nullptr, nullptr, nullptr);
   apis_ = g_ptr_array_new_with_free_func(g_object_unref);
