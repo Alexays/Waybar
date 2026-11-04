@@ -52,7 +52,7 @@ void waybar::modules::Custom::delayWorker() {
   thread_ = [this] {
     bool can_update = true;
     if (config_["exec-if"].isString()) {
-      output_ = util::command::execNoRead(config_["exec-if"].asString());
+      setOutput(util::command::execNoRead(config_["exec-if"].asString()));
       if (output_.exit_code != 0) {
         can_update = false;
         dp.emit();
@@ -60,7 +60,7 @@ void waybar::modules::Custom::delayWorker() {
     }
     if (can_update) {
       if (config_["exec"].isString()) {
-        output_ = util::command::exec(config_["exec"].asString(), output_name_);
+        setOutput(util::command::exec(config_["exec"].asString(), output_name_));
       }
       dp.emit();
     }
@@ -72,7 +72,7 @@ void waybar::modules::Custom::continuousWorker() {
   continuous_stream_ = std::make_unique<util::command::LineStream>(
       output_name_,
       [this](const std::string& output) {
-        output_ = {.exit_code = 0, .out = output};
+        setOutput({.exit_code = 0, .out = output});
         dp.emit();
       },
       [this](int exit_code) { handleContinuousProcessExit(exit_code); });
@@ -88,7 +88,7 @@ void waybar::modules::Custom::startContinuousProcess(bool throw_on_failure) {
     if (throw_on_failure) {
       throw std::runtime_error("Unable to open " + cmd + ": " + e.what().raw());
     }
-    output_ = {.exit_code = 1, .out = ""};
+    setOutput({.exit_code = 1, .out = ""});
     dp.emit();
     spdlog::error("Unable to restart {}: {}", name_, e.what().raw());
     scheduleContinuousRestart();
@@ -96,7 +96,7 @@ void waybar::modules::Custom::startContinuousProcess(bool throw_on_failure) {
     if (throw_on_failure) {
       throw;
     }
-    output_ = {.exit_code = 1, .out = ""};
+    setOutput({.exit_code = 1, .out = ""});
     dp.emit();
     spdlog::error("Unable to restart {}: {}", name_, e.what());
     scheduleContinuousRestart();
@@ -105,7 +105,7 @@ void waybar::modules::Custom::startContinuousProcess(bool throw_on_failure) {
 
 void waybar::modules::Custom::handleContinuousProcessExit(int exit_code) {
   if (exit_code != 0) {
-    output_ = {.exit_code = exit_code, .out = ""};
+    setOutput({.exit_code = exit_code, .out = ""});
     dp.emit();
     spdlog::error("{} stopped unexpectedly, is it endless?", name_);
   }
@@ -133,7 +133,7 @@ void waybar::modules::Custom::waitingWorker() {
   thread_ = [this] {
     bool can_update = true;
     if (config_["exec-if"].isString()) {
-      output_ = util::command::execNoRead(config_["exec-if"].asString());
+      setOutput(util::command::execNoRead(config_["exec-if"].asString()));
       if (output_.exit_code != 0) {
         can_update = false;
         dp.emit();
@@ -141,12 +141,17 @@ void waybar::modules::Custom::waitingWorker() {
     }
     if (can_update) {
       if (config_["exec"].isString()) {
-        output_ = util::command::exec(config_["exec"].asString(), output_name_);
+        setOutput(util::command::exec(config_["exec"].asString(), output_name_));
       }
       dp.emit();
     }
     thread_.sleep();
   };
+}
+
+void waybar::modules::Custom::setOutput(util::command::res output) {
+  std::lock_guard<std::mutex> lock(output_mutex_);
+  output_ = std::move(output);
 }
 
 void waybar::modules::Custom::refresh(int sig) {
@@ -176,6 +181,8 @@ bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
 }
 
 auto waybar::modules::Custom::update() -> void {
+  // The worker thread must not replace output_ while it is parsed below
+  std::lock_guard<std::mutex> lock(output_mutex_);
   // Hide label if output is empty
   if ((config_["exec"].isString() || config_["exec-if"].isString()) &&
       (output_.out.empty() || output_.exit_code != 0)) {

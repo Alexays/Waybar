@@ -45,7 +45,7 @@ void waybar::modules::CustomGraph::delayWorker() {
   thread_ = [this] {
     bool can_update = true;
     if (config_["exec-if"].isString()) {
-      output_ = util::command::execNoRead(config_["exec-if"].asString());
+      setOutput(util::command::execNoRead(config_["exec-if"].asString()));
       if (output_.exit_code != 0) {
         can_update = false;
         dp.emit();
@@ -53,7 +53,7 @@ void waybar::modules::CustomGraph::delayWorker() {
     }
     if (can_update) {
       if (config_["exec"].isString()) {
-        output_ = util::command::exec(config_["exec"].asString(), output_name_);
+        setOutput(util::command::exec(config_["exec"].asString(), output_name_));
       }
       dp.emit();
     }
@@ -78,7 +78,7 @@ void waybar::modules::CustomGraph::continuousWorker() {
         pid_ = -1;
       }
       if (exit_code != 0) {
-        output_ = {exit_code, ""};
+        setOutput({exit_code, ""});
         dp.emit();
         spdlog::error("{} stopped unexpectedly, is it endless?", name_);
       }
@@ -93,7 +93,7 @@ void waybar::modules::CustomGraph::continuousWorker() {
         if (!fp_) {
           // Letting this exception escape the SleeperThread would call
           // std::terminate and kill all of Waybar. Degrade gracefully instead.
-          output_ = {1, ""};
+          setOutput({1, ""});
           dp.emit();
           spdlog::error("Unable to restart {}: unable to open {}", name_, cmd);
           thread_.stop();
@@ -104,7 +104,7 @@ void waybar::modules::CustomGraph::continuousWorker() {
         return;
       }
     } else {
-      output_ = {0, std::move(output)};
+      setOutput({0, std::move(output)});
       dp.emit();
     }
   };
@@ -114,7 +114,7 @@ void waybar::modules::CustomGraph::waitingWorker() {
   thread_ = [this] {
     bool can_update = true;
     if (config_["exec-if"].isString()) {
-      output_ = util::command::execNoRead(config_["exec-if"].asString());
+      setOutput(util::command::execNoRead(config_["exec-if"].asString()));
       if (output_.exit_code != 0) {
         can_update = false;
         dp.emit();
@@ -122,12 +122,17 @@ void waybar::modules::CustomGraph::waitingWorker() {
     }
     if (can_update) {
       if (config_["exec"].isString()) {
-        output_ = util::command::exec(config_["exec"].asString(), output_name_);
+        setOutput(util::command::exec(config_["exec"].asString(), output_name_));
       }
       dp.emit();
     }
     thread_.sleep();
   };
+}
+
+void waybar::modules::CustomGraph::setOutput(util::command::res output) {
+  std::lock_guard<std::mutex> lock(output_mutex_);
+  output_ = std::move(output);
 }
 
 void waybar::modules::CustomGraph::refresh(int sig) {
@@ -157,6 +162,8 @@ bool waybar::modules::CustomGraph::handleToggle(GdkEventButton* const& e) {
 }
 
 auto waybar::modules::CustomGraph::update() -> void {
+  // The worker thread must not replace output_ while it is parsed below
+  std::lock_guard<std::mutex> lock(output_mutex_);
   // Hide label if output is empty
   if ((config_["exec"].isString() || config_["exec-if"].isString()) &&
       (output_.out.empty() || output_.exit_code != 0)) {
