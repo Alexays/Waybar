@@ -19,22 +19,21 @@ namespace waybar::modules::sway {
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     : AAppIconLabel(config, "window", id, "{}", 0, true), bar_(bar), windowId_(-1) {
   ipc_.subscribe(R"(["window","workspace"])");
-  ipc_.signal_event.connect(sigc::mem_fun(*this, &Window::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Window::onCmd));
+  // Only the newest tree matters
+  ipc_.signal_cmd.set_max_queued_events(1);
   // Get Initial focused window
   getTree();
   // Launch worker
   ipc_.setWorker([this] {
     try {
-      ipc_.handleEvent();
+      ipc_.handleEvents(IPC_GET_TREE);
     } catch (const std::exception& e) {
       spdlog::error("Window: {}", e.what());
       spdlog::trace("Window::Window exception");
     }
   });
 }
-
-void Window::onEvent(const struct Ipc::ipc_response& res) { getTree(); }
 
 void Window::onCmd(const struct Ipc::ipc_response& res) {
   try {

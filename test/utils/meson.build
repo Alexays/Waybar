@@ -24,6 +24,9 @@ test_src = files(
     '../../src/util/command_line_stream.cpp',
 )
 
+test_src += files('regex_collection.cpp', '../../src/util/regex_collection.cpp')
+test_src += files('rewrite_string.cpp', '../../src/util/rewrite_string.cpp')
+
 if libnl.found() and libnlgen.found()
   test_dep += [libnl, libnlgen]
   test_src += files('netlink.cpp', '../../src/util/netlink.cpp')
