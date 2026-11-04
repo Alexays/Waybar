@@ -131,6 +131,7 @@ void Workspace::update(const Json::Value& data, const std::vector<Json::Value>& 
   } else {
     for (auto* child : taskbar_box_.get_children()) {
       taskbar_box_.remove(*child);
+      delete child;
     }
     taskbar_box_.hide();
   }
@@ -141,6 +142,8 @@ void Workspace::update(const Json::Value& data, const std::vector<Json::Value>& 
 void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
   for (auto* child : taskbar_box_.get_children()) {
     taskbar_box_.remove(*child);
+    // remove() keeps a managed widget alive.
+    delete child;
   }
 
   const auto& taskbar_cfg = manager_.config()["workspace-taskbar"];
