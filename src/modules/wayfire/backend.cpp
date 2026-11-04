@@ -136,7 +136,7 @@ auto IPC::receive(Sock& sock) -> Json::Value {
 
   Json::Value json;
   std::string err;
-  auto* reader = reader_builder.newCharReader();
+  auto reader = std::unique_ptr<Json::CharReader>(reader_builder.newCharReader());
   if (!reader->parse(&*buf.begin(), &*buf.end(), &json, &err)) {
     throw std::runtime_error{"Wayfire IPC: parse json failed: " + err};
   }
