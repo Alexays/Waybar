@@ -197,9 +197,9 @@ void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* 
     return;
   }
 
-  auto* proxy = static_cast<WpProxy*>(wp_object_manager_lookup(self->om_, WP_TYPE_GLOBAL_PROXY,
-                                                               WP_CONSTRAINT_TYPE_G_PROPERTY,
-                                                               "bound-id", "=u", id, nullptr));
+  g_autoptr(WpProxy) proxy = static_cast<WpProxy*>(
+      wp_object_manager_lookup(self->om_, WP_TYPE_GLOBAL_PROXY, WP_CONSTRAINT_TYPE_G_PROPERTY,
+                               "bound-id", "=u", id, nullptr));
 
   if (proxy == nullptr) {
     auto err = fmt::format("Object '{}' not found\n", id);
@@ -257,9 +257,9 @@ void waybar::modules::Wireplumber::updateSourceName(waybar::modules::Wireplumber
     return;
   }
 
-  auto* proxy = static_cast<WpProxy*>(wp_object_manager_lookup(self->om_, WP_TYPE_GLOBAL_PROXY,
-                                                               WP_CONSTRAINT_TYPE_G_PROPERTY,
-                                                               "bound-id", "=u", id, nullptr));
+  g_autoptr(WpProxy) proxy = static_cast<WpProxy*>(
+      wp_object_manager_lookup(self->om_, WP_TYPE_GLOBAL_PROXY, WP_CONSTRAINT_TYPE_G_PROPERTY,
+                               "bound-id", "=u", id, nullptr));
 
   if (proxy == nullptr) {
     auto err = fmt::format("Source object '{}' not found\n", id);
