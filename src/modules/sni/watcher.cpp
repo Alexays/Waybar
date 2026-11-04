@@ -2,9 +2,15 @@
 
 #include <spdlog/spdlog.h>
 
+#include <cstring>
+
 #include "util/scope_guard.hpp"
 
 using namespace waybar::modules::SNI;
+
+// Every service is republished in the RegisteredStatusNotifierItems array, whose D-Bus size limit
+// (64 MiB) is below that of a single string argument. Keep in sync with Host.
+static const std::size_t MAX_SERVICE_LENGTH = 1024;
 
 Watcher::Watcher()
     : bus_name_id_(Gio::DBus::own_name(Gio::DBus::BusType::BUS_TYPE_SESSION,
@@ -64,6 +70,11 @@ gboolean Watcher::handleRegisterHost(Watcher* obj, GDBusMethodInvocation* invoca
   const gchar* bus_name = service;
   const gchar* object_path = "/StatusNotifierHost";
 
+  if (strlen(service) > MAX_SERVICE_LENGTH) {
+    g_dbus_method_invocation_return_error(invocation, G_DBUS_ERROR, G_DBUS_ERROR_LIMITS_EXCEEDED,
+                                          "Service is longer than %zu bytes", MAX_SERVICE_LENGTH);
+    return TRUE;
+  }
   if (*service == '/') {
     bus_name = g_dbus_method_invocation_get_sender(invocation);
     object_path = service;
@@ -101,6 +112,11 @@ gboolean Watcher::handleRegisterItem(Watcher* obj, GDBusMethodInvocation* invoca
   const gchar* object_path = "/StatusNotifierItem";
   g_autofree gchar* bus_name_buf = nullptr;
 
+  if (strlen(service) > MAX_SERVICE_LENGTH) {
+    g_dbus_method_invocation_return_error(invocation, G_DBUS_ERROR, G_DBUS_ERROR_LIMITS_EXCEEDED,
+                                          "Service is longer than %zu bytes", MAX_SERVICE_LENGTH);
+    return TRUE;
+  }
   if (*service == '/') {
     bus_name = g_dbus_method_invocation_get_sender(invocation);
     object_path = service;

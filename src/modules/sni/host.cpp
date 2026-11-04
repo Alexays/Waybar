@@ -11,6 +11,9 @@ namespace waybar::modules::SNI {
 
 static const unsigned RETRY_DELAY_MS = 200;
 static const unsigned MAX_RETRIES = 10;
+// The watcher may be any process, and the object path ends up in the header of every call to the
+// item. Keep in sync with Watcher.
+static const std::size_t MAX_SERVICE_LENGTH = 1024;
 
 Host::Host(std::size_t id, const Json::Value& config, const Bar& bar,
            const std::vector<std::string>& ignore_list,
@@ -275,6 +278,10 @@ std::tuple<std::string, std::string> Host::getBusNameAndObjectPath(const std::st
 }
 
 void Host::addRegisteredItem(const std::string& service) {
+  if (service.size() > MAX_SERVICE_LENGTH) {
+    spdlog::warn("Host: Ignoring service of {} bytes", service.size());
+    return;
+  }
   // Check service string directly before parsing
   for (const auto& ignored : ignore_list_) {
     if (service.find(ignored) != std::string::npos) {
