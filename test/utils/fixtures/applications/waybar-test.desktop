@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Waybar Test
+Exec=true
+NoDisplay=true

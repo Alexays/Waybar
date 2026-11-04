@@ -127,5 +127,28 @@ fi
 smoke::assert_clean_exit || fail=1
 echo "::endgroup::"
 
+# --- registry listener outliving its module -----------------------------
+# The connection survives a reload: a later global must not reach a destroyed module.
+if [ "$COMPOSITOR" = sway ]; then
+    echo "::group::new global after reload (registry listener lifetime)"
+    cfg="$(mktemp --suffix=.json)"
+    cat > "$cfg" <<'EOF'
+{
+  "layer": "top", "position": "top", "height": 30,
+  "modules-left": ["wlr/taskbar"]
+}
+EOF
+    smoke::launch_waybar "$cfg" "$STYLE" 5
+    smoke::assert_alive || fail=1
+    smoke::reload
+    smoke::assert_alive || fail=1
+    swaymsg seat seat-extra fallback false >/dev/null 2>&1 || true
+    sleep 3
+    smoke::assert_alive || fail=1
+    smoke::assert_clean || fail=1
+    smoke::assert_clean_exit || fail=1
+    echo "::endgroup::"
+fi
+
 [ "$fail" = 0 ] || { echo "::error::lifecycle tier failed"; exit 1; }
 echo "✓ lifecycle tier passed"

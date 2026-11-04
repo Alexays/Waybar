@@ -66,9 +66,6 @@ WorkspaceManager::WorkspaceManager(const std::string& id, const waybar::Bar& bar
 }
 
 WorkspaceManager::~WorkspaceManager() {
-  workspaces_.clear();
-  groups_.clear();
-
   if (ext_manager_ != nullptr) {
     auto* display = Client::inst()->wl_display;
     // Send `stop` request and wait for one roundtrip.
@@ -80,6 +77,11 @@ WorkspaceManager::~WorkspaceManager() {
     spdlog::warn("[ext/workspaces]: Destroying workspace manager before .finished event");
     ext_workspace_manager_v1_destroy(ext_manager_);
   }
+
+  // Handle ids are server-allocated: destroyed before `stop` is processed, a late event naming one
+  // is a fatal protocol error
+  workspaces_.clear();
+  groups_.clear();
 
   spdlog::debug("[ext/workspaces]: Workspace manager destroyed");
 }

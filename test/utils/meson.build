@@ -34,6 +34,13 @@ if tz_dep.found()
   test_src += files('date.cpp')
 endif
 
+test_dep += giounix
+test_src += files(
+    'icon_loader.cpp',
+    '../../src/util/icon_loader.cpp',
+    '../../src/util/gtk_icon.cpp',
+)
+
 utils_test = executable(
     'utils_test',
     test_src,
