@@ -34,6 +34,8 @@ if tz_dep.found()
   test_src += files('date.cpp')
 endif
 
+test_src += files('utf8_string.cpp', '../../src/util/utf8_string.cpp')
+
 utils_test = executable(
     'utils_test',
     test_src,
