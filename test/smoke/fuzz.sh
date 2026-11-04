@@ -75,5 +75,20 @@ smoke::assert_alive || fail=1
 smoke::assert_clean_exit || fail=1
 echo "::endgroup::"
 
+# image module: a FIFO at the path must be refused, not opened on any thread
+echo "::group::fuzz: image path is a fifo"
+fifo="$(mktemp -u)"
+mkfifo "$fifo"
+cfg="$(mktemp --suffix=.json)"
+cat > "$cfg" <<EOF
+{ "layer": "top", "position": "top", "height": 30,
+  "modules-center": ["image"], "image": {"path":"$fifo","interval":1} }
+EOF
+smoke::launch_waybar "$cfg" "$DIR/style.css" 4
+smoke::assert_alive || fail=1
+smoke::assert_clean_exit || fail=1
+rm -f "$fifo"
+echo "::endgroup::"
+
 [ "$fail" = 0 ] || { echo "::error::fuzz tier failed"; exit 1; }
 echo "✓ custom-backend fuzz passed"
