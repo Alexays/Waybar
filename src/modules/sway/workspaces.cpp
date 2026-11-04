@@ -89,7 +89,11 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
   ipc_.subscribe(R"(["window"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Workspaces::onCmd));
-  ipc_.sendCmd(IPC_GET_TREE);
+  try {
+    ipc_.sendCmd(IPC_GET_TREE);
+  } catch (const std::exception& e) {
+    spdlog::error("Workspaces: {}", e.what());
+  }
   if (config["enable-bar-scroll"].asBool()) {
     auto& window = const_cast<Bar&>(bar_).window;
     window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
@@ -562,16 +566,21 @@ bool Workspaces::handleScroll(GdkEventScroll* e) {
       return true;
     }
   }
-  if (!config_["warp-on-scroll"].isNull() && !config_["warp-on-scroll"].asBool()) {
-    ipc_.sendCmd(IPC_COMMAND, fmt::format("mouse_warping none"));
-  }
+  const bool noWarp = !config_["warp-on-scroll"].isNull() && !config_["warp-on-scroll"].asBool();
   try {
+    if (noWarp) {
+      ipc_.sendCmd(IPC_COMMAND, "mouse_warping none");
+    }
     ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, "--no-auto-back-and-forth", name));
   } catch (const std::exception& e) {
     spdlog::error("Workspaces: {}", e.what());
   }
-  if (!config_["warp-on-scroll"].isNull() && !config_["warp-on-scroll"].asBool()) {
-    ipc_.sendCmd(IPC_COMMAND, fmt::format("mouse_warping container"));
+  if (noWarp) {
+    try {
+      ipc_.sendCmd(IPC_COMMAND, "mouse_warping container");
+    } catch (const std::exception& e) {
+      spdlog::error("Workspaces: {}", e.what());
+    }
   }
   return true;
 }

@@ -182,7 +182,17 @@ struct Ipc::ipc_response Ipc::send(int fd, uint32_t type, const std::string& pay
 
 void Ipc::sendCmd(uint32_t type, const std::string& payload) {
   std::lock_guard<std::mutex> lock(mutex_);
-  const auto res = Ipc::send(fd_, type, payload);
+  ipc_response res;
+  try {
+    res = Ipc::send(fd_, type, payload);
+  } catch (const std::exception&) {
+    // sway hangs up instead of sending a reply too large for its buffer. The command is not
+    // retried (it may have run), but the next one needs a working connection.
+    if (running_) {
+      fd_.reset(open(socketPath_));
+    }
+    throw;
+  }
   signal_cmd.emit(res);
 }
 
