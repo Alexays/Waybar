@@ -18,6 +18,11 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
     spdlog::warn("There is no configuration for 'custom/{}', element will be hidden", name);
   }
 
+  // AIconLabel packs label_ into box_ at its natural size, which pins the text
+  // to the start of a module wider than its text. Let the label take the spare
+  // space so `align` and `justify` position the text within the whole module.
+  gtk_box_set_child_packing(box_.gobj(), GTK_WIDGET(label_.gobj()), TRUE, TRUE, 0, GTK_PACK_START);
+
   if (!config_["signal"].empty() && config_["interval"].empty() &&
       config_["restart-interval"].empty()) {
     waitingWorker();

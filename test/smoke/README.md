@@ -17,6 +17,7 @@ AddressSanitizer** and runs the real binary inside a **headless** compositor
 | 2 | **Interaction** — inject pointer clicks via sway; assert `on-click` side effect + `format-alt` toggle | [`interact.sh`](interact.sh) |
 | 2 | **Accessibility** — assert module labels via the AT-SPI tree (robust to fonts) | [`a11y.sh`](a11y.sh) / [`a11y.py`](a11y.py) |
 | 3 | **Layout matrix** — top / bottom / left (vertical) + HiDPI (scale 2) | [`positions.sh`](positions.sh) |
+| 3 | **Label alignment** — a custom module wider than its text places the text per `align` / `justify` (measured from the screenshot) | [`align.sh`](align.sh) |
 | 3 | **Second compositor** — same launch under `labwc` | workflow (`COMPOSITOR=labwc`) |
 | 4 | **Lifecycle / teardown** — clean SIGINT exit, runtime **output hotplug**, toggle + reload churn, fast-interval teardown (the C++ destructor path a `kill` never runs, #5182) | [`lifecycle.sh`](lifecycle.sh) |
 | 4 | **Custom-backend fuzz** — empty / non-zero-exit / invalid-JSON / huge / non-UTF8 / empty-format exec output | [`fuzz.sh`](fuzz.sh) |
@@ -61,6 +62,7 @@ export WAYBAR_BIN=$PWD/build/waybar
 ./test/smoke/fuzz.sh
 ./test/smoke/interact.sh  /tmp/interaction-shots
 ./test/smoke/positions.sh /tmp/layout-shots
+./test/smoke/align.sh     /tmp/align-shots
 dbus-run-session -- ./test/smoke/a11y.sh
 # best-effort (need extra daemons / tools):
 ./test/smoke/state.sh                        # needs mpd + mpc, pulseaudio
