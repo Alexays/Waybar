@@ -22,7 +22,7 @@ JACK::~JACK() {
 }
 
 std::string JACK::JACKState() {
-  std::lock_guard<std::mutex> lock(mutex_);
+  std::unique_lock<std::mutex> lock(mutex_);
   if (running_) {
     load_ = jack_cpu_load(client_);
     return state_;
@@ -32,6 +32,10 @@ std::string JACK::JACKState() {
   load_ = 0;
   bufsize_ = 0;
   samplerate_ = 0;
+
+  // The callbacks take mutex_, and libjack runs them from the calls below: JACK2 calls the sample
+  // rate one inside jack_set_sample_rate_callback(), jack_client_close() joins their thread.
+  lock.unlock();
 
   if (client_) {
     jack_client_close(client_);
@@ -46,15 +50,24 @@ std::string JACK::JACKState() {
     jack_drop_real_time_scheduling(jack_thread);
   }
 
-  bufsize_ = jack_get_buffer_size(client_);
-  samplerate_ = jack_get_sample_rate(client_);
+  auto bufsize = jack_get_buffer_size(client_);
+  auto samplerate = jack_get_sample_rate(client_);
+  lock.lock();
+  bufsize_ = bufsize;
+  samplerate_ = samplerate;
+  // Set before activating, so a shutdown() delivered right after is not overwritten.
+  running_ = true;
+  lock.unlock();
+
   jack_set_sample_rate_callback(client_, sampleRateCallback, this);
   jack_set_buffer_size_callback(client_, bufSizeCallback, this);
   jack_set_xrun_callback(client_, xrunCallback, this);
   jack_on_shutdown(client_, shutdownCallback, this);
-  if (jack_activate(client_)) return "disconnected";
+  if (jack_activate(client_)) {
+    shutdown();
+    return "disconnected";
+  }
 
-  running_ = true;
   return "connected";
 }
 
