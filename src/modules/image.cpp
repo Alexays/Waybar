@@ -14,6 +14,8 @@
 #include <string_view>
 #include <utility>
 
+#include "util/tooltip.hpp"
+
 waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
     : AModule(config, "image", id) {
   strategy_ = getStrategy(id, config, MODULE_CLASS, event_box_, tooltipEnabled());
@@ -206,6 +208,7 @@ void MultipleImageStrategy::setupAndDraw() {
     auto path = data.path;
     auto marker = data.marker;
     auto tooltip = data.tooltip;
+    util::limit_tooltip_text(tooltip);
     bool has_onclick = !data.on_click.empty();
     auto pixbuf = data.pixbuf;
 
@@ -406,6 +409,7 @@ void SingleImageStrategy::parseOutputRaw() {
         validated_line = validated_line.make_valid();
       }
       tooltip_ = validated_line.raw();
+      util::limit_tooltip_markup(tooltip_);
     } else {
       break;
     }

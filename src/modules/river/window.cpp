@@ -112,7 +112,7 @@ void Window::handle_focused_view(const char* title) {
     auto text = fmt::format(fmt::runtime(format_), Glib::Markup::escape_text(title).raw());
     label_.set_markup(text);
     if (tooltipEnabled()) {
-      label_.set_tooltip_markup(text);
+      setTooltipMarkup(text);
     }
   }
 

@@ -24,6 +24,7 @@
 #include "modules/sni/icon_manager.hpp"
 #include "util/format.hpp"  // IWYU pragma: keep
 #include "util/gtk_icon.hpp"
+#include "util/tooltip.hpp"
 
 template <>
 struct fmt::formatter<Glib::VariantBase> : formatter<std::string> {
@@ -325,7 +326,9 @@ void Item::setStatus(const Glib::ustring& value) {
 
 void Item::setTooltipMarkup(const Glib::ustring& markup) {
   if (show_tooltip_) {
-    event_box.set_tooltip_markup(markup);
+    std::string tooltip = markup.raw();
+    waybar::util::limit_tooltip_markup(tooltip);
+    event_box.set_tooltip_markup(tooltip);
   }
 }
 

@@ -7,6 +7,7 @@
 #include <util/command.hpp>
 
 #include "config.hpp"
+#include "util/tooltip.hpp"
 
 namespace waybar {
 
@@ -207,12 +208,13 @@ bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
     return false;
   }
 
-  // Stored valid, since the query-tooltip handler hands it to GTK as well
-  if (markup.validate()) {
-    last_tooltip_markup_ = markup.raw();
-  } else {
-    last_tooltip_markup_ = markup.make_valid().raw();
+  // Stored valid and bounded, since the query-tooltip handler hands it to GTK as well
+  std::string tooltip = markup.validate() ? markup.raw() : markup.make_valid().raw();
+  util::limit_tooltip_markup(tooltip);
+  if (last_tooltip_markup_ == tooltip) {
+    return false;
   }
+  last_tooltip_markup_ = std::move(tooltip);
   if (active_tooltip_) {
     // leave-notify is not always delivered when the pointer moves between
     // adjacent modules, so active_tooltip_ may belong to another module.

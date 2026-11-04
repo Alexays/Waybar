@@ -24,6 +24,7 @@
 #include "util/gtk_icon.hpp"
 #include "util/rewrite_string.hpp"
 #include "util/string.hpp"
+#include "util/tooltip.hpp"
 
 namespace waybar::modules::wlr {
 
@@ -655,10 +656,13 @@ void Task::update() {
 
     txt = waybar::util::rewriteString(txt, config_["rewrite"]);
 
-    if (markup)
+    if (markup) {
+      waybar::util::limit_tooltip_markup(txt);
       button.set_tooltip_markup(txt);
-    else
+    } else {
+      waybar::util::limit_tooltip_text(txt);
       button.set_tooltip_text(txt);
+    }
   }
 }
 

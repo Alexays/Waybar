@@ -157,7 +157,7 @@ bool Window::render() {
   }
   updateAppIcon();
   if (tooltipEnabled()) {
-    label_.set_tooltip_markup(title_);
+    setTooltipMarkup(title_);
   }
   if (hide_empty_ && title_.empty()) {
     box_.set_visible(false);

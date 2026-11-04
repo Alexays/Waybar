@@ -11,6 +11,7 @@
 
 #include "modules/niri/backend.hpp"
 #include "modules/niri/workspaces.hpp"
+#include "util/tooltip.hpp"
 
 namespace waybar::modules::niri {
 
@@ -171,7 +172,9 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
     } else {
       btn.get_style_context()->remove_class("focused");
     }
-    btn.set_tooltip_text(title);
+    std::string tooltip = title;
+    util::limit_tooltip_text(tooltip);
+    btn.set_tooltip_text(tooltip);
 
     if (is_new || entry.app_id != app_id) {
       entry.app_id = app_id;

@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "util/scope_guard.hpp"
+#include "util/tooltip.hpp"
 
 waybar::modules::CustomGraph::CustomGraph(const std::string& name, const std::string& id,
                                           const Json::Value& config, const std::string& output_name)
@@ -183,8 +184,10 @@ auto waybar::modules::CustomGraph::update() -> void {
           auto tooltip = config_["tooltip-format"].asString();
           tooltip = fmt::format(fmt::runtime(tooltip), fmt::arg("text", text_),
                                 fmt::arg("alt", alt_), fmt::arg("percentage", percentage_));
+          util::limit_tooltip_markup(tooltip);
           graph_.set_tooltip_markup(tooltip);
         } else {
+          util::limit_tooltip_markup(tooltip_);
           if (graph_.get_tooltip_markup() != tooltip_) {
             graph_.set_tooltip_markup(tooltip_);
           }

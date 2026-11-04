@@ -13,6 +13,7 @@
 
 #include "modules/umbriel/backend.hpp"
 #include "modules/umbriel/workspaces.hpp"
+#include "util/tooltip.hpp"
 
 namespace waybar::modules::umbriel {
 
@@ -186,7 +187,9 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
     btn->set_relief(Gtk::RELIEF_NONE);
     btn->get_style_context()->add_class("umbriel-taskbar-btn");
     if (is_focused) btn->get_style_context()->add_class("focused");
-    btn->set_tooltip_text(title);
+    std::string tooltip = title;
+    util::limit_tooltip_text(tooltip);
+    btn->set_tooltip_text(tooltip);
 
     auto pixbuf = loadIcon(app_id, icon_size);
     if (pixbuf) {

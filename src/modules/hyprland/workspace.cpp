@@ -13,6 +13,7 @@
 #include "util/command.hpp"
 #include "util/icon_loader.hpp"
 #include "util/regex_input.hpp"
+#include "util/tooltip.hpp"
 
 namespace {
 constexpr std::string_view kCssClassPrefix = "ws-";
@@ -496,9 +497,11 @@ void Workspace::update(const std::string& workspace_icon, const std::string& wor
   }
 
   if (!workspace_tooltip.empty()) {
-    m_button.set_tooltip_text(fmt::format(
-        fmt::runtime(workspace_tooltip), fmt::arg("id", address()), fmt::arg("name", name()),
-        fmt::arg("icon", workspace_icon), fmt::arg("windows", windows)));
+    auto tooltip = fmt::format(fmt::runtime(workspace_tooltip), fmt::arg("id", address()),
+                               fmt::arg("name", name()), fmt::arg("icon", workspace_icon),
+                               fmt::arg("windows", windows));
+    util::limit_tooltip_text(tooltip);
+    m_button.set_tooltip_text(tooltip);
   }
 
   auto formatBefore = m_workspaceManager.formatBefore();
@@ -586,7 +589,9 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
     }
 
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
-    window_box->set_tooltip_markup(window_repr->window_title);
+    std::string tooltip = window_repr->window_title;
+    util::limit_tooltip_markup(tooltip);
+    window_box->set_tooltip_markup(tooltip);
 
     auto button = Gtk::manage(new Gtk::Button());
     button->set_relief(Gtk::RELIEF_NONE);

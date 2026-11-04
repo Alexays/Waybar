@@ -106,7 +106,7 @@ void Window::doUpdate() {
 
     updateAppIconName(appId, "");
 
-    if (tooltipEnabled()) label_.set_tooltip_markup(sanitizedTitle);
+    if (tooltipEnabled()) setTooltipMarkup(sanitizedTitle);
 
     const auto isSolo = std::none_of(windows.cbegin(), windows.cend(), [&](const auto& win) {
       return win["id"].asString() != id && win["workspace"].asString() == workspace_id;

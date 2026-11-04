@@ -288,12 +288,9 @@ auto waybar::modules::Wwan::update() -> void {
       tooltip_format = config_["tooltip-format"].asString();
     }
     if (!tooltip_format.empty()) {
-      auto tooltip_text = fmt::vformat(tooltip_format, store);
-      if (label_.get_tooltip_text() != tooltip_text) {
-        label_.set_tooltip_markup(tooltip_text);
-      }
-    } else if (label_.get_tooltip_text() != text) {
-      label_.set_tooltip_markup(text);
+      setTooltipMarkup(fmt::vformat(tooltip_format, store));
+    } else {
+      setTooltipMarkup(text);
     }
   }
   label_.set_markup(text);
