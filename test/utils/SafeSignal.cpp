@@ -172,3 +172,37 @@ TEST_CASE_METHOD(GlibTestsFixture, "SafeSignal queue stays bounded under burst l
   REQUIRE(received.back() == NUM_EVENTS);
   REQUIRE(received.front() == NUM_EVENTS - static_cast<int>(received.size()) + 1);
 }
+
+// A burst must not fill the dispatcher pipe that only the main loop drains.
+TEST_CASE_METHOD(GlibTestsFixture, "SafeSignal burst does not block the emitters",
+                 "[signal][thread][util]") {
+  // More notifications than the pipe holds.
+  constexpr int NUM_EVENTS = 10000;
+  int last_value = 0;
+  int updates = 0;
+
+  SafeSignal<int> test_signal;
+  util::CoalescingDispatcher dp;
+
+  setTimeout(5000);
+
+  test_signal.connect([&](auto value) {
+    last_value = value;
+    dp.emit();
+  });
+  dp.connect([&]() { ++updates; });
+
+  run([&]() {
+    std::thread producer([&]() {
+      for (int i = 1; i <= NUM_EVENTS; ++i) {
+        test_signal.emit(i);
+      }
+    });
+    producer.join();
+
+    Glib::signal_timeout().connect_once([this]() { this->quit(); }, 50);
+  });
+
+  REQUIRE(last_value == NUM_EVENTS);
+  REQUIRE(updates == 1);
+}

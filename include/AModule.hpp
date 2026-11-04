@@ -2,7 +2,6 @@
 
 #include <fmt/args.h>
 #include <fmt/format.h>
-#include <glibmm/dispatcher.h>
 #include <glibmm/markup.h>
 #include <gtkmm.h>
 #include <gtkmm/eventbox.h>
@@ -12,6 +11,7 @@
 #include <utility>
 
 #include "IModule.hpp"
+#include "util/coalescing_dispatcher.hpp"
 
 namespace waybar {
 
@@ -27,7 +27,7 @@ class AModule : public IModule {
   auto doAction(const std::string& name) -> void override;
 
   /// Emitting on this dispatcher triggers a update() call
-  Glib::Dispatcher dp;
+  util::CoalescingDispatcher dp;
 
   bool expandEnabled() const;
 

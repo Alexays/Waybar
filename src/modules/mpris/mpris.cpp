@@ -140,7 +140,7 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
 
 Mpris::~Mpris() { worker_->stop(); }
 
-Mpris::Worker::Worker(Glib::Dispatcher& dp, std::string player_name,
+Mpris::Worker::Worker(util::CoalescingDispatcher& dp, std::string player_name,
                       std::vector<std::string> ignored_players, std::chrono::milliseconds interval)
     : player_(std::move(player_name)),
       ignored_players_(std::move(ignored_players)),

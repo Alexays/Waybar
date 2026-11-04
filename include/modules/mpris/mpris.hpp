@@ -47,7 +47,8 @@ class Mpris : public ALabel {
    public:
     using Action = void (*)(PlayerctlPlayer*, GError**);
 
-    Worker(Glib::Dispatcher&, std::string, std::vector<std::string>, std::chrono::milliseconds);
+    Worker(util::CoalescingDispatcher&, std::string, std::vector<std::string>,
+           std::chrono::milliseconds);
     ~Worker();
     void start();
     void stop();
@@ -93,7 +94,7 @@ class Mpris : public ALabel {
     std::chrono::time_point<std::chrono::system_clock> last_update_;
 
     std::mutex dp_mutex_;
-    Glib::Dispatcher* dp_;  // null once the module is gone
+    util::CoalescingDispatcher* dp_;  // null once the module is gone
   };
 
   auto getIconFromJson(const Json::Value&, const std::string&) -> std::string;
