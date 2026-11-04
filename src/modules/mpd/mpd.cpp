@@ -404,13 +404,19 @@ bool waybar::modules::MPD::handlePlayPause(GdkEventButton* const& e) {
     return false;
   }
 
-  if (e->button == 1) {
-    if (state_ == MPD_STATE_PLAY)
-      context_.pause();
-    else
-      context_.play();
-  } else if (e->button == 3) {
-    context_.stop();
+  // An exception escaping a GTK signal handler aborts the bar.
+  try {
+    if (e->button == 1) {
+      if (state_ == MPD_STATE_PLAY)
+        context_.pause();
+      else
+        context_.play();
+    } else if (e->button == 3) {
+      context_.stop();
+    }
+  } catch (std::exception const& ex) {
+    spdlog::warn("{}: error: {}", module_name_, ex.what());
+    context_.setState(std::make_unique<detail::Disconnected>(&context_));
   }
 
   return true;

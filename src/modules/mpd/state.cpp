@@ -93,13 +93,13 @@ bool Idle::on_io(Glib::IOCondition const&) {
   mpd_response_finish(conn);
   try {
     ctx_->checkErrors(conn);
+    ctx_->fetchState();
   } catch (std::exception const& e) {
     spdlog::warn("mpd: Idle: error: {}", e.what());
     ctx_->setState(std::make_unique<Disconnected>(ctx_));
     return false;
   }
 
-  ctx_->fetchState();
   ctx_->emit();
   mpd_state state = ctx_->state();
 

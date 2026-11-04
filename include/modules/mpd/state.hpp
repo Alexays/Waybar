@@ -183,6 +183,7 @@ class Context {
   friend class Stopped;
   friend class Disconnected;
   friend class Idle;
+  friend class waybar::modules::MPD;
 
  protected:
   void setState(std::unique_ptr<State>&& new_state) noexcept {
