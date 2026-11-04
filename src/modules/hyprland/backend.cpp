@@ -15,7 +15,6 @@
 #include <filesystem>
 #include <optional>
 #include <string>
-#include <string_view>
 
 #include "util/scoped_fd.hpp"
 #include "util/string.hpp"
@@ -294,29 +293,14 @@ Json::Value IPC::getSocket1JsonReply(const std::string& rq) {
   return parser_.parse(reply);
 }
 
-bool IPC::isLuaConfigProvider(const std::string& systemInfo) {
-  // Hyprland reports which config manager it actually loaded in "systeminfo",
-  // as a "configProvider: lua" / "configProvider: hyprlang" line. That is the
-  // authoritative signal: the version alone is not enough, because Hyprland
-  // only uses the Lua manager when the config file name ends in ".lua", so a
-  // >= 0.54 instance started with a traditional hyprland.conf still speaks the
-  // legacy dispatch protocol. The field landed together with the Lua config
-  // manager in 0.55, so its absence means the instance predates Lua support
-  // entirely and necessarily speaks the legacy protocol.
-  static constexpr std::string_view key = "configProvider:";
-
-  const size_t keyPos = systemInfo.find(key);
-  if (keyPos == std::string::npos) {
-    return false;
-  }
-
-  const size_t valuePos = keyPos + key.size();
-  const size_t lineEnd = systemInfo.find('\n', valuePos);
-  const std::string value = lineEnd == std::string::npos
-                                ? systemInfo.substr(valuePos)
-                                : systemInfo.substr(valuePos, lineEnd - valuePos);
-
-  return trim(value) == "lua";
+bool IPC::isLuaEvalReply(const std::string& reply) {
+  // Only the Lua config manager runs "eval" and answers "ok": the legacy
+  // manager replies "eval is only supported with the lua config manager", and
+  // Hyprland < 0.55 has no such request. The version alone is not enough,
+  // because Hyprland only uses the Lua manager when the config file name ends
+  // in ".lua", so a >= 0.55 instance started with a traditional hyprland.conf
+  // still speaks the legacy dispatch protocol.
+  return trim(reply) == "ok";
 }
 
 bool IPC::isLuaProtocol() {
@@ -324,14 +308,15 @@ bool IPC::isLuaProtocol() {
     return *s_luaProtocolDetected_;
   }
 
-  // The query is read-only, so detection has none of the side effects of an
-  // actual dispatch probe.
+  // A no-op eval is cheap, and every Lua dispatch goes through the same eval
+  // path anyway. Not "systeminfo": Hyprland runs lspci for it on its main
+  // thread, which wakes a runtime-suspended dGPU and freezes the compositor
+  // on the first click (#5286).
   bool luaProto = false;
   try {
-    luaProto = isLuaConfigProvider(getSocket1Reply("systeminfo"));
+    luaProto = isLuaEvalReply(getSocket1Reply("eval return nil"));
   } catch (const std::exception& e) {
-    spdlog::warn("Hyprland IPC: could not read systeminfo ({}), assuming legacy protocol",
-                 e.what());
+    spdlog::warn("Hyprland IPC: eval probe failed ({}), assuming legacy protocol", e.what());
   }
 
   if (luaProto) {

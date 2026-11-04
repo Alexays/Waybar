@@ -4,7 +4,6 @@
 #include <catch2/catch.hpp>
 #endif
 
-#include <cstring>
 #include <optional>
 #include <string>
 #include <system_error>
@@ -21,26 +20,9 @@ class IPCTestHelper : public hyprland::IPC {
   static void resetLuaProtocolDetection() { s_luaProtocolDetected_.reset(); }
   static void setLuaProtocolDetected(bool value) { s_luaProtocolDetected_ = value; }
   using hyprland::IPC::buildLuaDispatch;
-  using hyprland::IPC::isLuaConfigProvider;
+  using hyprland::IPC::isLuaEvalReply;
   using hyprland::IPC::isLuaProtocol;
 };
-
-// Trimmed but otherwise verbatim "systeminfo" reply from Hyprland 0.56.1.
-constexpr auto kSystemInfoLua = R"(
-Hyprland 0.56.1 built from branch v0.56.1 at commit deadbeef clean.
-Date: Mon Jul 27 16:33:49 2026
-Tag: v0.56.1, commits: 7643
-
-Libraries:
-Hyprutils: built against 0.14.0, system has 0.14.0
-
-os-release: Fedora Linux 43
-
-plugins:
-  no plugins loaded
-
-configProvider: lua
-)";
 
 std::size_t countOpenFds() {
 #if defined(__linux__)
@@ -213,61 +195,27 @@ TEST_CASE("dispatch throws when Hyprland is not running", "[dispatch]") {
   CHECK_THROWS(hyprland::IPC::dispatch("workspace", "1"));
 }
 
-TEST_CASE("isLuaConfigProvider reads the config manager Hyprland loaded", "[isLuaConfigProvider]") {
-  SECTION("realistic systeminfo reply reports the Lua manager") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider(kSystemInfoLua) == true);
+TEST_CASE("isLuaEvalReply tells the Lua config manager apart", "[isLuaEvalReply]") {
+  SECTION("Lua manager runs the no-op eval") {
+    REQUIRE(IPCTestHelper::isLuaEvalReply("ok") == true);
   }
 
-  SECTION("lua") { REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider: lua\n") == true); }
+  SECTION("trailing newline") { REQUIRE(IPCTestHelper::isLuaEvalReply("ok\n") == true); }
 
-  // "hyprlang" is what Hyprland actually emits for the legacy manager, per
-  // Config::typeToString in src/config/ConfigManager.cpp.
-  SECTION("hyprlang") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider: hyprlang\n") == false);
+  // Verbatim from evalRequest in Hyprland's src/debug/HyprCtl.cpp. A >= 0.55
+  // instance started with a traditional hyprland.conf keeps the legacy parser,
+  // which is exactly the case the version heuristic got wrong.
+  SECTION("legacy manager refuses eval") {
+    REQUIRE(IPCTestHelper::isLuaEvalReply("eval is only supported with the lua config manager") ==
+            false);
   }
 
-  // A >= 0.55 instance started with a traditional hyprland.conf keeps the
-  // legacy parser, which is exactly the case the version heuristic got wrong.
-  SECTION("legacy manager inside a full reply") {
-    std::string info{kSystemInfoLua};
-    info.replace(info.find("configProvider: lua"), std::strlen("configProvider: lua"),
-                 "configProvider: hyprlang");
-    REQUIRE(IPCTestHelper::isLuaConfigProvider(info) == false);
+  // Hyprland < 0.55 has no "eval" request.
+  SECTION("pre-Lua instance does not know the request") {
+    REQUIRE(IPCTestHelper::isLuaEvalReply("unknown request") == false);
   }
 
-  SECTION("an unrecognised manager is not treated as Lua") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider: something-else\n") == false);
-  }
-
-  // The field ships together with the Lua config manager (0.55), so replies
-  // without it come from instances that only speak the legacy protocol.
-  SECTION("absent field means a pre-Lua instance, hence legacy") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider("Hyprland 0.41.2\nTag: v0.41.2\n") == false);
-  }
-
-  SECTION("empty reply") { REQUIRE(IPCTestHelper::isLuaConfigProvider("") == false); }
-}
-
-TEST_CASE("isLuaConfigProvider tolerates formatting variations", "[isLuaConfigProvider]") {
-  SECTION("tab separator") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider:\tlua\n") == true);
-  }
-
-  SECTION("extra spaces") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider:    lua\n") == true);
-  }
-
-  SECTION("CRLF line ending") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider: lua\r\n") == true);
-  }
-
-  SECTION("last line without a trailing newline") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider("plugins:\nconfigProvider: lua") == true);
-  }
-
-  SECTION("empty value is not Lua") {
-    REQUIRE(IPCTestHelper::isLuaConfigProvider("configProvider:\n") == false);
-  }
+  SECTION("empty reply") { REQUIRE(IPCTestHelper::isLuaEvalReply("") == false); }
 }
 
 TEST_CASE("isLuaProtocol assumes legacy when Hyprland is not reachable", "[isLuaProtocol]") {
