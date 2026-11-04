@@ -138,8 +138,13 @@ gboolean Watcher::handleRegisterItem(Watcher* obj, GDBusMethodInvocation* invoca
   }
   auto* watch = gfWatchFind(obj->items_, bus_name, object_path);
   if (watch != nullptr) {
-    spdlog::debug("Ignoring duplicate Status Notifier Item registration for '{}' at '{}'", bus_name,
+    spdlog::debug("Duplicate Status Notifier Item registration for '{}' at '{}'", bus_name,
                   object_path);
+    // Hosts drop an item that was not exported yet when first announced, so announce it again;
+    // hosts that still track it skip it.
+    gchar* tmp = g_strdup_printf("%s%s", bus_name, object_path);
+    sn_watcher_emit_item_registered(obj->watcher_, tmp);
+    g_free(tmp);
     sn_watcher_complete_register_item(obj->watcher_, invocation);
     return TRUE;
   }
