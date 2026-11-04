@@ -15,14 +15,15 @@ Scratchpad::Scratchpad(const std::string& id, const Json::Value& config)
       tooltip_text_(""),
       count_(0) {
   ipc_.subscribe(R"(["window"])");
-  ipc_.signal_event.connect(sigc::mem_fun(*this, &Scratchpad::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Scratchpad::onCmd));
+  // Only the newest tree matters
+  ipc_.signal_cmd.set_max_queued_events(1);
 
   getTree();
 
   ipc_.setWorker([this] {
     try {
-      ipc_.handleEvent();
+      ipc_.handleEvents(IPC_GET_TREE);
     } catch (const std::exception& e) {
       spdlog::error("Scratchpad: {}", e.what());
     }
@@ -79,6 +80,4 @@ auto Scratchpad::onCmd(const struct Ipc::ipc_response& res) -> void {
     spdlog::error("Scratchpad: {}", e.what());
   }
 }
-
-auto Scratchpad::onEvent(const struct Ipc::ipc_response& res) -> void { getTree(); }
 }  // namespace waybar::modules::sway

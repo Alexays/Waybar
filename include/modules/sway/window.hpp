@@ -20,7 +20,6 @@ class Window : public AAppIconLabel, public sigc::trackable {
 
  private:
   void setClass(const std::string& classname, bool enable);
-  void onEvent(const struct Ipc::ipc_response&);
   void onCmd(const struct Ipc::ipc_response&);
   std::tuple<std::size_t, int, int, std::string, std::string, std::string, std::string, std::string,
              std::string>

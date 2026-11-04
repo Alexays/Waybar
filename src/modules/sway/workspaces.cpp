@@ -87,8 +87,9 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
   populateIgnoreWorkspacesConfig(config);
   ipc_.subscribe(R"(["workspace"])");
   ipc_.subscribe(R"(["window"])");
-  ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Workspaces::onCmd));
+  // Only the newest tree matters
+  ipc_.signal_cmd.set_max_queued_events(1);
   try {
     ipc_.sendCmd(IPC_GET_TREE);
   } catch (const std::exception& e) {
@@ -102,19 +103,11 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
   // Launch worker
   ipc_.setWorker([this] {
     try {
-      ipc_.handleEvent();
+      ipc_.handleEvents(IPC_GET_TREE);
     } catch (const std::exception& e) {
       spdlog::error("Workspaces: {}", e.what());
     }
   });
-}
-
-void Workspaces::onEvent(const struct Ipc::ipc_response& res) {
-  try {
-    ipc_.sendCmd(IPC_GET_TREE);
-  } catch (const std::exception& e) {
-    spdlog::error("Workspaces: {}", e.what());
-  }
 }
 
 auto Workspaces::populateIgnoreWorkspacesConfig(const Json::Value& config) -> void {

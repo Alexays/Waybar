@@ -1,6 +1,7 @@
 #include "modules/sway/ipc/client.hpp"
 
 #include <fcntl.h>
+#include <poll.h>
 #include <spdlog/spdlog.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -25,7 +26,7 @@ namespace {
 void sendAll(int fd, const char* data, size_t size, const char* what) {
   size_t total = 0;
   while (total < size) {
-    const auto res = ::send(fd, data + total, size - total, 0);
+    const auto res = ::send(fd, data + total, size - total, MSG_NOSIGNAL);
     if (res < 0) {
       if (errno == EINTR || errno == EAGAIN) {
         continue;
@@ -251,6 +252,31 @@ void Ipc::handleEvent() {
     }
     spdlog::warn("Lost sway IPC event connection ({}), reconnecting", e.what());
     reconnectEvent();
+  }
+}
+
+void Ipc::handleEvents(uint32_t type) {
+  try {
+    struct pollfd pfd{.fd = fd_event_, .events = POLLIN, .revents = 0};
+    size_t events = 0;
+    do {
+      Ipc::recv(fd_event_);
+    } while (++events < max_events_per_query_ && ::poll(&pfd, 1, 0) > 0);
+  } catch (const std::exception& e) {
+    if (!running_) {
+      return;
+    }
+    spdlog::warn("Lost sway IPC event connection ({}), reconnecting", e.what());
+    // The events sent while disconnected are lost: the query below resyncs the module.
+    reconnectEvent();
+  }
+  try {
+    sendCmd(type);
+  } catch (const std::exception&) {
+    // Teardown shuts the sockets down under an in-flight query
+    if (running_) {
+      throw;
+    }
   }
 }
 
