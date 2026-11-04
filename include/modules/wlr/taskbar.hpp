@@ -100,6 +100,7 @@ class Task {
   void on_button_size_allocated(Gtk::Allocation& alloc);
   void hide_if_ignored();
   void hide_if_duplicate();
+  void update_duplicates();
   void show_button();
   void hide_button();
 
@@ -215,8 +216,6 @@ class Taskbar : public waybar::AModule {
   const std::unordered_set<std::string>& ignore_list() const;
   const std::unordered_set<std::string>& squash_list() const;
   const std::map<std::string, std::string>& app_ids_replace_map() const;
-  std::size_t task_id_count(std::string_view id) const;
-  std::size_t task_title_count(std::string_view title) const;
 
   auto tasks() {
     return tasks_ | std::views::transform([](auto& task) -> Task& { return *task; });

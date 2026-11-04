@@ -256,6 +256,7 @@ void Task::handle_title(const char* title) {
   title_ = title;
   hide_if_ignored();
   hide_if_duplicate();
+  update_duplicates();
 
   if ((!with_icon_ && !with_name_) || app_info_) {
     return;
@@ -285,14 +286,24 @@ void Task::hide_if_duplicate() {
   bool contains_app =
       squash_list.contains("*") || squash_list.contains(title_) || squash_list.contains(app_id_);
 
-  // Squashes if the app is in the squash list and more than 1 instance is open
-  if (contains_app && (tbar_->task_id_count(app_id_) > 1 || tbar_->task_title_count(title_) > 1)) {
-    squashed_ = true;
-    hide_button();
-  }
+  // Only an instance that has a button counts, or the last button of the app gets squashed too
+  squashed_ = contains_app && std::ranges::any_of(tbar_->tasks(), [this](auto&& task) {
+                return &task != this && task.button_visible_ &&
+                       (task.app_id_ == app_id_ || task.title_ == title_);
+              });
 
-  if (!squashed_ && !ignored_ && (tbar_->all_outputs() || on_bar_output_)) {
+  if (squashed_) {
+    hide_button();
+  } else if (!ignored_ && (tbar_->all_outputs() || on_bar_output_)) {
     show_button();
+  }
+}
+
+void Task::update_duplicates() {
+  for (auto&& task : tbar_->tasks()) {
+    if (&task != this && task.squashed_) {
+      task.hide_if_duplicate();
+    }
   }
 }
 
@@ -321,6 +332,7 @@ void Task::handle_app_id(const char* app_id) {
   app_id_ = app_id;
   hide_if_ignored();
   hide_if_duplicate();
+  update_duplicates();
 
   auto ids_replace_map = tbar_->app_ids_replace_map();
   if (ids_replace_map.count(app_id_)) {
@@ -366,6 +378,7 @@ void Task::handle_output_enter(struct wl_output* output) {
     spdlog::debug("{} is ignored", repr());
     return;
   }
+  hide_if_duplicate();
   if (squashed_) {
     spdlog::debug("{} was squashed", repr());
     return;
@@ -387,6 +400,7 @@ void Task::handle_output_leave(struct wl_output* output) {
   if (!tbar_->all_outputs() && !on_bar_output_) {
     /* The task left the output of the current bar, make the button invisible */
     hide_button();
+    update_duplicates();
   }
 }
 
@@ -487,26 +501,7 @@ void Task::handle_closed() {
     button_visible_ = false;
   }
 
-  const auto& squash_list = tbar_->squash_list();
-  const bool in_squash_list =
-      squash_list.contains("*") || squash_list.contains(title_) || squash_list.contains(app_id_);
-  if (in_squash_list && !squashed_ &&
-      (tbar_->task_id_count(app_id_) > 1 || tbar_->task_title_count(title_) > 1)) {
-    // Find next squashed task with same title or id (excluding ourselves)
-    auto tasks = tbar_->tasks();
-    const auto it = std::ranges::find_if(tasks, [this](auto&& task) {
-      return &task != this && task.squashed_ &&
-             (task.app_id() == app_id_ || task.title() == title_);
-    });
-
-    if (it != tasks.end() && !(*it).ignored_) {
-      Task& task = *it;
-      task.squashed_ = false;
-      if (tbar_->all_outputs() || task.on_bar_output_) {
-        task.show_button();
-      }
-    }
-  }
+  update_duplicates();
 
   tbar_->remove_task(id_);
 }
@@ -1185,14 +1180,6 @@ const std::unordered_set<std::string>& Taskbar::squash_list() const { return squ
 
 const std::map<std::string, std::string>& Taskbar::app_ids_replace_map() const {
   return app_ids_replace_map_;
-}
-
-std::size_t Taskbar::task_id_count(std::string_view id) const {
-  return std::ranges::count_if(tasks_, [=](auto&& task) { return id == task->app_id(); });
-}
-
-std::size_t Taskbar::task_title_count(std::string_view title) const {
-  return std::ranges::count_if(tasks_, [=](auto&& task) { return title == task->title(); });
 }
 
 } /* namespace waybar::modules::wlr */
