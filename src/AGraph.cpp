@@ -97,10 +97,17 @@ AGraph::AGraph(const Json::Value& config, const std::string& name, const std::st
       for (Json::Value::const_iterator it = config_["menu-actions"].begin();
            it != config_["menu-actions"].end(); ++it) {
         std::string key = it.key().asString();
-        submenus_[key] = GTK_MENU_ITEM(gtk_builder_get_object(builder, key.c_str()));
+        auto* item = gtk_builder_get_object(builder, key.c_str());
+        if (item == nullptr) {
+          spdlog::warn("Menu item '{}' not found in builder file", key);
+          continue;
+        }
+        submenus_[key] = GTK_MENU_ITEM(item);
         menuActionsMap_[key] = it->asString();
-        g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
-                         (gpointer)menuActionsMap_[key].c_str());
+        // A popped up menu can outlive the module, so the closure owns its copy of the command
+        g_signal_connect_data(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
+                              g_strdup(menuActionsMap_[key].c_str()), (GClosureNotify)g_free,
+                              (GConnectFlags)0);
       }
       g_object_unref(builder);
     } catch (std::runtime_error& e) {
