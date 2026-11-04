@@ -231,8 +231,8 @@ auto UPower::update() -> void {
 
   setLabelMarkup(getText(upDevice_, format_));
   // Set icon
-  if (upDevice_.icon_name == NULL || !gtkTheme_->has_icon(upDevice_.icon_name))
-    upDevice_.icon_name = (char*)NO_BATTERY.c_str();
+  if (upDevice_.icon_name.empty() || !gtkTheme_->has_icon(upDevice_.icon_name))
+    upDevice_.icon_name = NO_BATTERY;
   image_.set_from_icon_name(upDevice_.icon_name, Gtk::ICON_SIZE_INVALID);
 
   box_.show();
@@ -397,13 +397,11 @@ void UPower::setDisplayDevice() {
           thisPtr->getUpDeviceInfo(upDevice);
           upDevice_output displayDevice{NULL};
           if (!thisPtr->nativePath_.empty()) {
-            if (upDevice.nativePath == nullptr) return;
-            if (0 == std::strcmp(upDevice.nativePath, thisPtr->nativePath_.c_str())) {
+            if (upDevice.nativePath == thisPtr->nativePath_) {
               displayDevice = upDevice;
             }
           } else {
-            if (upDevice.model == nullptr) return;
-            if (0 == std::strcmp(upDevice.model, thisPtr->model_.c_str())) {
+            if (upDevice.model == thisPtr->model_) {
               displayDevice = upDevice;
             }
           }
@@ -421,11 +419,20 @@ void UPower::setDisplayDevice() {
 
 void UPower::getUpDeviceInfo(upDevice_output& upDevice_) {
   if (upDevice_.upDevice != NULL && G_IS_OBJECT(upDevice_.upDevice)) {
+    // g_object_get() returns newly allocated copies of the string properties
+    gchar* icon_name{NULL};
+    gchar* nativePath{NULL};
+    gchar* model{NULL};
     g_object_get(upDevice_.upDevice, "kind", &upDevice_.kind, "state", &upDevice_.state,
-                 "percentage", &upDevice_.percentage, "icon-name", &upDevice_.icon_name,
-                 "time-to-empty", &upDevice_.time_empty, "time-to-full", &upDevice_.time_full,
-                 "temperature", &upDevice_.temperature, "native-path", &upDevice_.nativePath,
-                 "model", &upDevice_.model, NULL);
+                 "percentage", &upDevice_.percentage, "icon-name", &icon_name, "time-to-empty",
+                 &upDevice_.time_empty, "time-to-full", &upDevice_.time_full, "temperature",
+                 &upDevice_.temperature, "native-path", &nativePath, "model", &model, NULL);
+    upDevice_.icon_name = (icon_name != NULL) ? icon_name : "";
+    upDevice_.nativePath = (nativePath != NULL) ? nativePath : "";
+    upDevice_.model = (model != NULL) ? model : "";
+    g_free(icon_name);
+    g_free(nativePath);
+    g_free(model);
     spdlog::debug(
         "UPower. getUpDeviceInfo. kind: \"{0}\". state: \"{1}\". percentage: \"{2}\". \
 icon_name: \"{3}\". time-to-empty: \"{4}\". time-to-full: \"{5}\". temperature: \"{6}\". \
@@ -498,8 +505,8 @@ bool UPower::queryTooltipCb(int x, int y, bool keyboard_tooltip,
       boxDev->add(*labelDev);
       // Construct user box
       // Set icon from icon state
-      if (pairDev.second.icon_name == NULL || !gtkTheme_->has_icon(pairDev.second.icon_name))
-        pairDev.second.icon_name = (char*)NO_BATTERY.c_str();
+      if (pairDev.second.icon_name.empty() || !gtkTheme_->has_icon(pairDev.second.icon_name))
+        pairDev.second.icon_name = NO_BATTERY;
       Gtk::Image* iconTooltip{new Gtk::Image{}};
       iconTooltip->set_from_icon_name(pairDev.second.icon_name, Gtk::ICON_SIZE_INVALID);
       iconTooltip->set_pixel_size(iconSize_);

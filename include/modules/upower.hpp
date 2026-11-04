@@ -35,12 +35,12 @@ class UPower final : public AIconLabel {
     double temperature{0.0};
     guint64 time_full{0u};
     guint64 time_empty{0u};
-    gchar* icon_name{(char*)'\0'};
+    std::string icon_name;
     bool upDeviceValid{false};
     UpDeviceState state;
     UpDeviceKind kind;
-    char* nativePath{(char*)'\0'};
-    char* model{(char*)'\0'};
+    std::string nativePath;
+    std::string model;
   };
 
   // Technical variables
