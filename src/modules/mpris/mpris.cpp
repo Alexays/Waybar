@@ -190,9 +190,8 @@ Mpris::~Mpris() {
   if (player != nullptr) {
     g_signal_handlers_disconnect_by_data(player, this);
   }
-  if (last_active_player_ != nullptr && last_active_player_ != player) {
-    g_object_unref(last_active_player_);
-  }
+  vanished_release_.disconnect();
+  dropFallbackPlayer();
   g_clear_object(&manager);
   g_clear_object(&player);
 }
@@ -384,10 +383,11 @@ auto Mpris::onPlayerNameAppeared(PlayerctlPlayerManager* manager, PlayerctlPlaye
     return;
   }
 
+  // The followed player's proxy follows its bus name to the new owner by itself, and freeing it
+  // here while it reloads would let libplayerctl's handlers run on the freed player.
   if (mpris->player != nullptr) {
-    g_signal_handlers_disconnect_by_data(mpris->player, mpris);
-    if (mpris->last_active_player_ == mpris->player) mpris->last_active_player_ = nullptr;
-    g_clear_object(&mpris->player);
+    mpris->dp.emit();
+    return;
   }
   mpris->player = playerctl_player_new_from_name(player_name, nullptr);
   g_object_connect(mpris->player, "signal::play", G_CALLBACK(onPlayerPlay), mpris, "signal::pause",
@@ -411,9 +411,48 @@ auto Mpris::onPlayerNameVanished(PlayerctlPlayerManager* manager, PlayerctlPlaye
     // from suspend this can run in a re-entrant / torn-down state and crash in
     // Gtk::Widget::set_visible. Only update state + emit; update() (on the main
     // thread) hides the module when there is no player. See #5124.
-    mpris->player = nullptr;
-    mpris->dp.emit();
+    if (!mpris->vanished_release_.connected()) {
+      mpris->vanished_release_ =
+          Glib::signal_idle().connect(sigc::mem_fun(*mpris, &Mpris::releaseVanishedPlayer));
+    }
   }
+}
+
+// Runs once no D-Bus event is pending, so the player's proxy has no reload in flight and the
+// player can be freed; a name that came back in the meantime keeps its player.
+bool Mpris::releaseVanishedPlayer() {
+  if (player == nullptr) return false;
+
+  gchar* instance = nullptr;
+  g_object_get(player, "player-instance", &instance, NULL);
+  GList* names = nullptr;  // owned by the manager
+  g_object_get(manager, "player-names", &names, NULL);
+  PlayerctlPlayerName* replacement = nullptr;
+  bool still_listed = false;
+  for (auto* l = names; l != nullptr; l = l->next) {
+    auto* pn = static_cast<PlayerctlPlayerName*>(l->data);
+    if (player_ != pn->name) continue;
+    if (g_strcmp0(pn->instance, instance) == 0) {
+      still_listed = true;
+      break;
+    }
+    if (replacement == nullptr) replacement = pn;
+  }
+  g_free(instance);
+  if (still_listed) return false;
+
+  g_signal_handlers_disconnect_by_data(player, this);
+  g_clear_object(&player);
+  if (replacement != nullptr) {
+    player = playerctl_player_new_from_name(replacement, nullptr);
+    if (player != nullptr) {
+      g_object_connect(player, "signal::play", G_CALLBACK(onPlayerPlay), this, "signal::pause",
+                       G_CALLBACK(onPlayerPause), this, "signal::stop", G_CALLBACK(onPlayerStop),
+                       this, "signal::metadata", G_CALLBACK(onPlayerMetadata), this, NULL);
+    }
+  }
+  dp.emit();
+  return false;
 }
 
 auto Mpris::onPlayerPlay(PlayerctlPlayer* player, gpointer data) -> void {
@@ -452,6 +491,16 @@ auto Mpris::onPlayerMetadata(PlayerctlPlayer* player, GVariant* metadata, gpoint
   mpris->dp.emit();
 }
 
+// The fallback player must not outlive the update() or handleToggle() call that created it: once
+// the main loop runs, an owner change makes its proxy reload, and libplayerctl never disconnects
+// its handlers from that proxy, so they would run on the freed player.
+void Mpris::dropFallbackPlayer() {
+  if (last_active_player_ != nullptr && last_active_player_ != player) {
+    g_object_unref(last_active_player_);
+  }
+  last_active_player_ = nullptr;
+}
+
 auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
   if (!player) {
     return std::nullopt;
@@ -466,12 +515,6 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
 
   char* player_status = nullptr;
   auto player_playback_status = PLAYERCTL_PLAYBACK_STATUS_STOPPED;
-
-  // Clean up previous fallback player
-  if (last_active_player_ && last_active_player_ != player) {
-    g_object_unref(last_active_player_);
-    last_active_player_ = nullptr;
-  }
 
   std::string player_name = player_;
   if (player_name == "playerctld") {
@@ -630,6 +673,7 @@ bool Mpris::handleToggle(GdkEventButton* const& e) {
     return false;
   }
 
+  waybar::util::ScopeGuard fallback_deleter([this]() { dropFallbackPlayer(); });
   auto info = getPlayerInfo();
   if (!info) return false;
 
@@ -679,6 +723,7 @@ auto Mpris::update() -> void {
   if (now - last_update_ < interval_) return;
   last_update_ = now;
 
+  waybar::util::ScopeGuard fallback_deleter([this]() { dropFallbackPlayer(); });
   auto opt = getPlayerInfo();
   if (!opt) {
     event_box_.set_visible(false);

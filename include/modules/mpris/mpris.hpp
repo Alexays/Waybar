@@ -45,6 +45,8 @@ class Mpris : public ALabel {
   };
 
   auto getPlayerInfo() -> std::optional<PlayerInfo>;
+  void dropFallbackPlayer();
+  bool releaseVanishedPlayer();
   auto getIconFromJson(const Json::Value&, const std::string&) -> std::string;
   auto getArtistStr(const PlayerInfo&, bool) -> std::string;
   auto getAlbumStr(const PlayerInfo&, bool) -> std::string;
@@ -82,7 +84,9 @@ class Mpris : public ALabel {
 
   PlayerctlPlayerManager* manager;
   PlayerctlPlayer* player;
+  // Only set while update() or handleToggle() runs (see dropFallbackPlayer()).
   PlayerctlPlayer* last_active_player_ = nullptr;
+  sigc::connection vanished_release_;
   std::string lastStatus;
   std::string lastPlayer;
 
