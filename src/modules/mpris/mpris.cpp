@@ -137,9 +137,6 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
     throw std::runtime_error(fmt::format("unable to create MPRIS client: {}", error->message));
   }
 
-  g_object_connect(manager, "signal::name-appeared", G_CALLBACK(onPlayerNameAppeared), this, NULL);
-  g_object_connect(manager, "signal::name-vanished", G_CALLBACK(onPlayerNameVanished), this, NULL);
-
   if (player_ == "playerctld") {
     // use playerctld proxy
     PlayerctlPlayerName name = {
@@ -154,6 +151,8 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
       g_list_free_full(players, reinterpret_cast<GDestroyNotify>(playerctl_player_name_free));
     });
     if (error) {
+      // ~Mpris() does not run when the constructor throws
+      g_clear_object(&manager);
       throw std::runtime_error(fmt::format("unable to list players: {}", error->message));
     }
 
@@ -167,9 +166,15 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   }
 
   if (error) {
+    g_clear_object(&manager);
     throw std::runtime_error(
         fmt::format("unable to connect to player {}: {}", player_, error->message));
   }
+
+  // Only hand `this` to GLib once nothing can throw: ~Mpris() disconnects it, a failed
+  // constructor would not.
+  g_object_connect(manager, "signal::name-appeared", G_CALLBACK(onPlayerNameAppeared), this, NULL);
+  g_object_connect(manager, "signal::name-vanished", G_CALLBACK(onPlayerNameVanished), this, NULL);
 
   if (player) {
     g_object_connect(player, "signal::play", G_CALLBACK(onPlayerPlay), this, "signal::pause",
