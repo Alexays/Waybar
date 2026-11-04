@@ -1,5 +1,6 @@
 #include "modules/hyprland/backend.hpp"
 
+#include <fmt/format.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <spdlog/spdlog.h>
@@ -23,6 +24,29 @@
 #include "util/string.hpp"
 
 namespace waybar::modules::hyprland {
+
+namespace {
+
+// Quotes `s` as a Lua short string literal, which may not contain a raw newline.
+std::string luaQuote(const std::string& s) {
+  std::string out;
+  out.reserve(s.size() + 2);
+  out += '"';
+  for (const unsigned char c : s) {
+    if (c == '"' || c == '\\') {
+      out += '\\';
+      out += static_cast<char>(c);
+    } else if (c < 0x20) {
+      out += fmt::format("\\{:03d}", static_cast<int>(c));
+    } else {
+      out += static_cast<char>(c);
+    }
+  }
+  out += '"';
+  return out;
+}
+
+}  // namespace
 
 std::filesystem::path IPC::socketFolder_;
 std::optional<bool> IPC::s_luaProtocolDetected_;
@@ -396,23 +420,24 @@ std::string IPC::buildLuaDispatch(const std::string& dispatcher, const std::stri
   // New format:  /dispatch hl.dsp.workspace.toggle_special("name")
 
   if (dispatcher == "workspace") {
-    return "/dispatch hl.dsp.focus({ workspace = \"" + arg + "\" })";
+    return "/dispatch hl.dsp.focus({ workspace = " + luaQuote(arg) + " })";
   }
   if (dispatcher == "focusworkspaceoncurrentmonitor") {
-    return "/dispatch hl.dsp.focus({ workspace = \"" + arg + "\", on_current_monitor = true })";
+    return "/dispatch hl.dsp.focus({ workspace = " + luaQuote(arg) +
+           ", on_current_monitor = true })";
   }
   if (dispatcher == "togglespecialworkspace") {
     if (arg.empty()) {
       return "/dispatch hl.dsp.workspace.toggle_special()";
     }
-    return "/dispatch hl.dsp.workspace.toggle_special(\"" + arg + "\")";
+    return "/dispatch hl.dsp.workspace.toggle_special(" + luaQuote(arg) + ")";
   }
 
   // Fallback for any other dispatcher: try the old format wrapped in dispatch().
   // This may not work for all dispatchers, but it's a reasonable default.
   spdlog::warn("Hyprland IPC: unknown dispatcher '{}' in Lua mode, attempting generic format",
                dispatcher);
-  return "/dispatch hl.dsp." + dispatcher + "(\"" + arg + "\")";
+  return "/dispatch hl.dsp." + dispatcher + "(" + luaQuote(arg) + ")";
 }
 
 std::string IPC::dispatch(const std::string& dispatcher, const std::string& arg) {

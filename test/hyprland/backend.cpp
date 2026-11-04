@@ -276,6 +276,28 @@ TEST_CASE("buildLuaDispatch unknown dispatcher fallback", "[buildLuaDispatch]") 
           "/dispatch hl.dsp.unknown_dispatcher(\"some_arg\")");
 }
 
+TEST_CASE("buildLuaDispatch quotes the argument as a Lua string", "[buildLuaDispatch]") {
+  SECTION("workspace") {
+    auto result = IPCTestHelper::buildLuaDispatch("workspace", "name:a\"b\\c\nd");
+    REQUIRE(result == "/dispatch hl.dsp.focus({ workspace = \"name:a\\\"b\\\\c\\010d\" })");
+  }
+  SECTION("focusworkspaceoncurrentmonitor") {
+    auto result = IPCTestHelper::buildLuaDispatch("focusworkspaceoncurrentmonitor",
+                                                  "name:x\" .. tostring(6 * 7) .. \"");
+    REQUIRE(result ==
+            "/dispatch hl.dsp.focus({ workspace = \"name:x\\\" .. tostring(6 * 7) .. \\\"\", "
+            "on_current_monitor = true })");
+  }
+  SECTION("togglespecialworkspace") {
+    auto result = IPCTestHelper::buildLuaDispatch("togglespecialworkspace", "x\") .. (\"");
+    REQUIRE(result == "/dispatch hl.dsp.workspace.toggle_special(\"x\\\") .. (\\\"\")");
+  }
+  SECTION("unknown dispatcher fallback") {
+    auto result = IPCTestHelper::buildLuaDispatch("unknown_dispatcher", "a\"b");
+    REQUIRE(result == "/dispatch hl.dsp.unknown_dispatcher(\"a\\\"b\")");
+  }
+}
+
 TEST_CASE("dispatch throws when Hyprland is not running", "[dispatch]") {
   unsetenv("HYPRLAND_INSTANCE_SIGNATURE");
   IPCTestHelper::resetSocketFolder();
