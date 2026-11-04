@@ -1027,7 +1027,7 @@ uint32_t waybar::modules::Wireplumber::resolvePhysicalSink(uint32_t start_id) {
     current_id = next_id;
   }
 
-  GVariant* variant = nullptr;
+  g_autoptr(GVariant) variant = nullptr;
   g_signal_emit_by_name(mixer_api_, "get-volume", current_id, &variant);
 
   if (variant == nullptr) {
