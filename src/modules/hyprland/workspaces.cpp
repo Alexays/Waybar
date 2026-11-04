@@ -30,6 +30,15 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
 
   setCurrentMonitorId();
   init();
+
+  // Not in init(), which also runs on the IPC thread where GTK must not be touched.
+  if (barScroll()) {
+    auto& window = const_cast<Bar&>(m_bar).window;
+    window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+    m_scrollEventConnection_ =
+        window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
+  }
+
   registerIpc();
 }
 
@@ -54,17 +63,6 @@ void Workspaces::init() {
   }
 
   initializeWorkspaces();
-
-  if (m_scrollEventConnection_.connected()) {
-    m_scrollEventConnection_.disconnect();
-  }
-
-  if (barScroll()) {
-    auto& window = const_cast<Bar&>(m_bar).window;
-    window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    m_scrollEventConnection_ =
-        window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
-  }
 
   dp.emit();
 }
@@ -384,18 +382,9 @@ void Workspaces::onEvent(const std::string& ev) {
 }
 
 void Workspaces::onReconnect() {
-  {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    spdlog::info("Hyprland IPC reconnected, reinitializing hyprland/workspaces module...");
-    // Not init(): its scroll setup touches GTK, which is off limits on the IPC listener thread.
-    if (const auto active = parseWorkspaceIdentity(m_ipc.getSocket1JsonReply("activeworkspace"));
-        active.has_value()) {
-      m_activeWorkspaceIdentifier = active->address;
-    }
-    initializeWorkspaces();
-  }
-
-  dp.emit();
+  std::lock_guard<std::mutex> lock(m_mutex);
+  spdlog::info("Hyprland IPC reconnected, reinitializing hyprland/workspaces module...");
+  init();
 }
 
 void Workspaces::onWorkspaceActivated(std::string const& payload) {
@@ -490,7 +479,6 @@ void Workspaces::onWorkspaceRenamed(std::string const& payload) {
   if (auto workspace = findWorkspace(workspaceAddress); workspace != m_workspaces.end()) {
     (*workspace)->setName(workspaceDisplayName(newName, (*workspace)->kind()));
   }
-  sortWorkspaces();
 }
 
 void Workspaces::onWorkspaceIdChanged(std::string const& payload) {
@@ -512,7 +500,6 @@ void Workspaces::onWorkspaceIdChanged(std::string const& payload) {
     }
   }
 
-  sortWorkspaces();
   updateWindowCount();
 }
 
