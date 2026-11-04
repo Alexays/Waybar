@@ -84,9 +84,11 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
   cancellable_ = Gio::Cancellable::create();
 
   auto interface = Glib::wrap(sn_item_interface_info(), true);
+  // The bus name is the registering client's choice: never have the bus activate a service for it.
   Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SESSION, bus_name, object_path,
                                    SNI_INTERFACE_NAME, sigc::mem_fun(*this, &Item::proxyReady),
-                                   cancellable_, interface);
+                                   cancellable_, interface,
+                                   Gio::DBus::PROXY_FLAGS_DO_NOT_AUTO_START);
 }
 
 Item::~Item() {
