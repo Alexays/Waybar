@@ -119,8 +119,58 @@ EOF
     echo "::endgroup::"
 }
 
+# ------------------------------------------ mpd: unresponsive server -----
+# A local process on the mpd port that greets, then never finishes its reply
+# (each line restarts libmpdclient's read timeout), must not freeze the bar:
+# SIGINT still has to be acted on. A python stand-in is enough, no mpd needed.
+mpd_unresponsive_tier() {
+    if ! command -v python3 >/dev/null; then
+        echo "(python3 not installed, skipping mpd stand-in tier)"; return 0
+    fi
+    echo "::group::mpd: unresponsive server must not block the bar"
+    local d; d="$(mktemp -d)"
+    python3 - "$d/status-sent" <<'PY' &
+import socket, sys, time
+listener = socket.socket()
+listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+listener.bind(("127.0.0.1", 6611))
+listener.listen()
+while True:
+    bar, _ = listener.accept()
+    bar.sendall(b"OK MPD 0.23.5\n")
+    bar.recv(100)                         # the bar's "status"
+    open(sys.argv[1], "w").close()
+    try:
+        while True:
+            bar.sendall(b"volume: 50\n")  # a line every second, never "OK"
+            time.sleep(1)
+    except OSError:
+        pass                              # the bar went away
+PY
+    local standin=$!
+
+    local cfg; cfg="$(mktemp --suffix=.json)"
+    cat > "$cfg" <<'EOF'
+{
+  "layer": "top", "position": "top", "height": 30,
+  "modules-center": ["mpd", "clock"],
+  "mpd": { "server": "127.0.0.1", "port": 6611, "interval": 1 },
+  "clock": { "interval": 1 }
+}
+EOF
+    smoke::launch_waybar "$cfg" "$DIR/style.css" 1
+    local _; for _ in $(seq 1 30); do [ -e "$d/status-sent" ] && break; sleep 0.5; done
+    [ -e "$d/status-sent" ] || echo "::warning::the bar never asked the stand-in for its status"
+    sleep 3                                   # the reply is still dripping in
+    smoke::assert_alive || fail=1
+    smoke::assert_clean_exit || fail=1        # hangs if the main loop sits in libmpdclient
+    kill "$standin" 2>/dev/null || true; wait "$standin" 2>/dev/null || true
+    echo "::endgroup::"
+}
+
 mpd_tier
 pulse_tier
+mpd_unresponsive_tier
 
 # ---------------------------------------------- pulseaudio reconnect ------
 # A context that keeps failing after it connected must be retried at a bounded
