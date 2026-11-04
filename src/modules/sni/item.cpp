@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <typeinfo>
 #include <unordered_map>
 
 #include "gdk/gdk.h"
@@ -161,6 +162,9 @@ template <>
 ToolTip get_variant<ToolTip>(const Glib::VariantBase& value) {
   ToolTip result;
   // Unwrap (sa(iiay)ss)
+  if (!value || !value.is_of_type(Glib::VariantType("(sa(iiay)ss)"))) {
+    throw std::bad_cast();
+  }
   auto container = value.cast_dynamic<Glib::VariantContainerBase>(value);
   result.icon_name = get_variant<Glib::ustring>(container.get_child(0));
   result.text = get_variant<Glib::ustring>(container.get_child(2));
@@ -193,7 +197,9 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       if (id == "chrome_status_icon_1") {
         Glib::VariantBase value;
         this->proxy_->get_cached_property(value, "ToolTip");
-        tooltip = get_variant<ToolTip>(value);
+        if (value) {
+          tooltip = get_variant<ToolTip>(value);
+        }
         if (!tooltip.text.empty()) {
           icon_id = tooltip.text.lowercase();
           setCustomIcon(icon_id);
@@ -397,7 +403,11 @@ void Item::onSignal(const Glib::ustring& sender_name, const Glib::ustring& signa
 static void pixbuf_data_deleter(const guint8* data) { g_free((void*)data); }
 
 Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
-  GVariantIter* it;
+  // g_variant_get() leaves the iterator uninitialized on a type mismatch
+  if (variant == nullptr || !g_variant_is_of_type(variant, G_VARIANT_TYPE("a(iiay)"))) {
+    throw std::bad_cast();
+  }
+  GVariantIter* it = nullptr;
   g_variant_get(variant, "a(iiay)", &it);
   if (it == nullptr) {
     return Glib::RefPtr<Gdk::Pixbuf>{};
