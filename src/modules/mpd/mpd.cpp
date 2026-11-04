@@ -3,6 +3,7 @@
 #include <fmt/chrono.h>
 #include <glibmm/ustring.h>
 #include <spdlog/spdlog.h>
+#include <sys/socket.h>
 
 #include <system_error>
 #include <util/sanitize_str.hpp>
@@ -50,10 +51,33 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
 
   event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
   event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &MPD::handlePlayPause));
+
+  // The state machine already armed its first timer on main_context_.
+  thread_ = std::thread([this] {
+    while (running_) {
+      main_context_->iteration(true);
+    }
+  });
+}
+
+waybar::modules::MPD::~MPD() noexcept {
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    running_ = false;
+    // Make a read that waits for the server's reply return now.
+    if (connection_ != nullptr) {
+      shutdown(mpd_connection_get_fd(connection_.get()), SHUT_RDWR);
+    }
+  }
+  main_context_->wakeup();
+  thread_.join();
 }
 
 auto waybar::modules::MPD::update() -> void {
-  context_.update();
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    setLabel();
+  }
 
   // Call parent update
   ALabel::update();
@@ -299,10 +323,10 @@ void waybar::modules::MPD::tryConnect() {
     return;
   }
 
-  // tryConnect() runs on the GTK main thread (via Glib::signal_timeout), so a
-  // blocking connect freezes the whole bar. Bound the connect attempt to a
-  // short timeout so an unreachable MPD server fails fast instead of hanging
-  // the loop for the full user-facing `timeout_` (up to 30s by default, #1186).
+  // The destructor joins thread_, so a blocking connect delays exit and reload.
+  // Bound the connect attempt to a short timeout so an unreachable MPD server
+  // fails fast instead of taking the full user-facing `timeout_` (up to 30s by
+  // default, #1186).
   // The third argument to mpd_connection_new() is also the default command
   // read timeout, so restore `timeout_` once connected to avoid shortening
   // reads for slow-but-alive servers.
@@ -310,29 +334,35 @@ void waybar::modules::MPD::tryConnect() {
   unsigned connect_timeout =
       (timeout_ != 0 && timeout_ < kConnectTimeoutMs) ? timeout_ : kConnectTimeoutMs;
 
-  connection_ = detail::unique_connection(mpd_connection_new(server_, port_, connect_timeout),
-                                          &mpd_connection_free);
+  auto connection = detail::unique_connection(mpd_connection_new(server_, port_, connect_timeout),
+                                              &mpd_connection_free);
 
-  if (connection_ == nullptr) {
+  if (connection == nullptr) {
     spdlog::error("{}: Failed to connect to MPD", module_name_);
-    connection_.reset();
     return;
   }
 
   // Restore the user-configured timeout for subsequent command reads.
   if (timeout_ != 0) {
-    mpd_connection_set_timeout(connection_.get(), timeout_);
+    mpd_connection_set_timeout(connection.get(), timeout_);
   }
 
   try {
-    checkErrors(connection_.get());
+    checkErrors(connection.get());
     spdlog::debug("{}: Connected to MPD", module_name_);
+
+    {
+      // The destructor only shuts down a connection it can see.
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (!running_) return;
+      connection_ = std::move(connection);
+    }
 
     if (!password_.empty()) {
       bool res = mpd_run_password(connection_.get(), password_.c_str());
       if (!res) {
         spdlog::error("{}: Wrong MPD password", module_name_);
-        connection_.reset();
+        disconnect();
         return;
       }
       checkErrors(connection_.get());
@@ -341,11 +371,19 @@ void waybar::modules::MPD::tryConnect() {
     /* Tone down logs if it's likely that the mpd server is not running */
     auto level = isServerUnavailable(e.code()) ? spdlog::level::debug : spdlog::level::err;
     spdlog::log(level, "{}: Failed to connect to MPD: {}", module_name_, e.what());
-    connection_.reset();
+    disconnect();
   } catch (std::runtime_error& e) {
     spdlog::error("{}: Failed to connect to MPD: {}", module_name_, e.what());
-    connection_.reset();
+    disconnect();
   }
+}
+
+void waybar::modules::MPD::disconnect() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  connection_.reset();
+  status_.reset();
+  state_ = MPD_STATE_UNKNOWN;
+  song_.reset();
 }
 
 void waybar::modules::MPD::checkErrors(mpd_connection* conn) {
@@ -356,13 +394,12 @@ void waybar::modules::MPD::checkErrors(mpd_connection* conn) {
     case MPD_ERROR_TIMEOUT:
     case MPD_ERROR_CLOSED:
       mpd_connection_clear_error(conn);
-      connection_.reset();
-      state_ = MPD_STATE_UNKNOWN;
+      disconnect();
       throw std::runtime_error("Connection to MPD closed");
     case MPD_ERROR_SYSTEM:
       if (auto ec = mpd_connection_get_system_error(conn); ec != 0) {
         mpd_connection_clear_error(conn);
-        connection_.reset();
+        disconnect();
         throw std::system_error(ec, std::system_category());
       }
       G_GNUC_FALLTHROUGH;
@@ -372,8 +409,7 @@ void waybar::modules::MPD::checkErrors(mpd_connection* conn) {
         std::string error(error_message);
         // A fatal error, such as a malformed reply, cannot be cleared: later commands all fail.
         if (!mpd_connection_clear_error(conn)) {
-          connection_.reset();
-          state_ = MPD_STATE_UNKNOWN;
+          disconnect();
         }
         throw std::runtime_error(error);
       }
@@ -389,35 +425,46 @@ void waybar::modules::MPD::fetchState() {
 
   auto conn = connection_.get();
 
-  status_ = detail::unique_status(mpd_run_status(conn), &mpd_status_free);
+  auto status = detail::unique_status(mpd_run_status(conn), &mpd_status_free);
   checkErrors(conn);
 
+  auto song = detail::unique_song(mpd_run_current_song(conn), &mpd_song_free);
+  checkErrors(conn);
+
+  std::lock_guard<std::mutex> lock(mutex_);
+  status_ = std::move(status);
   state_ = mpd_status_get_state(status_.get());
-  checkErrors(conn);
-
-  song_ = detail::unique_song(mpd_run_current_song(conn), &mpd_song_free);
-  checkErrors(conn);
+  song_ = std::move(song);
 }
 
 bool waybar::modules::MPD::handlePlayPause(GdkEventButton* const& e) {
-  if (e->type == GDK_2BUTTON_PRESS || e->type == GDK_3BUTTON_PRESS || connection_ == nullptr) {
+  if (e->type == GDK_2BUTTON_PRESS || e->type == GDK_3BUTTON_PRESS) {
     return false;
   }
-
-  // An exception escaping a GTK signal handler aborts the bar.
-  try {
-    if (e->button == 1) {
-      if (state_ == MPD_STATE_PLAY)
-        context_.pause();
-      else
-        context_.play();
-    } else if (e->button == 3) {
-      context_.stop();
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (connection_ == nullptr) {
+      return false;
     }
-  } catch (std::exception const& ex) {
-    spdlog::warn("{}: error: {}", module_name_, ex.what());
-    context_.setState(std::make_unique<detail::Disconnected>(&context_));
   }
+
+  // The commands wait for the server's reply, so they run on thread_. An exception escaping a
+  // Glib slot aborts the bar.
+  main_context_->signal_idle().connect_once([this, button = e->button] {
+    try {
+      if (button == 1) {
+        if (state_ == MPD_STATE_PLAY)
+          context_.pause();
+        else
+          context_.play();
+      } else if (button == 3) {
+        context_.stop();
+      }
+    } catch (std::exception const& ex) {
+      spdlog::warn("{}: error: {}", module_name_, ex.what());
+      context_.setState(std::make_unique<detail::Disconnected>(&context_));
+    }
+  });
 
   return true;
 }

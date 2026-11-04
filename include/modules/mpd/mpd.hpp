@@ -4,7 +4,9 @@
 #include <mpd/client.h>
 #include <spdlog/spdlog.h>
 
+#include <atomic>
 #include <condition_variable>
+#include <mutex>
 #include <thread>
 
 #include "ALabel.hpp"
@@ -14,6 +16,10 @@ namespace waybar::modules {
 
 class MPD : public ALabel {
   friend class detail::Context;
+
+  // libmpdclient blocks until the server replies, so the state machine runs on this context,
+  // iterated by thread_. Declared before context_, which arms its first timer on it.
+  const Glib::RefPtr<Glib::MainContext> main_context_{Glib::MainContext::create()};
 
   // State machine
   detail::Context context_{this};
@@ -30,6 +36,7 @@ class MPD : public ALabel {
 
   unsigned playing_interval_;
 
+  // Written by thread_ with mutex_ held; the GUI side reads them under mutex_.
   detail::unique_connection connection_;
 
   detail::unique_status status_;
@@ -37,9 +44,13 @@ class MPD : public ALabel {
   detail::unique_song song_;
   std::string ellipsis_;
 
+  std::mutex mutex_;
+  std::atomic<bool> running_ = true;
+  std::thread thread_;
+
  public:
   MPD(const std::string&, const Json::Value&);
-  virtual ~MPD() noexcept = default;
+  virtual ~MPD() noexcept;
   auto update() -> void override;
 
  private:
@@ -59,6 +70,7 @@ class MPD : public ALabel {
 
   // MPD-side, Non-GUI methods.
   void tryConnect();
+  void disconnect();
   void checkErrors(mpd_connection* conn);
   void fetchState();
 
