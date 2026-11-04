@@ -52,7 +52,6 @@ class Item : public sigc::trackable {
   std::string icon_name;
   Glib::RefPtr<Gdk::Pixbuf> icon_pixmap;
   bool has_custom_icon_ = false;
-  Glib::RefPtr<Gtk::IconTheme> icon_theme;
   std::string overlay_icon_name;
   Glib::RefPtr<Gdk::Pixbuf> overlay_icon_pixmap;
   std::string attention_icon_name;
@@ -74,7 +73,7 @@ class Item : public sigc::trackable {
  private:
   void onConfigure(GdkEventConfigure* ev);
   void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
-  void setProperty(const Glib::ustring& name, Glib::VariantBase& value);
+  void setProperty(const std::string& name, Glib::VariantBase& value);
   void setStatus(const Glib::ustring& value);
   void setTooltipMarkup(const Glib::ustring& markup);
   void setReady();
@@ -86,7 +85,7 @@ class Item : public sigc::trackable {
                 const Glib::VariantContainerBase& arguments);
 
   void updateImage();
-  static Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
+  Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
   Glib::RefPtr<Gdk::Pixbuf> getIconPixbuf();
   Glib::RefPtr<Gdk::Pixbuf> getAttentionIconPixbuf();
   Glib::RefPtr<Gdk::Pixbuf> getOverlayIconPixbuf();
@@ -113,7 +112,8 @@ class Item : public sigc::trackable {
   // hidden via config
   bool is_hidden_ = false;
   bool ready_ = false;
-  Glib::ustring status_ = "active";
+  // Not Glib::ustring: its comparisons collate, which costs time linear in the item's string.
+  std::string status_ = "active";
 
   const Bar& bar_;
   const std::function<void(Item&)> on_ready_;

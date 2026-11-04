@@ -175,5 +175,27 @@ if command -v dbus-daemon >/dev/null 2>&1; then
     echo "::endgroup::"
 fi
 
+# --- 5) tray torn down before its bus connection arrived -----------------
+# Without a session bus the SNI host and watcher never get busAcquired(), so
+# reload and exit destroy a host with no name watch and an unexported watcher.
+echo "::group::tray teardown without a session bus"
+cfg="$(mktemp --suffix=.json)"
+cat > "$cfg" <<'EOF'
+{
+  "layer": "top", "position": "top", "height": 30,
+  "modules-left": ["tray"]
+}
+EOF
+WAYBAR_WRAP="env -u DBUS_SESSION_BUS_ADDRESS" smoke::launch_waybar "$cfg" "$STYLE" 5
+smoke::assert_alive || fail=1
+smoke::reload
+smoke::assert_alive || fail=1
+smoke::assert_clean_exit || fail=1
+if grep -q 'g_bus_unwatch_name' "$SMOKE_LOG"; then
+    echo "::error::SNI host passed an unassigned id to g_bus_unwatch_name()"
+    fail=1
+fi
+echo "::endgroup::"
+
 [ "$fail" = 0 ] || { echo "::error::lifecycle tier failed"; exit 1; }
 echo "✓ lifecycle tier passed"

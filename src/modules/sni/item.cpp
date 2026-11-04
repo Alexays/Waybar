@@ -1,15 +1,22 @@
 #include "modules/sni/item.hpp"
 
+#include <fcntl.h>
 #include <gdkmm/general.h>
+#include <giomm/memoryinputstream.h>
+#include <giomm/unixinputstream.h>
 #include <glibmm/main.h>
 #include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
+#include <sys/stat.h>
 
 #include <algorithm>
 #include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <filesystem>
-#include <fstream>
 #include <map>
+#include <typeinfo>
 #include <unordered_map>
 
 #include "gdk/gdk.h"
@@ -40,6 +47,15 @@ namespace waybar::modules::SNI {
 
 static const Glib::ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
 static const unsigned UPDATE_DEBOUNCE_TIME = 10;
+// Icons are drawn icon-size high times the output scale; pixmaps keep no more than scale 4 needs.
+static const int MAX_PIXMAP_SCALE = 4;
+// Widest icon an item may show, as a multiple of its height
+static const int MAX_ICON_ASPECT_RATIO = 4;
+// An icon file named by an item costs no more than an IconPixmap, which D-Bus bounds to 64 MiB
+static const goffset MAX_ICON_FILE_SIZE = 64 << 20;
+static const guint64 MAX_ICON_FILE_PIXELS = MAX_ICON_FILE_SIZE / 4;
+// Largest dbusmenu layout accepted from an item, see filterMenuLayout()
+static const gsize MENU_MAX_ENTRIES = 1000;
 
 Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar,
            const std::function<void(Item&)>& on_ready,
@@ -49,7 +65,6 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
       object_path(op),
       icon_size(16),
       effective_icon_size(0),
-      icon_theme(Gtk::IconTheme::create()),
       bar_(bar),
       on_ready_(on_ready),
       on_invalidate_(on_invalidate),
@@ -84,9 +99,11 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
   cancellable_ = Gio::Cancellable::create();
 
   auto interface = Glib::wrap(sn_item_interface_info(), true);
+  // The bus name is the registering client's choice: never have the bus activate a service for it.
   Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SESSION, bus_name, object_path,
                                    SNI_INTERFACE_NAME, sigc::mem_fun(*this, &Item::proxyReady),
-                                   cancellable_, interface);
+                                   cancellable_, interface,
+                                   Gio::DBus::PROXY_FLAGS_DO_NOT_AUTO_START);
 }
 
 Item::~Item() {
@@ -126,6 +143,18 @@ bool Item::handleMouseLeave(GdkEventCrossing* const& e) {
 
 void Item::onConfigure(GdkEventConfigure* ev) { this->updateImage(); }
 
+// The proxy caches whatever the item announces, of any name and size, and nothing reads it. A raw
+// handler: glibmm's signal_properties_changed() unpacks the names into a collating std::map.
+static void dropChangedProperties(GDBusProxy* proxy, GVariant* changed, GStrv /*invalidated*/,
+                                  gpointer /*data*/) {
+  GVariantIter iter;
+  const gchar* name = nullptr;
+  g_variant_iter_init(&iter, changed);
+  while (g_variant_iter_next(&iter, "{&sv}", &name, nullptr)) {
+    g_dbus_proxy_set_cached_property(proxy, name, nullptr);
+  }
+}
+
 void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
   try {
     this->proxy_ = Gio::DBus::Proxy::create_for_bus_finish(result);
@@ -134,8 +163,14 @@ void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
     for (const auto& name : cached_properties) {
       Glib::VariantBase value;
       this->proxy_->get_cached_property(value, name);
-      setProperty(name, value);
+      setProperty(name.raw(), value);
     }
+    // Updates are fetched with GetAll, so nothing reads the proxy's cache again: don't keep it.
+    for (const auto& name : cached_properties) {
+      this->proxy_->set_cached_property(name, Glib::VariantBase());
+    }
+    g_signal_connect(proxy_->gobj(), "g-properties-changed", G_CALLBACK(dropChangedProperties),
+                     nullptr);
 
     this->proxy_->signal_signal().connect(sigc::mem_fun(*this, &Item::onSignal));
 
@@ -165,6 +200,9 @@ template <>
 ToolTip get_variant<ToolTip>(const Glib::VariantBase& value) {
   ToolTip result;
   // Unwrap (sa(iiay)ss)
+  if (!value || !value.is_of_type(Glib::VariantType("(sa(iiay)ss)"))) {
+    throw std::bad_cast();
+  }
   auto container = value.cast_dynamic<Glib::VariantContainerBase>(value);
   result.icon_name = get_variant<Glib::ustring>(container.get_child(0));
   result.text = get_variant<Glib::ustring>(container.get_child(2));
@@ -176,7 +214,9 @@ ToolTip get_variant<ToolTip>(const Glib::VariantBase& value) {
   return result;
 }
 
-void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
+// Names are compared as bytes: Glib::ustring compares with g_utf8_collate(), which normalizes the
+// item-supplied name on every comparison and lets look-alike names match.
+void Item::setProperty(const std::string& name, Glib::VariantBase& value) {
   try {
     spdlog::trace("Set tray item property: {}.{} = {}", id.empty() ? bus_name : id, name, value);
 
@@ -197,7 +237,9 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       if (id == "chrome_status_icon_1") {
         Glib::VariantBase value;
         this->proxy_->get_cached_property(value, "ToolTip");
-        tooltip = get_variant<ToolTip>(value);
+        if (value) {
+          tooltip = get_variant<ToolTip>(value);
+        }
         if (!tooltip.text.empty()) {
           icon_id = tooltip.text.lowercase();
           setCustomIcon(icon_id);
@@ -247,9 +289,6 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       }
     } else if (name == "IconThemePath") {
       icon_theme_path = get_variant<std::string>(value);
-      if (!icon_theme_path.empty()) {
-        icon_theme->set_search_path({icon_theme_path});
-      }
     } else if (name == "Menu") {
       menu = get_variant<std::string>(value);
       // Create the menu as soon as the path is known: libdbusmenu fetches the layout
@@ -268,7 +307,7 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
 }
 
 void Item::setStatus(const Glib::ustring& value) {
-  status_ = value.lowercase();
+  status_ = value.lowercase().raw();
   event_box.set_visible(!is_hidden_ && (show_passive_ || status_.compare("passive") != 0));
 
   auto style = event_box.get_style_context();
@@ -348,12 +387,12 @@ void Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
   try {
     auto result = proxy_->call_finish(_result);
     // extract "a{sv}" from VariantContainerBase
-    Glib::Variant<std::map<Glib::ustring, Glib::VariantBase>> properties_variant;
+    Glib::Variant<std::map<std::string, Glib::VariantBase>> properties_variant;
     result.get_child(properties_variant);
     auto properties = properties_variant.get();
 
     for (const auto& [name, value] : properties) {
-      if (update_pending_.count(name.raw())) {
+      if (update_pending_.count(name)) {
         setProperty(name, const_cast<Glib::VariantBase&>(value));
       }
     }
@@ -401,7 +440,11 @@ void Item::onSignal(const Glib::ustring& sender_name, const Glib::ustring& signa
 static void pixbuf_data_deleter(const guint8* data) { g_free((void*)data); }
 
 Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
-  GVariantIter* it;
+  // g_variant_get() leaves the iterator uninitialized on a type mismatch
+  if (variant == nullptr || !g_variant_is_of_type(variant, G_VARIANT_TYPE("a(iiay)"))) {
+    throw std::bad_cast();
+  }
+  GVariantIter* it = nullptr;
   g_variant_get(variant, "a(iiay)", &it);
   if (it == nullptr) {
     return Glib::RefPtr<Gdk::Pixbuf>{};
@@ -446,8 +489,19 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
   }
   g_variant_iter_free(it);
   if (array != nullptr) {
-    return Gdk::Pixbuf::create_from_data(array, Gdk::Colorspace::COLORSPACE_RGB, true, 8, lwidth,
-                                         lheight, 4 * lwidth, &pixbuf_data_deleter);
+    auto pixbuf = Gdk::Pixbuf::create_from_data(array, Gdk::Colorspace::COLORSPACE_RGB, true, 8,
+                                                lwidth, lheight, 4 * lwidth, &pixbuf_data_deleter);
+    // The item picks the size (up to 64 MiB) and the pixmap lives as long as the item does
+    const int max_height = std::max(1, icon_size * MAX_PIXMAP_SCALE);
+    const int max_width = max_height * MAX_ICON_ASPECT_RATIO;
+    if (lheight > max_height || lwidth > max_width) {
+      const double factor = std::min(static_cast<double>(max_height) / lheight,
+                                     static_cast<double>(max_width) / lwidth);
+      pixbuf = pixbuf->scale_simple(std::max(1, static_cast<int>(lwidth * factor)),
+                                    std::max(1, static_cast<int>(lheight * factor)),
+                                    Gdk::InterpType::INTERP_BILINEAR);
+    }
+    return pixbuf;
   }
   return Glib::RefPtr<Gdk::Pixbuf>{};
 }
@@ -461,9 +515,14 @@ void Item::updateImage() {
   // requested icon size, but the width is allowed to be different. As such, if the
   // height of the image does not match the requested icon size, resize the icon such that
   // the aspect ratio is maintained, but the height matches the requested icon size.
-  if (pixbuf->get_height() > 0 && pixbuf->get_height() != scaled_icon_size) {
-    int width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
-    pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
+  // The width is bounded too: an arbitrarily wide icon would grow the bar past the output.
+  const double max_width = std::max(1.0, scaled_icon_size * MAX_ICON_ASPECT_RATIO);
+  if (pixbuf->get_height() > 0 &&
+      (pixbuf->get_height() != scaled_icon_size || pixbuf->get_width() > max_width)) {
+    double width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
+    pixbuf = pixbuf->scale_simple(static_cast<int>(std::clamp(width, 1.0, max_width)),
+                                  scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
+    if (!pixbuf) return;
   }
 
   pixbuf = overlayPixbufs(pixbuf, getOverlayIconPixbuf());
@@ -515,15 +574,65 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getOverlayIconPixbuf() {
   return overlay_icon_pixmap;
 }
 
+// Loads an icon file an item named, at the given height, or returns null if it is refused. Only a
+// regular file is read, through the opened descriptor so it cannot be swapped for a FIFO, and only
+// PNG (size checked in its header) and SVG (rendered at that height) are decoded: gdk-pixbuf
+// decodes other formats at the size the file declares, whatever height is asked for.
+static Glib::RefPtr<Gdk::Pixbuf> loadIconFromFile(const std::string& path, int height) {
+  int fd = open(path.c_str(), O_RDONLY | O_NONBLOCK | O_NOCTTY | O_CLOEXEC);
+  if (fd == -1) {
+    return {};
+  }
+  auto file_stream = Gio::UnixInputStream::create(fd, true);
+  struct stat st;
+  if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_size <= 0 ||
+      st.st_size > MAX_ICON_FILE_SIZE) {
+    spdlog::warn("Tray: refusing icon file '{}': not a regular file of at most {} bytes", path,
+                 MAX_ICON_FILE_SIZE);
+    return {};
+  }
+  auto stream = Gio::MemoryInputStream::create();
+  auto* data = static_cast<guint8*>(g_malloc(st.st_size));
+  g_memory_input_stream_add_data(stream->gobj(), data, st.st_size, g_free);
+  gsize size = 0;
+  file_stream->read_all(data, st.st_size, size);
+  if (size != static_cast<gsize>(st.st_size)) {
+    return {};
+  }
+
+  static const guint8 png_header[] = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n',
+                                      0,    0,   0,   13,  'I',  'H',  'D',  'R'};
+  bool accepted = false;
+  if (size >= sizeof(png_header) + 8 && std::memcmp(data, png_header, sizeof(png_header)) == 0) {
+    guint32 width = 0;
+    guint32 png_height = 0;
+    std::memcpy(&width, data + sizeof(png_header), 4);
+    std::memcpy(&png_height, data + sizeof(png_header) + 4, 4);
+    accepted = static_cast<guint64>(GUINT32_FROM_BE(width)) * GUINT32_FROM_BE(png_height) <=
+               MAX_ICON_FILE_PIXELS;
+  } else {
+    // By content like gdk-pixbuf does; the file name is the item's choice
+    g_autofree gchar* type = g_content_type_guess(nullptr, data, size, nullptr);
+    accepted = g_content_type_is_a(type, "image/svg+xml") != FALSE;
+  }
+  if (!accepted) {
+    spdlog::warn("Tray: refusing icon file '{}': not a PNG of at most {} pixels or an SVG", path,
+                 MAX_ICON_FILE_PIXELS);
+    return {};
+  }
+  return Gdk::Pixbuf::create_from_stream_at_scale(stream, -1, height, true);
+}
+
 Glib::RefPtr<Gdk::Pixbuf> Item::loadIconFromNameOrFile(const std::string& name, bool log_failure) {
   if (name.empty()) {
     return {};
   }
 
   try {
-    std::ifstream temp(name);
-    if (temp.is_open()) {
-      return Gdk::Pixbuf::create_from_file(name);
+    if (name.front() == '/') {
+      if (auto pixbuf = loadIconFromFile(name, getScaledIconSize())) {
+        return pixbuf;
+      }
     }
   } catch (const Glib::Error& e) {
     if (log_failure) {
@@ -569,13 +678,81 @@ Glib::RefPtr<Gdk::Pixbuf> Item::overlayPixbufs(const Glib::RefPtr<Gdk::Pixbuf>& 
   return composed;
 }
 
+// Finds an icon in the item's IconThemePath, where items keep their icons: in
+// <path>/hicolor/<size>/<context>/ (closest size first), then in <path>/. The directory must not
+// become a GtkIconTheme search path: GTK maps any icon-theme.cache there without validating it.
+static std::string findIconInThemePath(const std::string& theme_path, const std::string& name,
+                                       int request_size) {
+  namespace fs = std::filesystem;
+
+  if (name.find('/') != std::string::npos) {
+    return {};
+  }
+
+  std::error_code ec;
+  auto find_in_dir = [&name, &ec](const fs::path& dir) -> std::string {
+    // Same order of preference as GTK
+    for (const auto* suffix : {".symbolic.png", ".png", ".svg"}) {
+      auto file = dir / (name + suffix);
+      if (fs::is_regular_file(file, ec)) {
+        return file.string();
+      }
+    }
+    return {};
+  };
+
+  std::string best;
+  int best_difference = 0;
+  const fs::directory_iterator end;
+  for (fs::directory_iterator size_dir(fs::path(theme_path) / "hicolor", ec); size_dir != end;
+       size_dir.increment(ec)) {
+    // "16x16" or "16x16@2x"; anything else, e.g. "scalable", fits every size
+    int size = 0;
+    int scale = 1;
+    int difference = 0;
+    if (std::sscanf(size_dir->path().filename().c_str(), "%4dx%*4d@%1d", &size, &scale) > 0) {
+      difference = std::abs((size * scale) - request_size);
+    }
+    if (!best.empty() && difference >= best_difference) {
+      continue;
+    }
+    for (fs::directory_iterator context_dir(size_dir->path(), ec); context_dir != end;
+         context_dir.increment(ec)) {
+      if (auto file = find_in_dir(context_dir->path()); !file.empty()) {
+        best = file;
+        best_difference = difference;
+        break;
+      }
+    }
+  }
+  return !best.empty() ? best : find_in_dir(theme_path);
+}
+
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int request_size) {
   if (!icon_theme_path.empty()) {
-    auto icon_info = icon_theme->lookup_icon(name.c_str(), request_size,
-                                             Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
-    if (icon_info) {
-      bool is_sym = false;
-      return icon_info.load_symbolic(event_box.get_style_context(), is_sym);
+    auto file = findIconInThemePath(icon_theme_path, name, request_size);
+    auto pixbuf = file.empty() ? Glib::RefPtr<Gdk::Pixbuf>() : loadIconFromFile(file, request_size);
+    if (pixbuf) {
+      // GTK draws symbolic icons in the foreground color; its other symbolic colors are not kept
+      if ((file.ends_with("-symbolic.svg") || file.ends_with(".symbolic.png")) &&
+          pixbuf->get_has_alpha() && pixbuf->get_n_channels() == 4) {
+        auto style = event_box.get_style_context();
+        auto color = style->get_color(style->get_state());
+        const auto red = static_cast<guint8>(color.get_red() * 255);
+        const auto green = static_cast<guint8>(color.get_green() * 255);
+        const auto blue = static_cast<guint8>(color.get_blue() * 255);
+        const double alpha = color.get_alpha();
+        for (int y = 0; y < pixbuf->get_height(); ++y) {
+          guint8* pixel = pixbuf->get_pixels() + (y * pixbuf->get_rowstride());
+          for (int x = 0; x < pixbuf->get_width(); ++x, pixel += 4) {
+            pixel[0] = red;
+            pixel[1] = green;
+            pixel[2] = blue;
+            pixel[3] = static_cast<guint8>(pixel[3] * alpha);
+          }
+        }
+      }
+      return pixbuf;
     }
   }
   return DefaultGtkIconThemeWrapper::load_icon(name.c_str(), request_size,
@@ -595,8 +772,54 @@ void Item::onMenuDestroyed(Item* self, GObject* old_menu_pointer) {
   }
 }
 
+// Counts the entries below a "(ia{sv}av)" layout node, giving up once there are too many
+static gsize countMenuEntries(GVariant* node, gsize count = 0) {
+  g_autoptr(GVariant) children = g_variant_get_child_value(node, 2);
+  const gsize n_children = g_variant_n_children(children);
+  count += n_children;
+  for (gsize i = 0; i < n_children && count <= MENU_MAX_ENTRIES; ++i) {
+    g_autoptr(GVariant) boxed = g_variant_get_child_value(children, i);
+    g_autoptr(GVariant) child = g_variant_get_variant(boxed);
+    if (!g_variant_is_of_type(child, G_VARIANT_TYPE("(ia{sv}av)"))) {
+      return MENU_MAX_ENTRIES + 1;
+    }
+    count = countMenuEntries(child, count);
+  }
+  return count;
+}
+
+// libdbusmenu fetches an item's whole layout itself and builds it on the main loop in time
+// quadratic to its size, with no hook before that. So oversized GetLayout replies are turned into
+// an error before dispatch, on the GDBus worker thread.
+static GDBusMessage* filterMenuLayout(GDBusConnection* /*connection*/, GDBusMessage* message,
+                                      gboolean incoming, gpointer /*data*/) {
+  if (!incoming || g_dbus_message_get_message_type(message) != G_DBUS_MESSAGE_TYPE_METHOD_RETURN ||
+      g_strcmp0(g_dbus_message_get_signature(message), "u(ia{sv}av)") != 0) {
+    return message;
+  }
+  g_autoptr(GVariant) root = g_variant_get_child_value(g_dbus_message_get_body(message), 1);
+  if (countMenuEntries(root) <= MENU_MAX_ENTRIES) {
+    return message;
+  }
+  const gchar* sender = g_dbus_message_get_sender(message);
+  auto reason = fmt::format("Ignoring the tray menu of {}: malformed or more than {} entries",
+                            sender != nullptr ? sender : "", MENU_MAX_ENTRIES);
+  spdlog::warn("{}", reason);
+  // An error reply makes libdbusmenu give up at once instead of waiting for a timeout
+  GDBusMessage* error = g_dbus_message_new();
+  g_dbus_message_set_message_type(error, G_DBUS_MESSAGE_TYPE_ERROR);
+  g_dbus_message_set_reply_serial(error, g_dbus_message_get_reply_serial(message));
+  g_dbus_message_set_error_name(error, "org.freedesktop.DBus.Error.LimitsExceeded");
+  g_dbus_message_set_body(error, g_variant_new("(s)", reason.c_str()));
+  g_object_unref(message);
+  return error;
+}
+
 void Item::makeMenu() {
   if (gtk_menu == nullptr && !menu.empty()) {
+    // libdbusmenu uses the shared session bus connection of the proxies: one filter covers all
+    [[maybe_unused]] static const guint layout_filter = g_dbus_connection_add_filter(
+        proxy_->get_connection()->gobj(), filterMenuLayout, nullptr, nullptr);
     dbus_menu = dbusmenu_gtkmenu_new(bus_name.data(), menu.data());
     if (dbus_menu != nullptr) {
       g_object_ref_sink(G_OBJECT(dbus_menu));
@@ -609,6 +832,12 @@ void Item::makeMenu() {
         GtkAccelGroup* accel_group = gtk_accel_group_new();
         dbusmenu_gtkclient_set_accel_group(client, accel_group);
         g_object_unref(accel_group);
+        // The client adds the menu's IconThemePath to the default icon theme of every module; it
+        // belongs to the item, like the item's own (see findIconInThemePath).
+        g_signal_handlers_disconnect_matched(
+            client, G_SIGNAL_MATCH_ID,
+            g_signal_lookup(DBUSMENU_CLIENT_SIGNAL_ICON_THEME_DIRS_CHANGED, DBUSMENU_TYPE_CLIENT),
+            0, nullptr, nullptr, nullptr);
       }
       gtk_menu = Glib::wrap(GTK_MENU(dbus_menu));
       gtk_menu->attach_to_widget(event_box);
