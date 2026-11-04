@@ -558,6 +558,24 @@ void Workspaces::onWindowClosed(std::string const& addr) {
   spdlog::trace("Window closed: {}", addr);
   updateWindowCount();
   m_orphanWindowMap.erase(addr);
+
+  // A window closed before the next update must not be inserted from the queues.
+  std::erase_if(m_windowsToCreate,
+                [&addr](auto const& window) { return window.getAddress() == addr; });
+  const std::string jsonWindowAddress = fmt::format("0x{}", addr);
+  for (auto& [_, clientsData] : m_workspacesToCreate) {
+    if (!clientsData.isArray()) {
+      continue;
+    }
+    for (Json::ArrayIndex i = 0; i < clientsData.size(); ++i) {
+      if (clientsData[i]["address"].asString() == jsonWindowAddress) {
+        Json::Value removed;
+        clientsData.removeIndex(i, &removed);
+        break;
+      }
+    }
+  }
+
   for (auto& workspace : m_workspaces) {
     if (workspace->closeWindow(addr)) {
       break;
