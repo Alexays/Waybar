@@ -6,6 +6,7 @@
 #include <cmath>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include "util/scope_guard.hpp"
 
@@ -34,11 +35,9 @@ waybar::modules::CustomGraph::CustomGraph(const std::string& name, const std::st
 }
 
 waybar::modules::CustomGraph::~CustomGraph() {
+  // release_command_ closes the pipe and reaps the command once the worker is joined
   if (pid_ != -1) {
     killpg(pid_, SIGTERM);
-    waitpid(pid_, NULL, 0);
-    // pid_ is left as is: the continuous worker runs until thread_ is destroyed and, on EOF from
-    // the killed command, passes pid_ to command::close(); -1 would make that waitpid(-1).
   }
 }
 
@@ -87,8 +86,9 @@ void waybar::modules::CustomGraph::continuousWorker() {
     if (getline(&buff, &len, fp_) == -1) {
       int exit_code = 1;
       if (fp_) {
-        exit_code = WEXITSTATUS(util::command::close(fp_, pid_));
-        fp_ = nullptr;
+        // fp_ is cleared first: the worker can be cancelled in close() after it closed the stream
+        exit_code = WEXITSTATUS(util::command::close(std::exchange(fp_, nullptr), pid_));
+        pid_ = -1;
       }
       if (exit_code != 0) {
         output_ = {exit_code, ""};
@@ -96,7 +96,6 @@ void waybar::modules::CustomGraph::continuousWorker() {
         spdlog::error("{} stopped unexpectedly, is it endless?", name_);
       }
       if (config_["restart-interval"].isUInt()) {
-        pid_ = -1;
         thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
         // stop() cuts the sleep short when the module is destroyed (e.g. its bar is removed); the
         // command was just killed by the destructor, so don't start a copy nobody will stop.
