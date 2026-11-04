@@ -84,7 +84,7 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
     std::string windowRewriteDefault =
         windowRewriteDefaultConfig.isString() ? windowRewriteDefaultConfig.asString() : "?";
     m_windowRewriteRules = waybar::util::RegexCollection(
-        windowRewrite, std::move(windowRewriteDefault), windowRewritePriorityFunction);
+        windowRewrite, std::move(windowRewriteDefault), windowRewritePriorityFunction, true);
   }
   populateIgnoreWorkspacesConfig(config);
   ipc_.subscribe(R"(["workspace"])");
@@ -332,8 +332,12 @@ void Workspaces::updateWindows(const Json::Value& node, std::string& windows) {
       std::string windowReprKey = fmt::format("class<{}> title<{}>", windowClass, title);
       std::string window = m_windowRewriteRules.get(windowReprKey);
       // allow result to have formatting
-      window = fmt::format(fmt::runtime(window), fmt::arg("name", title),
-                           fmt::arg("class", windowClass));
+      try {
+        window = fmt::format(fmt::runtime(window), fmt::arg("name", title),
+                             fmt::arg("class", windowClass));
+      } catch (const fmt::format_error& e) {
+        spdlog::warn("Formatting window-rewrite error: {}", e.what());
+      }
       windows.append(window);
       windows.append(m_formatWindowSeparator);
     }

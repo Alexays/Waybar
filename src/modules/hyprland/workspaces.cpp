@@ -208,8 +208,13 @@ std::string Workspaces::getRewrite(const std::string& window_class,
     windowReprKey = fmt::format("class<{}>", windowClass);
   }
   auto const rewriteRule = m_windowRewriteRules.get(windowReprKey);
-  return fmt::format(fmt::runtime(rewriteRule), fmt::arg("class", windowClass),
-                     fmt::arg("title", windowTitle));
+  try {
+    return fmt::format(fmt::runtime(rewriteRule), fmt::arg("class", windowClass),
+                       fmt::arg("title", windowTitle));
+  } catch (const fmt::format_error& e) {
+    spdlog::warn("Formatting window-rewrite error: {}", e.what());
+    return rewriteRule;
+  }
 }
 
 std::vector<std::string> Workspaces::getVisibleWorkspaces() {
@@ -778,7 +783,8 @@ auto Workspaces::populateWindowRewriteConfig(const Json::Value& config) -> void 
 
   m_windowRewriteRules = util::RegexCollection(
       windowRewrite, windowRewriteDefault,
-      [this](std::string& window_rule) { return windowRewritePriorityFunction(window_rule); });
+      [this](std::string& window_rule) { return windowRewritePriorityFunction(window_rule); },
+      true);
 }
 
 auto Workspaces::populateMaxWindowsConfig(const Json::Value& config) -> void {
