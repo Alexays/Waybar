@@ -61,6 +61,22 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
       active_tooltip_.reset();
       return false;
     });
+    // GTK hides the tooltip on every scroll event and only shows it again once
+    // the pointer moves, so a value being scrolled (volume, brightness) cannot
+    // be read while changing it. event-after also fires when a handler consumed
+    // the scroll, but before GTK's own tooltip handling, hence the idle.
+    event_box_.signal_event_after().connect([this](GdkEvent* e) {
+      if (e->type != GDK_SCROLL) {
+        return;
+      }
+      tooltip_requery_.disconnect();
+      tooltip_requery_ = Glib::signal_idle().connect([this] {
+        if (pointerOverModule()) {
+          label_.trigger_tooltip_query();
+        }
+        return false;
+      });
+    });
   }
   if (config_["max-length"].isUInt()) {
     label_.set_max_width_chars(config_["max-length"].asInt());
