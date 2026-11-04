@@ -268,6 +268,7 @@ void AudioBackend::sinkInfoCb(pa_context* /*context*/, const pa_sink_info* i, in
   spdlog::trace("Sink name {} Running:[{}] Idle:[{}]", i->name, running, idle);
 
   auto* backend = static_cast<AudioBackend*>(data);
+  std::unique_lock<std::mutex> lock(backend->state_mutex_);
 
   if (!backend->ignored_sinks_.empty()) {
     for (const auto& ignored_sink : backend->ignored_sinks_) {
@@ -348,6 +349,7 @@ void AudioBackend::sinkInfoCb(pa_context* /*context*/, const pa_sink_info* i, in
     } else {
       backend->form_factor_ = "";
     }
+    lock.unlock();
     backend->on_updated_cb_();
   }
 }
@@ -358,6 +360,7 @@ void AudioBackend::sinkInfoCb(pa_context* /*context*/, const pa_sink_info* i, in
 void AudioBackend::sourceInfoCb(pa_context* /*context*/, const pa_source_info* i, int /*eol*/,
                                 void* data) {
   auto* backend = static_cast<AudioBackend*>(data);
+  std::unique_lock<std::mutex> lock(backend->state_mutex_);
   if (i != nullptr && backend->default_source_name_ == i->name) {
     if (pa_cvolume_valid(&i->volume) != 0) {
       backend->pa_source_volume_ = i->volume;
@@ -370,6 +373,7 @@ void AudioBackend::sourceInfoCb(pa_context* /*context*/, const pa_source_info* i
     backend->source_muted_ = i->mute != 0;
     backend->source_desc_ = i->description;
     backend->source_port_name_ = i->active_port != nullptr ? i->active_port->name : "Unknown";
+    lock.unlock();
     backend->on_updated_cb_();
   }
 }
@@ -381,15 +385,19 @@ void AudioBackend::sourceInfoCb(pa_context* /*context*/, const pa_source_info* i
 void AudioBackend::serverInfoCb(pa_context* context, const pa_server_info* i, void* data) {
   auto* backend = static_cast<AudioBackend*>(data);
   if (i == nullptr) return;
-  backend->current_sink_name_ = i->default_sink_name ? i->default_sink_name : "";
-  backend->default_sink_name = i->default_sink_name ? i->default_sink_name : "";
-  backend->default_source_name_ = i->default_source_name ? i->default_source_name : "";
+  {
+    std::lock_guard<std::mutex> lock(backend->state_mutex_);
+    backend->current_sink_name_ = i->default_sink_name ? i->default_sink_name : "";
+    backend->default_sink_name = i->default_sink_name ? i->default_sink_name : "";
+    backend->default_source_name_ = i->default_source_name ? i->default_source_name : "";
+  }
 
   if (auto* o = pa_context_get_sink_info_list(context, sinkInfoCb, data)) pa_operation_unref(o);
   if (auto* o = pa_context_get_source_info_list(context, sourceInfoCb, data)) pa_operation_unref(o);
 }
 
 uint16_t AudioBackend::getVolume(PulseaudioTarget target) const {
+  std::lock_guard<std::mutex> lock(state_mutex_);
   if (target == PulseaudioTarget::Source) {
     return source_volume_;
   } else {
@@ -407,8 +415,11 @@ void AudioBackend::changeVolume(uint16_t volume, uint16_t min_volume, uint16_t m
 
   bool is_source = target == PulseaudioTarget::Source;
 
-  // Select the appropriate stored volume structure
-  auto& ref_volume = is_source ? pa_source_volume_ : pa_volume_;
+  pa_cvolume ref_volume;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    ref_volume = is_source ? pa_source_volume_ : pa_volume_;
+  }
 
   // Prepare volume structure
   pa_cvolume pa_volume;
@@ -457,9 +468,13 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
 
   bool is_source = target == PulseaudioTarget::Source;
 
-  // Select the appropriate stored volume structure and current volume
-  auto& ref_volume = is_source ? pa_source_volume_ : pa_volume_;
-  auto current_volume = is_source ? source_volume_ : volume_;
+  pa_cvolume ref_volume;
+  uint16_t current_volume;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    ref_volume = is_source ? pa_source_volume_ : pa_volume_;
+    current_volume = is_source ? source_volume_ : volume_;
+  }
 
   // Prepare volume structure
   pa_cvolume pa_volume;
@@ -544,6 +559,7 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
 }
 
 bool AudioBackend::getMuted(PulseaudioTarget target) const {
+  std::lock_guard<std::mutex> lock(state_mutex_);
   if (target == PulseaudioTarget::Source) {
     return source_muted_;
   } else {
@@ -553,7 +569,10 @@ bool AudioBackend::getMuted(PulseaudioTarget target) const {
 
 void AudioBackend::toggleSinkMute() {
   if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
-  muted_ = !muted_;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    muted_ = !muted_;
+  }
   pa_threaded_mainloop_lock(mainloop_);
   if (auto* o = pa_context_set_sink_mute_by_index(context_, sink_idx_, static_cast<int>(muted_),
                                                   nullptr, nullptr))
@@ -563,7 +582,10 @@ void AudioBackend::toggleSinkMute() {
 
 void AudioBackend::toggleSinkMute(bool mute) {
   if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
-  muted_ = mute;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    muted_ = mute;
+  }
   pa_threaded_mainloop_lock(mainloop_);
   if (auto* o = pa_context_set_sink_mute_by_index(context_, sink_idx_, static_cast<int>(muted_),
                                                   nullptr, nullptr))
@@ -573,7 +595,10 @@ void AudioBackend::toggleSinkMute(bool mute) {
 
 void AudioBackend::toggleSourceMute() {
   if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
-  source_muted_ = !source_muted_;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    source_muted_ = !source_muted_;
+  }
   pa_threaded_mainloop_lock(mainloop_);
   if (auto* o = pa_context_set_source_mute_by_index(
           context_, source_idx_, static_cast<int>(source_muted_), nullptr, nullptr))
@@ -583,7 +608,10 @@ void AudioBackend::toggleSourceMute() {
 
 void AudioBackend::toggleSourceMute(bool mute) {
   if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
-  source_muted_ = mute;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    source_muted_ = mute;
+  }
   pa_threaded_mainloop_lock(mainloop_);
   if (auto* o = pa_context_set_source_mute_by_index(
           context_, source_idx_, static_cast<int>(source_muted_), nullptr, nullptr))
@@ -600,12 +628,14 @@ void AudioBackend::unmute(PulseaudioTarget target) {
 }
 
 bool AudioBackend::isBluetooth() {
+  std::lock_guard<std::mutex> lock(state_mutex_);
   return monitor_.find("a2dp_sink") != std::string::npos ||  // PulseAudio
          monitor_.find("a2dp-sink") != std::string::npos ||  // PipeWire
          monitor_.find("bluez") != std::string::npos;
 }
 
 void AudioBackend::setIgnoredSinks(const Json::Value& config) {
+  std::lock_guard<std::mutex> lock(state_mutex_);
   if (config.isArray()) {
     for (const auto& ignored_sink : config) {
       if (ignored_sink.isString()) {
@@ -616,6 +646,7 @@ void AudioBackend::setIgnoredSinks(const Json::Value& config) {
 }
 
 void AudioBackend::setSinkMapping(const Json::Value& config) {
+  std::lock_guard<std::mutex> lock(state_mutex_);
   if (config.isObject()) {
     for (auto it = config.begin(); it != config.end(); ++it) {
       if (it.key().isString() && it->isString()) {
