@@ -323,7 +323,7 @@ bool Workspaces::hasFlag(const Json::Value& node, const std::string& flag) {
 void Workspaces::updateWindows(const Json::Value& node, std::string& windows) {
   if ((node["type"].asString() == "con" || node["type"].asString() == "floating_con") &&
       node["name"].isString()) {
-    std::string title = g_markup_escape_text(node["name"].asString().c_str(), -1);
+    std::string title = Glib::Markup::escape_text(node["name"].asString()).raw();
     std::string windowClass = node["app_id"].isString()
                                   ? node["app_id"].asString()
                                   : node["window_properties"]["class"].asString();
@@ -408,7 +408,7 @@ auto Workspaces::update() -> void {
     }
     std::string full_name;
     if (!config_["disable-markup"].asBool()) {
-      full_name = g_markup_escape_text((*it)["name"].asString().c_str(), -1);
+      full_name = Glib::Markup::escape_text((*it)["name"].asString()).raw();
     } else {
       full_name = (*it)["name"].asString();
     }
