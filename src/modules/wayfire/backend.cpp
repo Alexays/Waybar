@@ -425,6 +425,15 @@ auto IPC::update_state_handler(const std::string& event, const Json::Value& data
                                 .wset_idx = output_data["wset-index"].asUInt(),
                             });
     }
+
+    // The wsets still point at the outputs destroyed above, and the state is unlocked before
+    // the list-wsets reply replaces them.
+    for (auto& [_, wset] : state.wsets) wset.output.reset();
+    for (auto& [_, output] : state.outputs) {
+      if (auto it = state.wsets.find(output.wset_idx); it != state.wsets.end()) {
+        it->second.output = output;
+      }
+    }
     return;
   }
 
