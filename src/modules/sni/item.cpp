@@ -96,6 +96,12 @@ Item::~Item() {
   }
   if (this->dbus_menu != nullptr) {
     g_object_weak_unref(G_OBJECT(this->dbus_menu), (GWeakNotify)onMenuDestroyed, this);
+    // A pending GetLayout keeps the client alive, and the menu never disconnects its handler from
+    // it: a late answer from the item would otherwise run on the freed menu.
+    DbusmenuGtkClient* client = dbusmenu_gtkmenu_get_client(this->dbus_menu);
+    if (client != nullptr) {
+      g_signal_handlers_disconnect_by_data(client, this->dbus_menu);
+    }
     // makeMenu() holds a reference (g_object_ref_sink), and a GtkMenu is a toplevel that GTK keeps
     // in its window list. Without destroying it and dropping the reference, the menu and its whole
     // dbusmenu tree outlive the item, e.g. for every tray item of a removed bar.
@@ -407,10 +413,11 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
   gint height;
   guchar* array = nullptr;
   while (g_variant_iter_loop(it, "(ii@ay)", &width, &height, &val)) {
-    if (width > 0 && height > 0 && val != nullptr && width * height > lwidth * lheight) {
+    if (width > 0 && height > 0 && val != nullptr &&
+        static_cast<guint64>(width) * height > static_cast<guint64>(lwidth) * lheight) {
       auto size = g_variant_get_size(val);
-      /* Sanity check */
-      if (size == 4U * width * height) {
+      /* Sanity check, in 64 bits so that huge dimensions cannot wrap around */
+      if (size == 4 * static_cast<guint64>(width) * height) {
         /* Find the largest image */
         gconstpointer data = g_variant_get_data(val);
         if (data != nullptr) {
