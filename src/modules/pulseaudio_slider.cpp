@@ -41,13 +41,13 @@ void PulseaudioSlider::update() {
     scale_.get_style_context()->remove_class("muted");
   }
 
-  scale_.set_value(display_value);
+  setValueSilently(display_value);
 
   previously_muted = is_muted;
 }
 
-void PulseaudioSlider::onValueChanged() {
-  uint16_t slider_value = scale_.get_value();
+void PulseaudioSlider::onCommit(int value) {
+  auto slider_value = static_cast<uint16_t>(value);
 
   // Avoid setting sink/source to volume 0 if the user muted it via other means.
   if (!backend->getMuted(target) || slider_value != 0) {

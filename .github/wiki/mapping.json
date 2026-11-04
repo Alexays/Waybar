@@ -9,7 +9,7 @@
   "Module:-CFFI": ["waybar-cffi"],
   "Module:-Clock": ["waybar-clock"],
   "Module:-CPU": ["waybar-cpu", "waybar-cpu-graph"],
-  "Module:-Custom": ["waybar-custom", "waybar-custom-graph"],
+  "Module:-Custom": ["waybar-custom", "waybar-custom-graph", "waybar-custom-slider"],
   "Module:-Disk": ["waybar-disk"],
   "Module:-Dwl": ["waybar-dwl-tags", "waybar-dwl-window"],
   "Module:-Gamemode": ["waybar-gamemode"],

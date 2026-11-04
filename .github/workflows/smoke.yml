@@ -133,6 +133,11 @@ jobs:
         continue-on-error: true
         run: ./test/smoke/interact.sh interaction-shots
 
+      # --- Tier 2: custom-slider drag/group/failure (best-effort, needs pointer) ---
+      - name: Custom slider (drag + group + failing exec)
+        continue-on-error: true
+        run: ./test/smoke/slider.sh
+
       # --- Tier 2: accessibility assertions ---
       - name: Accessibility (AT-SPI) assertions
         run: dbus-run-session -- ./test/smoke/a11y.sh
