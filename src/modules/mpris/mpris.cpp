@@ -10,6 +10,7 @@
 
 #include "util/css_class.hpp"
 #include "util/scope_guard.hpp"
+#include "util/string.hpp"
 #include "util/utf8_string.hpp"
 
 extern "C" {
@@ -727,37 +728,30 @@ auto Mpris::Worker::getPlayerInfo() -> std::optional<PlayerInfo> {
   };
   g_free(player_status);
 
-  auto sanitize = [ ]( char* raw_str ) {
-      std::string s( raw_str );
-      std::replace( s.begin(), s.end(), '\n', ' ' );
-      std::replace( s.begin(), s.end(), '\r', ' ' );
-      return s;
-    };
-
 if(auto* artist_ = playerctl_player_get_artist( last_active_player_, &error )) {
     spdlog::debug( "mpris[{}]: artist = {}", info.name, artist_ );
-    info.artist = sanitize( artist_ );
+    info.artist = toSingleLine(artist_);
     g_free( artist_ );
   }
   if(error) goto errorexit;
 
   if(auto* album_artist_ = playerctl_player_print_metadata_prop( last_active_player_, "xesam:albumArtist", &error )) {
     spdlog::debug( "mpris[{}]: albumArtist = {}", info.name, album_artist_ );
-    info.album_artist = sanitize( album_artist_ );
+    info.album_artist = toSingleLine(album_artist_);
     g_free( album_artist_ );
   }
   if(error) goto errorexit;
 
   if(auto* album_ = playerctl_player_get_album( last_active_player_, &error )) {
     spdlog::debug( "mpris[{}]: album = {}", info.name, album_ );
-    info.album = sanitize( album_ );
+    info.album = toSingleLine(album_);
     g_free( album_ );
   }
   if(error) goto errorexit;
 
   if(auto* title_ = playerctl_player_get_title( last_active_player_, &error )) {
     spdlog::debug( "mpris[{}]: title = {}", info.name, title_ );
-    info.title = sanitize( title_ );
+    info.title = toSingleLine(title_);
     g_free( title_ );
   }
   if(error) goto errorexit;

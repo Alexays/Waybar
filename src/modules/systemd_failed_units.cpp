@@ -127,7 +127,10 @@ void SystemdFailedUnits::RequestSystemState(const std::function<void()>& next) {
         Glib::VariantBase variant;
         g_variant_get(const_cast<GVariant*>(data.gobj()), "(v)", &variant);
         if (variant && variant.is_of_type(Glib::VARIANT_TYPE_STRING)) {
-          return g_variant_get_string(const_cast<GVariant*>(variant.gobj()), NULL);
+          // Escaped once here: the known states it is compared with need no escaping
+          return Glib::Markup::escape_text(
+                     g_variant_get_string(const_cast<GVariant*>(variant.gobj()), NULL))
+              .raw();
         }
       }
     } catch (Glib::Error& e) {
@@ -256,12 +259,14 @@ std::string SystemdFailedUnits::BuildTooltipFailedList() const {
   bool first = true;
   for (const auto& unit : failed_units_) {
     try {
-      auto line = fmt::format(
-          fmt::runtime(tooltip_unit_format_),
-          fmt::arg("name", Glib::Markup::escape_text(unit.name).raw()),
-          fmt::arg("description", Glib::Markup::escape_text(unit.description).raw()),
-          fmt::arg("load_state", unit.load_state), fmt::arg("active_state", unit.active_state),
-          fmt::arg("sub_state", unit.sub_state), fmt::arg("scope", unit.scope));
+      auto line =
+          fmt::format(fmt::runtime(tooltip_unit_format_),
+                      fmt::arg("name", Glib::Markup::escape_text(unit.name).raw()),
+                      fmt::arg("description", Glib::Markup::escape_text(unit.description).raw()),
+                      fmt::arg("load_state", Glib::Markup::escape_text(unit.load_state).raw()),
+                      fmt::arg("active_state", Glib::Markup::escape_text(unit.active_state).raw()),
+                      fmt::arg("sub_state", Glib::Markup::escape_text(unit.sub_state).raw()),
+                      fmt::arg("scope", unit.scope));
       if (!first) {
         list += "\n";
       }

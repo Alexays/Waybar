@@ -7,6 +7,8 @@
 #include <string>
 #include <unordered_set>
 
+#include "util/string.hpp"
+
 bool isValidNodeId(uint32_t id) { return id > 0 && id < G_MAXUINT32; }
 
 std::list<waybar::modules::Wireplumber*> waybar::modules::Wireplumber::modules;
@@ -732,13 +734,16 @@ auto waybar::modules::Wireplumber::update() -> void {
   std::string formatted_source =
       fmt::format(fmt::runtime(format_source), fmt::arg("volume", source_vol));
 
+  const std::string node_name = Glib::Markup::escape_text(toSingleLine(node_name_)).raw();
+
   fmt::dynamic_format_arg_store<fmt::format_context> store;
-  store.push_back(fmt::arg("node_name", node_name_));
+  store.push_back(fmt::arg("node_name", node_name));
   store.push_back(fmt::arg("volume", vol));
   store.push_back(fmt::arg("icon", getIcon(vol, getWPIcon())));
   store.push_back(fmt::arg("format_source", formatted_source));
   store.push_back(fmt::arg("source_volume", source_vol));
-  store.push_back(fmt::arg("source_desc", source_name_));
+  store.push_back(
+      fmt::arg("source_desc", Glib::Markup::escape_text(toSingleLine(source_name_)).raw()));
   store.push_back(fmt::arg("volume_linear", volume_));
   store.push_back(fmt::arg("volume_cubic", vol_cube));
   store.push_back(fmt::arg("volume_db", vol_db));
@@ -753,7 +758,7 @@ auto waybar::modules::Wireplumber::update() -> void {
     if (!tooltipFormat.empty()) {
       setTooltipMarkup(fmt::vformat(tooltipFormat, store));
     } else {
-      setTooltipMarkup(node_name_);
+      setTooltipMarkup(node_name);
     }
   }
 

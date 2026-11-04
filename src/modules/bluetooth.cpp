@@ -7,6 +7,7 @@
 #include <sstream>
 
 #include "util/scope_guard.hpp"
+#include "util/string.hpp"
 
 namespace {
 
@@ -309,6 +310,13 @@ auto waybar::modules::Bluetooth::update() -> void {
   update_style_context(state, true);
   state_ = state;
 
+  // Aliases are chosen by the devices: kept raw for matching, escaped and folded for display
+  const std::string controller_alias =
+      cur_controller_ ? Glib::Markup::escape_text(toSingleLine(cur_controller_->alias)).raw()
+                      : "null";
+  const std::string device_alias =
+      Glib::Markup::escape_text(toSingleLine(cur_focussed_device_.alias)).raw();
+
   if (format_.empty()) {
     event_box_.hide();
   } else {
@@ -319,10 +327,10 @@ auto waybar::modules::Bluetooth::update() -> void {
         fmt::arg("controller_address", cur_controller_ ? cur_controller_->address : "null"),
         fmt::arg("controller_address_type",
                  cur_controller_ ? cur_controller_->address_type : "null"),
-        fmt::arg("controller_alias", cur_controller_ ? cur_controller_->alias : "null"),
+        fmt::arg("controller_alias", controller_alias),
         fmt::arg("device_address", cur_focussed_device_.address),
         fmt::arg("device_address_type", cur_focussed_device_.address_type),
-        fmt::arg("device_alias", cur_focussed_device_.alias), fmt::arg("icon", icon_label),
+        fmt::arg("device_alias", device_alias), fmt::arg("icon", icon_label),
         fmt::arg("device_battery_percentage", cur_focussed_device_.battery_percentage.value_or(0)),
         fmt::arg("device_battery_percentage_peripheral",
                  cur_focussed_device_.battery_percentage_peripheral.value_or(0))));
@@ -349,7 +357,8 @@ auto waybar::modules::Bluetooth::update() -> void {
           ss << fmt::format(
               fmt::runtime(enumerate_format), fmt::arg("device_address", dev.address),
               fmt::arg("device_address_type", dev.address_type),
-              fmt::arg("device_alias", dev.alias), fmt::arg("icon", enumerate_icon),
+              fmt::arg("device_alias", Glib::Markup::escape_text(toSingleLine(dev.alias)).raw()),
+              fmt::arg("icon", enumerate_icon),
               fmt::arg("device_battery_percentage", dev.battery_percentage.value_or(0)),
               fmt::arg("device_battery_percentage_peripheral",
                        dev.battery_percentage_peripheral.value_or(0)),
@@ -359,7 +368,7 @@ auto waybar::modules::Bluetooth::update() -> void {
               fmt::arg("controller_address", cur_controller_ ? cur_controller_->address : "null"),
               fmt::arg("controller_address_type",
                        cur_controller_ ? cur_controller_->address_type : "null"),
-              fmt::arg("controller_alias", cur_controller_ ? cur_controller_->alias : "null"));
+              fmt::arg("controller_alias", controller_alias));
         }
       }
       device_enumerate_ = ss.str();
@@ -374,10 +383,10 @@ auto waybar::modules::Bluetooth::update() -> void {
         fmt::arg("controller_address", cur_controller_ ? cur_controller_->address : "null"),
         fmt::arg("controller_address_type",
                  cur_controller_ ? cur_controller_->address_type : "null"),
-        fmt::arg("controller_alias", cur_controller_ ? cur_controller_->alias : "null"),
+        fmt::arg("controller_alias", controller_alias),
         fmt::arg("device_address", cur_focussed_device_.address),
         fmt::arg("device_address_type", cur_focussed_device_.address_type),
-        fmt::arg("device_alias", cur_focussed_device_.alias), fmt::arg("icon", icon_tooltip),
+        fmt::arg("device_alias", device_alias), fmt::arg("icon", icon_tooltip),
         fmt::arg("device_battery_percentage", cur_focussed_device_.battery_percentage.value_or(0)),
         fmt::arg("device_battery_percentage_peripheral",
                  cur_focussed_device_.battery_percentage_peripheral.value_or(0)),

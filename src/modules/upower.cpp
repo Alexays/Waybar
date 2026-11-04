@@ -5,6 +5,8 @@
 #include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
 
+#include "util/string.hpp"
+
 namespace waybar::modules {
 
 static constexpr const char* UPOWER_NAME{"org.freedesktop.UPower"};
@@ -518,7 +520,8 @@ const Glib::ustring UPower::getText(const upDevice_output& upDevice_, const std:
         fmt::arg("percentage", std::to_string((int)std::round(upDevice_.percentage)) + '%'),
         fmt::arg("time", timeStr),
         fmt::arg("temperature", fmt::format("{:-.2g}C", upDevice_.temperature)),
-        fmt::arg("model", upDevice_.model), fmt::arg("native-path", upDevice_.nativePath));
+        fmt::arg("model", Glib::Markup::escape_text(toSingleLine(upDevice_.model)).raw()),
+        fmt::arg("native-path", Glib::Markup::escape_text(upDevice_.nativePath).raw()));
   }
 
   return ret;

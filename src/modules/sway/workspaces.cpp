@@ -324,8 +324,10 @@ void Workspaces::updateWindows(const Json::Value& node, std::string& windows) {
       node["name"].isString()) {
     std::string title = Glib::Markup::escape_text(toSingleLine(node["name"].asString())).raw();
     std::string windowClass =
-        toSingleLine(node["app_id"].isString() ? node["app_id"].asString()
-                                               : node["window_properties"]["class"].asString());
+        Glib::Markup::escape_text(toSingleLine(node["app_id"].isString()
+                                                   ? node["app_id"].asString()
+                                                   : node["window_properties"]["class"].asString()))
+            .raw();
 
     // Only add window rewrites that can be looked up
     if (!windowClass.empty()) {

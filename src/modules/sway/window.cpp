@@ -101,7 +101,8 @@ auto Window::update() -> void {
                   fmt::arg("shell", shell_), fmt::arg("marks", marks_)),
       config_["rewrite"]));
   if (tooltipEnabled()) {
-    setTooltipMarkup(Glib::Markup::escape_text(window_));
+    // window_ is markup already: an escaped name or the user's offscreen-css-text
+    setTooltipMarkup(window_);
   }
 
   // Resolve the app icon on the main thread to avoid racing with GTK draw on the
@@ -221,7 +222,7 @@ gfnWithWorkspace(const Json::Value& nodes, std::string& output, const Json::Valu
                 node["id"].asInt(),
                 (((all_leaf_nodes.first > 0) || (all_leaf_nodes.second > 0)) &&
                  (config_["show-focused-workspace-name"].asBool()))
-                    ? node["name"].asString()
+                    ? Glib::Markup::escape_text(node["name"].asString()).raw()
                     : "",
                 "",
                 "",

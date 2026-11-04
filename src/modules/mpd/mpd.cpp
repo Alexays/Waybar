@@ -11,6 +11,7 @@
 using namespace waybar::util;
 
 #include "modules/mpd/state.hpp"
+#include "util/string.hpp"
 #if defined(MPD_NOINLINE)
 namespace waybar::modules {
 #include "modules/mpd/state.inl.hpp"
@@ -90,7 +91,7 @@ std::string waybar::modules::MPD::getTag(mpd_tag_type type, unsigned idx) const 
   const char* tag = song_ ? mpd_song_get_tag(song_.get(), type, idx) : nullptr;
 
   // mpd_song_get_tag can return NULL, so make sure it's valid before setting
-  if (tag) result = tag;
+  if (tag) result = toSingleLine(tag);
 
   return result;
 }
@@ -169,8 +170,8 @@ void waybar::modules::MPD::setLabel() {
     stateIcon = getStateIcon();
 
     date = sanitize_string(getTag(MPD_TAG_DATE));
-    filename = sanitize_string(getFilename());
-    uri = mpd_song_get_uri(song_.get());
+    filename = sanitize_string(toSingleLine(getFilename()));
+    uri = sanitize_string(toSingleLine(mpd_song_get_uri(song_.get())));
     song_pos = mpd_status_get_song_pos(status_.get()) + 1;
     volume = mpd_status_get_volume(status_.get());
     if (volume < 0) {

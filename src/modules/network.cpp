@@ -17,6 +17,7 @@
 
 #include "util/format.hpp"
 #include "util/netlink.hpp"
+#include "util/string.hpp"
 #ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
 #endif
@@ -1082,7 +1083,7 @@ void waybar::modules::Network::parseEssid(struct nlattr** bss) {
       }
       if (ies[0] == 0) {  // type 0 = SSID
         essid_ = Glib::Markup::escape_text(
-            std::string(reinterpret_cast<const char*>(ies + hdr_len), len));
+            toSingleLine(std::string(reinterpret_cast<const char*>(ies + hdr_len), len)));
         return;
       }
       ies_len -= hdr_len + len;

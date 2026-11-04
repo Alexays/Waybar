@@ -1,5 +1,6 @@
 #include "modules/hyprland/workspaces.hpp"
 
+#include <glibmm/markup.h>
 #include <json/value.h>
 #include <spdlog/spdlog.h>
 
@@ -198,8 +199,9 @@ void Workspaces::extendOrphans(const std::string& workspaceAddress,
 
 std::string Workspaces::getRewrite(const std::string& window_class,
                                    const std::string& window_title) {
-  const std::string windowClass = toSingleLine(window_class);
-  const std::string windowTitle = toSingleLine(window_title);
+  // Escaped before matching, so that $N captures are escaped too
+  const std::string windowClass = Glib::Markup::escape_text(toSingleLine(window_class)).raw();
+  const std::string windowTitle = Glib::Markup::escape_text(toSingleLine(window_title)).raw();
   std::string windowReprKey;
   if (windowRewriteConfigUsesTitle()) {
     windowReprKey = fmt::format("class<{}> title<{}>", windowClass, windowTitle);
