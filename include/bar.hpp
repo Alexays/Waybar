@@ -61,6 +61,22 @@ class BarIpcClient;
 }
 #endif  // HAVE_SWAY
 
+// Never asks for more than its output: GDK cannot create a surface past 32767 pixels, and
+// module text would otherwise set the size. Content that does not fit is clipped.
+class BarWindow : public Gtk::Window {
+ public:
+  explicit BarWindow(const Glib::RefPtr<Gdk::Monitor>& monitor);
+
+ protected:
+  void get_preferred_width_vfunc(int& minimum, int& natural) const override;
+  void get_preferred_height_vfunc(int& minimum, int& natural) const override;
+  void get_preferred_width_for_height_vfunc(int height, int& minimum, int& natural) const override;
+  void get_preferred_height_for_width_vfunc(int width, int& minimum, int& natural) const override;
+
+ private:
+  Glib::RefPtr<Gdk::Monitor> monitor_;
+};
+
 class Bar : public sigc::trackable {
  public:
   using bar_mode_map = std::map<std::string, struct bar_mode>;
@@ -93,7 +109,7 @@ class Bar : public sigc::trackable {
   Json::Value config;
   struct wl_surface* surface;
   bool visible = true;
-  Gtk::Window window;
+  BarWindow window;
   Gtk::Orientation orientation = Gtk::ORIENTATION_HORIZONTAL;
   Gtk::PositionType position = Gtk::POS_TOP;
 

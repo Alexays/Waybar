@@ -137,13 +137,46 @@ void from_json(const Json::Value& j, std::map<Key, Value>& m) {
   }
 }
 
+static void limitSize(int& minimum, int& natural, int available) {
+  // A monitor whose geometry is not known yet reports 0
+  if (available > 0) {
+    minimum = std::min(minimum, available);
+    natural = std::min(natural, available);
+  }
+}
+
 };  // namespace waybar
+
+waybar::BarWindow::BarWindow(const Glib::RefPtr<Gdk::Monitor>& monitor)
+    : Gtk::Window{Gtk::WindowType::WINDOW_TOPLEVEL}, monitor_(monitor) {}
+
+void waybar::BarWindow::get_preferred_width_vfunc(int& minimum, int& natural) const {
+  Gtk::Window::get_preferred_width_vfunc(minimum, natural);
+  limitSize(minimum, natural, monitor_->property_geometry().get_value().get_width());
+}
+
+void waybar::BarWindow::get_preferred_height_vfunc(int& minimum, int& natural) const {
+  Gtk::Window::get_preferred_height_vfunc(minimum, natural);
+  limitSize(minimum, natural, monitor_->property_geometry().get_value().get_height());
+}
+
+void waybar::BarWindow::get_preferred_width_for_height_vfunc(int height, int& minimum,
+                                                             int& natural) const {
+  Gtk::Window::get_preferred_width_for_height_vfunc(height, minimum, natural);
+  limitSize(minimum, natural, monitor_->property_geometry().get_value().get_width());
+}
+
+void waybar::BarWindow::get_preferred_height_for_width_vfunc(int width, int& minimum,
+                                                             int& natural) const {
+  Gtk::Window::get_preferred_height_for_width_vfunc(width, minimum, natural);
+  limitSize(minimum, natural, monitor_->property_geometry().get_value().get_height());
+}
 
 waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
       config(w_config),
       surface(nullptr),
-      window{Gtk::WindowType::WINDOW_TOPLEVEL},
+      window{w_output->monitor},
       x_global(0),
       y_global(0),
       margins_{.top = 0, .right = 0, .bottom = 0, .left = 0},
@@ -878,6 +911,7 @@ void waybar::Bar::configureGlobalOffset(int width, int height) {
 
 void waybar::Bar::onOutputGeometryChanged() {
   configureGlobalOffset(window.get_width(), window.get_height());
+  window.queue_resize();
 }
 
 void waybar::Bar::toggleSuspend(bool suspend) {

@@ -40,6 +40,9 @@ run_case "empty format"      '{"exec":"echo x","interval":"once","format":""}'
 run_case "newlines flood"    '{"exec":"yes | head -n 500","interval":"once"}'
 # An embedded icon directive naming a device must be refused, not read on the main loop
 run_case "embedded icon device" '{"exec":"printf %s \\\\0icon\\\\1f/dev/ptmx\\\\n","interval":"once"}'
+# Wider or taller than the 32767 pixels a GDK surface can have
+run_case "long line"         '{"exec":"printf %05000d 0","interval":"once"}'
+run_case "long rotated line" '{"exec":"printf %05000d 0","interval":"once","rotate":90}'
 
 # image module: the path printed by exec is data and must never be shell-expanded.
 echo "::group::fuzz: image exec output with command substitution"
