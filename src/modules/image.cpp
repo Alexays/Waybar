@@ -98,10 +98,8 @@ void MultipleImageStrategy::fetch() {
 void MultipleImageStrategy::update() {
   // spdlog::info("update function run");
 
-  // clear box_, previous css classes and memory
-  if (box_.get_children().size() > 0) {
-    resetBoxAndMemory();
-  }
+  // A rejected output can leave entries in images_data_ with an empty box_, so always reset
+  resetBoxAndMemory();
 
   // set new images from config script
   if (!config_["entries"].empty()) {
@@ -189,14 +187,23 @@ void MultipleImageStrategy::setupAndDraw() {
 }
 
 void MultipleImageStrategy::setImagesData(const Json::Value& entries) {
+  if (!entries.isArray()) {
+    spdlog::error("invalid input in images config -> {}", entries);
+    return;
+  }
   for (unsigned int i = 0; i < entries.size(); i++) {
+    // Indexing anything but an object by key throws
+    if (!entries[i].isObject()) {
+      spdlog::error("invalid input in images config -> {}", entries[i]);
+      return;
+    }
     auto path = entries[i]["path"];
     auto marker = entries[i]["marker"];
     auto tooltip = entries[i]["tooltip"];
     auto onclick = entries[i]["on-click"];
 
-    bool has_tooltip_err = !tooltip.empty() && !tooltip.isString();
-    bool has_onclick_err = !onclick.empty() && !onclick.isString();
+    bool has_tooltip_err = !tooltip.isNull() && !tooltip.isString();
+    bool has_onclick_err = !onclick.isNull() && !onclick.isString();
 
     if (!path.isString() || !marker.isString() || has_tooltip_err || has_onclick_err ||
         !Glib::file_test(path.asString(), Glib::FILE_TEST_EXISTS)) {
