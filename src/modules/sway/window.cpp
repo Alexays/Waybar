@@ -90,8 +90,7 @@ auto Window::update() -> void {
   setClass("stacked", ((mode & 16) > 0));
   setClass("tiled", ((mode & 32) > 0));
 
-  if ((mode & 2) > 0 && !app_id_.empty() && !bar_.window.get_style_context()->has_class(app_id_) &&
-      waybar::util::try_add_class(bar_.window.get_style_context(), app_id_)) {
+  if ((mode & 2) > 0 && waybar::util::add_app_id_class(bar_.window.get_style_context(), app_id_)) {
     spdlog::trace("Adding app_id class: {}", app_id_);
     old_app_id_ = app_id_;
   }

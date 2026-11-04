@@ -99,18 +99,18 @@ auto Window::update() -> void {
   setClass("swallowing", swallowing_);
   setClass("fullscreen", fullscreen_);
 
-  if (!lastSoloClass_.empty() && soloClass_ != lastSoloClass_) {
-    if (bar_.window.get_style_context()->has_class(lastSoloClass_)) {
+  // lastSoloClass_ is only ever a class this module added, so nothing else is removed
+  if (soloClass_ != lastSoloClass_) {
+    if (!lastSoloClass_.empty()) {
       bar_.window.get_style_context()->remove_class(lastSoloClass_);
       spdlog::trace("Removing solo class: {}", lastSoloClass_);
+      lastSoloClass_.clear();
+    }
+    if (waybar::util::add_app_id_class(bar_.window.get_style_context(), soloClass_)) {
+      spdlog::trace("Adding solo class: {}", soloClass_);
+      lastSoloClass_ = soloClass_;
     }
   }
-
-  if (!soloClass_.empty() && !bar_.window.get_style_context()->has_class(soloClass_) &&
-      waybar::util::try_add_class(bar_.window.get_style_context(), soloClass_)) {
-    spdlog::trace("Adding solo class: {}", soloClass_);
-  }
-  lastSoloClass_ = soloClass_;
 
   AAppIconLabel::update();
 }

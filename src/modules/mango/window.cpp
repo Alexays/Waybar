@@ -68,11 +68,16 @@ void Window::doUpdate() {
     }
   }
   setClass("solo", solo);
-  if (!appid.empty()) setClass(appid, solo);
 
-  if (oldAppId_ != appid) {
-    if (!oldAppId_.empty()) setClass(oldAppId_, false);
-    oldAppId_ = appid;
+  // oldAppId_ is only ever a class this module added, so nothing else is removed
+  if (!solo || oldAppId_ != appid) {
+    if (!oldAppId_.empty()) {
+      setClass(oldAppId_, false);
+      oldAppId_.clear();
+    }
+    if (solo && waybar::util::add_app_id_class(event_box_.get_style_context(), appid)) {
+      oldAppId_ = appid;
+    }
   }
 }
 
@@ -84,7 +89,7 @@ void Window::update() {
 void Window::setClass(const std::string& className, bool enable) {
   auto style_context = event_box_.get_style_context();
   if (enable) {
-    if (!style_context->has_class(className)) waybar::util::try_add_class(style_context, className);
+    if (!style_context->has_class(className)) style_context->add_class(className);
   } else {
     style_context->remove_class(className);
   }

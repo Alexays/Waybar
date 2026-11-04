@@ -113,11 +113,16 @@ void Window::doUpdate() {
       return win["id"].asString() != id && win["workspace"].asString() == workspace_id;
     });
     setClass("solo", isSolo);
-    if (!appId.empty()) setClass(appId, isSolo);
 
-    if (oldAppId_ != appId) {
-      if (!oldAppId_.empty()) setClass(oldAppId_, false);
-      oldAppId_ = appId;
+    // oldAppId_ is only ever a class this module added, so nothing else is removed
+    if (!isSolo || oldAppId_ != appId) {
+      if (!oldAppId_.empty()) {
+        setClass(oldAppId_, false);
+        oldAppId_.clear();
+      }
+      if (isSolo && waybar::util::add_app_id_class(bar_.window.get_style_context(), appId)) {
+        oldAppId_ = appId;
+      }
     }
   } else {
     if (config_["show-empty"].asBool()) {
@@ -148,7 +153,7 @@ void Window::setClass(const std::string& className, bool enable) {
   auto styleContext = bar_.window.get_style_context();
   if (enable) {
     if (!styleContext->has_class(className)) {
-      waybar::util::try_add_class(styleContext, className);
+      styleContext->add_class(className);
     }
   } else {
     styleContext->remove_class(className);
