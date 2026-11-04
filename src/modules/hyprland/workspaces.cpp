@@ -4,6 +4,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <chrono>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -1094,9 +1095,15 @@ auto Workspaces::update() -> void {
   // Debounce rapid events (e.g. out-of-order create/destroy workspace events from
   // Hyprland) to prevent workspace button flicker. This runs on the GTK main thread
   // (invoked via the dp dispatcher), so arming the GLib timer here is thread-safe.
-  // An armed timer is never pushed back, so a steady event stream cannot starve the refresh.
+  // Each event pushes the timer back, but never past 50 ms after the oldest pending one.
+  const auto now = std::chrono::steady_clock::now();
   if (m_debounceTimer.connected()) {
-    return;
+    if (now - m_debounceStart >= std::chrono::milliseconds(50)) {
+      return;
+    }
+    m_debounceTimer.disconnect();
+  } else {
+    m_debounceStart = now;
   }
   m_debounceTimer = Glib::signal_timeout().connect(
       [this]() {

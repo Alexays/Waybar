@@ -6,6 +6,7 @@
 #include <json/value.h>
 #include <sigc++/connection.h>
 
+#include <chrono>
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -234,6 +235,8 @@ class Workspaces : public AModule, public EventHandler {
   // Coalesces bursts of Hyprland events into a single UI refresh. Armed and
   // disconnected only on the GTK main thread (see Workspaces::update).
   sigc::connection m_debounceTimer;
+  // When the oldest event still waiting for m_debounceTimer arrived.
+  std::chrono::steady_clock::time_point m_debounceStart;
 };
 
 }  // namespace waybar::modules::hyprland
