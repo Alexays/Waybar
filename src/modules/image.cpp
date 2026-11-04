@@ -3,6 +3,7 @@
 #include <json/value.h>
 
 #include <config.hpp>
+#include <string_view>
 
 waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
     : AModule(config, "image", id) {
@@ -248,6 +249,16 @@ SingleImageStrategy::SingleImageStrategy(const std::string& id, const Json::Valu
   }
 }
 
+// Script output is data: unlike Config::tryExpandPath(), never hand it to wordexp().
+static std::string expandHome(const std::string& path) {
+  for (const std::string_view prefix : {"~", "$HOME", "${HOME}"}) {
+    if (path.starts_with(prefix) && (path.size() == prefix.size() || path[prefix.size()] == '/')) {
+      return Glib::get_home_dir() + path.substr(prefix.size());
+    }
+  }
+  return path;
+}
+
 void SingleImageStrategy::update() {
   if (config_["path"].isString()) {
     auto p = config_["path"].asString();
@@ -258,9 +269,7 @@ void SingleImageStrategy::update() {
   } else if (config_["exec"].isString()) {
     output_ = util::command::exec(config_["exec"].asString(), "");
     parseOutputRaw();
-    // expand path if "~" or "$HOME" is present in original path
-    auto result = Config::tryExpandPath(path_, "");
-    path_ = (result.size() == 1) ? result.front() : path_;
+    path_ = expandHome(path_);
   }
 
   Glib::RefPtr<Gdk::Pixbuf> pixbuf;

@@ -39,5 +39,26 @@ run_case "non-utf8 bytes"    '{"exec":"printf \\377\\376\\375","interval":"once"
 run_case "empty format"      '{"exec":"echo x","interval":"once","format":""}'
 run_case "newlines flood"    '{"exec":"yes | head -n 500","interval":"once"}'
 
+# image module: the path printed by exec is data and must never be shell-expanded.
+echo "::group::fuzz: image exec output with command substitution"
+marker="$(mktemp -u)"
+cfg="$(mktemp --suffix=.json)"
+cat > "$cfg" <<EOF
+{ "layer": "top", "position": "top", "height": 30,
+  "modules-center": ["image"],
+  "image": {"exec":"echo '/tmp/\$(touch $marker)cover.png'","interval":"once"} }
+EOF
+smoke::launch_waybar "$cfg" "$DIR/style.css" 4
+smoke::assert_alive || fail=1
+if [ -e "$marker" ]; then
+    echo "::error::image module ran a command embedded in its exec output"
+    rm -f "$marker"
+    fail=1
+else
+    echo "image exec output was not shell-expanded"
+fi
+smoke::assert_clean_exit || fail=1
+echo "::endgroup::"
+
 [ "$fail" = 0 ] || { echo "::error::fuzz tier failed"; exit 1; }
 echo "✓ custom-backend fuzz passed"
