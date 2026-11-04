@@ -1,12 +1,15 @@
 #include "modules/sni/item.hpp"
 
 #include <gdkmm/general.h>
+#include <giomm/file.h>
 #include <glibmm/main.h>
 #include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <cassert>
+#include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -273,9 +276,6 @@ void Item::setProperty(const std::string& name, Glib::VariantBase& value) {
       }
     } else if (name == "IconThemePath") {
       icon_theme_path = get_variant<std::string>(value);
-      if (!icon_theme_path.empty()) {
-        icon_theme->set_search_path({icon_theme_path});
-      }
     } else if (name == "Menu") {
       menu = get_variant<std::string>(value);
       // Create the menu as soon as the path is known: libdbusmenu fetches the layout
@@ -614,13 +614,68 @@ Glib::RefPtr<Gdk::Pixbuf> Item::overlayPixbufs(const Glib::RefPtr<Gdk::Pixbuf>& 
   return composed;
 }
 
+// Finds an icon in the item's IconThemePath, where items keep their icons: in
+// <path>/hicolor/<size>/<context>/ (closest size first), then in <path>/. The directory must not
+// become a GtkIconTheme search path: GTK maps any icon-theme.cache there without validating it.
+static std::string findIconInThemePath(const std::string& theme_path, const std::string& name,
+                                       int request_size) {
+  namespace fs = std::filesystem;
+
+  if (name.find('/') != std::string::npos) {
+    return {};
+  }
+
+  std::error_code ec;
+  auto find_in_dir = [&name, &ec](const fs::path& dir) -> std::string {
+    // Same order of preference as GTK
+    for (const auto* suffix : {".symbolic.png", ".png", ".svg", ".xpm"}) {
+      auto file = dir / (name + suffix);
+      if (fs::is_regular_file(file, ec)) {
+        return file.string();
+      }
+    }
+    return {};
+  };
+
+  std::string best;
+  int best_difference = 0;
+  const fs::directory_iterator end;
+  for (fs::directory_iterator size_dir(fs::path(theme_path) / "hicolor", ec); size_dir != end;
+       size_dir.increment(ec)) {
+    // "16x16" or "16x16@2x"; anything else, e.g. "scalable", fits every size
+    int size = 0;
+    int scale = 1;
+    int difference = 0;
+    if (std::sscanf(size_dir->path().filename().c_str(), "%4dx%*4d@%1d", &size, &scale) > 0) {
+      difference = std::abs((size * scale) - request_size);
+    }
+    if (!best.empty() && difference >= best_difference) {
+      continue;
+    }
+    for (fs::directory_iterator context_dir(size_dir->path(), ec); context_dir != end;
+         context_dir.increment(ec)) {
+      if (auto file = find_in_dir(context_dir->path()); !file.empty()) {
+        best = file;
+        best_difference = difference;
+        break;
+      }
+    }
+  }
+  return !best.empty() ? best : find_in_dir(theme_path);
+}
+
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int request_size) {
   if (!icon_theme_path.empty()) {
-    auto icon_info = icon_theme->lookup_icon(name.c_str(), request_size,
-                                             Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
-    if (icon_info) {
-      bool is_sym = false;
-      return icon_info.load_symbolic(event_box.get_style_context(), is_sym);
+    auto file = findIconInThemePath(icon_theme_path, name, request_size);
+    if (!file.empty()) {
+      // A file icon makes the theme scan no directory
+      auto icon = Glib::wrap(g_file_icon_new(Gio::File::create_for_path(file)->gobj()));
+      auto icon_info = icon_theme->lookup_icon(icon, request_size,
+                                               Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+      if (icon_info) {
+        bool is_sym = false;
+        return icon_info.load_symbolic(event_box.get_style_context(), is_sym);
+      }
     }
   }
   return DefaultGtkIconThemeWrapper::load_icon(name.c_str(), request_size,
@@ -654,6 +709,12 @@ void Item::makeMenu() {
         GtkAccelGroup* accel_group = gtk_accel_group_new();
         dbusmenu_gtkclient_set_accel_group(client, accel_group);
         g_object_unref(accel_group);
+        // The client adds the menu's IconThemePath to the default icon theme of every module; it
+        // belongs to the item, like the item's own (see findIconInThemePath).
+        g_signal_handlers_disconnect_matched(
+            client, G_SIGNAL_MATCH_ID,
+            g_signal_lookup(DBUSMENU_CLIENT_SIGNAL_ICON_THEME_DIRS_CHANGED, DBUSMENU_TYPE_CLIENT),
+            0, nullptr, nullptr, nullptr);
       }
       gtk_menu = Glib::wrap(GTK_MENU(dbus_menu));
       gtk_menu->attach_to_widget(event_box);
