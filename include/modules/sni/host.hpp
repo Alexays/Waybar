@@ -50,6 +50,8 @@ class Host {
   std::size_t watcher_id_ = 0;
   GCancellable* cancellable_ = nullptr;
   SnWatcher* watcher_ = nullptr;
+  // Unique name of the current owner of org.kde.StatusNotifierWatcher; the proxy is bound to it.
+  Glib::ustring watcher_owner_;
   sigc::connection retry_connection_;
   unsigned retry_count_ = 0;
   const Json::Value& config_;

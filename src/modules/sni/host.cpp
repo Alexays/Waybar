@@ -114,7 +114,10 @@ void Host::nameAppeared(const Glib::RefPtr<Gio::DBus::Connection>& conn, const G
     return;
   }
   cancellable_ = g_cancellable_new();
-  sn_watcher_proxy_new(conn->gobj(), G_DBUS_PROXY_FLAGS_NONE, "org.kde.StatusNotifierWatcher",
+  // A proxy for the well-known name would follow every change of owner on its own and outlive
+  // nameVanished meanwhile; watch_name already follows the name for us.
+  watcher_owner_ = name_owner;
+  sn_watcher_proxy_new(conn->gobj(), G_DBUS_PROXY_FLAGS_NONE, watcher_owner_.c_str(),
                        "/StatusNotifierWatcher", cancellable_, &Host::proxyReady, this);
 }
 
@@ -124,6 +127,10 @@ void Host::nameVanished(const Glib::RefPtr<Gio::DBus::Connection>& conn,
   retry_count_ = 0;
   g_cancellable_cancel(cancellable_);
   g_clear_object(&cancellable_);
+  if (watcher_ != nullptr) {
+    // The proxy may outlive this reference and must not call back into the host after that.
+    g_signal_handlers_disconnect_by_data(watcher_, this);
+  }
   g_clear_object(&watcher_);
   clearItems();
 }
@@ -159,7 +166,8 @@ void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
           }
           try {
             auto conn = Gio::DBus::Connection::get_sync(Gio::DBus::BusType::BUS_TYPE_SESSION);
-            host->nameAppeared(conn, "org.kde.StatusNotifierWatcher", "");
+            // nameVanished disconnects this timer, so the last owner seen is still the current one.
+            host->nameAppeared(conn, "org.kde.StatusNotifierWatcher", host->watcher_owner_);
           } catch (const Glib::Error& e) {
             spdlog::error("Host: retry get_sync failed: {}", static_cast<std::string>(e.what()));
             if (host->retry_count_ < MAX_RETRIES) {
