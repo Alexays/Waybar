@@ -79,11 +79,6 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
     glyph = config_["glyph"].asString();
   }
 
-  gamemodeWatcher_id = Gio::DBus::watch_name(
-      Gio::DBus::BUS_TYPE_SESSION, dbus_name, sigc::mem_fun(*this, &Gamemode::appear),
-      sigc::mem_fun(*this, &Gamemode::disappear),
-      Gio::DBus::BusNameWatcherFlags::BUS_NAME_WATCHER_FLAGS_AUTO_START);
-
   // Connect to gamemode
   gamemode_proxy = Gio::DBus::Proxy::create_for_bus_sync(Gio::DBus::BusType::BUS_TYPE_SESSION,
                                                          dbus_name, dbus_obj_path, dbus_interface);
@@ -102,6 +97,12 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
         sigc::mem_fun(*this, &Gamemode::prepareForSleep_cb), "org.freedesktop.login1",
         "org.freedesktop.login1.Manager", "PrepareForSleep", "/org/freedesktop/login1");
   }
+
+  // Registered last: only the destructor removes it, and that never runs if the constructor throws
+  gamemodeWatcher_id = Gio::DBus::watch_name(
+      Gio::DBus::BUS_TYPE_SESSION, dbus_name, sigc::mem_fun(*this, &Gamemode::appear),
+      sigc::mem_fun(*this, &Gamemode::disappear),
+      Gio::DBus::BusNameWatcherFlags::BUS_NAME_WATCHER_FLAGS_AUTO_START);
 
   event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &Gamemode::handleToggle));
 }

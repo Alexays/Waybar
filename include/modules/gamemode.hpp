@@ -70,7 +70,7 @@ class Gamemode : public AModule {
   guint login1_id;
   Glib::RefPtr<Gio::DBus::Proxy> gamemode_proxy;
   Glib::RefPtr<Gio::DBus::Connection> system_connection;
-  bool gamemodeRunning;
+  bool gamemodeRunning = false;
   guint gamemodeWatcher_id;
 };
 
