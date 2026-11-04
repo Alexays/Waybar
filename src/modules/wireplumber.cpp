@@ -444,6 +444,26 @@ void waybar::modules::Wireplumber::onDefaultNodesApiChanged(waybar::modules::Wir
   }
 }
 
+// The default-nodes "changed" signal can fire before the new default node has been bound (e.g. a
+// USB DAC re-enumerating on resume), so onDefaultNodesApiChanged cannot resolve it and drops the
+// update. Retry once that node shows up.
+void waybar::modules::Wireplumber::onObjectAdded(waybar::modules::Wireplumber* self,
+                                                 WpObject* object) {
+  if (!WP_IS_NODE(object)) {
+    return;
+  }
+
+  uint32_t id = wp_proxy_get_bound_id(WP_PROXY(object));
+  uint32_t defaultNodeId = 0;
+  uint32_t defaultSourceId = 0;
+  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", self->type_, &defaultNodeId);
+  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", "Audio/Source", &defaultSourceId);
+
+  if (id == defaultNodeId || id == defaultSourceId) {
+    onDefaultNodesApiChanged(self);
+  }
+}
+
 void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wireplumber* self) {
   spdlog::debug("[{}]: onObjectManagerInstalled", self->name_);
 
@@ -499,6 +519,7 @@ void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wir
   g_signal_connect_swapped(self->mixer_api_, "changed", (GCallback)onMixerChanged, self);
   g_signal_connect_swapped(self->def_nodes_api_, "changed", (GCallback)onDefaultNodesApiChanged,
                            self);
+  g_signal_connect_swapped(self->om_, "object-added", (GCallback)onObjectAdded, self);
 }
 
 void waybar::modules::Wireplumber::onPluginActivated(WpObject* p, GAsyncResult* res,
