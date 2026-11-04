@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "util/command.hpp"
 #include "util/command_line_stream.hpp"
 
 namespace {
@@ -65,4 +66,17 @@ TEST_CASE("command::LineStream does not emit an extra line after newline-termina
   REQUIRE(result.exit_code.has_value());
   REQUIRE(*result.exit_code == 0);
   REQUIRE(result.lines == std::vector<std::string>{"first", "second"});
+}
+
+TEST_CASE("command::LineStream bounds what it keeps of a line", "[util][command_line_stream]") {
+  using waybar::util::command::kMaxOutputSize;
+
+  const auto result =
+      run_stream_command("echo first; head -c 1000000 /dev/zero | tr '\\0' A; echo; echo last");
+
+  REQUIRE_FALSE(result.timed_out);
+  REQUIRE(result.exit_code.has_value());
+  REQUIRE(*result.exit_code == 0);
+  REQUIRE(result.lines ==
+          std::vector<std::string>{"first", std::string(kMaxOutputSize, 'A'), "last"});
 }

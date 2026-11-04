@@ -76,14 +76,8 @@ void waybar::modules::CustomGraph::continuousWorker() {
     throw std::runtime_error("Unable to open " + cmd);
   }
   thread_ = [this, cmd] {
-    char* buff = nullptr;
-    waybar::util::ScopeGuard buff_deleter([&buff]() {
-      if (buff) {
-        free(buff);
-      }
-    });
-    size_t len = 0;
-    if (getline(&buff, &len, fp_) == -1) {
+    std::string output;
+    if (!util::command::readLine(fp_, output)) {
       int exit_code = 1;
       if (fp_) {
         // fp_ is cleared first: the worker can be cancelled in close() after it closed the stream
@@ -117,13 +111,7 @@ void waybar::modules::CustomGraph::continuousWorker() {
         return;
       }
     } else {
-      std::string output = buff;
-
-      // Remove last newline
-      if (!output.empty() && output[output.length() - 1] == '\n') {
-        output.erase(output.length() - 1);
-      }
-      output_ = {0, output};
+      output_ = {0, std::move(output)};
       dp.emit();
     }
   };

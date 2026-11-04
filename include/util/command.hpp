@@ -18,6 +18,7 @@
 #endif
 
 #include <array>
+#include <string_view>
 
 #include "util/scope_guard.hpp"
 #include "util/sleeper_thread.hpp"
@@ -28,6 +29,8 @@ extern std::list<pid_t> reap;
 namespace waybar::util::command {
 
 constexpr int kExecFailureExitCode = 127;
+// How much of a command's output (of each line, for a continuous command) is kept
+constexpr size_t kMaxOutputSize = 256 * 1024;
 
 struct res {
   int exit_code;
@@ -47,11 +50,21 @@ inline void setInheritedFdsCloexec() {
   }
 }
 
+inline void truncateOutput(std::string& output) {
+  if (output.size() > kMaxOutputSize) {
+    spdlog::warn("Command output truncated to {} bytes", kMaxOutputSize);
+    output.resize(kMaxOutputSize);
+  }
+}
+
 inline std::string read(FILE* fp) {
   std::array<char, 128> buffer = {0};
   std::string output;
   while (fgets(buffer.data(), buffer.size(), fp) != nullptr) {
-    output += buffer.data();
+    // Past the limit, keep draining the pipe so that the command can still finish
+    if (output.size() <= kMaxOutputSize) {
+      output += buffer.data();
+    }
   }
   if (ferror(fp) != 0) {
     spdlog::error("Error reading command output: {}", strerror(errno));
@@ -61,7 +74,31 @@ inline std::string read(FILE* fp) {
   if (!output.empty() && output[output.length() - 1] == '\n') {
     output.erase(output.length() - 1);
   }
+  truncateOutput(output);
   return output;
+}
+
+// Like getline(3) without the newline, bounded. Returns false when there is nothing left to read.
+inline bool readLine(FILE* fp, std::string& line) {
+  std::array<char, 128> buffer = {0};
+  bool found = false;
+  line.clear();
+  while (fgets(buffer.data(), buffer.size(), fp) != nullptr) {
+    found = true;
+    std::string_view chunk = buffer.data();
+    const bool complete = chunk.ends_with('\n');
+    if (complete) {
+      chunk.remove_suffix(1);
+    }
+    if (line.size() <= kMaxOutputSize) {
+      line += chunk;
+    }
+    if (complete) {
+      break;
+    }
+  }
+  truncateOutput(line);
+  return found;
 }
 
 inline int close(FILE* fp, pid_t pid) {

@@ -5,10 +5,12 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <array>
 #include <cerrno>
 #include <cstring>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -71,6 +73,7 @@ void emitBufferedLines(std::string& buffer,
     if (!line.empty() && line.back() == '\r') {
       line.pop_back();
     }
+    waybar::util::command::truncateOutput(line);
     on_output(line);
   }
 
@@ -80,6 +83,7 @@ void emitBufferedLines(std::string& buffer,
     if (!line.empty() && line.back() == '\r') {
       line.pop_back();
     }
+    waybar::util::command::truncateOutput(line);
     on_output(line);
   }
 }
@@ -185,7 +189,12 @@ void waybar::util::command::LineStream::drainStdout(bool flush_trailing_line) {
   while (true) {
     const auto bytes_read = ::read(stdout_fd_, chunk.data(), chunk.size());
     if (bytes_read > 0) {
-      buffer_.append(chunk.data(), static_cast<size_t>(bytes_read));
+      std::string_view data(chunk.data(), static_cast<size_t>(bytes_read));
+      if (buffer_.size() > kMaxOutputSize) {
+        // The pending line is already too long: skip to its end
+        data.remove_prefix(std::min(data.find('\n'), data.size()));
+      }
+      buffer_.append(data);
       emitBufferedLines(buffer_, on_output_, false);
       continue;
     }

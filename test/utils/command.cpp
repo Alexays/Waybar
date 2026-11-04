@@ -12,6 +12,8 @@
 #include <csignal>
 #include <list>
 #include <mutex>
+#include <string>
+#include <vector>
 
 std::mutex reap_mtx;
 std::list<pid_t> reap;
@@ -131,4 +133,55 @@ TEST_CASE("command::read returns on a stream whose reads fail", "[util][command]
   REQUIRE(waited == pid);
   REQUIRE(WIFEXITED(status));
   REQUIRE(WEXITSTATUS(status) == 0);
+}
+
+namespace {
+
+// Rewound temporary file holding the given lines, each terminated by a newline
+auto fileWithLines(const std::vector<std::string>& lines) -> FILE* {
+  auto* fp = tmpfile();
+  REQUIRE(fp != nullptr);
+  for (const auto& line : lines) {
+    REQUIRE(fwrite(line.data(), 1, line.size(), fp) == line.size());
+    REQUIRE(fputc('\n', fp) == '\n');
+  }
+  rewind(fp);
+  return fp;
+}
+
+}  // namespace
+
+TEST_CASE("command::read bounds what it keeps of the output", "[util][command]") {
+  using waybar::util::command::kMaxOutputSize;
+
+  SECTION("output at the limit is kept whole") {
+    const std::string line(kMaxOutputSize, 'A');
+    auto* fp = fileWithLines({line});
+    REQUIRE(waybar::util::command::read(fp) == line);
+    fclose(fp);
+  }
+
+  SECTION("output past the limit is drained but not kept") {
+    auto* fp = fileWithLines({std::string(4 * kMaxOutputSize, 'A')});
+    REQUIRE(waybar::util::command::read(fp) == std::string(kMaxOutputSize, 'A'));
+    REQUIRE(feof(fp) != 0);
+    fclose(fp);
+  }
+}
+
+TEST_CASE("command::readLine bounds what it keeps of a line", "[util][command]") {
+  using waybar::util::command::kMaxOutputSize;
+
+  auto* fp = fileWithLines({"first", "", std::string(4 * kMaxOutputSize, 'A'), "last"});
+  std::string line;
+  REQUIRE(waybar::util::command::readLine(fp, line));
+  REQUIRE(line == "first");
+  REQUIRE(waybar::util::command::readLine(fp, line));
+  REQUIRE(line.empty());
+  REQUIRE(waybar::util::command::readLine(fp, line));
+  REQUIRE(line == std::string(kMaxOutputSize, 'A'));
+  REQUIRE(waybar::util::command::readLine(fp, line));
+  REQUIRE(line == "last");
+  REQUIRE_FALSE(waybar::util::command::readLine(fp, line));
+  fclose(fp);
 }
