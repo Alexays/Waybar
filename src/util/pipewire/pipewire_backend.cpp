@@ -132,12 +132,13 @@ void PipewireBackend::handleRegistryEventGlobal(uint32_t id, uint32_t permission
   const char* lookupStr = spa_dict_lookup(props, PW_KEY_MEDIA_CLASS);
   if (lookupStr == nullptr) return;
   std::string mediaClass = lookupStr;
+  // Applications may append a qualifier to their stream's class (Stream/Input/Audio/Internal)
   enum PrivacyNodeType mediaType = PRIVACY_NODE_TYPE_NONE;
-  if (mediaClass == "Stream/Input/Video") {
+  if (mediaClass.starts_with("Stream/Input/Video")) {
     mediaType = PRIVACY_NODE_TYPE_VIDEO_INPUT;
-  } else if (mediaClass == "Stream/Input/Audio") {
+  } else if (mediaClass.starts_with("Stream/Input/Audio")) {
     mediaType = PRIVACY_NODE_TYPE_AUDIO_INPUT;
-  } else if (mediaClass == "Stream/Output/Audio") {
+  } else if (mediaClass.starts_with("Stream/Output/Audio")) {
     mediaType = PRIVACY_NODE_TYPE_AUDIO_OUTPUT;
   } else {
     return;
