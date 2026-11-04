@@ -6,8 +6,10 @@
 
 #include <glibmm/main.h>
 
+#include <chrono>
 #include <optional>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "util/command.hpp"
@@ -79,4 +81,34 @@ TEST_CASE("command::LineStream bounds what it keeps of a line", "[util][command_
   REQUIRE(*result.exit_code == 0);
   REQUIRE(result.lines ==
           std::vector<std::string>{"first", std::string(kMaxOutputSize, 'A'), "last"});
+}
+
+namespace {
+
+// Starts the command, waits for its first line, leaves it unread for a while and stops it.
+// A regression here does not fail, it hangs in stop().
+auto stopStreamCommand(const std::string& cmd) -> bool {
+  auto loop = Glib::MainLoop::create();
+  waybar::util::command::LineStream stream(
+      "", [&](const std::string&) { loop->quit(); }, [](int) {});
+
+  stream.start(cmd);
+  loop->run();
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  stream.stop();
+  return !stream.running();
+}
+
+}  // namespace
+
+TEST_CASE("command::LineStream::stop ends a command blocked writing to the full pipe",
+          "[util][command_line_stream]") {
+  // The line exceeds the pipe size, so the shell is still in printf when SIGTERM arrives
+  REQUIRE(stopStreamCommand(
+      "trap 'exit 0' TERM; echo ready; while :; do printf '%0200000d\\n' 0; done"));
+}
+
+TEST_CASE("command::LineStream::stop ends a command that ignores SIGTERM",
+          "[util][command_line_stream]") {
+  REQUIRE(stopStreamCommand("trap '' TERM; echo ready; while :; do sleep 1; done"));
 }
