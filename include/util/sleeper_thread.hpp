@@ -68,6 +68,12 @@ class SleeperThread {
 
   bool isRunning() const { return do_run_.load(std::memory_order_relaxed); }
 
+  void join() {
+    if (thread_.joinable()) {
+      thread_.join();
+    }
+  }
+
   auto sleep() {
     std::unique_lock lk(mutex_);
     CancellationGuard cancel_lock;
