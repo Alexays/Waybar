@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 
+#include <optional>
 #include <string>
 
 #include "AAppIconLabel.hpp"
@@ -26,10 +27,13 @@ class Window : public AAppIconLabel, public sigc::trackable {
   struct zdwl_ipc_manager_v2* status_manager_ = nullptr;
 
  private:
+  bool render();
+
   const Bar& bar_;
 
   std::string title_;
   std::string appid_;
+  std::optional<std::string> icon_appid_;
   std::string layout_symbol_;
   bool active_;
   bool hide_inactive_;
@@ -37,6 +41,7 @@ class Window : public AAppIconLabel, public sigc::trackable {
   uint32_t layout_;
 
   struct zdwl_ipc_output_v2* output_status_ = nullptr;
+  sigc::connection idle_render_;
 };
 
 }  // namespace waybar::modules::dwl

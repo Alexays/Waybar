@@ -3,6 +3,7 @@
 #include <gdkmm/pixbuf.h>
 #include <glibmm/fileutils.h>
 #include <glibmm/keyfile.h>
+#include <glibmm/main.h>
 #include <glibmm/miscutils.h>
 #include <gtkmm/enums.h>
 #include <spdlog/spdlog.h>
@@ -116,6 +117,7 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
 }
 
 Window::~Window() {
+  idle_render_.disconnect();
   if (output_status_ != nullptr) {
     if (monitor_present(bar_.output->monitor)) {
       zdwl_ipc_output_v2_release(output_status_);
@@ -138,11 +140,21 @@ void Window::handle_layout_symbol(const char* layout_symbol) {
 void Window::handle_layout(const uint32_t layout) { layout_ = layout; }
 
 void Window::handle_frame() {
+  // dwl sends a frame per status change (each title the focused window sets): render once per batch
+  if (!idle_render_.connected()) {
+    idle_render_ = Glib::signal_idle().connect(sigc::mem_fun(*this, &Window::render));
+  }
+}
+
+bool Window::render() {
   label_.set_markup(waybar::util::rewriteString(
       fmt::format(fmt::runtime(format_), fmt::arg("title", title_),
                   fmt::arg("layout", layout_symbol_), fmt::arg("app_id", appid_)),
       config_["rewrite"]));
-  updateAppIconName(appid_, "");
+  if (icon_appid_ != appid_) {
+    icon_appid_ = appid_;
+    updateAppIconName(appid_, "");
+  }
   updateAppIcon();
   if (tooltipEnabled()) {
     label_.set_tooltip_markup(title_);
@@ -158,6 +170,7 @@ void Window::handle_frame() {
       box_.set_visible(!hide_inactive_);
     }
   }
+  return false;
 }
 
 }  // namespace waybar::modules::dwl
