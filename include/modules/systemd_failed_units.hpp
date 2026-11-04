@@ -3,6 +3,7 @@
 #include <giomm/dbusproxy.h>
 #include <sigc++/trackable.h>
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -34,6 +35,7 @@ class SystemdFailedUnits : public ALabel, public sigc::trackable {
   std::string tooltip_unit_format_;
 
   bool update_pending_;
+  bool update_running_;
   std::string system_state_, user_state_, overall_state_;
   uint32_t nr_failed_system_, nr_failed_user_, nr_failed_;
   std::string last_status_;
@@ -43,12 +45,15 @@ class SystemdFailedUnits : public ALabel, public sigc::trackable {
 
   void notify_cb(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
                  const Glib::VariantContainerBase& arguments);
-  void RequestFailedUnits();
-  void RequestFailedUnitsList();
-  void RequestSystemState();
+  void call(Glib::RefPtr<Gio::DBus::Proxy>& proxy, const char* method,
+            const Glib::VariantContainerBase& parameters, const Gio::SlotAsyncReady& done);
+  void RequestFailedUnits(const std::function<void()>& next);
+  void RequestFailedUnitsList(const std::function<void()>& next);
+  void RequestSystemState(const std::function<void()>& next);
   std::vector<FailedUnit> LoadFailedUnitsList(const char* kind,
                                               Glib::RefPtr<Gio::DBus::Proxy>& proxy,
-                                              const std::string& scope);
+                                              const std::string& scope,
+                                              Glib::RefPtr<Gio::AsyncResult>& result);
   std::string BuildTooltipFailedList() const;
   void updateData();
 };
