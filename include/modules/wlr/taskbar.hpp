@@ -75,6 +75,10 @@ class Task {
    * output_enter/output_leave events */
   bool on_bar_output_ = false;
   bool size_allocate_connected_ = false;
+  bool app_id_lookup_pending_ = false;
+  bool title_lookup_pending_ = false;
+  /* The app_id or title that app_info_ was last looked up from */
+  std::string lookup_source_;
 
   bool with_icon_ = false;
   bool with_name_ = false;
@@ -101,6 +105,7 @@ class Task {
   void hide_if_ignored();
   void hide_if_duplicate();
   void update_duplicates();
+  void lookup_app_info();
   void show_button();
   void hide_button();
 
@@ -166,6 +171,9 @@ class Taskbar : public waybar::AModule {
   Taskbar(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Taskbar();
   void update();
+
+  /* A redraw is queued on dp, which a burst of events must not flood */
+  bool update_queued_ = false;
 
  private:
   const waybar::Bar& bar_;

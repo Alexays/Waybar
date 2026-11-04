@@ -258,22 +258,9 @@ void Task::handle_title(const char* title) {
   hide_if_duplicate();
   update_duplicates();
 
-  if ((!with_icon_ && !with_name_) || app_info_) {
-    return;
+  if (with_icon_ || with_name_) {
+    title_lookup_pending_ = true;
   }
-
-  app_info_ = IconLoader::get_app_info_from_app_id_list(title_);
-  name_ = app_info_ ? app_info_->get_display_name() : title;
-
-  if (!with_icon_) {
-    return;
-  }
-
-  int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
-  if (tbar_->icon_loader().image_load_icon(icon_, app_info_, icon_size))
-    icon_.show();
-  else
-    spdlog::debug("Couldn't find icon for {}", title_);
 }
 
 void Task::set_minimize_hint() {
@@ -342,14 +329,39 @@ void Task::handle_app_id(const char* app_id) {
     app_id_ = replaced_id;
   }
 
-  if (!with_icon_ && !with_name_) {
+  if ((!with_icon_ && !with_name_) || app_id_ == lookup_source_) {
     return;
   }
 
-  app_info_ = IconLoader::get_app_info_from_app_id_list(app_id_);
-  name_ = app_info_ ? app_info_->get_display_name() : app_id;
+  name_ = app_id;
+  app_id_lookup_pending_ = true;
+  title_lookup_pending_ = false;
+}
 
-  if (!with_icon_) {
+// Lookups cost file probes and an index search, and clients choose how often their app_id and
+// title change: they run from update(), once per batch of events, and never twice for one string
+void Task::lookup_app_info() {
+  bool looked_up = false;
+  if (app_id_lookup_pending_) {
+    app_id_lookup_pending_ = false;
+    lookup_source_ = app_id_;
+    looked_up = true;
+    app_info_ = IconLoader::get_app_info_from_app_id_list(app_id_);
+    if (app_info_) {
+      name_ = app_info_->get_display_name();
+    }
+  }
+  if (title_lookup_pending_) {
+    title_lookup_pending_ = false;
+    if (!app_info_ && title_ != lookup_source_) {
+      lookup_source_ = title_;
+      looked_up = true;
+      app_info_ = IconLoader::get_app_info_from_app_id_list(title_);
+      name_ = app_info_ ? app_info_->get_display_name() : title_;
+    }
+  }
+
+  if (!looked_up || !with_icon_) {
     return;
   }
 
@@ -357,7 +369,7 @@ void Task::handle_app_id(const char* app_id) {
   if (tbar_->icon_loader().image_load_icon(icon_, app_info_, icon_size))
     icon_.show();
   else
-    spdlog::debug("Couldn't find icon for {}", app_id_);
+    spdlog::debug("Couldn't find icon for {}", lookup_source_);
 }
 
 void Task::on_button_size_allocated(Gtk::Allocation& alloc) {
@@ -489,7 +501,10 @@ void Task::handle_done() {
   if (config_["active-first"].isBool() && config_["active-first"].asBool() && active())
     tbar_->move_button(button, 0);
 
-  tbar_->dp.emit();
+  if (!tbar_->update_queued_) {
+    tbar_->update_queued_ = true;
+    tbar_->dp.emit();
+  }
 }
 
 void Task::handle_closed() {
@@ -590,6 +605,10 @@ bool Task::operator==(const Task& o) const { return o.id_ == id_; }
 bool Task::operator!=(const Task& o) const { return o.id_ != id_; }
 
 void Task::update() {
+  if (app_id_lookup_pending_ || title_lookup_pending_) {
+    lookup_app_info();
+  }
+
   bool markup = config_["markup"].isBool() ? config_["markup"].asBool() : false;
   std::string title = title_;
   std::string name = name_;
@@ -833,6 +852,7 @@ Taskbar::~Taskbar() {
 }
 
 void Taskbar::update() {
+  update_queued_ = false;
   for (auto& t : tasks_) {
     t->update();
   }
