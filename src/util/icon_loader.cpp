@@ -85,9 +85,14 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_desktop_app_info(const std::st
         }
       }
     }
-    g_strfreev(desktop_list[0]);
   }
-  g_free(desktop_list);
+  if (desktop_list != nullptr) {
+    // One strv per match score, all owned by the caller
+    for (size_t group = 0; desktop_list[group]; group++) {
+      g_strfreev(desktop_list[group]);
+    }
+    g_free(desktop_list);
+  }
 
   return get_app_info_by_name(desktop_file);
 }
