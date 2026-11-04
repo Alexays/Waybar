@@ -164,6 +164,10 @@ void PWPrivacyItem::set_tooltip() {
 
     // Set model
     auto* nodeName = Gtk::make_managed<Gtk::Label>(node.getName());
+    // The client picks the name; past 32767 px GDK cannot allocate the tooltip and crashes
+    nodeName->set_max_width_chars(50);
+    nodeName->set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
+    nodeName->set_single_line_mode(true);
     box->add(*nodeName);
 
     tooltip_window.add(*box);

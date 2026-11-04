@@ -495,6 +495,10 @@ bool UPower::queryTooltipCb(int x, int y, bool keyboard_tooltip,
       boxDev->add(*iconDev);
       // Set label from model
       Gtk::Label* labelDev{new Gtk::Label{pairDev.second.model}};
+      // The model comes from the device (a Bluetooth name); keep it within what GDK can draw
+      labelDev->set_max_width_chars(50);
+      labelDev->set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
+      labelDev->set_single_line_mode(true);
       boxDev->add(*labelDev);
       // Construct user box
       // Set icon from icon state
