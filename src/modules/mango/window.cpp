@@ -2,6 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include "util/css_class.hpp"
 #include "util/rewrite_string.hpp"
 #include "util/sanitize_str.hpp"
 
@@ -83,7 +84,7 @@ void Window::update() {
 void Window::setClass(const std::string& className, bool enable) {
   auto style_context = event_box_.get_style_context();
   if (enable) {
-    if (!style_context->has_class(className)) style_context->add_class(className);
+    if (!style_context->has_class(className)) waybar::util::try_add_class(style_context, className);
   } else {
     style_context->remove_class(className);
   }

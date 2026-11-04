@@ -22,6 +22,7 @@
 #include "gdk/gdk.h"
 #include "modules/sni/host.hpp"
 #include "modules/sni/icon_manager.hpp"
+#include "util/css_class.hpp"
 #include "util/format.hpp"  // IWYU pragma: keep
 #include "util/gtk_icon.hpp"
 #include "util/tooltip.hpp"
@@ -321,7 +322,7 @@ void Item::setStatus(const Glib::ustring& value) {
     // convert status to dash-case for CSS
     css_class = "needs-attention";
   }
-  style->add_class(css_class);
+  waybar::util::try_add_class(style, css_class);
   on_updated_();
 }
 

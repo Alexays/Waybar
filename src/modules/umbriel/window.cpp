@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <string>
 
+#include "util/css_class.hpp"
 #include "util/rewrite_string.hpp"
 #include "util/sanitize_str.hpp"
 
@@ -147,7 +148,7 @@ void Window::setClass(const std::string& className, bool enable) {
   auto styleContext = bar_.window.get_style_context();
   if (enable) {
     if (!styleContext->has_class(className)) {
-      styleContext->add_class(className);
+      waybar::util::try_add_class(styleContext, className);
     }
   } else {
     styleContext->remove_class(className);

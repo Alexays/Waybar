@@ -4,6 +4,7 @@
 #include <gtkmm/label.h>
 #include <spdlog/spdlog.h>
 
+#include "util/css_class.hpp"
 #include "util/rewrite_string.hpp"
 #include "util/sanitize_str.hpp"
 
@@ -60,7 +61,7 @@ auto Window::update_icon_label() -> void {
 
     // update window#waybar.<app_id>
     ctx->remove_class(old_app_id_);
-    ctx->add_class(old_app_id_ = app_id);
+    waybar::util::try_add_class(ctx, old_app_id_ = app_id);
 
     // update window#waybar.empty
     ctx->remove_class("empty");

@@ -8,6 +8,7 @@
 #include <thread>
 #include <utility>
 
+#include "util/css_class.hpp"
 #include "util/scope_guard.hpp"
 #include "util/utf8_string.hpp"
 
@@ -874,7 +875,7 @@ auto Mpris::update() -> void {
     label_.get_style_context()->remove_class(lastPlayer);
   }
   if (!label_.get_style_context()->has_class(info.name)) {
-    label_.get_style_context()->add_class(info.name);
+    waybar::util::try_add_class(label_.get_style_context(), info.name);
   }
   lastPlayer = info.name;
 

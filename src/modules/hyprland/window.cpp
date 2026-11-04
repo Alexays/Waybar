@@ -12,6 +12,7 @@
 
 #include "modules/hyprland/backend.hpp"
 #include "modules/hyprland/workspace_identity.hpp"
+#include "util/css_class.hpp"
 #include "util/rewrite_string.hpp"
 #include "util/sanitize_str.hpp"
 
@@ -105,8 +106,8 @@ auto Window::update() -> void {
     }
   }
 
-  if (!soloClass_.empty() && soloClass_ != lastSoloClass_) {
-    bar_.window.get_style_context()->add_class(soloClass_);
+  if (!soloClass_.empty() && !bar_.window.get_style_context()->has_class(soloClass_) &&
+      waybar::util::try_add_class(bar_.window.get_style_context(), soloClass_)) {
     spdlog::trace("Adding solo class: {}", soloClass_);
   }
   lastSoloClass_ = soloClass_;
