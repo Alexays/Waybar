@@ -65,6 +65,11 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_desktop_app_info(const std::st
     return app_info;
   }
 
+  // App ids come from other clients and g_desktop_app_info_search() crashes on invalid UTF-8
+  if (!g_utf8_validate(app_id.c_str(), app_id.size(), nullptr)) {
+    return {};
+  }
+
   std::string desktop_file = "";
 
   gchar*** desktop_list = g_desktop_app_info_search(app_id.c_str());
