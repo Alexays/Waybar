@@ -26,13 +26,14 @@ AddressSanitizer** and runs the real binary inside a **headless** compositor
 | 6 | **Fake /proc** - `cpu` (usage from two `/proc/stat` snapshots), `memory`, `cpu_frequency` and `disk` under **bubblewrap** with fake `/proc` files, a fake `/sys/devices/system/cpu` and a 16 MiB tmpfs disk; exact values asserted (`load` only renders: `getloadavg()` uses `sysinfo(2)`) | [`procfs.sh`](procfs.sh) |
 | 5 | **D-Bus services** - `upower`, `bluetooth`, `power-profiles-daemon` (incl. a click cycling the profile), `systemd-failed-units`, `wwan`, `inhibitor` (click takes and drops a logind lock), `gamemode` and `mpris` (incl. play/pause click) against python-dbusmock fakes on a private system bus; each service also vanishes and returns | [`dbus.sh`](dbus.sh) |
 | 4 | **Config fuzz** - every documented option of each headless-startable module (and group drawer options) set to wrong JSON types, edge numbers, deep nesting and malformed `{format}` strings, about 400 instances per bar; a failing bar is re-run per option | [`config_fuzz.sh`](config_fuzz.sh) / [`config_fuzz.py`](config_fuzz.py) |
-| — | **Leak check** *(report-only)* — clean-exit run under LSan | [`leakcheck.sh`](leakcheck.sh) |
+| - | **Leak check** - clean-exit run under LSan; any leak outside the third-party [`lsan.supp`](lsan.supp) fails | [`leakcheck.sh`](leakcheck.sh) |
+| 4 | **Soak** (own job, no sanitizer) - five minutes of fast modules under reload / toggle / realtime-signal / output-hotplug churn; RSS, descriptors, threads and child processes must not grow from the first to the last minute | [`soak.sh`](soak.sh) |
+| 4 | **Data races** (own job) - the module, lifecycle and a short soak tier under ThreadSanitizer, with third-party entries only in [`tsan.supp`](tsan.supp) and [`tsan_signal.c`](tsan_signal.c) preloaded to keep glibc's `signal()` semantics | workflow `smoke-tsan` |
 | 2 | **Compositor IPC modules** - `hyprland/*`, `niri/*`, `mango/*`, `umbriel/*` and `wayfire/*` against fake IPC servers replaying an ordinary session: workspace switch, create and (Hyprland) destroy, window open / retitle / close, keyboard layout, submap / keymode / layout; the bar keeps its state and exits cleanly once the compositor goes away. `river/*`, `dwl/*` speak Wayland protocols and are not covered | [`ipc.sh`](ipc.sh) / [`fake_ipc.py`](fake_ipc.py) |
 | 4 | **Tray hostile input** - oversized `RegisterStatusNotifierItem` call, and an item whose dbusmenu layout has 20000 entries; the bar must refuse both and keep answering | [`tray.sh`](tray.sh) / [`tray_item.c`](tray_item.c) |
 
 AddressSanitizer (plus `-D_GLIBCXX_ASSERTIONS`) runs under *all* of the above, so
-any memory bug in the real render/teardown path aborts the run. The leak check
-is report-only (`continue-on-error`). The headless backend has no input device, so the
+any memory bug in the real render/teardown path aborts the run. The headless backend has no input device, so the
 interaction step creates a virtual pointer to give the seat one.
 
 Because the teardown path (`~Bar` → window unmap → `toggleSuspend`) is where the
@@ -75,5 +76,6 @@ dbus-run-session -- ./test/smoke/dbus.sh     # needs python3-dbusmock
 dbus-run-session -- ./test/smoke/state.sh    # needs mpd + mpc, pulseaudio
 dbus-run-session -- ./test/smoke/hardware.sh # needs umockdev
 dbus-run-session -- ./test/smoke/procfs.sh   # needs bwrap and unprivileged user namespaces
-./test/smoke/leakcheck.sh
+./test/smoke/leakcheck.sh                    # needs an ASan build
+./test/smoke/soak.sh                         # about 5 minutes
 ```
