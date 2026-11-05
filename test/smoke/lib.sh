@@ -13,6 +13,8 @@
 # Environment knobs (optional): WIDTH HEIGHT SCALE COMPOSITOR WAYBAR_BIN
 set -uo pipefail
 
+SMOKE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 WIDTH="${WIDTH:-1920}"
 HEIGHT="${HEIGHT:-1080}"
 SCALE="${SCALE:-1}"
@@ -39,6 +41,11 @@ smoke::setup() {
     # a clean exit for LSan's atexit hook to run.
     export ASAN_OPTIONS="detect_leaks=${SMOKE_DETECT_LEAKS:-0}:halt_on_error=1:abort_on_error=1:detect_odr_violation=0"
     export UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1"
+    # SMOKE_A11Y=1 exposes the widget tree to a11y.py (needs a session bus)
+    if [ "${SMOKE_A11Y:-0}" = 1 ]; then
+        unset NO_AT_BRIDGE
+        export GTK_A11Y=1
+    fi
 }
 
 smoke::start_compositor() {
