@@ -25,6 +25,7 @@ AddressSanitizer** and runs the real binary inside a **headless** compositor
 | 6 | **Fake hardware** - `battery` (discharging / charging / full, time estimates), `backlight`, `backlight/slider` in a group (#5179) and `temperature` (critical threshold) on a **umockdev** sysfs tree whose attributes change mid-run; exact text asserted over AT-SPI | [`hardware.sh`](hardware.sh) |
 | 6 | **Fake /proc** - `cpu` (usage from two `/proc/stat` snapshots), `memory`, `cpu_frequency` and `disk` under **bubblewrap** with fake `/proc` files, a fake `/sys/devices/system/cpu` and a 16 MiB tmpfs disk; exact values asserted (`load` only renders: `getloadavg()` uses `sysinfo(2)`) | [`procfs.sh`](procfs.sh) |
 | 5 | **D-Bus services** - `upower`, `bluetooth`, `power-profiles-daemon` (incl. a click cycling the profile), `systemd-failed-units`, `wwan`, `inhibitor` (click takes and drops a logind lock), `gamemode` and `mpris` (incl. play/pause click) against python-dbusmock fakes on a private system bus; each service also vanishes and returns | [`dbus.sh`](dbus.sh) |
+| 4 | **Config fuzz** - every documented option of each headless-startable module (and group drawer options) set to wrong JSON types, edge numbers, deep nesting and malformed `{format}` strings, about 400 instances per bar; a failing bar is re-run per option | [`config_fuzz.sh`](config_fuzz.sh) / [`config_fuzz.py`](config_fuzz.py) |
 | — | **Leak check** *(report-only)* — clean-exit run under LSan | [`leakcheck.sh`](leakcheck.sh) |
 | 2 | **Compositor IPC modules** - `hyprland/*`, `niri/*`, `mango/*`, `umbriel/*` and `wayfire/*` against fake IPC servers replaying an ordinary session: workspace switch, create and (Hyprland) destroy, window open / retitle / close, keyboard layout, submap / keymode / layout; the bar keeps its state and exits cleanly once the compositor goes away. `river/*`, `dwl/*` speak Wayland protocols and are not covered | [`ipc.sh`](ipc.sh) / [`fake_ipc.py`](fake_ipc.py) |
 | 4 | **Tray hostile input** - oversized `RegisterStatusNotifierItem` call, and an item whose dbusmenu layout has 20000 entries; the bar must refuse both and keep answering | [`tray.sh`](tray.sh) / [`tray_item.c`](tray_item.c) |
@@ -62,6 +63,7 @@ export WAYBAR_BIN=$PWD/build/waybar
 ./test/smoke/modules.sh   /tmp/module-shots
 ./test/smoke/lifecycle.sh
 ./test/smoke/fuzz.sh
+dbus-run-session -- ./test/smoke/config_fuzz.sh
 ./test/smoke/interact.sh  /tmp/interaction-shots
 ./test/smoke/positions.sh /tmp/layout-shots
 dbus-run-session -- ./test/smoke/a11y.sh

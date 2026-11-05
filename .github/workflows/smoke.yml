@@ -112,6 +112,10 @@ jobs:
       - name: Custom-backend fuzz
         run: ./test/smoke/fuzz.sh
 
+      # --- Tier 4: config robustness (wrong types / edge values per option) ---
+      - name: Config fuzz
+        run: dbus-run-session -- ./test/smoke/config_fuzz.sh
+
       # --- Tier 5: state transitions with real daemons (mpd/pulseaudio) ---
       - name: State transitions (mpd / pulseaudio)
         run: dbus-run-session -- ./test/smoke/state.sh
