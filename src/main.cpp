@@ -30,11 +30,13 @@ static int signal_pipe_write_fd;
 // Write a single signal to `signal_pipe_write_fd`.
 // This function is set as a signal handler, so it must be async-signal-safe.
 static void writeSignalToPipe(int signum) {
+  int saved_errno = errno;
   ssize_t amt = write(signal_pipe_write_fd, &signum, sizeof(int));
 
   // There's not much we can safely do inside of a signal handler.
   // Let's just ignore any errors.
   (void)amt;
+  errno = saved_errno;
 }
 
 // This initializes `signal_pipe_write_fd`, and sets up signal handlers.
@@ -61,14 +63,19 @@ static void catchSignals(waybar::SafeSignal<int>& signal_handler) {
 
   fcntl(signal_pipe_write_fd, F_SETFL, O_NONBLOCK);
 
-  std::signal(SIGUSR1, writeSignalToPipe);
-  std::signal(SIGUSR2, writeSignalToPipe);
-  std::signal(SIGINT, writeSignalToPipe);
-  std::signal(SIGCHLD, writeSignalToPipe);
+  // SA_RESTART explicitly: whether signal() sets it depends on the libc.
+  struct sigaction act{};
+  act.sa_handler = writeSignalToPipe;
+  act.sa_flags = SA_RESTART;
+  sigemptyset(&act.sa_mask);
+  sigaction(SIGUSR1, &act, nullptr);
+  sigaction(SIGUSR2, &act, nullptr);
+  sigaction(SIGINT, &act, nullptr);
+  sigaction(SIGCHLD, &act, nullptr);
 
 #ifdef SIGRTMIN
   for (int sig = SIGRTMIN + 1; sig <= SIGRTMAX; ++sig) {
-    std::signal(sig, writeSignalToPipe);
+    sigaction(sig, &act, nullptr);
   }
 #endif
 
@@ -76,6 +83,9 @@ static void catchSignals(waybar::SafeSignal<int>& signal_handler) {
     int signum;
     ssize_t amt = read(signal_pipe_read_fd, &signum, sizeof(int));
     if (amt < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
       spdlog::error("read from signal pipe failed with error {}, closing thread", strerror(errno));
       break;
     }
