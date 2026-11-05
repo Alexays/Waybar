@@ -12,7 +12,7 @@ jobs:
     if: github.event_name != 'schedule' || github.repository == 'Alexays/Waybar'
     steps:
       - name: Checkout repository
-      - uses: actions/checkout@v6
+        uses: actions/checkout@v6
       - name: Install Nix
         uses: cachix/install-nix-action@v31
         with:

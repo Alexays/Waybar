@@ -40,6 +40,7 @@
   "Module:-Taskbar": ["waybar-wlr-taskbar"],
   "Module:-Temperature": ["waybar-temperature"],
   "Module:-Tray": ["waybar-tray"],
+  "Module:-Umbriel": ["waybar-umbriel-layout", "waybar-umbriel-window", "waybar-umbriel-workspaces"],
   "Module:-UPower": ["waybar-upower"],
   "Module:-User": ["waybar-user"],
   "Module:-Wayfire": ["waybar-wayfire-window", "waybar-wayfire-workspaces"],

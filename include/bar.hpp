@@ -127,6 +127,8 @@ class Bar : public sigc::trackable {
 
   struct bar_margins margins_;
   uint32_t width_, height_;
+  /* Scale of the last buffer GTK painted for this window (0: nothing painted yet) */
+  int painted_scale_ = 0;
   bool passthrough_;
 #ifdef HAVE_BAR_BLUR
   bool blur_enabled_ = false;

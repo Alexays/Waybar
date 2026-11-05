@@ -494,11 +494,10 @@ void Workspace::update(const std::string& workspace_icon, const std::string& wor
     }
   }
 
-  if (!workspace_tooltip.empty()) {
-    m_button.set_tooltip_text(fmt::format(
-        fmt::runtime(workspace_tooltip), fmt::arg("id", address()), fmt::arg("name", name()),
-        fmt::arg("icon", workspace_icon), fmt::arg("windows", windows)));
-  }
+  // Also when empty: GTK takes empty text as no tooltip, which clears the previous one
+  m_button.set_tooltip_text(fmt::format(fmt::runtime(workspace_tooltip), fmt::arg("id", address()),
+                                        fmt::arg("name", name()), fmt::arg("icon", workspace_icon),
+                                        fmt::arg("windows", windows)));
 
   auto formatBefore = m_workspaceManager.formatBefore();
   m_labelBefore.set_markup(fmt::format(fmt::runtime(formatBefore), fmt::arg("id", address()),

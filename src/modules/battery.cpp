@@ -4,12 +4,14 @@
 #include <cctype>
 #include <cmath>
 #include <cstdio>
+#include <ctime>
 #include <string>
 
 #include "util/command.hpp"
 #if defined(__FreeBSD__)
 #include <sys/sysctl.h>
 #endif
+#include <fmt/chrono.h>
 #include <libudev.h>
 #include <poll.h>
 #include <spdlog/spdlog.h>
@@ -721,6 +723,22 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
                      fmt::arg("m", zero_pad_minutes));
 }
 
+const std::string waybar::modules::Battery::formatETA(float hoursRemaining) {
+  hoursRemaining = std::fabs(hoursRemaining);
+  if (60 * hoursRemaining < 1) {
+    // Same as formatTimeRemaining: no estimate below one minute
+    return "";
+  }
+  std::time_t eta = std::time(nullptr) + static_cast<std::time_t>(hoursRemaining * 3600);
+  std::tm eta_tm{};
+  localtime_r(&eta, &eta_tm);
+  auto format = std::string("{:%H:%M}");
+  if (config_["format-eta"].isString()) {
+    format = config_["format-eta"].asString();
+  }
+  return fmt::format(fmt::runtime(format), eta_tm);
+}
+
 auto waybar::modules::Battery::update() -> void {
 #if defined(__linux__)
   if (batteries_.empty()) {
@@ -749,6 +767,7 @@ auto waybar::modules::Battery::update() -> void {
   processEvents(state, status, capacity);
   setBarClass(state);
   auto time_remaining_formatted = formatTimeRemaining(time_remaining);
+  auto eta_formatted = formatETA(time_remaining);
   if (tooltipEnabled()) {
     std::string tooltip_text_default;
     std::string tooltip_format = "{timeTo}";
@@ -770,11 +789,11 @@ auto waybar::modules::Battery::update() -> void {
     } else if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    setTooltipMarkup(
-        fmt::format(fmt::runtime(tooltip_format), fmt::arg("timeTo", tooltip_text_default),
-                    fmt::arg("power", power), fmt::arg("capacity", capacity),
-                    fmt::arg("time", time_remaining_formatted), fmt::arg("cycles", cycles),
-                    fmt::arg("health", fmt::format("{:.3}", health))));
+    setTooltipMarkup(fmt::format(
+        fmt::runtime(tooltip_format), fmt::arg("timeTo", tooltip_text_default),
+        fmt::arg("power", power), fmt::arg("capacity", capacity),
+        fmt::arg("time", time_remaining_formatted), fmt::arg("cycles", cycles),
+        fmt::arg("eta", eta_formatted), fmt::arg("health", fmt::format("{:.3}", health))));
   }
   if (!old_status_.empty()) {
     label_.get_style_context()->remove_class(old_status_);
@@ -793,10 +812,11 @@ auto waybar::modules::Battery::update() -> void {
   } else {
     event_box_.show();
     auto icons = std::vector<std::string>{status + "-" + state, status, state};
-    setLabelMarkup(fmt::format(
-        fmt::runtime(format), fmt::arg("capacity", capacity), fmt::arg("power", power),
-        fmt::arg("icon", getIcon(capacity, icons)), fmt::arg("time", time_remaining_formatted),
-        fmt::arg("cycles", cycles), fmt::arg("health", fmt::format("{:.3}", health))));
+    setLabelMarkup(fmt::format(fmt::runtime(format), fmt::arg("capacity", capacity),
+                               fmt::arg("power", power), fmt::arg("icon", getIcon(capacity, icons)),
+                               fmt::arg("time", time_remaining_formatted),
+                               fmt::arg("eta", eta_formatted), fmt::arg("cycles", cycles),
+                               fmt::arg("health", fmt::format("{:.3}", health))));
   }
   // Call parent update
   ALabel::update();

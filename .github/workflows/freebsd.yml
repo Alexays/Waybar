@@ -29,9 +29,9 @@ jobs:
           sync_files: runner-to-vm
           run: |
             sudo pkg install -y git #  subprojects/date
-            sudo pkg install -y catch evdev-proto gtk-layer-shell gtkmm30 jsoncpp \
-              libdbusmenu libevdev libfmt libmpdclient libudev-devd meson \
-              pkgconf pipewire pulseaudio scdoc sndio spdlog wayland-protocols upower \
+            sudo pkg install -y catch cmake date evdev-proto gtk-layer-shell gtkmm30 gtkmm40 gtk4-layer-shell iniparser jsoncpp \
+              libdbusmenu libevdev libfmt gpsd libinput libmpdclient libudev-devd meson \
+              pkgconf pipewire playerctl pulseaudio scdoc sndio spdlog wayland-protocols upower wireplumber \
               libinotify
             # freetype2.pc declares a bzip2 pkg-config requirement that no FreeBSD
             # package ships (bzip2 lives in the base system), which breaks the
