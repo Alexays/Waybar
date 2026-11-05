@@ -206,3 +206,36 @@ TEST_CASE_METHOD(GlibTestsFixture, "SafeSignal burst does not block the emitters
   REQUIRE(last_value == NUM_EVENTS);
   REQUIRE(updates == 1);
 }
+
+// Emits on a dispatcher created pending never reach the pipe; dispatchPending() runs them once.
+TEST_CASE_METHOD(GlibTestsFixture, "CoalescingDispatcher created pending defers to its owner",
+                 "[signal][thread][util]") {
+  int updates = 0;
+  util::CoalescingDispatcher dp{true};
+
+  setTimeout(5000);
+
+  dp.connect([&]() { ++updates; });
+
+  run([&]() {
+    std::thread producer([&]() {
+      for (int i = 0; i < 10000; ++i) {
+        dp.emit();
+      }
+    });
+    producer.join();
+
+    Glib::signal_timeout().connect_once(
+        [&]() {
+          REQUIRE(updates == 0);
+          dp.dispatchPending();
+          dp.dispatchPending();
+          REQUIRE(updates == 1);
+          dp.emit();
+          Glib::signal_timeout().connect_once([this]() { this->quit(); }, 50);
+        },
+        50);
+  });
+
+  REQUIRE(updates == 2);
+}
