@@ -124,6 +124,12 @@ Item::~Item() {
     // makeMenu() holds a reference (g_object_ref_sink), and a GtkMenu is a toplevel that GTK keeps
     // in its window list. Without destroying it and dropping the reference, the menu and its whole
     // dbusmenu tree outlive the item, e.g. for every tray item of a removed bar.
+    // libdbusmenu-gtk never disconnects the menu from its client, and a pending GetLayout keeps
+    // the client alive: without this its reply runs root_changed() on the freed menu.
+    DbusmenuGtkClient* client = dbusmenu_gtkmenu_get_client(this->dbus_menu);
+    if (client != nullptr) {
+      g_signal_handlers_disconnect_by_data(client, this->dbus_menu);
+    }
     gtk_widget_destroy(GTK_WIDGET(this->dbus_menu));
     g_object_unref(this->dbus_menu);
     this->dbus_menu = nullptr;
