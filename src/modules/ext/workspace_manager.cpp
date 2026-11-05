@@ -23,7 +23,8 @@ std::map<std::string, std::string> Workspace::icon_map_;
 WorkspaceManager::WorkspaceManager(const std::string& id, const waybar::Bar& bar,
                                    const Json::Value& config, std::mutex& reap_mtx,
                                    std::list<pid_t>& reap)
-    : waybar::AModule(config, "workspaces", id, reap_mtx, reap, false, !config["disable-scroll"].asBool()),
+    : waybar::AModule(config, "workspaces", id, reap_mtx, reap, false,
+                      !config["disable-scroll"].asBool()),
       bar_(bar),
       box_(bar.orientation, 0) {
   add_registry_listener(this);
