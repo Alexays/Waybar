@@ -122,15 +122,15 @@ jobs:
 
       # --- Tier 6: fake hardware via umockdev (battery, backlight, temperature) ---
       - name: Fake hardware (umockdev)
-        run: dbus-run-session -- ./test/smoke/hardware.sh
-
-      # --- Tier 6: cpu / memory / cpu_frequency / disk on fake /proc (bwrap) ---
-      - name: Fake /proc and sysfs (bubblewrap)
         run: |
           # Ubuntu 24.04 confines unprivileged user namespaces through AppArmor
           # and has no profile for bwrap, so lift the restriction on this VM.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-          dbus-run-session -- ./test/smoke/procfs.sh
+          dbus-run-session -- ./test/smoke/hardware.sh
+
+      # --- Tier 6: cpu / memory / cpu_frequency / disk on fake /proc (bwrap) ---
+      - name: Fake /proc and sysfs (bubblewrap)
+        run: dbus-run-session -- ./test/smoke/procfs.sh
 
       # --- Leak check: any leak outside the third-party lsan.supp fails ---
       - name: Leak check (LSan)

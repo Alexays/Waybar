@@ -2,6 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <stdexcept>
 #include <utility>
 
@@ -146,7 +147,7 @@ void waybar::modules::Custom::scheduleContinuousRestart() {
         startContinuousProcess(false);
         return false;
       },
-      std::max(1U, static_cast<unsigned>(config_["restart-interval"].asDouble() * 1000)));
+      static_cast<unsigned>(std::clamp(config_["restart-interval"].asDouble(), 0.001, 1e6) * 1000));
 }
 
 void waybar::modules::Custom::waitingWorker() {

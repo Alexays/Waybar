@@ -29,9 +29,8 @@ waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
     if (interval_seconds <= 0) {
       interval_ = once;
     } else {
-      interval_ =
-          std::chrono::milliseconds(std::max(1L,  // Minimum 1ms due to millisecond precision
-                                             static_cast<long>(interval_seconds * 1000)));
+      interval_ = std::chrono::milliseconds(
+          static_cast<long>(std::clamp(interval_seconds, 0.001, 1e9) * 1000));
     }
   } else {
     interval_ = once;
