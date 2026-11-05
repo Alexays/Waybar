@@ -45,8 +45,9 @@ bool User::handleToggle(GdkEventButton* const& e) {
     }
 
     Gio::AppInfo::launch_default_for_uri("file:///" + openPath);
+    return true;
   }
-  return true;
+  return false;
 }
 
 long User::uptime_as_seconds() {
