@@ -419,21 +419,23 @@ auto waybar::modules::Bluetooth::onObjectRemoved(GDBusObjectManager* manager, GD
     return;
   }
 
+  std::string object_path = g_dbus_object_get_object_path(object);
   proxy_controller = G_DBUS_PROXY(g_dbus_object_get_interface(object, "org.bluez.Adapter1"));
 
   if (proxy_controller != NULL) {
-    std::string object_path = g_dbus_object_get_object_path(object);
-
     if (object_path == bt->cur_controller_->path) {
       bt->cur_controller_ = bt->findCurController();
+      bt->connected_devices_.clear();
       if (bt->cur_controller_.has_value()) {
-        bt->connected_devices_.clear();
         bt->findConnectedDevices(bt->cur_controller_->path, bt->connected_devices_);
       }
       bt->dp.emit();
     }
 
     g_object_unref(proxy_controller);
+  } else if (std::erase_if(bt->connected_devices_,
+                           [&object_path](const auto& d) { return d.path == object_path; })) {
+    bt->dp.emit();
   }
 }
 
