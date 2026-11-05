@@ -138,8 +138,8 @@ jobs:
         run: ./test/smoke/leakcheck.sh
 
       # --- Tier 2: pointer interaction through a virtual pointer ---
-      - name: Interaction (click, format-alt, click-to-reveal)
-        run: ./test/smoke/interact.sh interaction-shots
+      - name: Interaction (click, scroll, buttons, menu, tooltips)
+        run: dbus-run-session -- ./test/smoke/interact.sh interaction-shots
 
       # --- Tier 2: accessibility assertions ---
       - name: Accessibility (AT-SPI) assertions
