@@ -126,11 +126,8 @@ jobs:
         continue-on-error: true
         run: ./test/smoke/leakcheck.sh
 
-      # --- Tier 2: pointer interaction (best-effort) ---
-      # Headless seats may not expose a pointer capability, so injected clicks
-      # can be dropped; keep this non-blocking while it is hardened.
-      - name: Interaction (click + format-alt)
-        continue-on-error: true
+      # --- Tier 2: pointer interaction through a virtual pointer ---
+      - name: Interaction (click, format-alt, click-to-reveal)
         run: ./test/smoke/interact.sh interaction-shots
 
       # --- Tier 2: accessibility assertions ---
