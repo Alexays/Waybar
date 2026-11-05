@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: '0 0 1 * *' # Run monthly
   push:
+    # Branches only: a tag push checks out a detached commit, which the action cannot open a PR from.
+    branches:
+      - master
     paths:
       - 'flake.nix'
 jobs:
