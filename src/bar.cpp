@@ -376,6 +376,18 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   setupWidgets();
   window.show_all();
 
+  // The first update of every module, in one source: a dispatcher emit per module before the
+  // main loop runs fills the pipe and blocks the main thread with enough modules.
+  Glib::signal_idle().connect(sigc::track_obj(
+                                  [this] {
+                                    for (auto const& module : modules_all_) {
+                                      module->dp.dispatchPending();
+                                    }
+                                    return false;
+                                  },
+                                  *this),
+                              Glib::PRIORITY_DEFAULT);
+
   /*
    * If gtk-layer-shell's synchronous wait for the initial configure timed out, show_all() can
    * return with a configured but not-yet-presented surface. Kick GTK/layer-shell once control has
@@ -780,7 +792,6 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
             spdlog::error("{}: {}", ref, e.what());
           }
         });
-        module->dp.emit();
       } catch (const std::exception& e) {
         spdlog::warn("module {}: {}", name.asString(), e.what());
       }

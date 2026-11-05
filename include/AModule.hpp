@@ -26,8 +26,9 @@ class AModule : public IModule {
   operator Gtk::Widget&() override;
   auto doAction(const std::string& name) -> void override;
 
-  /// Emitting on this dispatcher triggers a update() call
-  util::CoalescingDispatcher dp;
+  /// Emitting on this dispatcher triggers a update() call. It starts pending: Bar runs the first
+  /// update from the main loop, so emits before it never write to the dispatcher pipe.
+  util::CoalescingDispatcher dp{true};
 
   bool expandEnabled() const;
 

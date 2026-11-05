@@ -12,17 +12,22 @@ namespace waybar::util {
 // only the main loop drains, so one write per event lets a burst block the main thread forever.
 class CoalescingDispatcher {
  public:
-  CoalescingDispatcher() {
-    dp_.connect([this] {
-      // Reset before running the slots, so an emit() from a slot schedules another run.
-      pending_.store(false);
-      signal_.emit();
-    });
+  // A dispatcher created pending ignores emit() until its owner calls dispatchPending().
+  explicit CoalescingDispatcher(bool pending = false) : pending_(pending) {
+    dp_.connect([this] { dispatchPending(); });
   }
 
   void emit() {
     if (!pending_.exchange(true)) {
       dp_.emit();
+    }
+  }
+
+  // Runs the slots on the calling (main) thread if an emit() is pending.
+  void dispatchPending() {
+    // Reset before running the slots, so an emit() from a slot schedules another run.
+    if (pending_.exchange(false)) {
+      signal_.emit();
     }
   }
 
