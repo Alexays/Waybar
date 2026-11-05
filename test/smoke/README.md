@@ -14,7 +14,7 @@ AddressSanitizer** and runs the real binary inside a **headless** compositor
 | 1 | **Renders** — deterministic config screenshotted with `grim`, bar strip not blank | [`run.sh`](run.sh) |
 | 1 | **Per-module matrix** — each headless-safe module rendered standalone **and inside a group**, each torn down via SIGINT | [`modules.sh`](modules.sh) |
 | 2 | **Golden** — screenshot vs [`reference.png`](reference.png) (fuzz 8%, 800px) | workflow |
-| 2 | **Interaction** — inject pointer clicks via sway; assert `on-click` side effect + `format-alt` toggle | [`interact.sh`](interact.sh) |
+| 2 | **Interaction** - inject pointer clicks through a `wlr-virtual-pointer` device; assert `on-click` side effect, `format-alt` toggle, and a `click-to-reveal` drawer whose leader has its own click option | [`interact.sh`](interact.sh) / [`pointer_click.c`](pointer_click.c) |
 | 2 | **Accessibility** — assert module labels via the AT-SPI tree (robust to fonts) | [`a11y.sh`](a11y.sh) / [`a11y.py`](a11y.py) |
 | 3 | **Layout matrix** — top / bottom / left (vertical) + HiDPI (scale 2) | [`positions.sh`](positions.sh) |
 | 3 | **Second compositor** — same launch under `labwc` | workflow (`COMPOSITOR=labwc`) |
@@ -28,9 +28,8 @@ AddressSanitizer** and runs the real binary inside a **headless** compositor
 AddressSanitizer (plus `-D_GLIBCXX_ASSERTIONS`) runs under *all* of the above, so
 any memory bug in the real render/teardown path aborts the run. Tiers 5–6 and the
 leak check are best-effort (`continue-on-error`): they depend on daemon setup /
-mock devices that vary by runner. The interaction step is likewise best-effort — a
-headless seat exposes no pointer capability, so injected clicks may be dropped
-(hardening it needs a virtual pointer, uinput/wlr-virtual-pointer).
+mock devices that vary by runner. The headless backend has no input device, so the
+interaction step creates a virtual pointer to give the seat one.
 
 Because the teardown path (`~Bar` → window unmap → `toggleSuspend`) is where the
 exit-time crashes live, tests assert on a **clean SIGINT exit** via
