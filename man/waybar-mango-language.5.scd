@@ -20,7 +20,7 @@ Addressed by *mango/language*
 *format-<lang>*: ++
 	typeof: string ++
 	Provide an alternative format string for a given language.
-	<lang> is the short description of the layout (e.g. "us", "de").
+	<lang> is the short name of the layout (e.g. "us", "de") or its short description (e.g. "en").
 	The value is used as the replacement for *{}* in the main *format*.
 	This option can be repeated for multiple languages.
 
