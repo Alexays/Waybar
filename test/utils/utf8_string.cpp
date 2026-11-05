@@ -17,7 +17,7 @@ static std::string repeat(const std::string& s, size_t n) {
   return result;
 }
 
-static std::string truncate(std::string s, size_t max_len) {
+static std::string truncated(std::string s, size_t max_len) {
   utf8_truncate(s, ".", max_len);
   return s;
 }
@@ -52,28 +52,28 @@ TEST_CASE("utf8_width", "[utf8_string]") {
 
 TEST_CASE("utf8_truncate", "[utf8_string]") {
   SECTION("cuts at the given number of columns") {
-    REQUIRE(truncate("short", 20) == "short");
-    REQUIRE(truncate(repeat("W", 20), 20) == repeat("W", 20));
-    REQUIRE(truncate(repeat("W", 401), 20) == repeat("W", 19) + ".");
-    REQUIRE(truncate(repeat("音", 401), 20) == repeat("音", 9) + ".");
+    REQUIRE(truncated("short", 20) == "short");
+    REQUIRE(truncated(repeat("W", 20), 20) == repeat("W", 20));
+    REQUIRE(truncated(repeat("W", 401), 20) == repeat("W", 19) + ".");
+    REQUIRE(truncated(repeat("音", 401), 20) == repeat("音", 9) + ".");
   }
 
   SECTION("keeps the zero-width characters of ordinary text") {
-    REQUIRE(truncate(repeat("é", 20), 20) == repeat("é", 20));
-    REQUIRE(truncate(repeat("é", 401), 20) == repeat("é", 19) + ".");
+    REQUIRE(truncated(repeat("é", 20), 20) == repeat("é", 20));
+    REQUIRE(truncated(repeat("é", 401), 20) == repeat("é", 19) + ".");
   }
 
   SECTION("does not put the ellipsis after whitespace") {
-    REQUIRE(truncate("ab cdef", 4) == "ab.");
+    REQUIRE(truncated("ab cdef", 4) == "ab.");
   }
 
   SECTION("cuts leading whitespace and a first character wider than the limit") {
-    REQUIRE(truncate("    abcdef", 4) == ".");
-    REQUIRE(truncate("\t 　abcdef", 3) == ".");
-    REQUIRE(truncate("Ｗabc", 1) == ".");
-    REQUIRE(truncate("Ｗabc", 2) == ".");
+    REQUIRE(truncated("    abcdef", 4) == ".");
+    REQUIRE(truncated("\t 　abcdef", 3) == ".");
+    REQUIRE(truncated("Ｗabc", 1) == ".");
+    REQUIRE(truncated("Ｗabc", 2) == ".");
     for (size_t max_len = 1; max_len <= 20; ++max_len) {
-      REQUIRE(utf8_width(truncate(std::string(20, ' ') + std::string(300, 'W'), max_len)) <=
+      REQUIRE(utf8_width(truncated(std::string(20, ' ') + std::string(300, 'W'), max_len)) <=
               max_len);
     }
   }
@@ -81,10 +81,10 @@ TEST_CASE("utf8_truncate", "[utf8_string]") {
   SECTION("does not let any number of zero-width characters through") {
     for (const char* zero_width : {"҉", "​", "­", "ᅠ", "؀"}) {
       const std::string zw = zero_width;
-      REQUIRE(truncate("W" + repeat(zw, 400), 20) == "W" + repeat(zw, 19) + ".");
-      REQUIRE(truncate(repeat(zw, 400) + "W", 20) == repeat(zw, 19) + ".");
-      REQUIRE(truncate(repeat("W", 20) + repeat(zw, 400), 20) == repeat("W", 19) + ".");
-      REQUIRE(truncate(repeat("W" + repeat(zw, 8), 20), 20) ==
+      REQUIRE(truncated("W" + repeat(zw, 400), 20) == "W" + repeat(zw, 19) + ".");
+      REQUIRE(truncated(repeat(zw, 400) + "W", 20) == repeat(zw, 19) + ".");
+      REQUIRE(truncated(repeat("W", 20) + repeat(zw, 400), 20) == repeat("W", 19) + ".");
+      REQUIRE(truncated(repeat("W" + repeat(zw, 8), 20), 20) ==
               repeat("W" + repeat(zw, 8), 2) + "W" + repeat(zw, 3) + ".");
     }
   }
