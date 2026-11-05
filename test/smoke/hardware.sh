@@ -64,9 +64,19 @@ cat > "$WORK/config.json" <<'EOF'
                    "format-critical": "HOT {temperatureC}C" } }
 EOF
 
-# umockdev-run builds its testbed in $TMPDIR/umockdev.XXXXXX.
+# umockdev-run builds its testbed in $TMPDIR/umockdev.XXXXXX. umockdev before
+# 0.19 (Ubuntu 24.04) does not redirect std::filesystem's sysfs listing, so the
+# testbed is also mounted over /sys; bwrap itself runs without the preload.
 mkdir "$WORK/tmp"
-WAYBAR_WRAP="env TMPDIR=$WORK/tmp umockdev-run --device $WORK/devices.umockdev --" \
+cat > "$WORK/sysbind" <<'WRAP'
+#!/bin/sh
+# bwrap ignores the SIGINT umockdev-run forwards; waybar installs its own handler.
+trap '' INT
+exec env -u LD_PRELOAD bwrap --dev-bind / / --bind "$UMOCKDEV_DIR/sys" /sys env LD_PRELOAD="$LD_PRELOAD" "$@"
+WRAP
+chmod +x "$WORK/sysbind"
+bwrap --dev-bind / / true || { echo "::error::bwrap cannot create a sandbox here"; exit 1; }
+WAYBAR_WRAP="env TMPDIR=$WORK/tmp umockdev-run --device $WORK/devices.umockdev -- $WORK/sysbind" \
     smoke::launch_waybar "$WORK/config.json" "$DIR/style.css" 1
 smoke::assert_alive
 SYS="$(echo "$WORK"/tmp/umockdev.*/sys/devices)"
@@ -116,6 +126,8 @@ set_attr "$TEMP" temp1_input=79400
 "${A11Y[@]}" "TEMP 79C"
 echo "::endgroup::"
 
-# umockdev-run forwards SIGINT and returns waybar's status.
+# bwrap does not forward signals: interrupt waybar itself, then let
+# assert_clean_exit reap umockdev-run, which exits with waybar's status.
+pkill -INT -n -x waybar
 smoke::assert_clean_exit
 echo "✓ fake-hardware tier passed"
