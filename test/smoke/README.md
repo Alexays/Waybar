@@ -21,16 +21,16 @@ AddressSanitizer** and runs the real binary inside a **headless** compositor
 | 3 | **Second compositor** — same launch under `labwc` | workflow (`COMPOSITOR=labwc`) |
 | 4 | **Lifecycle / teardown** — clean SIGINT exit, runtime **output hotplug**, toggle + reload churn, fast-interval teardown (the C++ destructor path a `kill` never runs, #5182) | [`lifecycle.sh`](lifecycle.sh) |
 | 4 | **Custom-backend fuzz** — empty / non-zero-exit / invalid-JSON / huge / non-UTF8 / empty-format exec output | [`fuzz.sh`](fuzz.sh) |
-| 5 | **State transitions** *(best-effort)* — real `mpd` driven through an **empty queue** (#5183) + stop/clear, `pulseaudio` + slider on a null sink | [`state.sh`](state.sh) |
-| 6 | **Fake hardware** *(best-effort)* — `backlight`, `backlight/slider` (#5179) and `battery` via **umockdev** | [`hardware.sh`](hardware.sh) |
+| 5 | **State transitions** - real `mpd` driven from an **empty queue** (#5183) through play / next / pause / stop / clear / server exit, `pulseaudio` + slider on a null sink through volume and mute changes; each state's text asserted over AT-SPI | [`state.sh`](state.sh) |
+| 6 | **Fake hardware** - `battery` (discharging / charging / full, time estimates), `backlight`, `backlight/slider` in a group (#5179) and `temperature` (critical threshold) on a **umockdev** sysfs tree whose attributes change mid-run; exact text asserted over AT-SPI | [`hardware.sh`](hardware.sh) |
+| 6 | **Fake /proc** - `cpu` (usage from two `/proc/stat` snapshots), `memory`, `cpu_frequency` and `disk` under **bubblewrap** with fake `/proc` files, a fake `/sys/devices/system/cpu` and a 16 MiB tmpfs disk; exact values asserted (`load` only renders: `getloadavg()` uses `sysinfo(2)`) | [`procfs.sh`](procfs.sh) |
 | — | **Leak check** *(report-only)* — clean-exit run under LSan | [`leakcheck.sh`](leakcheck.sh) |
 | 2 | **Compositor IPC modules** - `hyprland/*`, `niri/*`, `mango/*`, `umbriel/*` and `wayfire/*` against fake IPC servers replaying an ordinary session: workspace switch, create and (Hyprland) destroy, window open / retitle / close, keyboard layout, submap / keymode / layout; the bar keeps its state and exits cleanly once the compositor goes away. `river/*`, `dwl/*` speak Wayland protocols and are not covered | [`ipc.sh`](ipc.sh) / [`fake_ipc.py`](fake_ipc.py) |
 | 4 | **Tray hostile input** - oversized `RegisterStatusNotifierItem` call, and an item whose dbusmenu layout has 20000 entries; the bar must refuse both and keep answering | [`tray.sh`](tray.sh) / [`tray_item.c`](tray_item.c) |
 
 AddressSanitizer (plus `-D_GLIBCXX_ASSERTIONS`) runs under *all* of the above, so
-any memory bug in the real render/teardown path aborts the run. Tiers 5–6 and the
-leak check are best-effort (`continue-on-error`): they depend on daemon setup /
-mock devices that vary by runner. The headless backend has no input device, so the
+any memory bug in the real render/teardown path aborts the run. The leak check
+is report-only (`continue-on-error`). The headless backend has no input device, so the
 interaction step creates a virtual pointer to give the seat one.
 
 Because the teardown path (`~Bar` → window unmap → `toggleSuspend`) is where the
@@ -67,8 +67,9 @@ dbus-run-session -- ./test/smoke/a11y.sh
 dbus-run-session -- ./test/smoke/compositor.sh   # also needs foot, wayland-info (optional)
 dbus-run-session -- ./test/smoke/tray.sh
 dbus-run-session -- ./test/smoke/ipc.sh
-# best-effort (need extra daemons / tools):
-./test/smoke/state.sh                        # needs mpd + mpc, pulseaudio
-./test/smoke/hardware.sh                     # needs umockdev
+# need extra daemons / tools:
+dbus-run-session -- ./test/smoke/state.sh    # needs mpd + mpc, pulseaudio
+dbus-run-session -- ./test/smoke/hardware.sh # needs umockdev
+dbus-run-session -- ./test/smoke/procfs.sh   # needs bwrap and unprivileged user namespaces
 ./test/smoke/leakcheck.sh
 ```

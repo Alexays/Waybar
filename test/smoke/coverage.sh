@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tier — coverage tripwire. Every module the Factory can build must be classified
 # below: either smoke-tested headless (SAFE), or explicitly parked as needing real
-# hardware/a daemon (HARDWARE, best-effort in state.sh / hardware.sh) or a specific
+# hardware/a daemon (HARDWARE, some faked in state.sh / hardware.sh) or a specific
 # compositor (COMPOSITOR). A newly added module that isn't listed fails this job,
 # forcing a conscious "is it covered?" decision instead of silently escaping the
 # smoke net -- which is how the slider/backlight crash class (#5179) slipped by.
@@ -19,7 +19,7 @@ mapfile -t FACTORY < <(grep -oE 'ref == "[^"]+"' "$FACTORY_SRC" | sed -E 's/.*"(
 SAFE=(clock cpu cpu_usage cpu_graph cpu_frequency load memory disk
       idle_inhibitor image user inhibitor)
 
-# Need real hardware or a system daemon; covered best-effort by hardware.sh / state.sh.
+# Need real hardware or a system daemon; some are faked by hardware.sh / state.sh.
 HARDWARE=(backlight backlight/slider battery upower power-profiles-daemon bluetooth
           network wwan gps pulseaudio pulseaudio/slider wireplumber jack sndio cava
           mpd mpris temperature keyboard-state systemd-failed-units privacy tray gamemode)

@@ -4,7 +4,8 @@
 Usage: a11y.py [--timeout SECONDS] [--absent] [--showing] TEXT...
 
 Each TEXT must appear (or, with --absent, must not appear) as a substring of a
-label in the running Waybar's tree. The tree is polled until the timeout, so a
+label in the running Waybar's tree. A widget with a value (a slider) also
+reports it as "value=N". The tree is polled until the timeout, so a
 test can assert on a state change it just triggered. Robust to fonts and
 anti-aliasing, unlike the golden image. With --showing, only widgets on screen
 count: a hidden widget keeps its last label in the tree.
@@ -29,6 +30,10 @@ def collect(acc, out, showing):
         name = ""
     if name:
         out.append(name)
+    try:
+        out.append(f"value={acc.queryValue().currentValue:g}")
+    except Exception:
+        pass
     try:
         count = acc.childCount
     except Exception:
