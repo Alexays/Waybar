@@ -41,14 +41,14 @@ void Language::updateFromIPC() {
 void Language::doUpdate() {
   std::lock_guard<std::mutex> lock(mutex_);
   if (layouts_.empty() || current_idx_ >= layouts_.size()) {
-    label_.hide();
+    label_.set_visible(false);
     return;
   }
   const auto& layout = layouts_[current_idx_];
 
-  if (!last_short_name_.empty()) label_.get_style_context()->remove_class(last_short_name_);
+  if (!last_short_name_.empty()) label_.remove_css_class(last_short_name_);
   if (!layout.short_name.empty()) {
-    label_.get_style_context()->add_class(layout.short_name);
+    label_.add_css_class(layout.short_name);
     last_short_name_ = layout.short_name;
   }
 
@@ -75,10 +75,10 @@ void Language::doUpdate() {
   }
 
   if (!layoutName.empty()) {
-    label_.show();
+    label_.set_visible(true);
     label_.set_markup(layoutName);
   } else {
-    label_.hide();
+    label_.set_visible(false);
   }
 }
 

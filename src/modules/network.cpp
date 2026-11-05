@@ -409,8 +409,8 @@ auto waybar::modules::Network::update() -> void {
 
   if (!alt_) {
     auto state = getNetworkState();
-    if (!state_.empty() && label_.get_style_context()->has_class(state_)) {
-      label_.get_style_context()->remove_class(state_);
+    if (!state_.empty() && label_.has_css_class(state_)) {
+      label_.remove_css_class(state_);
     }
     if (!threshold_state.empty() && config_["format-" + state + "-" + threshold_state].isString()) {
       default_format_ = config_["format-" + state + "-" + threshold_state].asString();
@@ -427,8 +427,8 @@ auto waybar::modules::Network::update() -> void {
     } else if (config_["tooltip-format-" + state].isString()) {
       tooltip_format = config_["tooltip-format-" + state].asString();
     }
-    if (!label_.get_style_context()->has_class(state)) {
-      label_.get_style_context()->add_class(state);
+    if (!label_.has_css_class(state)) {
+      label_.add_css_class(state);
     }
     format_ = default_format_;
     state_ = state;
@@ -489,9 +489,9 @@ auto waybar::modules::Network::update() -> void {
   auto text = fmt::vformat(format_, store);
   if (setLabelMarkup(text)) {
     if (text.empty()) {
-      event_box_.hide();
+      event_box_.set_visible(false);
     } else {
-      event_box_.show();
+      event_box_.set_visible(true);
     }
   }
   if (tooltipEnabled()) {

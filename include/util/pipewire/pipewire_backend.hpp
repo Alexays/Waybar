@@ -27,7 +27,7 @@ class PipewireBackend {
   struct PrivateConstructorTag {};
 
  public:
-  sigc::signal<void> privacy_nodes_changed_signal_event;
+  sigc::signal<void()> privacy_nodes_changed_signal_event;
 
   std::unordered_map<uint32_t, PWPrivacyNodeInfo*> privacy_nodes;
   std::mutex mutex_;

@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-/// Waybar ABI version. 2 is the latest version
+/// Waybar ABI version. 3 is the latest version, and the only one a GTK4 Waybar loads
 extern const size_t wbcffi_version;
 
 /// Private Waybar CFFI module
@@ -21,9 +21,11 @@ typedef struct {
   /// Waybar version string
   const char* waybar_version;
 
-  /// Returns the waybar widget allocated for this module
+  /// Sets the widget displayed by this module, replacing the previous one. Waybar takes
+  /// ownership of the widget. NULL removes the current widget.
   /// @param obj Waybar CFFI object pointer
-  GtkContainer* (*get_root_widget)(wbcffi_module* obj);
+  /// @param widget GTK4 widget to display
+  void (*set_root_widget)(wbcffi_module* obj, GtkWidget* widget);
 
   /// Queues a request for calling wbcffi_update() on the next GTK main event
   /// loop iteration
@@ -37,11 +39,7 @@ typedef struct {
   const char* key;
   /// Entry value
   ///
-  /// In ABI version 1, this may be either a bare string if the value is a
-  /// string, or the JSON representation of any other JSON object as a string.
-  ///
-  /// From ABI version 2 onwards, this is always the JSON representation of the
-  /// value as a string.
+  /// The JSON representation of the value as a string.
   const char* value;
 } wbcffi_config_entry;
 

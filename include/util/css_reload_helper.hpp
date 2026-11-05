@@ -39,7 +39,7 @@ class CssReloadHelper {
 
   void handleFileChange(Glib::RefPtr<Gio::File> const& file,
                         Glib::RefPtr<Gio::File> const& other_type,
-                        Gio::FileMonitorEvent event_type);
+                        Gio::FileMonitor::Event event_type);
 
  private:
   std::string m_cssFile;

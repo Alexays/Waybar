@@ -25,29 +25,24 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
 
   m_box.set_name("workspaces");
   if (!id.empty()) {
-    m_box.get_style_context()->add_class(id);
+    m_box.add_css_class(id);
   }
-  m_box.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(m_box);
+  m_box.add_css_class(MODULE_CLASS);
+  event_box_.set_child(m_box);
+  enableChildMultiClick();
 
   setCurrentMonitorId();
   init();
 
   // Not in init(), which also runs on the IPC thread where GTK must not be touched.
   if (barScroll()) {
-    auto& window = const_cast<Bar&>(m_bar).window;
-    window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    m_scrollEventConnection_ =
-        window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
+    enableBarScroll(const_cast<Bar&>(m_bar).window);
   }
 
   registerIpc();
 }
 
 Workspaces::~Workspaces() {
-  if (m_scrollEventConnection_.connected()) {
-    m_scrollEventConnection_.disconnect();
-  }
   // Cancel any pending debounce timeout so it cannot fire on a freed `this`.
   // Runs on the main thread, same as where the timer is armed.
   if (m_debounceTimer.connected()) {
@@ -148,9 +143,8 @@ void Workspaces::createWorkspace(Json::Value const& workspace_data,
   // create new workspace
   m_workspaces.emplace_back(std::make_unique<Workspace>(workspace_data, *this, clients_data));
   Gtk::Button& newWorkspaceButton = m_workspaces.back()->button();
-  m_box.pack_start(newWorkspaceButton, false, false);
+  m_box.append(newWorkspaceButton);
   sortWorkspaces();
-  newWorkspaceButton.show_all();
 }
 
 void Workspaces::createWorkspacesToCreate() {
@@ -864,7 +858,7 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value& config) -> vo
   }
   if (workspaceTaskbar["orientation"].isString() &&
       toLower(workspaceTaskbar["orientation"].asString()) == "vertical") {
-    m_taskbarOrientation = Gtk::ORIENTATION_VERTICAL;
+    m_taskbarOrientation = Gtk::Orientation::VERTICAL;
   }
 
   if (workspaceTaskbar["on-click-window"].isString()) {
@@ -1059,8 +1053,14 @@ void Workspaces::sortWorkspaces() {
     this->sortSpecialCentered();
   }
 
-  for (size_t i = 0; i < m_workspaces.size(); ++i) {
-    m_box.reorder_child(m_workspaces[i]->button(), i);
+  const Gtk::Widget* previous = nullptr;
+  for (const auto& workspace : m_workspaces) {
+    if (previous == nullptr) {
+      m_box.reorder_child_at_start(workspace->button());
+    } else {
+      m_box.reorder_child_after(workspace->button(), *previous);
+    }
+    previous = &workspace->button();
   }
 }
 
@@ -1253,12 +1253,7 @@ std::tuple<std::string, std::string, std::string> Workspaces::splitTriplePayload
   return {part1, part2, part3};
 }
 
-bool Workspaces::handleScroll(GdkEventScroll* e) {
-  // Ignore emulated scroll events on window
-  if (gdk_event_get_pointer_emulated((GdkEvent*)e)) {
-    return false;
-  }
-
+bool Workspaces::handleScroll(const ScrollEvent& e) {
   // Check for custom scroll commands first; delegate to base class
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
     return AModule::handleScroll(e);

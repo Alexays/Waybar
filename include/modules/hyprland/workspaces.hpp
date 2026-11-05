@@ -138,7 +138,7 @@ class Workspaces : public AModule, public EventHandler {
   static std::tuple<std::string, std::string, std::string> splitTriplePayload(
       std::string const& payload);
   // scroll events
-  bool handleScroll(GdkEventScroll* e) override;
+  bool handleScroll(const ScrollEvent& e) override;
 
   // Update methods
   void doUpdate();
@@ -211,7 +211,7 @@ class Workspaces : public AModule, public EventHandler {
   std::string m_taskbarFormatAfter;
   int m_taskbarIconSize = 16;
   int m_taskbarMaxIcons = 0;  // 0 means unlimited
-  Gtk::Orientation m_taskbarOrientation = Gtk::ORIENTATION_HORIZONTAL;
+  Gtk::Orientation m_taskbarOrientation = Gtk::Orientation::HORIZONTAL;
   bool m_taskbarReverseDirection = false;
   ActiveWindowPosition m_activeWindowPosition = ActiveWindowPosition::NONE;
   static inline std::map<std::string, ActiveWindowPosition> m_activeWindowPositionMap = {
@@ -229,7 +229,6 @@ class Workspaces : public AModule, public EventHandler {
   std::mutex m_mutex;
   const Bar& m_bar;
   Gtk::Box m_box;
-  sigc::connection m_scrollEventConnection_;
   IPC& m_ipc;
 
   // Coalesces bursts of Hyprland events into a single UI refresh. Armed and

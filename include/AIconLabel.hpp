@@ -1,9 +1,9 @@
 #pragma once
 
 #include <gtkmm/box.h>
-#include <gtkmm/image.h>
 
 #include "ALabel.hpp"
+#include "util/scaled_image.hpp"
 
 namespace waybar {
 
@@ -17,7 +17,7 @@ class AIconLabel : public ALabel {
   static std::tuple<std::string, std::string> extractIcon(const std::string& input);
 
  protected:
-  Gtk::Image image_;
+  util::ScaledImage image_;
   Gtk::Box box_;
   unsigned app_icon_size_{24};
 

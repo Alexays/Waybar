@@ -42,18 +42,7 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
 
   deactivationTime = time(nullptr) + timeout * 60;
 
-  event_box_.add_events(Gdk::BUTTON_PRESS_MASK | Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-  event_box_.signal_button_press_event().connect(
-      sigc::mem_fun(*this, &IdleInhibitor::handleToggle));
-
-  // Only connect our own scroll handler when the user hasn't configured on-scroll-*
-  // commands. When on-scroll-* is set, AModule already connects a scroll handler that
-  // (via virtual dispatch) reaches IdleInhibitor::handleScroll; a second connection here
-  // would fire handleScroll twice per scroll event.
-  if (!(config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() ||
-        config_["on-scroll-left"].isString() || config_["on-scroll-right"].isString())) {
-    event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &IdleInhibitor::handleScroll));
-  }
+  enableScroll();
 
   // Add this to the modules list
   waybar::modules::IdleInhibitor::modules.push_back(this);
@@ -79,13 +68,13 @@ waybar::modules::IdleInhibitor::~IdleInhibitor() {
 auto waybar::modules::IdleInhibitor::update() -> void {
   // Check status
   if (status) {
-    label_.get_style_context()->remove_class("deactivated");
+    label_.remove_css_class("deactivated");
     if (idle_inhibitor_ == nullptr && bar_.surface != nullptr) {
       idle_inhibitor_ = zwp_idle_inhibit_manager_v1_create_inhibitor(
           waybar::Client::inst()->idle_inhibit_manager, bar_.surface);
     }
   } else {
-    label_.get_style_context()->remove_class("activated");
+    label_.remove_css_class("activated");
     if (idle_inhibitor_ != nullptr) {
       zwp_idle_inhibitor_v1_destroy(idle_inhibitor_);
       idle_inhibitor_ = nullptr;
@@ -97,7 +86,7 @@ auto waybar::modules::IdleInhibitor::update() -> void {
   updateLabelAndTooltipForState(status_text, format_, "{status}", fmt::arg("status", status_text),
                                 fmt::arg("timeout", timeout), fmt::arg("timeleft", timeleft),
                                 fmt::arg("icon", getIcon(0, status_text)));
-  label_.get_style_context()->add_class(status_text);
+  label_.add_css_class(status_text);
   // Call parent update
   ALabel::update();
 }
@@ -170,11 +159,11 @@ void waybar::modules::IdleInhibitor::toggleStatus(int force_status) {
   }
 }
 
-bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
+bool waybar::modules::IdleInhibitor::handleToggle(const ButtonEvent& e) {
   // Accept both the documented "dynamic-timeouts" (plural) and the legacy
   // "dynamic-timeout" (singular) key spellings.
   const bool dynamic = config_["dynamic-timeouts"].asBool() || config_["dynamic-timeout"].asBool();
-  if (e->button == 1) {
+  if (e.button == 1) {
     if (dynamic) {
       toggleStatus(1);
     } else {
@@ -188,7 +177,7 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
       }
     }
   }
-  if (e->button == 3 && dynamic) {
+  if (e.button == 3 && dynamic) {
     toggleStatus(0);
 
     // Make all other idle inhibitor modules update
@@ -198,7 +187,7 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
       }
     }
   }
-  if (e->button == 2 && dynamic) {
+  if (e.button == 2 && dynamic) {
     toggleStatus(0);
     timeout = config_["timeout"].asDouble();
   }
@@ -206,7 +195,7 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
   return true;
 }
 
-bool waybar::modules::IdleInhibitor::handleScroll(GdkEventScroll* e) {
+bool waybar::modules::IdleInhibitor::handleScroll(const ScrollEvent& e) {
   // Accept both the documented "dynamic-timeouts" (plural) and the legacy
   // "dynamic-timeout" (singular) key spellings.
   if (!(config_["dynamic-timeouts"].asBool() || config_["dynamic-timeout"].asBool())) {

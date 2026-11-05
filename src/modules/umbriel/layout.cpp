@@ -35,18 +35,18 @@ void Layout::doUpdate() {
 
   if (layout.empty()) {
     if (!last_layout_.empty()) {
-      label_.get_style_context()->remove_class(last_layout_);
+      label_.remove_css_class(last_layout_);
       last_layout_.clear();
     }
-    label_.hide();
+    label_.set_visible(false);
     return;
   }
 
   if (layout != last_layout_) {
     if (!last_layout_.empty()) {
-      label_.get_style_context()->remove_class(last_layout_);
+      label_.remove_css_class(last_layout_);
     }
-    label_.get_style_context()->add_class(layout);
+    label_.add_css_class(layout);
     last_layout_ = layout;
   }
 
@@ -58,10 +58,10 @@ void Layout::doUpdate() {
   const auto text = fmt::format(fmt::runtime(format), fmt::arg("layout", layout));
 
   if (!text.empty()) {
-    label_.show();
+    label_.set_visible(true);
     label_.set_markup(text);
   } else {
-    label_.hide();
+    label_.set_visible(false);
   }
 }
 

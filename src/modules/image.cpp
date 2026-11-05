@@ -19,6 +19,7 @@
 waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
     : AModule(config, "image", id) {
   strategy_ = getStrategy(id, config, MODULE_CLASS, event_box_, tooltipEnabled());
+  enableChildMultiClick();
 
   const auto once = std::chrono::milliseconds::max();
   if (!config_.isMember("interval") || config_["interval"].isNull() ||
@@ -40,7 +41,7 @@ waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
 }
 
 auto waybar::modules::Image::getStrategy(const std::string& id, const Json::Value& cfg,
-                                         const std::string& module, Gtk::EventBox& evbox,
+                                         const std::string& module, util::ModuleBox& evbox,
                                          bool hasTooltip)
     -> std::unique_ptr<waybar::modules::image::IStrategy> {
   std::unique_ptr<waybar::modules::image::IStrategy> strat;
@@ -156,14 +157,16 @@ static int configSize(const Json::Value& size) {
 }
 
 MultipleImageStrategy::MultipleImageStrategy(const std::string& id, const Json::Value& config,
-                                             const std::string& module, Gtk::EventBox& evbox)
-    : IStrategy(), box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
+                                             const std::string& module, util::ModuleBox& evbox)
+    : IStrategy(), box_(Gtk::Orientation::HORIZONTAL, 0) {
   config_ = config;
 
   box_.set_name("image");
-  box_.get_style_context()->add_class(id);
-  box_.get_style_context()->add_class(module);
-  evbox.add(box_);
+  box_.add_css_class(id);
+  box_.add_css_class(module);
+  // The images expand inside the box, not the module
+  box_.set_hexpand(false);
+  evbox.set_child(box_);
 
   size_ = configSize(config["size"]);
 }
@@ -207,7 +210,7 @@ bool MultipleImageStrategy::update() {
 
 void MultipleImageStrategy::setupAndDraw() {
   for (unsigned int i = 0; i < images_data_.size(); i++) {
-    images_data_[i].img = std::make_shared<Gtk::Image>();
+    images_data_[i].img = std::make_shared<util::ScaledImage>();
     images_data_[i].btn = std::make_shared<Gtk::Button>();
 
     auto img = images_data_[i].img;
@@ -223,40 +226,39 @@ void MultipleImageStrategy::setupAndDraw() {
     if (has_onclick) {
       auto btn = images_data_[i].btn;
       btn->set_name("button_" + path);
-      btn->get_style_context()->add_class(marker);
+      btn->add_css_class(marker);
       btn->set_tooltip_text(tooltip);
-      btn->set_image(*img);
-      box_.pack_start(*btn);
+      btn->set_child(*img);
+      btn->add_css_class("image-button");
+      btn->set_hexpand(true);
+      box_.append(*btn);
 
-      btn->add_events(Gdk::BUTTON_PRESS_MASK);
       btn->signal_clicked().connect(
           sigc::bind(sigc::mem_fun(*this, &MultipleImageStrategy::handleClick), data.on_click));
 
       if (pixbuf) {
-        btn->show_all();
-        img->set(pixbuf);
-        box_.get_style_context()->remove_class("empty");
+        img->set_pixbuf(pixbuf, 1);
+        box_.remove_css_class("empty");
       } else {
-        btn->hide();
+        btn->set_visible(false);
         img->clear();
-        img->hide();
-        box_.get_style_context()->add_class("empty");
+        img->set_visible(false);
+        box_.add_css_class("empty");
       }
     } else {
       img->set_name(path);
-      img->get_style_context()->add_class(marker);
+      img->add_css_class(marker);
       img->set_tooltip_text(tooltip);
-      box_.pack_start(*img);
-      // spdlog::info("added image -> {}:{}", marker, path);
+      img->set_hexpand(true);
+      box_.append(*img);
 
       if (pixbuf) {
-        img->set(pixbuf);
-        img->show();
-        box_.get_style_context()->remove_class("empty");
+        img->set_pixbuf(pixbuf, 1);
+        box_.remove_css_class("empty");
       } else {
         img->clear();
-        img->hide();
-        box_.get_style_context()->add_class("empty");
+        img->set_visible(false);
+        box_.add_css_class("empty");
       }
     }
   }
@@ -283,7 +285,7 @@ void MultipleImageStrategy::setImagesData(const Json::Value& entries,
     bool has_onclick_err = !onclick.isNull() && !onclick.isString();
 
     if (!path.isString() || !marker.isString() || has_tooltip_err || has_onclick_err ||
-        !Glib::file_test(path.asString(), Glib::FILE_TEST_EXISTS)) {
+        !Glib::file_test(path.asString(), Glib::FileTest::EXISTS)) {
       spdlog::error("invalid input in images config -> {}", entries[i]);
       return;
     }
@@ -298,10 +300,8 @@ void MultipleImageStrategy::setImagesData(const Json::Value& entries,
 }
 
 void MultipleImageStrategy::resetBoxAndMemory() {
-  auto children = box_.get_children();
-  for (auto child : children) {
+  while (auto* child = box_.get_first_child()) {
     box_.remove(*child);
-    // spdlog::info("child removed with name -> {}", std::string(child->get_name()));
   }
 
   images_data_.clear();
@@ -313,19 +313,22 @@ void MultipleImageStrategy::handleClick(const Glib::ustring& data) {
 }
 
 SingleImageStrategy::SingleImageStrategy(const std::string& id, const Json::Value& config,
-                                         const std::string& module, Gtk::EventBox& evbox,
+                                         const std::string& module, util::ModuleBox& evbox,
                                          bool tooltipEnabled)
-    : IStrategy(), box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
+    : IStrategy(), box_(Gtk::Orientation::HORIZONTAL, 0) {
   config_ = config;
   hasTooltip_ = tooltipEnabled;
 
-  box_.pack_start(image_);
+  box_.append(image_);
+  // The image expands inside the box, not the module
+  image_.set_hexpand(true);
+  box_.set_hexpand(false);
   box_.set_name("image");
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(module);
-  evbox.add(box_);
+  box_.add_css_class(module);
+  evbox.set_child(box_);
 
   size_ = configSize(config["size"]);
   scale_factor_ = pixbuf_scale_factor_ = image_.get_scale_factor();
@@ -370,19 +373,8 @@ bool SingleImageStrategy::update() {
   scale_factor_ = image_.get_scale_factor();
 
   if (pixbuf_) {
-    // Building a HiDPI-aware cairo surface requires a realized widget: it reads the
-    // GdkWindow and its scale factor. During startup update() can run before the
-    // Gtk::Image is realized, in which case get_window() is null; feeding that path a
-    // null window aborts startup. Fall back to setting the pixbuf directly while the
-    // widget is unrealized, and use the crisp surface path once a window is available.
-    auto window = image_.get_window();
-    if (window) {
-      auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf_, pixbuf_scale_factor_, window);
-      image_.set(surface);
-    } else {
-      image_.set(pixbuf_);
-    }
-    image_.show();
+    image_.set_pixbuf(pixbuf_, pixbuf_scale_factor_);
+    image_.set_visible(true);
 
     if (hasTooltip_ && !tooltip_.empty()) {
       // ustring::operator!= collates, which crashes on invalid UTF-8; compare bytes
@@ -391,11 +383,11 @@ bool SingleImageStrategy::update() {
       }
     }
 
-    box_.get_style_context()->remove_class("empty");
+    box_.remove_css_class("empty");
   } else {
     image_.clear();
-    image_.hide();
-    box_.get_style_context()->add_class("empty");
+    image_.set_visible(false);
+    box_.add_css_class("empty");
   }
   return scale_factor_ == pixbuf_scale_factor_;
 }

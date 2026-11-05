@@ -24,8 +24,8 @@ void Window::doUpdate() {
 
   // judge whether to hide: active_client is null or title field is null
   if (client.isNull() || !client.isObject() || client["title"].isNull()) {
-    event_box_.hide();
-    label_.hide();
+    event_box_.set_visible(false);
+    label_.set_visible(false);
     updateAppIconName("", "");
     setClass("empty", true);
     if (!oldAppId_.empty()) setClass(oldAppId_, false);
@@ -34,8 +34,8 @@ void Window::doUpdate() {
   }
 
   // if we have a valid client, show the label and update content
-  event_box_.show();
-  label_.show();
+  event_box_.set_visible(true);
+  label_.set_visible(true);
   setClass("empty", false);
 
   std::string title = client["title"].asString();
@@ -75,7 +75,7 @@ void Window::doUpdate() {
       setClass(oldAppId_, false);
       oldAppId_.clear();
     }
-    if (solo && waybar::util::add_app_id_class(event_box_.get_style_context(), appid)) {
+    if (solo && waybar::util::add_app_id_class(event_box_, appid)) {
       oldAppId_ = appid;
     }
   }
@@ -87,11 +87,10 @@ void Window::update() {
 }
 
 void Window::setClass(const std::string& className, bool enable) {
-  auto style_context = event_box_.get_style_context();
   if (enable) {
-    if (!style_context->has_class(className)) style_context->add_class(className);
+    event_box_.add_css_class(className);
   } else {
-    style_context->remove_class(className);
+    event_box_.remove_css_class(className);
   }
 }
 

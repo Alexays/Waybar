@@ -47,6 +47,9 @@ The complete list of symbols to define can be found in the header file shipped w
 Waybar at *resources/custom_modules/cffi_example/waybar_cffi_module.h*, and a full
 example written in C is provided in *resources/custom_modules/cffi_example/*.
 
+Waybar uses GTK4: a CFFI module must be built against GTK4 and define
+*wbcffi_version* as 3. Modules built for an older version use GTK3 and are refused.
+
 Language bindings exist for several languages, including Rust (the *waybar-cffi*
 crate) and Zig.
 

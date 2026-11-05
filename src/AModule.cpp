@@ -5,10 +5,15 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cmath>
+#include <cstring>
+#include <fstream>
+#include <sstream>
 #include <util/command.hpp>
+#include <variant>
 
-#include "gdk/gdk.h"
-#include "gdkmm/cursor.h"
+#include "config.hpp"
+#include "util/menu_a11y.hpp"
 
 namespace waybar {
 
@@ -25,10 +30,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     : name_(name),
       config_(config),
       isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true},
-      isExpand{config_["expand"].isBool() ? config_["expand"].asBool() : false},
-      distance_scrolled_y_(0.0),
-      distance_scrolled_x_(0.0),
-      cursor_timeout_conn_() {
+      isExpand{config_["expand"].isBool() ? config_["expand"].asBool() : false} {
   // Configure module action Map
   const Json::Value actions{config_["actions"]};
 
@@ -47,56 +49,40 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       spdlog::warn("Wrong actions section configuration. See config by index: {}", it.index());
   }
 
-  event_box_.signal_enter_notify_event().connect(sigc::mem_fun(*this, &AModule::handleMouseEnter));
-  event_box_.signal_leave_notify_event().connect(sigc::mem_fun(*this, &AModule::handleMouseLeave));
-
-  // configure events' user commands
   // hasUserEvents is true if any element from eventMap_ is satisfying the condition in the lambda
-  bool hasUserEvents =
-      std::find_if(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
-        // True if there is any non-release type event
-        return eventEntry.first.second != GdkEventType::GDK_BUTTON_RELEASE &&
+  hasUserEvents_ =
+      enable_click ||
+      std::any_of(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
+        return eventEntry.first.second != Type::RELEASE &&
                (config[eventEntry.second].isString() || config[eventEntry.second].isBool());
-      }) != eventMap_.cend();
-
-  if (enable_click || hasUserEvents) {
-    hasUserEvents_ = true;
-    event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
-    event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
-  } else {
-    hasUserEvents_ = false;
-  }
-
-  bool hasReleaseEvent =
-      std::find_if(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
-        // True if there is any non-release type event
-        return eventEntry.first.second == GdkEventType::GDK_BUTTON_RELEASE &&
-               config[eventEntry.second].isString();
-      }) != eventMap_.cend();
-  if (hasReleaseEvent) {
-    event_box_.add_events(Gdk::BUTTON_RELEASE_MASK);
-    event_box_.signal_button_release_event().connect(sigc::mem_fun(*this, &AModule::handleRelease));
+      });
+  hasReleaseEvent_ =
+      std::any_of(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
+        return eventEntry.first.second == Type::RELEASE && config[eventEntry.second].isString();
+      });
+  if (hasUserEvents_ || hasReleaseEvent_) {
+    enableClick();
   }
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() ||
       config_["on-scroll-left"].isString() || config_["on-scroll-right"].isString() ||
       enable_scroll) {
-    event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
+    enableScroll();
   }
 
   // Respect user configuration of cursor
   if (config_.isMember("cursor")) {
     if (config_["cursor"].isBool()) {
-      if (config_["cursor"].asBool()) {
-        setCursor("pointer");
-      } else {
-        setCursor("default");
-      }
+      setCursor(config_["cursor"].asBool() ? "pointer" : "default");
     } else if (config_["cursor"].isString()) {
       setCursor(config_["cursor"].asString());
     } else if (config_["cursor"].isInt() || config_["cursor"].isUInt()) {
-      // Backward-compat: legacy numeric Gdk::CursorType values (pre-0.16)
-      setCursor(Gdk::CursorType(config_["cursor"].asInt()));
+      // Backward-compat: legacy numeric GdkCursorType values (pre-0.16)
+      static const std::map<int, const char*> legacy_cursors{
+          {-2, "none"},        {34, "crosshair"}, {52, "move"}, {58, "grab"},
+          {60, "pointer"},     {68, "default"},   {92, "help"}, {108, "col-resize"},
+          {116, "row-resize"}, {150, "wait"},     {152, "text"}};
+      auto it = legacy_cursors.find(config_["cursor"].asInt());
+      setCursor(it != legacy_cursors.end() ? it->second : "default");
       spdlog::warn(
           "Numeric 'cursor' values are deprecated; use a cursor-shape-v1 name string instead "
           "(module {})",
@@ -104,12 +90,164 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     } else {
       spdlog::warn("unknown cursor option configured on module {}", name_);
     }
+  } else if (hasUserEvents_) {
+    // Default behavior indicating event availability
+    setCursor("pointer");
   }
 }
 
+void AModule::enableClick() {
+  if (click_) {
+    return;
+  }
+  click_ = Gtk::GestureClick::create();
+  click_->set_button(0);
+  click_->signal_pressed().connect(sigc::mem_fun(*this, &AModule::onPressed));
+  click_->signal_released().connect(sigc::mem_fun(*this, &AModule::onReleased));
+  event_box_.add_controller(click_);
+}
+
+void AModule::enableScroll() {
+  if (scroll_) {
+    return;
+  }
+  scroll_ = Gtk::EventControllerScroll::create();
+  scroll_->set_flags(Gtk::EventControllerScroll::Flags::BOTH_AXES);
+  scroll_->signal_scroll().connect(sigc::mem_fun(*this, &AModule::onScroll), false);
+  event_box_.add_controller(scroll_);
+}
+
+void AModule::enableBarScroll(Gtk::Widget& bar_window) {
+  enableScroll();
+  if (scroll_target_ == nullptr) {
+    event_box_.remove_controller(scroll_);
+    bar_window.add_controller(scroll_);
+    scroll_target_ = &bar_window;
+  }
+}
+
+void AModule::enableChildMultiClick() {
+  const bool configured =
+      std::any_of(eventMap_.cbegin(), eventMap_.cend(), [this](const auto& entry) {
+        const auto& name = entry.second;
+        return (entry.first.second == Type::DOUBLE || entry.first.second == Type::TRIPLE) &&
+               (config_[name].isString() || config_[name].isBool() ||
+                eventActionMap_.contains(name) || config_["menu"] == name);
+      });
+  if (!configured) {
+    return;
+  }
+  auto captured = Gtk::EventControllerLegacy::create();
+  captured->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
+  captured->signal_event().connect(sigc::mem_fun(*this, &AModule::onCapturedEvent), false);
+  event_box_.add_controller(captured);
+}
+
+// Child gestures cancel the gestures of their ancestors when they claim a press, so the presses
+// are counted by a legacy controller, which no claim cancels.
+bool AModule::onCapturedEvent(const Glib::RefPtr<const Gdk::Event>& event) {
+  auto* ev = const_cast<GdkEvent*>(event->gobj());
+  if (gdk_event_get_event_type(ev) != GDK_BUTTON_PRESS) {
+    return false;
+  }
+  auto* box = GTK_WIDGET(event_box_.gobj());
+  auto* native = gtk_widget_get_native(box);
+  double surface_x = 0;
+  double surface_y = 0;
+  double x = 0;
+  double y = 0;
+  gdk_event_get_position(ev, &x, &y);
+  gtk_native_get_surface_transform(native, &surface_x, &surface_y);
+  const graphene_point_t point =
+      GRAPHENE_POINT_INIT(static_cast<float>(x - surface_x), static_cast<float>(y - surface_y));
+  graphene_point_t local;
+  if (!gtk_widget_compute_point(GTK_WIDGET(native), box, &point, &local)) {
+    return false;
+  }
+  // A GTK3 button had its own input window, the rest of the module shared the module's one
+  GtkWidget* window = gtk_widget_pick(box, local.x, local.y, GTK_PICK_DEFAULT);
+  if (window != nullptr) {
+    if (GtkWidget* button = gtk_widget_get_ancestor(window, GTK_TYPE_BUTTON); button != nullptr) {
+      window = button;
+    } else {
+      window = box;
+    }
+  }
+  int time = 0;
+  int distance = 0;
+  g_object_get(gtk_widget_get_settings(box), "gtk-double-click-time", &time,
+               "gtk-double-click-distance", &distance, nullptr);
+  const Press press{gdk_event_get_time(ev), window, gdk_button_event_get_button(ev), x, y};
+  const auto follows = [&](const Press& previous, int delay) {
+    return press.time < previous.time + static_cast<guint32>(delay) &&
+           press.window == previous.window && press.button == previous.button &&
+           std::abs(press.x - previous.x) <= distance && std::abs(press.y - previous.y) <= distance;
+  };
+  ButtonEvent multi{press.button, Type::PRESS, local.x, local.y};
+  if (follows(presses_[1], 2 * time)) {
+    multi.type = Type::TRIPLE;
+    presses_ = {};
+  } else {
+    if (follows(presses_[0], time)) {
+      multi.type = Type::DOUBLE;
+    }
+    presses_ = {press, presses_[0]};
+  }
+  if (multi.type != Type::PRESS) {
+    // Dispatched once the press is handled, unless click_ sees it and reports it itself
+    multi_press_ = Glib::signal_idle().connect(
+        [this, multi] {
+          handleToggle(multi);
+          return false;
+        },
+        Glib::PRIORITY_HIGH);
+  }
+  return false;
+}
+
+void AModule::onPressed(int n_press, double x, double y) {
+  multi_press_.disconnect();
+  ButtonEvent ev{click_->get_current_button(), Type::PRESS, x, y};
+  bool handled = handleToggle(ev);
+  // GTK3 restarted its click count after a triple click
+  switch ((n_press - 1) % 3) {
+    case 1:
+      ev.type = Type::DOUBLE;
+      handled = handleToggle(ev) || handled;
+      break;
+    case 2:
+      ev.type = Type::TRIPLE;
+      handled = handleToggle(ev) || handled;
+      break;
+    default:
+      break;
+  }
+  if (handled) {
+    click_->set_state(Gtk::EventSequenceState::CLAIMED);
+  }
+}
+
+void AModule::onReleased(int /*n_press*/, double x, double y) {
+  if (hasReleaseEvent_ && handleRelease({click_->get_current_button(), Type::RELEASE, x, y})) {
+    click_->set_state(Gtk::EventSequenceState::CLAIMED);
+  }
+}
+
+bool AModule::onScroll(double dx, double dy) {
+  // Scaled to the deltas GTK3 gave on Wayland, which smooth-scrolling-threshold is tuned for:
+  // a tenth of the axis value, i.e. 1.5 per wheel detent (15 units) and surface pixels / 10.
+  const bool wheel = scroll_->get_unit() == Gdk::ScrollUnit::WHEEL;
+  const double factor = wheel ? 1.5 : 0.1;
+  ScrollEvent ev{dx * factor, dy * factor, wheel ? GDK_SOURCE_MOUSE : GDK_SOURCE_TOUCHPAD};
+  if (auto device = scroll_->get_current_event_device()) {
+    ev.source = static_cast<GdkInputSource>(device->get_source());
+  }
+  return handleScroll(ev);
+}
+
 AModule::~AModule() {
-  if (cursor_timeout_conn_.connected()) {
-    cursor_timeout_conn_.disconnect();
+  if (scroll_target_ != nullptr) {
+    scroll_target_->remove_controller(scroll_);
   }
   forgetReapedChildren(pid_children_);
   for (const auto& pid : pid_children_) {
@@ -118,8 +256,8 @@ AModule::~AModule() {
     }
   }
   if (menu_ != nullptr) {
-    g_object_unref(menu_);
-    menu_ = nullptr;
+    menu_->unparent();
+    delete menu_;
   }
 }
 
@@ -141,76 +279,219 @@ auto AModule::doAction(const std::string& name) -> void {
   }
 }
 
-void AModule::setCursor(std::string const& c) {
-  auto gdk_window = event_box_.get_window();
-  if (gdk_window) {
-    auto cursor = Gdk::Cursor::create(gdk_window->get_display(), c);
-    gdk_window->set_cursor(cursor);
-  } else {
-    // window may not be accessible yet, in this case,
-    // schedule another call for setting the cursor in 1 sec
-    cursor_timeout_conn_ = Glib::signal_timeout().connect_seconds(
-        [this, c]() {
-          setCursor(c);
-          return false;
-        },
-        1);
+namespace {
+
+// Converts a GTK3 GtkBuilder GtkMenu (the documented menu-file format) into a GMenu, since GTK4
+// has no GtkMenu. Every item gets an action "menu.<id>", items without an id an inert one.
+struct MenuParser {
+  struct Menu {
+    Glib::RefPtr<Gio::Menu> root = Gio::Menu::create();
+    Glib::RefPtr<Gio::Menu> section = Gio::Menu::create();
+  };
+  struct Item {
+    std::string id;
+    std::string label;
+    bool use_underline = false;
+    bool visible = true;
+    bool sensitive = true;
+    bool separator = false;
+    Glib::RefPtr<Gio::Menu> submenu;
+  };
+  // Open <object> elements, innermost last: a Menu or an Item
+  std::vector<std::variant<Menu, Item>> stack;
+  std::string property;  // name of the open <property>, if any
+  std::string text;
+  Glib::RefPtr<Gio::Menu> result;
+  std::vector<Item> items;  // every item with an id, for its sensitivity
+  bool found = false;
+
+  static Item* top_item(MenuParser& p) {
+    return p.stack.empty() ? nullptr : std::get_if<Item>(&p.stack.back());
+  }
+
+  static void start(GMarkupParseContext*, const char* element, const char** names,
+                    const char** values, gpointer data, GError**) {
+    auto& p = *static_cast<MenuParser*>(data);
+    auto attr = [&](const char* key) -> const char* {
+      for (int i = 0; names[i] != nullptr; ++i) {
+        if (strcmp(names[i], key) == 0) return values[i];
+      }
+      return nullptr;
+    };
+    if (strcmp(element, "object") == 0) {
+      const char* cls = attr("class");
+      const char* id = attr("id");
+      std::string_view klass = cls != nullptr ? cls : "";
+      if (klass == "GtkMenu") {
+        // Outside of the "menu" object only submenus matter
+        if (p.stack.empty() && (id == nullptr || strcmp(id, "menu") != 0 || p.found)) {
+          p.stack.emplace_back(Item{.visible = false});
+          return;
+        }
+        p.found = true;
+        p.stack.emplace_back(Menu{});
+      } else {
+        Item item;
+        item.id = id != nullptr ? id : "";
+        item.separator = klass.find("Separator") != std::string_view::npos;
+        item.visible = !p.stack.empty();
+        p.stack.emplace_back(std::move(item));
+      }
+    } else if (strcmp(element, "property") == 0) {
+      const char* name = attr("name");
+      p.property = name != nullptr ? name : "";
+      std::replace(p.property.begin(), p.property.end(), '-', '_');
+      p.text.clear();
+    }
+  }
+
+  static void end(GMarkupParseContext*, const char* element, gpointer data, GError**) {
+    auto& p = *static_cast<MenuParser*>(data);
+    if (strcmp(element, "property") == 0) {
+      if (auto* item = top_item(p)) {
+        auto truthy = [&] {
+          auto v = Glib::ustring(p.text).lowercase();
+          return v == "true" || v == "yes" || v == "1" || v == "t" || v == "y";
+        };
+        if (p.property == "label") item->label = p.text;
+        if (p.property == "use_underline") item->use_underline = truthy();
+        if (p.property == "visible") item->visible = item->visible && truthy();
+        if (p.property == "sensitive") item->sensitive = truthy();
+      }
+      p.property.clear();
+      return;
+    }
+    if (strcmp(element, "object") != 0 || p.stack.empty()) return;
+    auto node = std::move(p.stack.back());
+    p.stack.pop_back();
+    if (auto* menu = std::get_if<Menu>(&node)) {
+      if (menu->section->get_n_items() > 0) menu->root->append_section(menu->section);
+      if (auto* parent = top_item(p)) {
+        parent->submenu = menu->root;
+      } else if (p.stack.empty()) {
+        p.result = menu->root;
+      }
+      return;
+    }
+    auto& item = std::get<Item>(node);
+    auto* menu = p.stack.empty() ? nullptr : std::get_if<Menu>(&p.stack.back());
+    if (menu == nullptr || !item.visible) return;
+    if (item.separator) {
+      if (menu->section->get_n_items() > 0) {
+        menu->root->append_section(menu->section);
+        menu->section = Gio::Menu::create();
+      }
+      return;
+    }
+    // GMenu labels always use mnemonics: escape the underscores GTK3 showed as is
+    std::string label = item.label;
+    if (!item.use_underline) {
+      for (size_t pos = 0; (pos = label.find('_', pos)) != std::string::npos; pos += 2) {
+        label.insert(pos, 1, '_');
+      }
+    }
+    auto entry = Gio::MenuItem::create(label, "");
+    if (item.submenu) {
+      entry->set_submenu(item.submenu);
+    } else {
+      entry->set_detailed_action(
+          item.id.empty() || !Gio::Action::name_is_valid(item.id) ? "menu.-" : "menu." + item.id);
+      if (!item.id.empty()) p.items.push_back(item);
+    }
+    menu->section->append_item(entry);
+  }
+
+  static void on_text(GMarkupParseContext*, const char* text, gsize len, gpointer data, GError**) {
+    auto& p = *static_cast<MenuParser*>(data);
+    if (!p.property.empty()) p.text.append(text, len);
+  }
+};
+
+}  // namespace
+
+void AModule::setupMenu() {
+  if (!config_["menu"].isString()) {
+    return;
+  }
+  try {
+    std::string menuFile = config_["menu-file"].asString();
+    // there might be "~" or "$HOME" in original path, try to expand it.
+    auto result = Config::tryExpandPath(menuFile, "");
+    if (result.empty()) {
+      throw std::runtime_error("Failed to expand file: " + menuFile);
+    }
+    menuFile = result.front();
+    std::ifstream file(menuFile);
+    if (!file.is_open()) {
+      throw std::runtime_error("Failed to open file: " + menuFile);
+    }
+    std::stringstream content;
+    content << file.rdbuf();
+
+    MenuParser parser;
+    static const GMarkupParser callbacks{.start_element = MenuParser::start,
+                                         .end_element = MenuParser::end,
+                                         .text = MenuParser::on_text};
+    auto* ctx =
+        g_markup_parse_context_new(&callbacks, G_MARKUP_TREAT_CDATA_AS_TEXT, &parser, nullptr);
+    GError* error = nullptr;
+    const auto& xml = content.str();
+    bool ok = g_markup_parse_context_parse(ctx, xml.data(), xml.size(), &error) != 0 &&
+              g_markup_parse_context_end_parse(ctx, &error) != 0;
+    g_markup_parse_context_free(ctx);
+    if (!ok) {
+      std::string message = error != nullptr ? error->message : "";
+      g_clear_error(&error);
+      throw std::runtime_error("Error found in the file " + menuFile + ": " + message);
+    }
+    if (!parser.result) {
+      throw std::runtime_error("Failed to get 'menu' object from GtkBuilder");
+    }
+
+    auto actions = Gio::SimpleActionGroup::create();
+    actions->add_action("-");
+    for (const auto& item : parser.items) {
+      if (actions->lookup_action(item.id)) {
+        continue;
+      }
+      const auto& command = config_["menu-actions"][item.id];
+      auto action = actions->add_action(
+          item.id, [cmd = command.isString() ? command.asString() : std::string()] {
+            if (!cmd.empty()) {
+              waybar::util::command::forkExec(cmd, "GtkMenu");
+            }
+          });
+      action->set_enabled(item.sensitive);
+    }
+    for (auto it = config_["menu-actions"].begin(); it != config_["menu-actions"].end(); ++it) {
+      if (!actions->lookup_action(it.key().asString())) {
+        spdlog::warn("Menu item '{}' not found in builder file", it.key().asString());
+      }
+    }
+    event_box_.insert_action_group("menu", actions);
+
+    menu_ = new Gtk::PopoverMenu(parser.result);
+    menu_->signal_map().connect(
+        [this] { util::update_menu_items(GTK_WIDGET(menu_->gobj()), false); });
+    menu_->set_has_arrow(false);
+    menu_->set_halign(Gtk::Align::START);
+    menu_->set_parent(event_box_);
+    util::unhover_menu_ancestors(GTK_WIDGET(menu_->gobj()));
+  } catch (std::runtime_error& e) {
+    spdlog::warn("Error while creating the menu : {}. Menu popup not activated.", e.what());
   }
 }
 
-// Backward-compat overload: honor legacy numeric Gdk::CursorType configs (pre-0.16)
-void AModule::setCursor(Gdk::CursorType const& c) {
-  auto gdk_window = event_box_.get_window();
-  if (gdk_window) {
-    auto cursor = Gdk::Cursor::create(gdk_window->get_display(), c);
-    gdk_window->set_cursor(cursor);
-  } else {
-    // window may not be accessible yet, in this case,
-    // schedule another call for setting the cursor in 1 sec
-    cursor_timeout_conn_ = Glib::signal_timeout().connect_seconds(
-        [this, c]() {
-          setCursor(c);
-          return false;
-        },
-        1);
-  }
-}
+void AModule::setCursor(const std::string& name) { event_box_.set_cursor(name); }
 
-bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
-  if (auto* module = event_box_.get_child(); module != nullptr) {
-    module->set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
-  }
+bool AModule::handleToggle(const ButtonEvent& e) { return handleUserEvent(e); }
 
-  // Default behavior indicating event availability
-  if (hasUserEvents_ && !config_.isMember("cursor")) {
-    setCursor("pointer");
-  }
+bool AModule::handleRelease(const ButtonEvent& e) { return handleUserEvent(e); }
 
-  return false;
-}
-
-bool AModule::handleMouseLeave(GdkEventCrossing* const& e) {
-  if (auto* module = event_box_.get_child(); module != nullptr) {
-    module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
-  }
-
-  // Default behavior indicating event availability
-  if (hasUserEvents_ && !config_.isMember("cursor")) {
-    setCursor("default");
-  }
-
-  return false;
-}
-
-bool AModule::handleToggle(GdkEventButton* const& e) { return handleUserEvent(e); }
-
-bool AModule::handleRelease(GdkEventButton* const& e) { return handleUserEvent(e); }
-
-bool AModule::handleUserEvent(GdkEventButton* const& e) {
+bool AModule::handleUserEvent(const ButtonEvent& e) {
   bool handled = false;
   std::string format{};
-  const std::map<std::pair<uint, GdkEventType>, std::string>::const_iterator& rec{
-      eventMap_.find(std::pair(e->button, e->type))};
+  const auto rec = eventMap_.find(std::pair(e.button, e.type));
 
   if (rec != eventMap_.cend()) {
     // First call module actions
@@ -231,14 +512,9 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
   if (config_["menu"].isString()) {
     // Check if the event is the one specified for the "menu" option
     if (rec->second == config_["menu"].asString() && menu_ != nullptr) {
-      // Popup the menu
-      gtk_widget_show_all(GTK_WIDGET(menu_));
-      gtk_menu_popup_at_pointer(GTK_MENU(menu_), reinterpret_cast<GdkEvent*>(e));
+      menu_->set_pointing_to(Gdk::Rectangle(static_cast<int>(e.x), static_cast<int>(e.y), 1, 1));
+      menu_->popup();
       handled = true;
-      // Manually reset prelight to make sure the module doesn't stay in a hover state
-      if (auto* module = event_box_.get_child(); module != nullptr) {
-        module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
-      }
     }
   }
   // Second call user scripts
@@ -262,8 +538,8 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
   }
   if (!format.empty()) {
     handled = true;
-    const int width = gdk_window_get_width(e->window);
-    const int height = gdk_window_get_height(e->window);
+    const int width = std::max(1, event_box_.get_width());
+    const int height = std::max(1, event_box_.get_height());
     // Substitute {x}/{y} with the click position. The configured command is
     // arbitrary user input that may contain literal braces which are not {x}/{y}
     // (e.g. `echo ${HOME}`, `awk '{print $1}'`, brace expansions). Those make
@@ -273,8 +549,8 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
     std::string cmd = format;
     if (format.find("{x}") != std::string::npos || format.find("{y}") != std::string::npos) {
       try {
-        cmd = fmt::format(fmt::runtime(format), fmt::arg("x", (int)round(100. * e->x / width)),
-                          fmt::arg("y", (int)round(100. * e->y / height)));
+        cmd = fmt::format(fmt::runtime(format), fmt::arg("x", (int)round(100. * e.x / width)),
+                          fmt::arg("y", (int)round(100. * e.y / height)));
       } catch (const fmt::format_error& err) {
         spdlog::warn("Failed to format command '{}': {}. Running it unformatted.", format,
                      err.what());
@@ -288,69 +564,49 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
   return handled;
 }
 
-AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
+AModule::SCROLL_DIR AModule::getScrollDir(const ScrollEvent& e) {
   // only affects up/down
   bool reverse = config_["reverse-scrolling"].asBool();
-  bool reverse_mouse = config_["reverse-mouse-scrolling"].asBool();
-
   // ignore reverse-scrolling if event comes from a mouse wheel
-  GdkDevice* device = gdk_event_get_source_device((GdkEvent*)e);
-  if (device != nullptr && gdk_device_get_source(device) == GDK_SOURCE_MOUSE) {
-    reverse = reverse_mouse;
+  if (e.source == GDK_SOURCE_MOUSE) {
+    reverse = config_["reverse-mouse-scrolling"].asBool();
   }
 
-  switch (e->direction) {
-    case GDK_SCROLL_UP:
-      return reverse ? SCROLL_DIR::DOWN : SCROLL_DIR::UP;
-    case GDK_SCROLL_DOWN:
-      return reverse ? SCROLL_DIR::UP : SCROLL_DIR::DOWN;
-    case GDK_SCROLL_LEFT:
-      return SCROLL_DIR::LEFT;
-    case GDK_SCROLL_RIGHT:
-      return SCROLL_DIR::RIGHT;
-    case GDK_SCROLL_SMOOTH: {
-      SCROLL_DIR dir{SCROLL_DIR::NONE};
+  distance_scrolled_y_ += e.dy;
+  distance_scrolled_x_ += e.dx;
 
-      distance_scrolled_y_ += e->delta_y;
-      distance_scrolled_x_ += e->delta_x;
-
-      gdouble threshold = 0;
-      if (config_["smooth-scrolling-threshold"].isNumeric()) {
-        threshold = config_["smooth-scrolling-threshold"].asDouble();
-      }
-
-      if (distance_scrolled_y_ < -threshold) {
-        dir = reverse ? SCROLL_DIR::DOWN : SCROLL_DIR::UP;
-      } else if (distance_scrolled_y_ > threshold) {
-        dir = reverse ? SCROLL_DIR::UP : SCROLL_DIR::DOWN;
-      } else if (distance_scrolled_x_ > threshold) {
-        dir = SCROLL_DIR::RIGHT;
-      } else if (distance_scrolled_x_ < -threshold) {
-        dir = SCROLL_DIR::LEFT;
-      }
-
-      switch (dir) {
-        case SCROLL_DIR::UP:
-        case SCROLL_DIR::DOWN:
-          distance_scrolled_y_ = 0;
-          break;
-        case SCROLL_DIR::LEFT:
-        case SCROLL_DIR::RIGHT:
-          distance_scrolled_x_ = 0;
-          break;
-        case SCROLL_DIR::NONE:
-          break;
-      }
-
-      return dir;
-    }
-    // Silence -Wreturn-type:
-    default:
-      return SCROLL_DIR::NONE;
+  double threshold = 0;
+  if (config_["smooth-scrolling-threshold"].isNumeric()) {
+    threshold = config_["smooth-scrolling-threshold"].asDouble();
   }
+
+  SCROLL_DIR dir{SCROLL_DIR::NONE};
+  if (distance_scrolled_y_ < -threshold) {
+    dir = reverse ? SCROLL_DIR::DOWN : SCROLL_DIR::UP;
+  } else if (distance_scrolled_y_ > threshold) {
+    dir = reverse ? SCROLL_DIR::UP : SCROLL_DIR::DOWN;
+  } else if (distance_scrolled_x_ > threshold) {
+    dir = SCROLL_DIR::RIGHT;
+  } else if (distance_scrolled_x_ < -threshold) {
+    dir = SCROLL_DIR::LEFT;
+  }
+
+  switch (dir) {
+    case SCROLL_DIR::UP:
+    case SCROLL_DIR::DOWN:
+      distance_scrolled_y_ = 0;
+      break;
+    case SCROLL_DIR::LEFT:
+    case SCROLL_DIR::RIGHT:
+      distance_scrolled_x_ = 0;
+      break;
+    case SCROLL_DIR::NONE:
+      break;
+  }
+  return dir;
 }
 
-bool AModule::handleScroll(GdkEventScroll* e) {
+bool AModule::handleScroll(const ScrollEvent& e) {
   auto dir = getScrollDir(e);
   std::string eventName{};
 

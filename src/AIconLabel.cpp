@@ -20,13 +20,13 @@ AIconLabel::AIconLabel(const Json::Value& config, const std::string& name, const
     app_icon_size_ = config["icon-size"].asUInt();
   }
   image_.set_pixel_size(app_icon_size_);
-  event_box_.remove();
+  event_box_.unset_child();
   label_.unset_name();
-  label_.get_style_context()->remove_class(MODULE_CLASS);
-  box_.get_style_context()->add_class(MODULE_CLASS);
+  label_.remove_css_class(MODULE_CLASS);
+  box_.add_css_class(MODULE_CLASS);
   if (!id.empty()) {
-    label_.get_style_context()->remove_class(id);
-    box_.get_style_context()->add_class(id);
+    label_.remove_css_class(id);
+    box_.add_css_class(id);
   }
 
   int rot = 0;
@@ -38,9 +38,9 @@ AIconLabel::AIconLabel(const Json::Value& config, const std::string& name, const
   }
 
   if ((rot % 2) == 0)
-    box_.set_orientation(Gtk::Orientation::ORIENTATION_HORIZONTAL);
+    box_.set_orientation(Gtk::Orientation::HORIZONTAL);
   else
-    box_.set_orientation(Gtk::Orientation::ORIENTATION_VERTICAL);
+    box_.set_orientation(Gtk::Orientation::VERTICAL);
   box_.set_name(name);
 
   int spacing = config_["icon-spacing"].isInt() ? config_["icon-spacing"].asInt() : 8;
@@ -56,14 +56,16 @@ AIconLabel::AIconLabel(const Json::Value& config, const std::string& name, const
   }
 
   if ((rot == 0 || rot == 3) ^ swap_icon_label) {
-    box_.add(image_);
-    box_.add(label_);
+    box_.append(image_);
+    box_.append(label_);
   } else {
-    box_.add(label_);
-    box_.add(image_);
+    box_.append(label_);
+    box_.append(image_);
   }
+  // GTK3 widgets started hidden until shown: the image stays so until an icon is set
+  image_.set_visible(false);
 
-  event_box_.add(box_);
+  event_box_.set_child(box_);
 }
 
 std::tuple<std::string, std::string> AIconLabel::extractIcon(const std::string& input) {
@@ -122,22 +124,20 @@ auto AIconLabel::update() -> void {
     if (iconLabel.front() == '/') {
       try {
         // A FIFO or a device would block the main loop in open() or read()
-        if (!Glib::file_test(iconLabel, Glib::FILE_TEST_IS_REGULAR)) {
+        if (!Glib::file_test(iconLabel, Glib::FileTest::IS_REGULAR)) {
           throw Glib::FileError(Glib::FileError::INVALID_ARGUMENT, "not a regular file");
         }
         int scaled_icon_size = app_icon_size_ * image_.get_scale_factor();
         auto pixbuf = Gdk::Pixbuf::create_from_file(iconLabel, scaled_icon_size, scaled_icon_size);
-
-        auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
-                                                              image_.get_window());
-        image_.set(surface);
+        image_.set_pixbuf(pixbuf, image_.get_scale_factor());
         image_.set_visible(true);
-      } catch (const Glib::Exception& e) {
+      } catch (const Glib::Error& e) {
         spdlog::warn("Failed to load embedded icon {}: {}", iconLabel, std::string(e.what()));
         image_.set_visible(false);
       }
     } else {
-      image_.set_from_icon_name(iconLabel, Gtk::ICON_SIZE_INVALID);
+      image_.set_from_icon_name(iconLabel);
+      image_.set_pixel_size(app_icon_size_);
       image_.set_visible(true);
     }
   }

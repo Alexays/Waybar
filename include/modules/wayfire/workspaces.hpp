@@ -20,7 +20,8 @@ class Workspaces : public AModule {
   Gtk::Box box_;
   std::vector<Gtk::Button> buttons_;
 
-  auto handleScroll(GdkEventScroll* e) -> bool override;
+  auto handleScroll(const ScrollEvent& e) -> bool override;
+
   auto update() -> void override;
   auto update_box() -> void;
 

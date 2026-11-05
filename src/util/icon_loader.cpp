@@ -120,72 +120,30 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_desktop_app_info(const std::st
   return get_app_info_by_name(desktop_file);
 }
 
-Glib::RefPtr<Gdk::Pixbuf> IconLoader::load_icon_from_file(std::string const& icon_path, int size) {
-  try {
-    auto pb = Gdk::Pixbuf::create_from_file(icon_path, size, size);
-    return pb;
-  } catch (...) {
-    return {};
-  }
-}
-
-std::string IconLoader::get_icon_name_from_icon_theme(
-    const Glib::RefPtr<Gtk::IconTheme>& icon_theme, const std::string& app_id) {
-  if (icon_theme->lookup_icon(app_id, 24)) return app_id;
-
-  return "";
-}
-
 bool IconLoader::image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
                                  Glib::RefPtr<Gio::DesktopAppInfo> app_info, int size) {
-  std::string ret_icon_name = "unknown";
+  Glib::RefPtr<Gtk::IconPaintable> paintable;
+  const int scale = image.get_scale_factor();
   if (app_info) {
-    std::string icon_name =
-        get_icon_name_from_icon_theme(icon_theme, app_info->get_startup_wm_class());
-    if (!icon_name.empty()) {
-      ret_icon_name = icon_name;
-    } else {
-      if (app_info->get_icon()) {
-        ret_icon_name = app_info->get_icon()->to_string();
-      }
+    const std::string wm_class = app_info->get_startup_wm_class();
+    if (!wm_class.empty() && icon_theme->has_icon(wm_class)) {
+      paintable = icon_theme->lookup_icon(wm_class, size, scale);
+    } else if (auto icon = app_info->get_icon()) {
+      // A themed name or a file; GTK falls back to image-missing
+      paintable = icon_theme->lookup_icon(icon, size, scale);
     }
   }
-
-  Glib::RefPtr<Gdk::Pixbuf> pixbuf;
-  auto scaled_icon_size = size * image.get_scale_factor();
-
-  try {
-    pixbuf = icon_theme->load_icon(ret_icon_name, scaled_icon_size, Gtk::ICON_LOOKUP_FORCE_SIZE);
-  } catch (...) {
-    if (Glib::file_test(ret_icon_name, Glib::FILE_TEST_EXISTS)) {
-      pixbuf = load_icon_from_file(ret_icon_name, scaled_icon_size);
-    } else {
-      try {
-        pixbuf = DefaultGtkIconThemeWrapper::load_icon(
-            "image-missing", scaled_icon_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
-      } catch (...) {
-        pixbuf = {};
-      }
-    }
+  if (!paintable) {
+    paintable = icon_theme->lookup_icon("unknown", size, scale);
   }
-
-  if (pixbuf) {
-    if (pixbuf->get_width() != scaled_icon_size && pixbuf->get_height() > 0) {
-      int width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
-      pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
-    }
-    auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image.get_scale_factor(),
-                                                          image.get_window());
-    image.set(surface);
-    return true;
-  }
-
-  return false;
+  image.set(paintable);
+  image.set_pixel_size(size);
+  return true;
 }
 
 void IconLoader::add_custom_icon_theme(const std::string& theme_name) {
   auto icon_theme = Gtk::IconTheme::create();
-  icon_theme->set_custom_theme(theme_name);
+  icon_theme->set_theme_name(theme_name);
   custom_icon_themes_.push_back(icon_theme);
   spdlog::debug("Use custom icon theme: {}", theme_name);
 }

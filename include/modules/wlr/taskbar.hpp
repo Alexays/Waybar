@@ -74,9 +74,10 @@ class Task {
   /* Whether the toplevel is on this bar's output, per the protocol's
    * output_enter/output_leave events */
   bool on_bar_output_ = false;
-  bool size_allocate_connected_ = false;
   bool app_id_lookup_pending_ = false;
   bool title_lookup_pending_ = false;
+  /* The button of the press whose release runs an action, 0 once a drag starts */
+  guint pressed_button_ = 0;
   /* The app_id or title that app_info_ was last looked up from */
   std::string lookup_source_;
 
@@ -93,15 +94,10 @@ class Task {
   uint32_t state_ = 0;
   struct ext_workspace_handle_v1* workspace_ = nullptr;
 
-  int32_t drag_start_x;
-  int32_t drag_start_y;
-  int32_t drag_start_button = -1;
-
  private:
   std::string repr() const;
   std::string state_string(bool = false) const;
   void set_minimize_hint();
-  void on_button_size_allocated(Gtk::Allocation& alloc);
   void hide_if_ignored();
   void hide_if_duplicate();
   void update_duplicates();
@@ -134,13 +130,7 @@ class Task {
   void handle_closed();
 
   /* Callbacks for Gtk events */
-  bool handle_clicked(GdkEventButton*);
-  bool handle_button_release(GdkEventButton*);
-  bool handle_motion_notify(GdkEventMotion*);
-  void handle_drag_data_get(const Glib::RefPtr<Gdk::DragContext>& context,
-                            Gtk::SelectionData& selection_data, guint info, guint time);
-  void handle_drag_data_received(const Glib::RefPtr<Gdk::DragContext>& context, int x, int y,
-                                 Gtk::SelectionData selection_data, guint info, guint time);
+  void handle_clicked(guint button);
 
  public:
   bool operator==(const Task&) const;
@@ -210,7 +200,7 @@ class Taskbar : public waybar::AModule {
 
  public:
   void add_button(Gtk::Button&);
-  void move_button(Gtk::Button&, int);
+  void move_button_to_start(Gtk::Button&);
   bool reorder_task(uint32_t dragged_id, uint32_t destination_id);
   void remove_button(Gtk::Button&);
   void remove_task(uint32_t);

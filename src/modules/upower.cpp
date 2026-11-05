@@ -5,6 +5,7 @@
 #include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
 
+#include "util/gtk_icon.hpp"
 #include "util/string.hpp"
 
 namespace waybar::modules {
@@ -18,11 +19,11 @@ UPower::UPower(const std::string& id, const Json::Value& config)
   box_.set_name(name_);
   box_.set_spacing(0);
   // Tooltip box
-  contentBox_.set_orientation((box_.get_orientation() == Gtk::ORIENTATION_HORIZONTAL)
-                                  ? Gtk::ORIENTATION_VERTICAL
-                                  : Gtk::ORIENTATION_HORIZONTAL);
+  contentBox_.set_orientation((box_.get_orientation() == Gtk::Orientation::HORIZONTAL)
+                                  ? Gtk::Orientation::VERTICAL
+                                  : Gtk::Orientation::HORIZONTAL);
   // Get current theme
-  gtkTheme_ = Gtk::IconTheme::get_default();
+  gtkTheme_ = DefaultGtkIconThemeWrapper::theme();
 
   // Icon Size
   if (config_["icon-size"].isInt()) {
@@ -49,8 +50,8 @@ UPower::UPower(const std::string& id, const Json::Value& config)
     tooltip_padding_ = config_["tooltip-padding"].asInt();
     contentBox_.set_margin_top(tooltip_padding_);
     contentBox_.set_margin_bottom(tooltip_padding_);
-    contentBox_.set_margin_left(tooltip_padding_);
-    contentBox_.set_margin_right(tooltip_padding_);
+    contentBox_.set_margin_start(tooltip_padding_);
+    contentBox_.set_margin_end(tooltip_padding_);
   }
 
   // Tooltip Format
@@ -58,13 +59,11 @@ UPower::UPower(const std::string& id, const Json::Value& config)
 
   // Start watching DBUS
   watcherID_ = Gio::DBus::watch_name(
-      Gio::DBus::BusType::BUS_TYPE_SYSTEM, "org.freedesktop.UPower",
-      sigc::mem_fun(*this, &UPower::onAppear), sigc::mem_fun(*this, &UPower::onVanished),
-      Gio::DBus::BusNameWatcherFlags::BUS_NAME_WATCHER_FLAGS_AUTO_START);
+      Gio::DBus::BusType::SYSTEM, "org.freedesktop.UPower", sigc::mem_fun(*this, &UPower::onAppear),
+      sigc::mem_fun(*this, &UPower::onVanished), Gio::DBus::BusNameWatcherFlags::AUTO_START);
   // Devices are requested once the connection is up: nothing here may wait for upowerd, which
   // rules out UpClient since it blocks the main thread whenever a device is added
-  Gio::DBus::Connection::get(Gio::DBus::BusType::BUS_TYPE_SYSTEM,
-                             sigc::mem_fun(*this, &UPower::getConn_cb));
+  Gio::DBus::Connection::get(Gio::DBus::BusType::SYSTEM, sigc::mem_fun(*this, &UPower::getConn_cb));
 
   // Subscribe tooltip query events
   box_.set_has_tooltip(AModule::tooltipEnabled());
@@ -193,14 +192,14 @@ auto UPower::update() -> void {
   std::lock_guard<std::mutex> guard{mutex_};
   // Don't update widget if the UPower service isn't running
   if (!upRunning_ || sleeping_) {
-    if (hideIfEmpty_) box_.hide();
+    if (hideIfEmpty_) box_.set_visible(false);
     return;
   }
 
   getUpDeviceInfo(upDevice_);
 
   if (upDevice_.upDevice == NULL && hideIfEmpty_) {
-    box_.hide();
+    box_.set_visible(false);
     return;
   }
   /* Every Device which is handled by Upower and which is not
@@ -211,14 +210,12 @@ auto UPower::update() -> void {
   // Get CSS status
   const auto status{getDeviceStatus(upDevice_.state)};
   // Remove last status if it exists
-  if (!lastStatus_.empty() && box_.get_style_context()->has_class(lastStatus_))
-    box_.get_style_context()->remove_class(lastStatus_);
-  if (!box_.get_style_context()->has_class(std::string(status)))
-    box_.get_style_context()->add_class(std::string(status));
+  if (!lastStatus_.empty() && box_.has_css_class(lastStatus_)) box_.remove_css_class(lastStatus_);
+  if (!box_.has_css_class(std::string(status))) box_.add_css_class(std::string(status));
   lastStatus_ = status;
 
   if (devices_.size() == 0 && !upDeviceValid && hideIfEmpty_) {
-    box_.hide();
+    box_.set_visible(false);
     // Call parent update
     AModule::update();
     return;
@@ -228,9 +225,10 @@ auto UPower::update() -> void {
   // Set icon
   if (upDevice_.icon_name.empty() || !gtkTheme_->has_icon(upDevice_.icon_name))
     upDevice_.icon_name = NO_BATTERY;
-  image_.set_from_icon_name(upDevice_.icon_name, Gtk::ICON_SIZE_INVALID);
+  image_.set_from_icon_name(upDevice_.icon_name);
+  image_.set_visible(true);
 
-  box_.show();
+  box_.set_visible(true);
 
   // Call parent update
   ALabel::update();
@@ -250,7 +248,7 @@ void UPower::getConn_cb(Glib::RefPtr<Gio::AsyncResult>& result) {
                                 UPOWER_NAME, "DeviceRemoved", UPOWER_PATH);
     resetDevices();
   } catch (const Glib::Error& e) {
-    spdlog::error("Upower. DBus connection error. {}", e.what().c_str());
+    spdlog::error("Upower. DBus connection error. {}", e.what());
   }
 }
 
@@ -292,7 +290,7 @@ void UPower::enumerateDevices_cb(Glib::RefPtr<Gio::AsyncResult>& result) {
       for (const auto& objectPath : objectPaths.get()) loadDevice(objectPath);
     }
   } catch (const Glib::Error& e) {
-    spdlog::error("Upower. Enumerate devices error. {}", e.what().c_str());
+    spdlog::error("Upower. Enumerate devices error. {}", e.what());
   }
 }
 
@@ -531,10 +529,9 @@ bool UPower::queryTooltipCb(int x, int y, bool keyboard_tooltip,
                             const Glib::RefPtr<Gtk::Tooltip>& tooltip) {
   std::lock_guard<std::mutex> guard{mutex_};
 
-  // remove() only unparents a record; deleting it also destroys its managed children
-  for (auto* child : contentBox_.get_children()) {
+  // Records are managed: removing one destroys it with its children
+  while (auto* child = contentBox_.get_first_child()) {
     contentBox_.remove(*child);
-    delete child;
   }
 
   // Fill content box with the content
@@ -546,42 +543,41 @@ bool UPower::queryTooltipCb(int x, int y, bool keyboard_tooltip,
         pairDev.second.kind != UpDeviceKind::UP_DEVICE_KIND_LINE_POWER) {
       // Make box record
       Gtk::Box* boxRec{Gtk::make_managed<Gtk::Box>(box_.get_orientation(), tooltip_spacing_)};
-      contentBox_.add(*boxRec);
+      contentBox_.append(*boxRec);
       Gtk::Box* boxDev{Gtk::make_managed<Gtk::Box>(box_.get_orientation())};
       Gtk::Box* boxUsr{Gtk::make_managed<Gtk::Box>(box_.get_orientation())};
-      boxRec->add(*boxDev);
-      boxRec->add(*boxUsr);
+      boxRec->append(*boxDev);
+      boxRec->append(*boxUsr);
       // Construct device box
       // Set icon from kind
       std::string iconNameDev{getDeviceIcon(pairDev.second.kind)};
       if (!gtkTheme_->has_icon(iconNameDev)) iconNameDev = (char*)NO_BATTERY.c_str();
       Gtk::Image* iconDev{Gtk::make_managed<Gtk::Image>()};
-      iconDev->set_from_icon_name(iconNameDev, Gtk::ICON_SIZE_INVALID);
+      iconDev->set_from_icon_name(iconNameDev);
       iconDev->set_pixel_size(iconSize_);
-      boxDev->add(*iconDev);
+      boxDev->append(*iconDev);
       // Set label from model
       Gtk::Label* labelDev{Gtk::make_managed<Gtk::Label>(pairDev.second.model)};
       // The model comes from the device (a Bluetooth name); keep it within what GDK can draw
       labelDev->set_max_width_chars(50);
-      labelDev->set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
+      labelDev->set_ellipsize(Pango::EllipsizeMode::END);
       labelDev->set_single_line_mode(true);
-      boxDev->add(*labelDev);
+      boxDev->append(*labelDev);
       // Construct user box
       // Set icon from icon state
       if (pairDev.second.icon_name.empty() || !gtkTheme_->has_icon(pairDev.second.icon_name))
         pairDev.second.icon_name = NO_BATTERY;
       Gtk::Image* iconTooltip{Gtk::make_managed<Gtk::Image>()};
-      iconTooltip->set_from_icon_name(pairDev.second.icon_name, Gtk::ICON_SIZE_INVALID);
+      iconTooltip->set_from_icon_name(pairDev.second.icon_name);
       iconTooltip->set_pixel_size(iconSize_);
-      boxUsr->add(*iconTooltip);
+      boxUsr->append(*iconTooltip);
       // Set markup text
       Gtk::Label* labelTooltip{Gtk::make_managed<Gtk::Label>()};
       labelTooltip->set_markup(getText(pairDev.second, tooltipFormat_));
-      boxUsr->add(*labelTooltip);
+      boxUsr->append(*labelTooltip);
     }
   }
   tooltip->set_custom(contentBox_);
-  contentBox_.show_all();
 
   return true;
 }

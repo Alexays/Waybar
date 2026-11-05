@@ -91,7 +91,9 @@ void IPC::startIPC(int initial_socketfd) {
       auto istream = Gio::DataInputStream::create(unix_istream);
       auto ostream = Gio::DataOutputStream::create(unix_ostream);
 
-      if (!ostream->put_string("\"EventStream\"\n") || !ostream->flush()) {
+      // put_string writes through (the data stream is unbuffered); giomm's flush() wrapper
+      // returns false on unix streams, which have no flush
+      if (!ostream->put_string("\"EventStream\"\n")) {
         spdlog::error("Niri IPC: failed to start event stream");
         std::this_thread::sleep_for(std::chrono::seconds(2));
         continue;
@@ -298,8 +300,7 @@ Json::Value IPC::send(const Json::Value& request) {
   writer->write(request, &oss);
   oss << '\n';
 
-  if (!ostream->put_string(oss.str()) || !ostream->flush())
-    throw std::runtime_error("error writing to niri socket");
+  if (!ostream->put_string(oss.str())) throw std::runtime_error("error writing to niri socket");
 
   std::string line;
   if (!istream->read_line(line)) throw std::runtime_error("error reading from niri socket");

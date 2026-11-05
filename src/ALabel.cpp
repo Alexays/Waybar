@@ -3,11 +3,8 @@
 #include <fmt/format.h>
 
 #include <algorithm>
-#include <fstream>
-#include <iostream>
 #include <util/command.hpp>
 
-#include "config.hpp"
 #include "util/tooltip.hpp"
 
 namespace waybar {
@@ -42,10 +39,10 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
       default_format_(format_) {
   label_.set_name(name);
   if (!id.empty()) {
-    label_.get_style_context()->add_class(id);
+    label_.add_css_class(id);
   }
-  label_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(label_);
+  label_.add_css_class(MODULE_CLASS);
+  event_box_.set_child(label_);
   if (tooltipEnabled()) {
     // Keep dynamic tooltip contents out of GtkWidget's tooltip-markup property.
     // Setting that property queues a display-wide tooltip query, which restarts
@@ -60,34 +57,35 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
           active_tooltip_ = tooltip;
           tooltip->set_markup(*last_tooltip_markup_);
           return true;
-        });
-    event_box_.signal_leave_notify_event().connect([this](GdkEventCrossing*) {
-      active_tooltip_.reset();
-      return false;
-    });
+        },
+        true);
     // GTK hides the tooltip on every scroll event and only shows it again once
     // the pointer moves, so a value being scrolled (volume, brightness) cannot
-    // be read while changing it. event-after also fires when a handler consumed
-    // the scroll, but before GTK's own tooltip handling, hence the idle.
-    event_box_.signal_event_after().connect([this](GdkEvent* e) {
-      if (e->type != GDK_SCROLL) {
-        return;
-      }
-      tooltip_requery_.disconnect();
-      tooltip_requery_ = Glib::signal_idle().connect([this] {
-        if (pointerOverModule()) {
-          label_.trigger_tooltip_query();
-        }
-        return false;
-      });
-    });
+    // be read while changing it. The capture phase sees the scroll even when a
+    // handler consumes it, but before GTK's own tooltip handling, hence the idle.
+    tooltip_scroll_ = Gtk::EventControllerScroll::create();
+    tooltip_scroll_->set_flags(Gtk::EventControllerScroll::Flags::BOTH_AXES);
+    tooltip_scroll_->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
+    tooltip_scroll_->signal_scroll().connect(
+        [this](double, double) {
+          tooltip_requery_.disconnect();
+          tooltip_requery_ = Glib::signal_idle().connect([this] {
+            if (pointerOverModule()) {
+              label_.trigger_tooltip_query();
+            }
+            return false;
+          });
+          return false;
+        },
+        false);
+    event_box_.add_controller(tooltip_scroll_);
   }
   if (config_["max-length"].isUInt()) {
     label_.set_max_width_chars(config_["max-length"].asInt());
-    label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
+    label_.set_ellipsize(Pango::EllipsizeMode::END);
     label_.set_single_line_mode(true);
   } else if (ellipsize && label_.get_max_width_chars() == -1) {
-    label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
+    label_.set_ellipsize(Pango::EllipsizeMode::END);
     label_.set_single_line_mode(true);
   }
 
@@ -105,7 +103,7 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
     rotate = config["rotate"].asUInt();
     if (not(rotate == 0 || rotate == 90 || rotate == 180 || rotate == 270))
       spdlog::warn("'rotate' is only supported in 90 degree increments {} is not valid.", rotate);
-    label_.set_angle(rotate);
+    label_.setAngle(rotate);
   }
 
   if (config_["align"].isDouble()) {
@@ -117,74 +115,16 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
     }
   }
 
-  // If a GTKMenu is requested in the config
-  if (config_["menu"].isString()) {
-    // Create the GTKMenu widget
-    try {
-      // Check that the file exists
-      std::string menuFile = config_["menu-file"].asString();
-
-      // there might be "~" or "$HOME" in original path, try to expand it.
-      auto result = Config::tryExpandPath(menuFile, "");
-      if (result.empty()) {
-        throw std::runtime_error("Failed to expand file: " + menuFile);
-      }
-
-      menuFile = result.front();
-      // Read the menu descriptor file
-      std::ifstream file(menuFile);
-      if (!file.is_open()) {
-        throw std::runtime_error("Failed to open file: " + menuFile);
-      }
-      std::stringstream fileContent;
-      fileContent << file.rdbuf();
-      GtkBuilder* builder = gtk_builder_new();
-
-      // Make the GtkBuilder and check for errors in his parsing
-      if (gtk_builder_add_from_string(builder, fileContent.str().c_str(), -1, nullptr) == 0U) {
-        g_object_unref(builder);
-        throw std::runtime_error("Error found in the file " + menuFile);
-      }
-
-      menu_ = gtk_builder_get_object(builder, "menu");
-      if (menu_ == nullptr) {
-        g_object_unref(builder);
-        throw std::runtime_error("Failed to get 'menu' object from GtkBuilder");
-      }
-      // Keep the menu alive after dropping the transient GtkBuilder.
-      g_object_ref(menu_);
-      submenus_ = std::map<std::string, GtkMenuItem*>();
-      menuActionsMap_ = std::map<std::string, std::string>();
-
-      // Linking actions to the GTKMenu based on
-      for (Json::Value::const_iterator it = config_["menu-actions"].begin();
-           it != config_["menu-actions"].end(); ++it) {
-        std::string key = it.key().asString();
-        auto* item = gtk_builder_get_object(builder, key.c_str());
-        if (item == nullptr) {
-          spdlog::warn("Menu item '{}' not found in builder file", key);
-          continue;
-        }
-        submenus_[key] = GTK_MENU_ITEM(item);
-        menuActionsMap_[key] = it->asString();
-        g_signal_connect_data(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
-                              g_strdup(menuActionsMap_[key].c_str()), (GClosureNotify)g_free,
-                              (GConnectFlags)0);
-      }
-      g_object_unref(builder);
-    } catch (std::runtime_error& e) {
-      spdlog::warn("Error while creating the menu : {}. Menu popup not activated.", e.what());
-    }
-  }
+  setupMenu();
 
   if (config_["justify"].isString()) {
     auto justify_str = config_["justify"].asString();
     if (justify_str == "left") {
-      label_.set_justify(Gtk::Justification::JUSTIFY_LEFT);
+      label_.set_justify(Gtk::Justification::LEFT);
     } else if (justify_str == "right") {
-      label_.set_justify(Gtk::Justification::JUSTIFY_RIGHT);
+      label_.set_justify(Gtk::Justification::RIGHT);
     } else if (justify_str == "center") {
-      label_.set_justify(Gtk::Justification::JUSTIFY_CENTER);
+      label_.set_justify(Gtk::Justification::CENTER);
     }
   }
 }
@@ -207,19 +147,7 @@ bool ALabel::setLabelMarkup(const Glib::ustring& markup) {
 }
 
 bool ALabel::pointerOverModule() const {
-  auto gdk_window = event_box_.get_window();
-  if (!gdk_window || !event_box_.get_mapped()) {
-    return false;
-  }
-  // On Wayland the pointer position is relative to whichever surface has the pointer, possibly
-  // another bar, so look for this window among the ancestors of the one under the pointer.
-  auto pointer = gdk_window->get_display()->get_default_seat()->get_pointer();
-  for (auto window = pointer->get_window_at_position(); window; window = window->get_parent()) {
-    if (window == gdk_window) {
-      return true;
-    }
-  }
-  return false;
+  return (event_box_.get_state_flags() & Gtk::StateFlags::PRELIGHT) == Gtk::StateFlags::PRELIGHT;
 }
 
 bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
@@ -235,8 +163,7 @@ bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
   }
   last_tooltip_markup_ = std::move(tooltip);
   if (active_tooltip_) {
-    // leave-notify is not always delivered when the pointer moves between
-    // adjacent modules, so active_tooltip_ may belong to another module.
+    // GTK shares one tooltip per display: once the pointer left, it may show another module.
     if (pointerOverModule()) {
       active_tooltip_->set_markup(*last_tooltip_markup_);
     } else {
@@ -339,12 +266,12 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
 }
 
 void ALabel::copyToClipboard(const std::string& literal) {
-  Gtk::Clipboard::get()->set_text(literal);
+  label_.get_clipboard()->set_text(literal);
 }
 
-bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
+bool waybar::ALabel::handleToggle(const ButtonEvent& e) {
   bool handled = false;
-  if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
+  if (config_["format-alt-click"].isUInt() && e.button == config_["format-alt-click"].asUInt()) {
     alt_ = !alt_;
     if (alt_ && config_["format-alt"].isString()) {
       format_ = config_["format-alt"].asString();
@@ -359,10 +286,6 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
     handled = true;
   }
   return AModule::handleToggle(e) || handled;
-}
-
-void ALabel::handleGtkMenuEvent(GtkMenuItem* /*menuitem*/, gpointer data) {
-  waybar::util::command::forkExec((char*)data, "GtkMenu");
 }
 
 std::string ALabel::getState(uint8_t value, bool lesser) {
@@ -385,10 +308,10 @@ std::string ALabel::getState(uint8_t value, bool lesser) {
   std::string valid_state;
   for (auto const& state : states) {
     if ((lesser ? value <= state.second : value >= state.second) && valid_state.empty()) {
-      label_.get_style_context()->add_class(state.first);
+      label_.add_css_class(state.first);
       valid_state = state.first;
     } else {
-      label_.get_style_context()->remove_class(state.first);
+      label_.remove_css_class(state.first);
     }
   }
   return valid_state;

@@ -2,14 +2,14 @@
 
 #include <dbus-status-notifier-item.h>
 #include <giomm/dbusproxy.h>
+#include <giomm/simpleactiongroup.h>
 #include <glibmm/refptr.h>
 #include <glibmm/ustring.h>
-#include <gtkmm/eventbox.h>
-#include <gtkmm/icontheme.h>
-#include <gtkmm/image.h>
-#include <gtkmm/menu.h>
+#include <gtkmm/eventcontrollerscroll.h>
+#include <gtkmm/gestureclick.h>
+#include <gtkmm/popovermenu.h>
 #include <json/json.h>
-#include <libdbusmenu-gtk/dbusmenu-gtk.h>
+#include <libdbusmenu-glib/client.h>
 #include <sigc++/trackable.h>
 
 #include <functional>
@@ -17,6 +17,8 @@
 #include <string_view>
 
 #include "bar.hpp"
+#include "util/module_box.hpp"
+#include "util/scaled_image.hpp"
 
 namespace waybar::modules::SNI {
 
@@ -45,8 +47,8 @@ class Item : public sigc::trackable {
 
   int icon_size;
   int effective_icon_size;
-  Gtk::Image image;
-  Gtk::EventBox event_box;
+  util::ScaledImage image;
+  util::ModuleBox event_box;
   std::string category;
   std::string id;
 
@@ -62,8 +64,8 @@ class Item : public sigc::trackable {
   std::string icon_theme_path;
   std::string menu;
   ToolTip tooltip;
-  DbusmenuGtkMenu* dbus_menu = nullptr;
-  Gtk::Menu* gtk_menu = nullptr;
+  DbusmenuClient* dbus_menu = nullptr;
+  Gtk::PopoverMenu* gtk_menu = nullptr;
   /**
    * ItemIsMenu flag means that the item only supports the context menu.
    * Default value is true because libappindicator supports neither ItemIsMenu nor Activate method
@@ -73,7 +75,6 @@ class Item : public sigc::trackable {
   int order_ = -1;  // -1 means not set
 
  private:
-  void onConfigure(GdkEventConfigure* ev);
   void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
   void setProperty(const std::string& name, Glib::VariantBase& value);
   void setStatus(const Glib::ustring& value);
@@ -96,13 +97,19 @@ class Item : public sigc::trackable {
                                                   const Glib::RefPtr<Gdk::Pixbuf>&);
   Glib::RefPtr<Gdk::Pixbuf> getIconByName(const std::string& name, int size);
   double getScaledIconSize();
-  static void onMenuDestroyed(Item* self, GObject* old_menu_pointer);
   void makeMenu();
   bool hasMenuLayout() const;
-  bool handleClick(GdkEventButton* const& /*ev*/);
-  bool handleScroll(GdkEventScroll* const&);
-  bool handleMouseEnter(GdkEventCrossing* const&);
-  bool handleMouseLeave(GdkEventCrossing* const&);
+  void queueMenuRebuild();
+  void rebuildMenu();
+  void appendMenuItems(GMenu* menu, DbusmenuMenuitem* parent, GSimpleActionGroup* actions);
+  static void syncMenu(GMenu* shown, GMenuModel* model);
+  static void onMenuNewItem(DbusmenuClient* client, DbusmenuMenuitem* item, Item* self);
+  static void onMenuPropertyChanged(DbusmenuMenuitem* item, const gchar* name, GVariant* value,
+                                    Item* self);
+  static void onMenuActivate(GSimpleAction* action, GVariant* parameter, Item* self);
+  static void onSubmenuShown(GSimpleAction* action, GVariant* value, Item* self);
+  void handleClick(int n_press, double x, double y);
+  bool handleScroll(double dx, double dy);
 
   // smooth scrolling threshold
   gdouble scroll_threshold_ = 0;
@@ -114,6 +121,12 @@ class Item : public sigc::trackable {
   // hidden via config
   bool is_hidden_ = false;
   bool ready_ = false;
+  // The popover shows a model built from the dbusmenu tree, rebuilt only when it is shown
+  bool menu_dirty_ = true;
+  sigc::connection menu_rebuild_;
+  Glib::RefPtr<Gio::SimpleActionGroup> menu_actions_;
+  Glib::RefPtr<Gtk::GestureClick> click_;
+  Glib::RefPtr<Gtk::EventControllerScroll> scroll_;
   // Not Glib::ustring: its comparisons collate, which costs time linear in the item's string.
   std::string status_ = "active";
 

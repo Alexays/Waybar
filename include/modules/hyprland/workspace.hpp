@@ -31,7 +31,6 @@ class Workspace {
  public:
   explicit Workspace(const Json::Value& workspace_data, Workspaces& workspace_manager,
                      const Json::Value& clients_data = Json::Value::nullRef);
-  ~Workspace();
   std::string& selectString(std::map<std::string, std::string>& string_map);
   Gtk::Button& button() { return m_button; };
 
@@ -49,15 +48,7 @@ class Workspace {
   bool isVisible() const { return m_isVisible; };
   bool isUrgent() const { return m_isUrgent; };
 
-  bool handleClicked(GdkEventButton* bt) const;
-
-  bool handleEnter(GdkEventCrossing* event);
-  bool handleLeave(GdkEventCrossing* event);
-
-  void startHoverCheck();
-  void stopHoverCheck();
-  bool syncHoverClass();
-  bool pointerInsideButton();
+  bool handleClicked() const;
 
   void setActive(bool value = true) { m_isActive = value; };
   void setPersistentRule(bool value = true) { m_isPersistentRule = value; };
@@ -95,8 +86,6 @@ class Workspace {
   bool m_isUrgent = false;
   bool m_isVisible = false;
 
-  sigc::connection m_hoverCheckConnection;
-
   std::vector<WindowRepr> m_windowMap;
 
   Gtk::Button m_button;
@@ -106,7 +95,7 @@ class Workspace {
 
   bool isEmpty() const;
   void updateTaskbar(const std::string& workspace_icon);
-  bool handleClick(const GdkEventButton* event_button, WindowAddress const& addr) const;
+  void handleClick(guint button, WindowAddress const& addr) const;
   bool shouldSkipWindow(const WindowRepr& window_repr) const;
   IPC& m_ipc;
 };

@@ -1,8 +1,9 @@
 #pragma once
 
 #include <fmt/format.h>
-#include <gdk/gdk.h>
-#include <gdk/gdkwayland.h>
+#include <gdk/wayland/gdkwayland.h>
+#include <glibmm/main.h>
+#include <gtkmm/cssprovider.h>
 #include <wayland-client.h>
 
 #include "bar.hpp"
@@ -25,7 +26,7 @@ class Client {
   int main(int argc, char* argv[]);
   void reset();
 
-  Glib::RefPtr<Gtk::Application> gtk_app;
+  Glib::RefPtr<Glib::MainLoop> main_loop;
   Glib::RefPtr<Gdk::Display> gdk_display;
   struct wl_display* wl_display = nullptr;
   struct wl_registry* registry = nullptr;
@@ -56,18 +57,18 @@ class Client {
   void createBarsBatch();
   static void handleOutputName(void*, struct zxdg_output_v1*, const char*);
   static void handleOutputDescription(void*, struct zxdg_output_v1*, const char*);
+  void handleMonitorsChanged(guint position, guint removed, guint added);
   void handleMonitorAdded(Glib::RefPtr<Gdk::Monitor> monitor);
-  void handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor);
   void handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> monitor);
 
-  Glib::RefPtr<Gtk::StyleContext> style_context_;
   Glib::RefPtr<Gtk::CssProvider> css_provider_;
+  Glib::RefPtr<Gtk::CssProvider> compat_css_provider_;
+  Glib::RefPtr<Gtk::CssProvider> menu_css_provider_;
   std::unique_ptr<Portal> portal;
   std::list<struct waybar_output> outputs_;
   std::unique_ptr<CssReloadHelper> m_cssReloadHelper;
   std::string m_cssFile;
-  sigc::connection monitor_added_connection_;
-  sigc::connection monitor_removed_connection_;
+  sigc::connection monitors_changed_connection_;
   std::list<waybar_output*> pending_outputs_;
   bool bars_scheduled_ = false;
 };

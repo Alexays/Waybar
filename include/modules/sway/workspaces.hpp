@@ -45,7 +45,7 @@ class Workspaces : public AModule, public sigc::trackable {
   uint16_t getWorkspaceIndex(const std::string& name) const;
   static std::string trimWorkspaceName(const std::string&);
   std::optional<uint16_t> getCustomSortIndex(const std::string& name) const;
-  bool handleScroll(GdkEventScroll* /*unused*/) override;
+  bool handleScroll(const ScrollEvent& e) override;
 
   const Bar& bar_;
   std::vector<Json::Value> workspaces_;

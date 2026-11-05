@@ -18,11 +18,11 @@ waybar::modules::cava::CavaGLSL::CavaGLSL(const std::string& id, const Json::Val
   gl_area_.set_name(name_);
   if (config_["hide_on_silence"].isBool()) hide_on_silence_ = config_["hide_on_silence"].asBool();
   if (!id.empty()) {
-    gl_area_.get_style_context()->add_class(id);
+    gl_area_.add_css_class(id);
   }
-  gl_area_.get_style_context()->add_class(MODULE_CLASS);
+  gl_area_.add_css_class(MODULE_CLASS);
 
-  gl_area_.set_use_es(true);
+  gl_area_.set_allowed_apis(Gdk::GLApi::GLES);
   gl_area_.signal_realize().connect(sigc::mem_fun(*this, &CavaGLSL::onRealize));
   gl_area_.signal_render().connect(sigc::mem_fun(*this, &CavaGLSL::onRender), false);
   gl_area_.signal_map().connect([this]() { mapped_ = true; });
@@ -45,7 +45,7 @@ waybar::modules::cava::CavaGLSL::CavaGLSL(const std::string& id, const Json::Val
   silence_conn_ = backend_->signalSilence().connect(sigc::mem_fun(*this, &CavaGLSL::onSilence));
   config_changed_conn_ =
       backend_->signalConfigChanged().connect(sigc::mem_fun(*this, &CavaGLSL::onBackendConfigChanged));
-  event_box_.add(gl_area_);
+  event_box_.set_child(gl_area_);
 }
 
 waybar::modules::cava::CavaGLSL::~CavaGLSL() {
@@ -100,10 +100,9 @@ void waybar::modules::cava::CavaGLSL::pauseResume() { backend_->doPauseResume();
 auto waybar::modules::cava::CavaGLSL::onUpdate(const CavaBackend::AudioRaw& input) -> void {
   m_data_ = input;
   if (silence_) {
-    gl_area_.get_style_context()->remove_class("silent");
-    if (!gl_area_.get_style_context()->has_class("updated"))
-      gl_area_.get_style_context()->add_class("updated");
-    gl_area_.show();
+    gl_area_.remove_css_class("silent");
+    if (!gl_area_.has_css_class("updated")) gl_area_.add_css_class("updated");
+    gl_area_.set_visible(true);
     silence_ = false;
   }
 
@@ -114,12 +113,11 @@ auto waybar::modules::cava::CavaGLSL::onUpdate(const CavaBackend::AudioRaw& inpu
 
 auto waybar::modules::cava::CavaGLSL::onSilence() -> void {
   if (!silence_) {
-    if (gl_area_.get_style_context()->has_class("updated"))
-      gl_area_.get_style_context()->remove_class("updated");
+    if (gl_area_.has_css_class("updated")) gl_area_.remove_css_class("updated");
 
-    if (hide_on_silence_) gl_area_.hide();
+    if (hide_on_silence_) gl_area_.set_visible(false);
     silence_ = true;
-    gl_area_.get_style_context()->add_class("silent");
+    gl_area_.add_css_class("silent");
   }
 }
 
@@ -344,7 +342,7 @@ void waybar::modules::cava::CavaGLSL::initShaders() {
   shaderProgram_ = glCreateProgram();
   if (shaderProgram_ == 0) {
     spdlog::error("{0}. Failed to create shader program", name_);
-    gl_area_.hide();
+    gl_area_.set_visible(false);
     return;
   }
 
@@ -356,7 +354,7 @@ void waybar::modules::cava::CavaGLSL::initShaders() {
     if (fragmentShader != 0) glDeleteShader(fragmentShader);
     glDeleteProgram(shaderProgram_);
     shaderProgram_ = 0;
-    gl_area_.hide();
+    gl_area_.set_visible(false);
     return;
   }
 
@@ -378,7 +376,7 @@ void waybar::modules::cava::CavaGLSL::initShaders() {
     spdlog::error("{0}. Shader linking error: {1}", name_, infoLog.data());
     glDeleteProgram(shaderProgram_);
     shaderProgram_ = 0;
-    gl_area_.hide();
+    gl_area_.set_visible(false);
     return;
   }
 

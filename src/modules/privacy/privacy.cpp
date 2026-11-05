@@ -28,7 +28,7 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, Gtk::Orientat
       box_(orientation, 0) {
   box_.set_name(name_);
 
-  event_box_.add(box_);
+  event_box_.set_child(box_);
 
   // Icon Spacing
   if (config_["icon-spacing"].isUInt()) {
@@ -87,7 +87,7 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, Gtk::Orientat
         case util::PipewireBackend::PRIVACY_NODE_TYPE_NONE:
           continue;
       }
-      box_.add(*item);
+      box_.append(*item);
       modules_.push_back(item);
     }
   }

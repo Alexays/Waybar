@@ -12,6 +12,7 @@
 #include "gtkmm/box.h"
 #include "util/command.hpp"
 #include "util/json.hpp"
+#include "util/scaled_image.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
@@ -30,7 +31,7 @@ class IStrategy {
 
 class SingleImageStrategy : public IStrategy {
  public:
-  SingleImageStrategy(const std::string&, const Json::Value&, const std::string&, Gtk::EventBox&,
+  SingleImageStrategy(const std::string&, const Json::Value&, const std::string&, util::ModuleBox&,
                       bool);
   ~SingleImageStrategy() override = default;
   void fetch() override;
@@ -41,7 +42,7 @@ class SingleImageStrategy : public IStrategy {
 
   util::command::res output_;
   Json::Value config_;
-  Gtk::Image image_;
+  util::ScaledImage image_;
   std::string path_;
   int size_;
   Gtk::Box box_;
@@ -56,7 +57,8 @@ class SingleImageStrategy : public IStrategy {
 
 class MultipleImageStrategy : public IStrategy {
  public:
-  MultipleImageStrategy(const std::string&, const Json::Value&, const std::string&, Gtk::EventBox&);
+  MultipleImageStrategy(const std::string&, const Json::Value&, const std::string&,
+                        util::ModuleBox&);
   ~MultipleImageStrategy() override = default;
   void fetch() override;
   bool update() override;
@@ -68,7 +70,7 @@ class MultipleImageStrategy : public IStrategy {
     std::string tooltip;
     std::string on_click;
     Glib::RefPtr<Gdk::Pixbuf> pixbuf;
-    std::shared_ptr<Gtk::Image> img;
+    std::shared_ptr<util::ScaledImage> img;
     std::shared_ptr<Gtk::Button> btn;
   };
 
@@ -99,7 +101,7 @@ class Image : public AModule {
   void delayWorker();
   void handleEvent();
   static std::unique_ptr<image::IStrategy> getStrategy(const std::string&, const Json::Value&,
-                                                       const std::string&, Gtk::EventBox&, bool);
+                                                       const std::string&, util::ModuleBox&, bool);
 
   std::chrono::milliseconds interval_;
   std::unique_ptr<image::IStrategy> strategy_;

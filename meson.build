@@ -83,12 +83,12 @@ spdlog = dependency('spdlog', version : ['>=1.15.2'], fallback : ['spdlog', 'spd
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
-gtkmm = dependency('gtkmm-3.0', version : ['>=3.22.0'])
-giomm = dependency('giomm-2.4', version : ['>=2.4.0'])
-dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
+gtkmm = dependency('gtkmm-4.0', version : ['>=4.10.0'])
+giomm = dependency('giomm-2.68', version : ['>=2.68.0'])
+dbusmenu_gtk = dependency('dbusmenu-glib-0.4', required: get_option('dbusmenu-gtk'))
 giounix = dependency('gio-unix-2.0')
 jsoncpp = dependency('jsoncpp', version : ['>=1.9.2'], fallback : ['jsoncpp', 'jsoncpp_dep'])
-sigcpp = dependency('sigc++-2.0')
+sigcpp = dependency('sigc++-3.0')
 libinotify = dependency('libinotify', required: false)
 libepoll = dependency('epoll-shim', required: false)
 libinput = dependency('libinput', required: get_option('libinput'))
@@ -119,9 +119,9 @@ if libsndio.found()
     endif
 endif
 
-gtk_layer_shell = dependency('gtk-layer-shell-0', version: ['>=0.9.0'],
-        default_options: ['introspection=false', 'vapi=false'],
-        fallback: ['gtk-layer-shell', 'gtk_layer_shell'])
+gtk_layer_shell = dependency('gtk4-layer-shell-0', version: ['>=1.0.0'],
+        default_options: ['introspection=false', 'vapi=false', 'examples=false', 'tests=false', 'smoke-tests=false'],
+        fallback: ['gtk4-layer-shell', 'gtk_layer_shell'])
 systemd = dependency('systemd', required: get_option('systemd'))
 libsystemd = dependency('libsystemd', required: get_option('systemd'))
 if libsystemd.found()
@@ -200,11 +200,13 @@ src_files = files(
     'src/util/sanitize_str.cpp',
     'src/util/rewrite_string.cpp',
     'src/util/hosts_check.cpp',
+    'src/util/fit_label.cpp',
     'src/util/gtk_icon.cpp',
+    'src/util/module_box.cpp',
+    'src/util/scaled_image.cpp',
     'src/util/icon_loader.cpp',
     'src/util/regex_collection.cpp',
     'src/util/css_reload_helper.cpp',
-    'src/util/transform_8bit_to_rgba.cpp',
     'src/util/utf8_string.cpp',
     'src/util/command_line_stream.cpp'
 )
@@ -644,6 +646,8 @@ executable(
     'waybar',
     [src_files, app_resources],
     dependencies: [
+        # gtk4-layer-shell wraps libwayland-client, so it must be linked before it
+        gtk_layer_shell,
         thread_dep,
         client_protos,
         wayland_client,
@@ -671,7 +675,6 @@ executable(
         libepoll,
         libmpdclient,
         libevdev,
-        gtk_layer_shell,
         libsndio,
         tz_dep,
         xkbregistry,

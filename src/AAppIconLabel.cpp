@@ -122,15 +122,12 @@ std::optional<Glib::ustring> getIconName(const std::string& app_identifier,
   }
 
   try {
-    Glib::KeyFile desktop_file;
-    desktop_file.load_from_file(desktop_file_path.value());
-    return desktop_file.get_string("Desktop Entry", "Icon");
-  } catch (Glib::FileError& error) {
+    auto desktop_file = Glib::KeyFile::create();
+    desktop_file->load_from_file(desktop_file_path.value());
+    return desktop_file->get_string("Desktop Entry", "Icon");
+  } catch (const Glib::Error& error) {
     spdlog::warn("Error while loading desktop file {}: {}", desktop_file_path.value(),
-                 error.what().c_str());
-  } catch (Glib::KeyFileError& error) {
-    spdlog::warn("Error while loading desktop file {}: {}", desktop_file_path.value(),
-                 error.what().c_str());
+                 error.what());
   }
   return {};
 }
@@ -160,17 +157,15 @@ void AAppIconLabel::updateAppIcon() {
         int scaled_icon_size = app_icon_size_ * image_.get_scale_factor();
         auto pixbuf =
             Gdk::Pixbuf::create_from_file(app_icon_name_, scaled_icon_size, scaled_icon_size);
-
-        auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
-                                                              image_.get_window());
-        image_.set(surface);
+        image_.set_pixbuf(pixbuf, image_.get_scale_factor());
         image_.set_visible(true);
-      } catch (const Glib::Exception& e) {
+      } catch (const Glib::Error& e) {
         spdlog::warn("Failed to load app icon {}: {}", app_icon_name_, std::string(e.what()));
         image_.set_visible(false);
       }
     } else {
-      image_.set_from_icon_name(app_icon_name_, Gtk::ICON_SIZE_INVALID);
+      image_.set_from_icon_name(app_icon_name_);
+      image_.set_pixel_size(app_icon_size_);
       image_.set_visible(true);
     }
   }

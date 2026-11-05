@@ -93,7 +93,7 @@ inline void set_tooltip_markup(Gtk::Widget& widget, const Glib::ustring& markup)
   if (label == nullptr) {
     label = new Gtk::Label();
     // Like the label of GTK's own tooltip window
-    label->set_line_wrap(true);
+    label->set_wrap(true);
     label->set_max_width_chars(70);
     widget.set_data(key, label, [](void* data) { delete static_cast<Gtk::Label*>(data); });
     widget.set_has_tooltip(true);
@@ -104,7 +104,8 @@ inline void set_tooltip_markup(Gtk::Widget& widget, const Glib::ustring& markup)
           }
           tooltip->set_custom(*label);
           return true;
-        });
+        },
+        true);
   }
 
   const char* const current = gtk_label_get_label(label->gobj());

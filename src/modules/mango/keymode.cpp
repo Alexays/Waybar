@@ -20,15 +20,15 @@ void Keymode::doUpdate() {
 
   // if keymode is empty, hide the label
   if (current.empty()) {
-    label_.hide();
+    label_.set_visible(false);
     last_keymode_.clear();
     return;
   }
 
   // if keymode is the same as last time, skip style changes
   if (current != last_keymode_) {
-    if (!last_keymode_.empty()) label_.get_style_context()->remove_class(last_keymode_);
-    label_.get_style_context()->add_class(current);
+    if (!last_keymode_.empty()) label_.remove_css_class(last_keymode_);
+    label_.add_css_class(current);
     last_keymode_ = current;
   }
 
@@ -42,10 +42,10 @@ void Keymode::doUpdate() {
   }
 
   if (!text.empty()) {
-    label_.show();
+    label_.set_visible(true);
     label_.set_markup(text);
   } else {
-    label_.hide();
+    label_.set_visible(false);
   }
 }
 

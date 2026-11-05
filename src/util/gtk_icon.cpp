@@ -1,37 +1,45 @@
 #include "util/gtk_icon.hpp"
 
-/* We need a global mutex for accessing the object returned by Gtk::IconTheme::get_default()
- * because it always returns the same object across different threads, and concurrent
- * access can cause data corruption and lead to invalid memory access and crashes.
- * Even concurrent calls that seem read only such as has_icon can cause issues because
- * the GTK lib may update the internal icon cache on this calls.
+#include <gdkmm/display.h>
+
+/* The icon theme of the default display is shared by every caller, some of which run outside of
+ * the main thread, and GTK updates its internal icon cache even on read only calls such as
+ * has_icon: serialize every access.
  */
 
 std::mutex DefaultGtkIconThemeWrapper::default_theme_mutex;
 
-bool DefaultGtkIconThemeWrapper::has_icon(const std::string& value) {
-  const std::lock_guard<std::mutex> lock(default_theme_mutex);
-
-  return Gtk::IconTheme::get_default()->has_icon(value);
+Glib::RefPtr<Gtk::IconTheme> DefaultGtkIconThemeWrapper::theme() {
+  return Gtk::IconTheme::get_for_display(Gdk::Display::get_default());
 }
 
-Glib::RefPtr<Gdk::Pixbuf> DefaultGtkIconThemeWrapper::load_icon(
-    const char* name, int tmp_size, Gtk::IconLookupFlags flags,
-    Glib::RefPtr<Gtk::StyleContext> style) {
+bool DefaultGtkIconThemeWrapper::has_icon(const std::string& value) {
   const std::lock_guard<std::mutex> lock(default_theme_mutex);
+  return theme()->has_icon(value);
+}
 
-  auto default_theme = Gtk::IconTheme::get_default();
-
-  auto icon_info = default_theme->lookup_icon(name, tmp_size, flags);
-
-  if (icon_info == nullptr) {
-    return default_theme->load_icon(name, tmp_size, flags);
+Glib::RefPtr<Gdk::Pixbuf> DefaultGtkIconThemeWrapper::load_icon(const std::string& name, int size) {
+  Glib::RefPtr<Gio::File> file;
+  {
+    const std::lock_guard<std::mutex> lock(default_theme_mutex);
+    auto icon_theme = theme();
+    if (!icon_theme->has_icon(name)) {
+      return {};
+    }
+    auto paintable = icon_theme->lookup_icon(name, size, 1);
+    file = paintable ? paintable->get_file() : nullptr;
   }
-
-  if (style.get() == nullptr) {
-    return icon_info.load_icon();
+  if (!file) {
+    return {};
   }
-
-  bool is_sym = false;
-  return icon_info.load_symbolic(style, is_sym);
+  try {
+    if (file->has_uri_scheme("resource")) {
+      constexpr std::string_view prefix = "resource://";
+      return Gdk::Pixbuf::create_from_resource(file->get_uri().substr(prefix.size()), size, size,
+                                               true);
+    }
+    return Gdk::Pixbuf::create_from_file(file->get_path(), size, size, true);
+  } catch (const Glib::Error&) {
+    return {};
+  }
 }

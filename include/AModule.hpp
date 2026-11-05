@@ -4,23 +4,42 @@
 #include <fmt/format.h>
 #include <glibmm/markup.h>
 #include <gtkmm.h>
-#include <gtkmm/eventbox.h>
 #include <json/json.h>
+#include <sigc++/scoped_connection.h>
 
+#include <array>
 #include <string>
 #include <utility>
 
 #include "IModule.hpp"
 #include "util/coalescing_dispatcher.hpp"
+#include "util/module_box.hpp"
 
 namespace waybar {
+
+// A pointer button event, in the coordinates of the module widget. A double (triple) click is
+// reported as a PRESS followed by a DOUBLE (TRIPLE), like GTK3 did.
+struct ButtonEvent {
+  enum class Type : uint8_t { PRESS, DOUBLE, TRIPLE, RELEASE };
+  guint button;
+  Type type;
+  double x;
+  double y;
+};
+
+struct ScrollEvent {
+  double dx;
+  double dy;
+  // GDK_SOURCE_MOUSE for a wheel, which reverse-mouse-scrolling applies to.
+  GdkInputSource source;
+};
 
 class AModule : public IModule {
  public:
   static constexpr const char* MODULE_CLASS = "module";
 
   ~AModule() override;
-  sigc::signal<void, AModule*> signal_updated;
+  sigc::signal<void(AModule*)> signal_updated;
   auto update() -> void override;
   virtual auto refresh(int shouldRefresh) -> void {};
   operator Gtk::Widget&() override;
@@ -44,7 +63,7 @@ class AModule : public IModule {
 
   enum SCROLL_DIR { NONE, UP, DOWN, LEFT, RIGHT };
 
-  SCROLL_DIR getScrollDir(GdkEventScroll* e);
+  SCROLL_DIR getScrollDir(const ScrollEvent& e);
   bool tooltipEnabled() const;
 
   // --- Generic format/tooltip resolution (config-only, usable by any module,
@@ -84,20 +103,29 @@ class AModule : public IModule {
   std::vector<int> pid_children_;
   const std::string name_;
   const Json::Value& config_;
-  Gtk::EventBox event_box_;
+  util::ModuleBox event_box_;
 
-  virtual void setCursor(std::string const& c);
-  // Backward-compat overload for legacy numeric Gdk::CursorType configs (pre-0.16)
-  virtual void setCursor(Gdk::CursorType const& c);
+  // Event controllers are only attached on demand: a module that listens to no click or scroll
+  // must let the event reach its parent (e.g. a group). Both are idempotent.
+  void enableClick();
+  void enableScroll();
+  // Moves the scroll controller to the bar window, so that scrolling anywhere on the bar reaches
+  // handleScroll (enable-bar-scroll).
+  void enableBarScroll(Gtk::Widget& bar_window);
+  // GTK3 let double and triple presses through child buttons that took the single ones. Modules
+  // whose buttons did so call this, for on-double-click and on-triple-click to see them.
+  void enableChildMultiClick();
 
-  virtual bool handleToggle(GdkEventButton* const& ev);
-  virtual bool handleMouseEnter(GdkEventCrossing* const& ev);
-  virtual bool handleMouseLeave(GdkEventCrossing* const& ev);
-  virtual bool handleScroll(GdkEventScroll*);
-  virtual bool handleRelease(GdkEventButton* const& ev);
+  // Return true to stop the event from reaching the parent widgets.
+  virtual bool handleToggle(const ButtonEvent& ev);
+  virtual bool handleRelease(const ButtonEvent& ev);
+  virtual bool handleScroll(const ScrollEvent& ev);
+
+  // Builds menu_ from the `menu-file` (a GTK3 GtkBuilder GtkMenu) and `menu-actions` options.
+  void setupMenu();
 
   bool disable_on_sleep_{false};
-  GObject* menu_ = nullptr;
+  Gtk::PopoverMenu* menu_ = nullptr;
 
   // Maps a configured event name (e.g. "on-click-middle") to a built-in module
   // action name. Populated from the `actions` config section, and by modules
@@ -107,35 +135,55 @@ class AModule : public IModule {
   std::map<std::string, std::string> eventActionMap_;
 
  private:
-  bool handleUserEvent(GdkEventButton* const& ev);
+  bool handleUserEvent(const ButtonEvent& ev);
+  void onPressed(int n_press, double x, double y);
+  void onReleased(int n_press, double x, double y);
+  bool onCapturedEvent(const Glib::RefPtr<const Gdk::Event>& event);
+  bool onScroll(double dx, double dy);
+  void setCursor(const std::string& name);
+
   const bool isTooltip;
   const bool isExpand;
   bool hasUserEvents_;
-  gdouble distance_scrolled_y_;
-  gdouble distance_scrolled_x_;
-  sigc::connection cursor_timeout_conn_;
-  static const inline std::map<std::pair<uint, GdkEventType>, std::string> eventMap_{
-      {std::make_pair(1, GdkEventType::GDK_BUTTON_PRESS), "on-click"},
-      {std::make_pair(1, GdkEventType::GDK_BUTTON_RELEASE), "on-click-release"},
-      {std::make_pair(1, GdkEventType::GDK_2BUTTON_PRESS), "on-double-click"},
-      {std::make_pair(1, GdkEventType::GDK_3BUTTON_PRESS), "on-triple-click"},
-      {std::make_pair(2, GdkEventType::GDK_BUTTON_PRESS), "on-click-middle"},
-      {std::make_pair(2, GdkEventType::GDK_BUTTON_RELEASE), "on-click-middle-release"},
-      {std::make_pair(2, GdkEventType::GDK_2BUTTON_PRESS), "on-double-click-middle"},
-      {std::make_pair(2, GdkEventType::GDK_3BUTTON_PRESS), "on-triple-click-middle"},
-      {std::make_pair(3, GdkEventType::GDK_BUTTON_PRESS), "on-click-right"},
-      {std::make_pair(3, GdkEventType::GDK_BUTTON_RELEASE), "on-click-right-release"},
-      {std::make_pair(3, GdkEventType::GDK_2BUTTON_PRESS), "on-double-click-right"},
-      {std::make_pair(3, GdkEventType::GDK_3BUTTON_PRESS), "on-triple-click-right"},
-      {std::make_pair(8, GdkEventType::GDK_BUTTON_PRESS), "on-click-backward"},
-      {std::make_pair(8, GdkEventType::GDK_BUTTON_RELEASE), "on-click-backward-release"},
-      {std::make_pair(8, GdkEventType::GDK_2BUTTON_PRESS), "on-double-click-backward"},
-      {std::make_pair(8, GdkEventType::GDK_3BUTTON_PRESS), "on-triple-click-backward"},
-      {std::make_pair(9, GdkEventType::GDK_BUTTON_PRESS), "on-click-forward"},
-      {std::make_pair(9, GdkEventType::GDK_BUTTON_RELEASE), "on-click-forward-release"},
-      {std::make_pair(9, GdkEventType::GDK_2BUTTON_PRESS), "on-double-click-forward"},
-      {std::make_pair(9, GdkEventType::GDK_3BUTTON_PRESS), "on-triple-click-forward"},
-      {std::make_pair(10, GdkEventType::GDK_BUTTON_PRESS), "on-click-copy"}};
+  bool hasReleaseEvent_;
+  double distance_scrolled_y_ = 0.0;
+  double distance_scrolled_x_ = 0.0;
+  Glib::RefPtr<Gtk::GestureClick> click_;
+  Glib::RefPtr<Gtk::EventControllerScroll> scroll_;
+  // The last two presses, counted like GDK3 counted them, and the multiple press waiting to reach
+  // handleToggle unless click_ sees the press
+  struct Press {
+    guint32 time;
+    GtkWidget* window;
+    guint button;
+    double x, y;
+  };
+  std::array<Press, 2> presses_{};
+  sigc::scoped_connection multi_press_;
+  Gtk::Widget* scroll_target_ = nullptr;
+  using Type = ButtonEvent::Type;
+  static const inline std::map<std::pair<uint, Type>, std::string> eventMap_{
+      {std::make_pair(1, Type::PRESS), "on-click"},
+      {std::make_pair(1, Type::RELEASE), "on-click-release"},
+      {std::make_pair(1, Type::DOUBLE), "on-double-click"},
+      {std::make_pair(1, Type::TRIPLE), "on-triple-click"},
+      {std::make_pair(2, Type::PRESS), "on-click-middle"},
+      {std::make_pair(2, Type::RELEASE), "on-click-middle-release"},
+      {std::make_pair(2, Type::DOUBLE), "on-double-click-middle"},
+      {std::make_pair(2, Type::TRIPLE), "on-triple-click-middle"},
+      {std::make_pair(3, Type::PRESS), "on-click-right"},
+      {std::make_pair(3, Type::RELEASE), "on-click-right-release"},
+      {std::make_pair(3, Type::DOUBLE), "on-double-click-right"},
+      {std::make_pair(3, Type::TRIPLE), "on-triple-click-right"},
+      {std::make_pair(8, Type::PRESS), "on-click-backward"},
+      {std::make_pair(8, Type::RELEASE), "on-click-backward-release"},
+      {std::make_pair(8, Type::DOUBLE), "on-double-click-backward"},
+      {std::make_pair(8, Type::TRIPLE), "on-triple-click-backward"},
+      {std::make_pair(9, Type::PRESS), "on-click-forward"},
+      {std::make_pair(9, Type::RELEASE), "on-click-forward-release"},
+      {std::make_pair(9, Type::DOUBLE), "on-double-click-forward"},
+      {std::make_pair(9, Type::TRIPLE), "on-triple-click-forward"},
+      {std::make_pair(10, Type::PRESS), "on-click-copy"}};
 };
 
 }  // namespace waybar

@@ -1,4 +1,5 @@
 #pragma once
+#include <gdkmm/pixbuf.h>
 #include <gtkmm/icontheme.h>
 
 #include <mutex>
@@ -9,8 +10,8 @@ class DefaultGtkIconThemeWrapper {
   static std::mutex default_theme_mutex;
 
  public:
+  static Glib::RefPtr<Gtk::IconTheme> theme();
   static bool has_icon(const std::string&);
-  static Glib::RefPtr<Gdk::Pixbuf> load_icon(
-      const char*, int, Gtk::IconLookupFlags,
-      Glib::RefPtr<Gtk::StyleContext> style = Glib::RefPtr<Gtk::StyleContext>());
+  // The themed icon `name` rendered at `size` pixels, null when the theme has none.
+  static Glib::RefPtr<Gdk::Pixbuf> load_icon(const std::string& name, int size);
 };

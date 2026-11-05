@@ -80,11 +80,10 @@ auto JACK::update() -> void {
   }
   float latency = samplerate > 0 ? 1000.0f * (float)bufsize / (float)samplerate : 0.0f;
 
-  auto style = label_.get_style_context();
-  style->remove_class("connected");
-  style->remove_class("disconnected");
-  style->remove_class("xrun");
-  style->add_class(state);
+  label_.remove_css_class("connected");
+  label_.remove_css_class("disconnected");
+  label_.remove_css_class("xrun");
+  label_.add_css_class(state);
 
   std::string format;
   if (config_["format-" + state].isString()) {

@@ -34,7 +34,7 @@ class PowerProfilesDaemon : public ALabel, public sigc::trackable {
   void getAllPropsCb(Glib::RefPtr<Gio::AsyncResult>& r);
   void setPropCb(Glib::RefPtr<Gio::AsyncResult>& r);
   void populateInitState(const Glib::VariantContainerBase& getAllReply);
-  bool handleToggle(GdkEventButton* const& e) override;
+  bool handleToggle(const ButtonEvent& e) override;
 
  private:
   // True if we're connected to the dbug interface. False if we're

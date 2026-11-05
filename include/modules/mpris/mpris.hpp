@@ -25,7 +25,7 @@ class Mpris : public ALabel {
   Mpris(const std::string&, const Json::Value&);
   virtual ~Mpris();
   auto update() -> void override;
-  bool handleToggle(GdkEventButton* const&) override;
+  bool handleToggle(const ButtonEvent& e) override;
 
  private:
   struct PlayerInfo {

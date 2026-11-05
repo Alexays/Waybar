@@ -155,10 +155,10 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
 
   box_.set_name("tags");
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
+  box_.add_css_class(MODULE_CLASS);
+  event_box_.set_child(box_);
 
   // Default to 9 tags, cap at 32
   const int num_tags =
@@ -167,6 +167,7 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
   const auto tag_labels = config["tag-labels"];
   const auto set_tags = config["set-tags"];
   const auto toggle_tags = config["toggle-tags"];
+  buttons_.reserve(num_tags);
   for (int tag = 0; tag < num_tags; ++tag) {
     if (tag_labels.isArray() && !tag_labels.empty()) {
       buttons_.emplace_back(tag_labels[tag].asString());
@@ -176,8 +177,8 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
     }
 
     auto& button = buttons_[tag];
-    button.set_relief(Gtk::RELIEF_NONE);
-    box_.pack_start(button, false, false, 0);
+    button.set_has_frame(false);
+    box_.append(button);
 
     if (control_ && seat_ && !config_["disable-click"].asBool()) {
       if (set_tags.isArray() && !set_tags.empty())
@@ -186,18 +187,29 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
       else
         button.signal_clicked().connect(
             sigc::bind(sigc::mem_fun(*this, &Tags::handle_primary_clicked), (1 << tag)));
-      if (toggle_tags.isArray() && !toggle_tags.empty())
-        button.signal_button_press_event().connect(sigc::bind(
-            sigc::mem_fun(*this, &Tags::handle_button_press), toggle_tags[tag].asUInt()));
-      else
-        button.signal_button_press_event().connect(
-            sigc::bind(sigc::mem_fun(*this, &Tags::handle_button_press), (1 << tag)));
+      const uint32_t toggle = toggle_tags.isArray() && !toggle_tags.empty()
+                                  ? toggle_tags[tag].asUInt()
+                                  : static_cast<uint32_t>(1 << tag);
+      /* Claims the presses the button leaves to its parents, so they never reach the module's
+       * own click handling. Claiming the primary one would cancel the button's clicked. */
+      auto click = Gtk::GestureClick::create();
+      click->set_button(0);
+      click->signal_pressed().connect([this, click = click.get(), toggle](int, double, double) {
+        if (click->get_current_button() == GDK_BUTTON_PRIMARY) {
+          return;
+        }
+        click->set_state(Gtk::EventSequenceState::CLAIMED);
+        if (click->get_current_button() == GDK_BUTTON_SECONDARY) {
+          handle_secondary_pressed(toggle);
+        }
+      });
+      button.add_controller(click);
     }
-    button.get_style_context()->add_class("tag-" + std::to_string(tag + 1));
-    button.show();
+    button.add_css_class("tag-" + std::to_string(tag + 1));
   }
 
-  box_.signal_show().connect(sigc::mem_fun(*this, &Tags::handle_show));
+  // Box widgets are visible from creation: binding on map keeps it deferred until the bar shows
+  box_.signal_map().connect(sigc::mem_fun(*this, &Tags::handle_show));
 }
 
 Tags::~Tags() {
@@ -242,35 +254,31 @@ void Tags::handle_primary_clicked(uint32_t tag) {
   zriver_command_callback_v1_add_listener(callback, &command_callback_listener_impl, nullptr);
 }
 
-bool Tags::handle_button_press(GdkEventButton* event_button, uint32_t tag) {
-  if (!control_ || !seat_) return true;
-  if (event_button->type == GDK_BUTTON_PRESS && event_button->button == 3) {
-    // Send river command to toggle tag on right mouse click
-    zriver_command_callback_v1* callback;
-    zriver_control_v1_add_argument(control_, "toggle-focused-tags");
-    zriver_control_v1_add_argument(control_, std::to_string(tag).c_str());
-    callback = zriver_control_v1_run_command(control_, seat_);
-    zriver_command_callback_v1_add_listener(callback, &command_callback_listener_impl, nullptr);
-  }
-  return true;
+void Tags::handle_secondary_pressed(uint32_t tag) {
+  // Send river command to toggle tag on right mouse click
+  zriver_command_callback_v1* callback;
+  zriver_control_v1_add_argument(control_, "toggle-focused-tags");
+  zriver_control_v1_add_argument(control_, std::to_string(tag).c_str());
+  callback = zriver_control_v1_run_command(control_, seat_);
+  zriver_command_callback_v1_add_listener(callback, &command_callback_listener_impl, nullptr);
 }
 
 void Tags::handle_focused_tags(uint32_t tags) {
   const bool hide_vacant = hide_vacant_;
   for (size_t i = 0; i < buttons_.size(); ++i) {
     bool visible = buttons_[i].is_visible();
-    bool occupied = buttons_[i].get_style_context()->has_class("occupied");
-    bool urgent = buttons_[i].get_style_context()->has_class("urgent");
+    bool occupied = buttons_[i].has_css_class("occupied");
+    bool urgent = buttons_[i].has_css_class("urgent");
     if ((1 << i) & tags) {
       if (hide_vacant && !visible) {
         buttons_[i].set_visible(true);
       }
-      buttons_[i].get_style_context()->add_class("focused");
+      buttons_[i].add_css_class("focused");
     } else {
       if (hide_vacant && !(occupied || urgent)) {
         buttons_[i].set_visible(false);
       }
-      buttons_[i].get_style_context()->remove_class("focused");
+      buttons_[i].remove_css_class("focused");
     }
   }
 }
@@ -285,18 +293,18 @@ void Tags::handle_view_tags(struct wl_array* view_tags) {
   const bool hide_vacant = hide_vacant_;
   for (size_t i = 0; i < buttons_.size(); ++i) {
     bool visible = buttons_[i].is_visible();
-    bool focused = buttons_[i].get_style_context()->has_class("focused");
-    bool urgent = buttons_[i].get_style_context()->has_class("urgent");
+    bool focused = buttons_[i].has_css_class("focused");
+    bool urgent = buttons_[i].has_css_class("urgent");
     if ((1 << i) & tags) {
       if (hide_vacant && !visible) {
         buttons_[i].set_visible(true);
       }
-      buttons_[i].get_style_context()->add_class("occupied");
+      buttons_[i].add_css_class("occupied");
     } else {
       if (hide_vacant && !(focused || urgent)) {
         buttons_[i].set_visible(false);
       }
-      buttons_[i].get_style_context()->remove_class("occupied");
+      buttons_[i].remove_css_class("occupied");
     }
   }
 }
@@ -305,18 +313,18 @@ void Tags::handle_urgent_tags(uint32_t tags) {
   const bool hide_vacant = hide_vacant_;
   for (size_t i = 0; i < buttons_.size(); ++i) {
     bool visible = buttons_[i].is_visible();
-    bool occupied = buttons_[i].get_style_context()->has_class("occupied");
-    bool focused = buttons_[i].get_style_context()->has_class("focused");
+    bool occupied = buttons_[i].has_css_class("occupied");
+    bool focused = buttons_[i].has_css_class("focused");
     if ((1 << i) & tags) {
       if (hide_vacant && !visible) {
         buttons_[i].set_visible(true);
       }
-      buttons_[i].get_style_context()->add_class("urgent");
+      buttons_[i].add_css_class("urgent");
     } else {
       if (hide_vacant && !(occupied || focused)) {
         buttons_[i].set_visible(false);
       }
-      buttons_[i].get_style_context()->remove_class("urgent");
+      buttons_[i].remove_css_class("urgent");
     }
   }
 }
@@ -324,7 +332,7 @@ void Tags::handle_urgent_tags(uint32_t tags) {
 void Tags::handle_focused_output(struct wl_output* output) {
   if (output_ == output) {
     for (size_t i = 0; i < buttons_.size(); ++i) {
-      buttons_[i].get_style_context()->add_class("output");
+      buttons_[i].add_css_class("output");
     }
   }
 }
@@ -332,7 +340,7 @@ void Tags::handle_focused_output(struct wl_output* output) {
 void Tags::handle_unfocused_output(struct wl_output* output) {
   if (output_ == output) {
     for (size_t i = 0; i < buttons_.size(); ++i) {
-      buttons_[i].get_style_context()->remove_class("output");
+      buttons_[i].remove_css_class("output");
     }
   }
 }

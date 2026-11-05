@@ -139,9 +139,9 @@ auto waybar::modules::Disk::update() -> void {
     }
   }
   if (had_valid_disk) {
-    event_box_.show();
+    event_box_.set_visible(true);
   } else {
-    event_box_.hide();
+    event_box_.set_visible(false);
   }
 
   setLabelMarkup(label);

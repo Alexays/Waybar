@@ -8,14 +8,13 @@ Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "submap", id, "{}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
   parseConfig(config);
 
-  label_.hide();
   ALabel::update();
 
   // Displays widget immediately if always_on_ assuming default submap
   // Needs an actual way to retrieve current submap on startup
   if (always_on_) {
     submap_ = default_submap_;
-    label_.get_style_context()->add_class(submap_);
+    label_.add_css_class(submap_);
   }
 
   // register for hyprland ipc
@@ -57,24 +56,24 @@ auto Submap::update() -> void {
 
   // Handle style class changes
   if (!prev_submap_.empty()) {
-    label_.get_style_context()->remove_class(prev_submap_);
+    label_.remove_css_class(prev_submap_);
   }
 
   if (!submap_.empty()) {
-    label_.get_style_context()->add_class(submap_);
+    label_.add_css_class(submap_);
   }
 
   prev_submap_ = submap_;
 
   if (submap_.empty()) {
-    event_box_.hide();
+    event_box_.set_visible(false);
   } else {
     label_.set_markup(
         fmt::format(fmt::runtime(format_), fmt::arg("submap", submap_), fmt::arg("icon", icon_)));
     if (tooltipEnabled()) {
       setTooltipMarkup(submap_);
     }
-    event_box_.show();
+    event_box_.set_visible(true);
   }
   // Call parent update
   ALabel::update();

@@ -239,11 +239,11 @@ label:focus {
 }
 
 #tray > .passive {
-    -gtk-icon-effect: dim;
+    -gtk-icon-filter: opacity(0.5);
 }
 
 #tray > .needs-attention {
-    -gtk-icon-effect: highlight;
+    -gtk-icon-filter: brightness(1.11);
     background-color: #eb4d4b;
 }
 
