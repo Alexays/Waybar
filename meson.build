@@ -595,6 +595,13 @@ if cava.found()
       cava_src_files += files('src/modules/cava/cavaGLSL.cpp')
       cava_deps += epoxy
    endif
+   # The backend checks the audio server is reachable before libcava's input uses it.
+   if pipewire.found()
+      cava_deps += pipewire
+   endif
+   if libpulse.found()
+      cava_deps += libpulse
+   endif
 endif
 
 if libgps.found()
