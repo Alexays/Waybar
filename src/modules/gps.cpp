@@ -184,3 +184,8 @@ waybar::modules::Gps::~Gps() {
   gps_stream(&gps_data_, WATCH_DISABLE, NULL);
   gps_close(&gps_data_);
 }
+
+// Entry point looked up by Factory once waybar-gps.so is loaded.
+extern "C" waybar::AModule* waybar_module_create(const std::string& id, const Json::Value& config) {
+  return new waybar::modules::Gps(id, config);
+}
