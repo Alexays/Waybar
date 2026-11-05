@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Assert on Waybar's accessibility (AT-SPI) tree instead of pixels.
 
-Usage: a11y.py [--timeout SECONDS] [--absent] TEXT...
+Usage: a11y.py [--timeout SECONDS] [--absent] [--showing] TEXT...
 
 Each TEXT must appear (or, with --absent, must not appear) as a substring of a
 label in the running Waybar's tree. The tree is polled until the timeout, so a
 test can assert on a state change it just triggered. Robust to fonts and
-anti-aliasing, unlike the golden image.
+anti-aliasing, unlike the golden image. With --showing, only widgets on screen
+count: a hidden widget keeps its last label in the tree.
 """
 import argparse
 import sys
@@ -15,7 +16,13 @@ import time
 import pyatspi
 
 
-def collect(acc, out):
+def collect(acc, out, showing):
+    try:
+        if (showing and acc.getRole() != pyatspi.ROLE_APPLICATION
+                and not acc.getState().contains(pyatspi.STATE_SHOWING)):
+            return
+    except Exception:
+        pass
     try:
         name = acc.name or ""
     except Exception:
@@ -32,17 +39,17 @@ def collect(acc, out):
         except Exception:
             child = None
         if child is not None:
-            collect(child, out)
+            collect(child, out, showing)
 
 
-def waybar_texts():
+def waybar_texts(showing):
     desktop = pyatspi.Registry.getDesktop(0)
     texts, found = [], False
     for i in range(desktop.childCount):
         app = desktop.getChildAtIndex(i)
         if app is not None and (app.name or "").lower().startswith("waybar"):
             found = True
-            collect(app, texts)
+            collect(app, texts, showing)
     return found, texts
 
 
@@ -50,12 +57,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--timeout", type=float, default=5)
     parser.add_argument("--absent", action="store_true")
+    parser.add_argument("--showing", action="store_true")
     parser.add_argument("texts", nargs="+")
     args = parser.parse_args()
 
     deadline = time.monotonic() + args.timeout
     while True:
-        found, texts = waybar_texts()
+        found, texts = waybar_texts(args.showing)
         if args.absent:
             bad = [e for e in args.texts if any(e in t for t in texts)]
         else:
