@@ -36,9 +36,11 @@ def collect(acc, out, showing):
     for i in range(count):
         try:
             child = acc.getChildAtIndex(i)
+            # A hidden widget keeps its last label (sway/mode outside a mode): skip it
+            visible = child is not None and child.getState().contains(pyatspi.STATE_VISIBLE)
         except Exception:
-            child = None
-        if child is not None:
+            visible = False
+        if visible:
             collect(child, out, showing)
 
 

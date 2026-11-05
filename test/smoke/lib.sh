@@ -10,7 +10,7 @@
 #   smoke::screenshot out.png
 #   smoke::stop
 #
-# Environment knobs (optional): WIDTH HEIGHT SCALE COMPOSITOR WAYBAR_BIN
+# Environment knobs (optional): WIDTH HEIGHT SCALE COMPOSITOR WAYBAR_BIN SWAY_CONFIG_EXTRA
 set -uo pipefail
 
 SMOKE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -54,6 +54,7 @@ smoke::start_compositor() {
             local cfg; cfg="$(mktemp)"
             cat > "$cfg" <<EOF
 output HEADLESS-1 resolution ${WIDTH}x${HEIGHT} scale ${SCALE} background #000000 solid_color
+${SWAY_CONFIG_EXTRA:-}
 EOF
             sway -c "$cfg" >/tmp/compositor.log 2>&1 &
             COMP_PID=$!
@@ -115,10 +116,12 @@ smoke::assert_alive() {
     echo "✓ waybar is alive"
 }
 
-# Fail on sanitizer reports and GTK/GLib criticals in the log.
+# Fail on sanitizer reports and GTK/GLib criticals in the log, except lines matching the
+# SMOKE_LOG_IGNORE regex.
 smoke::assert_clean() {
     local bad
-    bad="$(grep -iE 'AddressSanitizer|runtime error:|LeakSanitizer|Gtk-CRITICAL|GLib-CRITICAL|GLib-GObject-CRITICAL|assertion .*failed|segfault|terminate called|SUMMARY: .*Sanitizer|ASan runtime does not come first' "$SMOKE_LOG" || true)"
+    bad="$(grep -iE 'AddressSanitizer|runtime error:|LeakSanitizer|Gtk-CRITICAL|GLib-CRITICAL|GLib-GObject-CRITICAL|assertion .*failed|segfault|terminate called|SUMMARY: .*Sanitizer|ASan runtime does not come first' "$SMOKE_LOG" \
+        | grep -vE "${SMOKE_LOG_IGNORE:-^$}" || true)"
     if [ -n "$bad" ]; then
         echo "::error::waybar reported sanitizer/critical issues:"
         echo "$bad"

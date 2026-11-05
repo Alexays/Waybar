@@ -16,6 +16,7 @@ AddressSanitizer** and runs the real binary inside a **headless** compositor
 | 2 | **Golden** — screenshot vs [`reference.png`](reference.png) (fuzz 8%, 800px) | workflow |
 | 2 | **Interaction** - inject pointer clicks through a `wlr-virtual-pointer` device; assert `on-click` side effect, `format-alt` toggle, and a `click-to-reveal` drawer whose leader has its own click option | [`interact.sh`](interact.sh) / [`pointer_click.c`](pointer_click.c) |
 | 2 | **Accessibility** — assert module labels via the AT-SPI tree (robust to fonts) | [`a11y.sh`](a11y.sh) / [`a11y.py`](a11y.py) |
+| 2 | **Compositor modules** - real `foot` windows driven through sway IPC: `sway/workspaces` (switch, rename, empty workspace destroyed), `sway/window` (focus), `sway/mode` (enter/leave a mode), `sway/scratchpad` (move/show), `sway/language` (layout switch on a virtual keyboard), `wlr/taskbar` (windows opening/closing, under sway and labwc), `ext/workspaces` when the compositor offers ext-workspace-v1 (not sway 1.9 on Ubuntu 24.04) | [`compositor.sh`](compositor.sh) / [`virtual_keyboard.c`](virtual_keyboard.c) |
 | 3 | **Layout matrix** — top / bottom / left (vertical) + HiDPI (scale 2) | [`positions.sh`](positions.sh) |
 | 3 | **Second compositor** — same launch under `labwc` | workflow (`COMPOSITOR=labwc`) |
 | 4 | **Lifecycle / teardown** — clean SIGINT exit, runtime **output hotplug**, toggle + reload churn, fast-interval teardown (the C++ destructor path a `kill` never runs, #5182) | [`lifecycle.sh`](lifecycle.sh) |
@@ -63,6 +64,7 @@ export WAYBAR_BIN=$PWD/build/waybar
 ./test/smoke/interact.sh  /tmp/interaction-shots
 ./test/smoke/positions.sh /tmp/layout-shots
 dbus-run-session -- ./test/smoke/a11y.sh
+dbus-run-session -- ./test/smoke/compositor.sh   # also needs foot, wayland-info (optional)
 dbus-run-session -- ./test/smoke/tray.sh
 dbus-run-session -- ./test/smoke/ipc.sh
 # best-effort (need extra daemons / tools):

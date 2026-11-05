@@ -48,7 +48,7 @@ jobs:
             libgirepository1.0-dev libgtk-3-dev libgtkmm-3.0-dev libinput-dev \
             libjsoncpp-dev libmpdclient-dev libnl-3-dev libnl-genl-3-dev \
             libpulse-dev libsigc++-2.0-dev libspdlog-dev libwayland-dev \
-            upower libxkbregistry-dev libxkbcommon-dev
+            upower libxkbregistry-dev libxkbcommon-dev foot wayland-utils
 
       # Cheap static gate (source-only): every Factory module must be classified
       # for smoke coverage. Runs before the build so it fails fast.
@@ -133,6 +133,10 @@ jobs:
       # --- Tier 2: accessibility assertions ---
       - name: Accessibility (AT-SPI) assertions
         run: dbus-run-session -- ./test/smoke/a11y.sh
+
+      # --- Tier 2: compositor modules driven through sway IPC (+ taskbar under labwc) ---
+      - name: Compositor modules (sway, wlr/taskbar)
+        run: dbus-run-session -- ./test/smoke/compositor.sh
 
       # --- Tier 3: layout matrix (positions + HiDPI) ---
       - name: Layout matrix (top/bottom/left + scale 2)
