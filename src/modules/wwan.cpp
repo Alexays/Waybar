@@ -37,7 +37,8 @@ waybar::modules::Wwan::Wwan(const std::string& id, const Json::Value& config)
     return;
   }
 
-  manager = mm_manager_new_sync(connection, G_DBUS_OBJECT_MANAGER_CLIENT_FLAGS_NONE,
+  // Without auto-start the proxy is created even when ModemManager is not running yet.
+  manager = mm_manager_new_sync(connection, G_DBUS_OBJECT_MANAGER_CLIENT_FLAGS_DO_NOT_AUTO_START,
                                 nullptr,  // cancellable
                                 &error);
 
@@ -48,6 +49,15 @@ waybar::modules::Wwan::Wwan(const std::string& id, const Json::Value& config)
     return;
   }
 
+  // ModemManager vanishing removes every object and its return adds them back.
+  auto on_objects_changed = +[](GDBusObjectManager*, GDBusObject*, gpointer data) {
+    auto* self = static_cast<Wwan*>(data);
+    self->updateCurrentModem();
+    self->dp.emit();
+  };
+  g_signal_connect(manager, "object-added", G_CALLBACK(on_objects_changed), this);
+  g_signal_connect(manager, "object-removed", G_CALLBACK(on_objects_changed), this);
+
   updateCurrentModem();
 
   if (config_["hide-disconnected"].isBool()) {
@@ -57,6 +67,7 @@ waybar::modules::Wwan::Wwan(const std::string& id, const Json::Value& config)
 
 void waybar::modules::Wwan::updateCurrentModem() {
   // get 1st modem (or modem with the specified hardware path)
+  g_clear_object(&current_modem);
 
   GList* modems = g_dbus_object_manager_get_objects(G_DBUS_OBJECT_MANAGER(manager));
   if (!modems) {
@@ -67,6 +78,9 @@ void waybar::modules::Wwan::updateCurrentModem() {
     MMObject* modem_obj = MM_OBJECT(m->data);
 
     MMModem* modem = mm_object_get_modem(modem_obj);
+    if (modem == nullptr) {
+      continue;
+    }
 
     if (config_["path"].isString()) {
       std::string path = config_["path"].asString();
@@ -99,7 +113,6 @@ void waybar::modules::Wwan::updateCurrentModem() {
     return;
   }
   // no modems found
-  current_modem = nullptr;
   g_list_free_full(modems, g_object_unref);
 }
 
@@ -225,7 +238,6 @@ std::string getOperatorNameString(MMModem* modem) {
 auto waybar::modules::Wwan::update() -> void {
   if (current_modem == nullptr) {
     event_box_.set_visible(false);
-    updateCurrentModem();
     return;
   }
 
@@ -302,6 +314,9 @@ auto waybar::modules::Wwan::update() -> void {
 }
 
 waybar::modules::Wwan::~Wwan() {
+  if (manager != nullptr) {
+    g_signal_handlers_disconnect_by_data(manager, this);
+  }
   g_clear_object(&current_modem);
   g_clear_object(&manager);
   g_clear_object(&connection);
