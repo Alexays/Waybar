@@ -24,7 +24,8 @@ HARDWARE=(backlight backlight/slider battery upower power-profiles-daemon blueto
           network wwan gps pulseaudio pulseaudio/slider wireplumber jack sndio cava
           mpd mpris temperature keyboard-state systemd-failed-units privacy tray gamemode)
 
-# Need a specific compositor / its IPC to produce output.
+# Need a specific compositor / its IPC to produce output. ipc.sh runs the
+# hyprland, niri, mango, umbriel and wayfire ones against fake IPC servers.
 COMPOSITOR=(sway/language sway/mode sway/scratchpad sway/window sway/workspaces
             hyprland/language hyprland/submap hyprland/window hyprland/windowcount hyprland/workspaces
             river/layout river/mode river/tags river/window

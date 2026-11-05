@@ -23,6 +23,7 @@ AddressSanitizer** and runs the real binary inside a **headless** compositor
 | 5 | **State transitions** *(best-effort)* — real `mpd` driven through an **empty queue** (#5183) + stop/clear, `pulseaudio` + slider on a null sink | [`state.sh`](state.sh) |
 | 6 | **Fake hardware** *(best-effort)* — `backlight`, `backlight/slider` (#5179) and `battery` via **umockdev** | [`hardware.sh`](hardware.sh) |
 | — | **Leak check** *(report-only)* — clean-exit run under LSan | [`leakcheck.sh`](leakcheck.sh) |
+| 2 | **Compositor IPC modules** - `hyprland/*`, `niri/*`, `mango/*`, `umbriel/*` and `wayfire/*` against fake IPC servers replaying an ordinary session: workspace switch, create and (Hyprland) destroy, window open / retitle / close, keyboard layout, submap / keymode / layout; the bar keeps its state and exits cleanly once the compositor goes away. `river/*`, `dwl/*` speak Wayland protocols and are not covered | [`ipc.sh`](ipc.sh) / [`fake_ipc.py`](fake_ipc.py) |
 | 4 | **Tray hostile input** - oversized `RegisterStatusNotifierItem` call, and an item whose dbusmenu layout has 20000 entries; the bar must refuse both and keep answering | [`tray.sh`](tray.sh) / [`tray_item.c`](tray_item.c) |
 
 AddressSanitizer (plus `-D_GLIBCXX_ASSERTIONS`) runs under *all* of the above, so
@@ -63,6 +64,7 @@ export WAYBAR_BIN=$PWD/build/waybar
 ./test/smoke/positions.sh /tmp/layout-shots
 dbus-run-session -- ./test/smoke/a11y.sh
 dbus-run-session -- ./test/smoke/tray.sh
+dbus-run-session -- ./test/smoke/ipc.sh
 # best-effort (need extra daemons / tools):
 ./test/smoke/state.sh                        # needs mpd + mpc, pulseaudio
 ./test/smoke/hardware.sh                     # needs umockdev

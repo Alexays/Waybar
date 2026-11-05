@@ -156,6 +156,10 @@ jobs:
             layout-shots/
           if-no-files-found: warn
 
+      # --- Tier 2: compositor IPC modules against fake IPC servers ---
+      - name: Compositor IPC modules (fake Hyprland / niri / mango / Umbriel / Wayfire)
+        run: dbus-run-session -- ./test/smoke/ipc.sh
+
       # --- Tier 4: tray input from session-bus clients ---
       - name: Tray hostile input
         run: dbus-run-session -- ./test/smoke/tray.sh
