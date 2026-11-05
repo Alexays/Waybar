@@ -120,7 +120,7 @@ void waybar::modules::MPD::setLabel() {
     auto format = config_["format-disconnected"].isString()
                       ? config_["format-disconnected"].asString()
                       : "disconnected";
-    if (format.empty()) {
+    if (!format.empty()) {
       setLabelMarkup(format);
       label_.show();
     } else {

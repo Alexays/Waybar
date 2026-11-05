@@ -144,6 +144,18 @@ static Glib::RefPtr<Gdk::Pixbuf> loadImage(const std::string& path, int size) {
   return pixbuf;
 }
 
+// 0 or no value selects the default; the upper bound keeps size * scale factor inside an int.
+static int configSize(const Json::Value& size) {
+  if (size.isNull() || (size.isInt() && size.asInt() == 0)) {
+    return 16;
+  }
+  if (size.isInt() && size.asInt() > 0 && size.asInt() <= 8192) {
+    return size.asInt();
+  }
+  spdlog::warn("image: 'size' must be an integer between 1 and 8192, using the default 16");
+  return 16;
+}
+
 MultipleImageStrategy::MultipleImageStrategy(const std::string& id, const Json::Value& config,
                                              const std::string& module, Gtk::EventBox& evbox)
     : IStrategy(), box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
@@ -154,10 +166,7 @@ MultipleImageStrategy::MultipleImageStrategy(const std::string& id, const Json::
   box_.get_style_context()->add_class(module);
   evbox.add(box_);
 
-  size_ = config["size"].asInt();
-  if (size_ == 0) {
-    size_ = 16;
-  }
+  size_ = configSize(config["size"]);
 }
 
 void MultipleImageStrategy::fetch() {
@@ -319,10 +328,7 @@ SingleImageStrategy::SingleImageStrategy(const std::string& id, const Json::Valu
   box_.get_style_context()->add_class(module);
   evbox.add(box_);
 
-  size_ = config["size"].asInt();
-  if (size_ == 0) {
-    size_ = 16;
-  }
+  size_ = configSize(config["size"]);
   scale_factor_ = pixbuf_scale_factor_ = image_.get_scale_factor();
 }
 
