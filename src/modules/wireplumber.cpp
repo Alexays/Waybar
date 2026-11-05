@@ -77,8 +77,15 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
   event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Wireplumber::handleScroll));
 
   if (!setupConnection()) {
-    spdlog::error("[{}]: Could not connect to PipeWire: '{}'", name_, type_);
-    throw std::runtime_error("Could not connect to PipeWire\n");
+    // A null wp_core_ means PipeWire is not usable at all, so retrying cannot help.
+    if (wp_core_ == nullptr) {
+      spdlog::error("[{}]: PipeWire is not usable (is it installed?); module disabled", name_);
+      return;
+    }
+    teardownConnection();
+    spdlog::warn("[{}]: PipeWire is not running; retrying every {} ms", name_,
+                 kReconnectIntervalMs);
+    scheduleReconnect();
   }
 }
 
@@ -95,6 +102,11 @@ bool waybar::modules::Wireplumber::setupConnection() {
   connection_generation_ = ++last_generation;
 
   wp_core_ = wp_core_new(nullptr, nullptr, nullptr);
+  if (wp_core_get_pw_context(wp_core_) == nullptr) {
+    // No PipeWire client config or modules. Such a core crashes when finalized, so it is leaked.
+    wp_core_ = nullptr;
+    return false;
+  }
   apis_ = g_ptr_array_new_with_free_func(g_object_unref);
   om_ = wp_object_manager_new();
   pending_plugins_ = 0;
@@ -172,12 +184,13 @@ void waybar::modules::Wireplumber::scheduleReconnect() {
 // "disconnected" signal will re-arm the timer if needed).
 bool waybar::modules::Wireplumber::onReconnectTimeout() {
   teardownConnection();
-  spdlog::info("[{}]: attempting to reconnect to PipeWire...", name_);
+  spdlog::debug("[{}]: attempting to reconnect to PipeWire...", name_);
   if (setupConnection()) {
     spdlog::info("[{}]: reconnected to PipeWire", name_);
     return false;
   }
   teardownConnection();
+  dp.emit();
   spdlog::debug("[{}]: reconnect failed; retrying in {} ms", name_, kReconnectIntervalMs);
   return true;
 }
@@ -197,8 +210,8 @@ void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* 
   spdlog::debug("[{}]: updating '{}' node name with node.id {}", self->name_, self->type_, id);
 
   if (!isValidNodeId(id)) {
-    spdlog::warn("[{}]: '{}' is not a valid node ID. Ignoring '{}' node name update.", self->name_,
-                 id, self->type_);
+    spdlog::debug("[{}]: '{}' is not a valid node ID. Ignoring '{}' node name update.", self->name_,
+                  id, self->type_);
     return;
   }
 
@@ -257,8 +270,8 @@ void waybar::modules::Wireplumber::updateSourceName(waybar::modules::Wireplumber
   spdlog::debug("[{}]: updating source name with node.id {}", self->name_, id);
 
   if (!isValidNodeId(id)) {
-    spdlog::warn("[{}]: '{}' is not a valid source node ID. Ignoring source name update.",
-                 self->name_, id);
+    spdlog::debug("[{}]: '{}' is not a valid source node ID. Ignoring source name update.",
+                  self->name_, id);
     return;
   }
 
@@ -294,7 +307,7 @@ void waybar::modules::Wireplumber::updateVolume(waybar::modules::Wireplumber* se
   GVariant* variant = nullptr;
 
   if (!isValidNodeId(id)) {
-    spdlog::error("[{}]: '{}' is not a valid '{}' node ID. Ignoring volume update.", self->name_,
+    spdlog::debug("[{}]: '{}' is not a valid '{}' node ID. Ignoring volume update.", self->name_,
                   id, self->type_);
     return;
   }
@@ -326,7 +339,7 @@ void waybar::modules::Wireplumber::updateSourceVolume(waybar::modules::Wireplumb
   GVariant* variant = nullptr;
 
   if (!isValidNodeId(id)) {
-    spdlog::error("[{}]: '{}' is not a valid source node ID. Ignoring source volume update.",
+    spdlog::debug("[{}]: '{}' is not a valid source node ID. Ignoring source volume update.",
                   self->name_, id);
     return;
   }
@@ -422,7 +435,7 @@ void waybar::modules::Wireplumber::onDefaultNodesApiChanged(waybar::modules::Wir
   }
 
   // Handle source
-  uint32_t defaultSourceId;
+  uint32_t defaultSourceId = 0;
   g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", "Audio/Source", &defaultSourceId);
 
   if (isValidNodeId(defaultSourceId)) {
@@ -671,6 +684,12 @@ std::vector<std::string> waybar::modules::Wireplumber::getWPIcon() {
 }
 
 auto waybar::modules::Wireplumber::update() -> void {
+  if (mixer_api_ == nullptr || !isValidNodeId(node_id_)) {
+    event_box_.hide();
+    return;
+  }
+  event_box_.show();
+
   auto format = format_;
   std::string format_name = "format";
 
