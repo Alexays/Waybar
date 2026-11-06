@@ -202,7 +202,7 @@ cat > "$cfg5" <<EOF
   "modules-center": ["custom/buttons"],
   "custom/buttons": {
     "exec": "echo BUTTONS-TARGET-MODULE", "interval": "once",
-    "on-click": "echo click >> $BUTTON_LOG", "on-double-click": "echo double >> $BUTTON_LOG",
+    "on-click": "echo click >> $BUTTON_LOG", "on-double-click": "sleep 0.5; echo double >> $BUTTON_LOG",
     "on-click-middle": "echo middle >> $BUTTON_LOG",
     "on-click-backward": "echo backward >> $BUTTON_LOG", "on-click-forward": "echo forward >> $BUTTON_LOG"
   }
@@ -212,7 +212,8 @@ smoke::launch_waybar "$cfg5" "$DIR/style.css" 4
 smoke::assert_alive || fail=1
 # BTN_MIDDLE, BTN_SIDE and BTN_EXTRA are GTK buttons 2, 8 and 9
 for action in 0x110 0x112 0x113 0x114 double; do pointer "$CX" "$action"; done
-# GTK reports both presses of a double click before the double click itself
+# GTK reports both presses of a double click before the double click itself. The second click and
+# the double click spawn their shells together, so the double click one waits to write last.
 expect_log "$BUTTON_LOG" "click middle backward forward click click double" \
     "on-click, on-click-middle/backward/forward and on-double-click ran" || fail=1
 smoke::assert_clean || fail=1
