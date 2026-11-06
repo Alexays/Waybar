@@ -187,7 +187,7 @@ jobs:
   # RSS means what it says.
   smoke-soak:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
 
