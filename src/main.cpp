@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <glib.h>
 #include <spdlog/spdlog.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -225,6 +226,9 @@ static void logToJournalIfRunAsService() {
 }
 
 int main(int argc, char* argv[]) {
+  // A bar redraws little: cairo keeps the GTK3 memory footprint, where the GL and Vulkan renderers
+  // load a whole graphics driver. GSK_RENDERER still selects them.
+  g_setenv("GSK_RENDERER", "cairo", FALSE);
   logToJournalIfRunAsService();
 
   try {

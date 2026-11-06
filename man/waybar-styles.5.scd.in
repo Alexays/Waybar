@@ -53,6 +53,12 @@ You can apply special styling to any module for when the cursor hovers it.
 }
 ```
 
+## Renderer
+
+Waybar draws with the cairo renderer of GTK, like the GTK3 version did. Set the
+*GSK_RENDERER* environment variable to *ngl* or *vulkan* to draw on the GPU
+instead, at the cost of loading the graphics driver into the bar.
+
 ## Setting cursor style
 
 Most, if not all, module types support setting the `cursor` option. This is

@@ -21,9 +21,6 @@ RSS_SLACK_KB="${SOAK_RSS_SLACK_KB:-8192}"
 COUNT_SLACK=3
 
 smoke::setup
-# llvmpipe, the GL fallback on GPU-less runners, grows its caches for minutes:
-# cairo keeps the RSS check on Waybar's own memory.
-export GSK_RENDERER="${GSK_RENDERER:-cairo}"
 smoke::start_compositor
 trap smoke::stop EXIT
 
