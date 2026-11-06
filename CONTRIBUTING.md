@@ -16,6 +16,11 @@ Enable all optional modules while developing:
 meson setup build -Dexperimental=true
 ```
 
+Run the tests with `meson test -C build --print-errorlogs`.
+On Linux, install umockdev and its development headers before configuring to enable
+the backlight backend regression tests. These tests use an isolated sysfs/udev
+testbed rather than the machine's real backlights.
+
 ## Code style
 
 Waybar follows [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
