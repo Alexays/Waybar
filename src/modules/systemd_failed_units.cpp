@@ -24,6 +24,7 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
       tooltip_format_ok_("System: {system_state}\nUser: {user_state}"),
       tooltip_unit_format_("{name}: {description}"),
       update_pending_(false),
+      update_running_(false),
       nr_failed_system_(0),
       nr_failed_user_(0),
       nr_failed_(0),
@@ -47,11 +48,14 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
     tooltip_unit_format_ = config["tooltip-unit-format"].asString();
   }
 
+  /* The cached properties are never read, so don't wait for the name owner's GetAll. */
+  const auto proxy_flags = Gio::DBus::PROXY_FLAGS_DO_NOT_LOAD_PROPERTIES;
+
   /* Default to enable both "system" and "user". */
   if (!config["system"].isBool() || config["system"].asBool()) {
     system_props_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
         Gio::DBus::BusType::BUS_TYPE_SYSTEM, "org.freedesktop.systemd1",
-        "/org/freedesktop/systemd1", "org.freedesktop.DBus.Properties");
+        "/org/freedesktop/systemd1", "org.freedesktop.DBus.Properties", {}, proxy_flags);
     if (!system_props_proxy_) {
       throw std::runtime_error("Unable to connect to systemwide systemd DBus!");
     }
@@ -60,7 +64,7 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
     try {
       system_manager_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
           Gio::DBus::BusType::BUS_TYPE_SYSTEM, "org.freedesktop.systemd1",
-          "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager");
+          "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", {}, proxy_flags);
     } catch (const Glib::Error& e) {
       spdlog::warn("Unable to connect to systemwide systemd Manager interface: {}",
                    e.what().c_str());
@@ -69,7 +73,7 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
   if (!config["user"].isBool() || config["user"].asBool()) {
     user_props_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
         Gio::DBus::BusType::BUS_TYPE_SESSION, "org.freedesktop.systemd1",
-        "/org/freedesktop/systemd1", "org.freedesktop.DBus.Properties");
+        "/org/freedesktop/systemd1", "org.freedesktop.DBus.Properties", {}, proxy_flags);
     if (!user_props_proxy_) {
       throw std::runtime_error("Unable to connect to user systemd DBus!");
     }
@@ -78,7 +82,7 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
     try {
       user_manager_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
           Gio::DBus::BusType::BUS_TYPE_SESSION, "org.freedesktop.systemd1",
-          "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager");
+          "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", {}, proxy_flags);
     } catch (const Glib::Error& e) {
       spdlog::warn("Unable to connect to user systemd Manager interface: {}", e.what().c_str());
     }
@@ -101,18 +105,32 @@ auto SystemdFailedUnits::notify_cb(const Glib::ustring& sender_name,
   }
 }
 
-void SystemdFailedUnits::RequestSystemState() {
-  auto load = [](const char* kind, Glib::RefPtr<Gio::DBus::Proxy>& proxy) -> std::string {
+/* Continues in `done` once the reply is in, at once without a proxy; a late reply is dropped. */
+void SystemdFailedUnits::call(Glib::RefPtr<Gio::DBus::Proxy>& proxy, const char* method,
+                              const Glib::VariantContainerBase& parameters,
+                              const Gio::SlotAsyncReady& done) {
+  if (!proxy) {
+    Glib::RefPtr<Gio::AsyncResult> no_result;
+    done(no_result);
+    return;
+  }
+  proxy->call(method, sigc::track_obj(done, *this), parameters);
+}
+
+void SystemdFailedUnits::RequestSystemState(const std::function<void()>& next) {
+  auto load = [](const char* kind, Glib::RefPtr<Gio::DBus::Proxy>& proxy,
+                 Glib::RefPtr<Gio::AsyncResult>& result) -> std::string {
     try {
       if (!proxy) return "ignored";
-      auto parameters = Glib::VariantContainerBase(
-          g_variant_new("(ss)", "org.freedesktop.systemd1.Manager", "SystemState"));
-      Glib::VariantContainerBase data = proxy->call_sync("Get", parameters);
+      Glib::VariantContainerBase data = proxy->call_finish(result);
       if (data && data.is_of_type(Glib::VariantType("(v)"))) {
         Glib::VariantBase variant;
         g_variant_get(const_cast<GVariant*>(data.gobj()), "(v)", &variant);
         if (variant && variant.is_of_type(Glib::VARIANT_TYPE_STRING)) {
-          return g_variant_get_string(const_cast<GVariant*>(variant.gobj()), NULL);
+          // Escaped once here: the known states it is compared with need no escaping
+          return Glib::Markup::escape_text(
+                     g_variant_get_string(const_cast<GVariant*>(variant.gobj()), NULL))
+              .raw();
         }
       }
     } catch (Glib::Error& e) {
@@ -121,23 +139,29 @@ void SystemdFailedUnits::RequestSystemState() {
     return "unknown";
   };
 
-  system_state_ = load("systemwide", system_props_proxy_);
-  user_state_ = load("user", user_props_proxy_);
+  auto parameters = Glib::VariantContainerBase(
+      g_variant_new("(ss)", "org.freedesktop.systemd1.Manager", "SystemState"));
+  call(system_props_proxy_, "Get", parameters, [=, this](Glib::RefPtr<Gio::AsyncResult>& result) {
+    system_state_ = load("systemwide", system_props_proxy_, result);
+    call(user_props_proxy_, "Get", parameters, [=, this](Glib::RefPtr<Gio::AsyncResult>& result) {
+      user_state_ = load("user", user_props_proxy_, result);
 
-  if ((system_state_ == "running" || system_state_ == "ignored") &&
-      (user_state_ == "running" || user_state_ == "ignored"))
-    overall_state_ = "ok";
-  else
-    overall_state_ = "degraded";
+      if ((system_state_ == "running" || system_state_ == "ignored") &&
+          (user_state_ == "running" || user_state_ == "ignored"))
+        overall_state_ = "ok";
+      else
+        overall_state_ = "degraded";
+      next();
+    });
+  });
 }
 
-void SystemdFailedUnits::RequestFailedUnits() {
-  auto load = [](const char* kind, Glib::RefPtr<Gio::DBus::Proxy>& proxy) -> uint32_t {
+void SystemdFailedUnits::RequestFailedUnits(const std::function<void()>& next) {
+  auto load = [](const char* kind, Glib::RefPtr<Gio::DBus::Proxy>& proxy,
+                 Glib::RefPtr<Gio::AsyncResult>& result) -> uint32_t {
     try {
       if (!proxy) return 0;
-      auto parameters = Glib::VariantContainerBase(
-          g_variant_new("(ss)", "org.freedesktop.systemd1.Manager", "NFailedUnits"));
-      Glib::VariantContainerBase data = proxy->call_sync("Get", parameters);
+      Glib::VariantContainerBase data = proxy->call_finish(result);
       if (data && data.is_of_type(Glib::VariantType("(v)"))) {
         Glib::VariantBase variant;
         g_variant_get(const_cast<GVariant*>(data.gobj()), "(v)", &variant);
@@ -151,30 +175,41 @@ void SystemdFailedUnits::RequestFailedUnits() {
     return 0;
   };
 
-  nr_failed_system_ = load("systemwide", system_props_proxy_);
-  nr_failed_user_ = load("user", user_props_proxy_);
-  nr_failed_ = nr_failed_system_ + nr_failed_user_;
+  auto parameters = Glib::VariantContainerBase(
+      g_variant_new("(ss)", "org.freedesktop.systemd1.Manager", "NFailedUnits"));
+  call(system_props_proxy_, "Get", parameters, [=, this](Glib::RefPtr<Gio::AsyncResult>& result) {
+    nr_failed_system_ = load("systemwide", system_props_proxy_, result);
+    call(user_props_proxy_, "Get", parameters, [=, this](Glib::RefPtr<Gio::AsyncResult>& result) {
+      nr_failed_user_ = load("user", user_props_proxy_, result);
+      nr_failed_ = nr_failed_system_ + nr_failed_user_;
+      next();
+    });
+  });
 }
 
-void SystemdFailedUnits::RequestFailedUnitsList() {
+void SystemdFailedUnits::RequestFailedUnitsList(const std::function<void()>& next) {
   failed_units_.clear();
   if (!tooltipEnabled() || nr_failed_ == 0) {
+    next();
     return;
   }
 
-  if (system_manager_proxy_) {
-    auto units = LoadFailedUnitsList("systemwide", system_manager_proxy_, "system");
+  call(system_manager_proxy_, "ListUnits", {}, [=, this](Glib::RefPtr<Gio::AsyncResult>& result) {
+    auto units = LoadFailedUnitsList("systemwide", system_manager_proxy_, "system", result);
     failed_units_.insert(failed_units_.end(), units.begin(), units.end());
-  }
-  if (user_manager_proxy_) {
-    auto units = LoadFailedUnitsList("user", user_manager_proxy_, "user");
-    failed_units_.insert(failed_units_.end(), units.begin(), units.end());
-  }
+    call(user_manager_proxy_, "ListUnits", {}, [=, this](Glib::RefPtr<Gio::AsyncResult>& result) {
+      auto units = LoadFailedUnitsList("user", user_manager_proxy_, "user", result);
+      failed_units_.insert(failed_units_.end(), units.begin(), units.end());
+      next();
+    });
+  });
 }
 
 auto SystemdFailedUnits::LoadFailedUnitsList(const char* kind,
                                              Glib::RefPtr<Gio::DBus::Proxy>& proxy,
-                                             const std::string& scope) -> std::vector<FailedUnit> {
+                                             const std::string& scope,
+                                             Glib::RefPtr<Gio::AsyncResult>& result)
+    -> std::vector<FailedUnit> {
   // org.freedesktop.systemd1.Manager.ListUnits returns
   // (name, description, load_state, active_state, sub_state, followed, unit_path, job_id,
   //  job_type, job_path).
@@ -189,7 +224,7 @@ auto SystemdFailedUnits::LoadFailedUnitsList(const char* kind,
   }
 
   try {
-    auto data = proxy->call_sync("ListUnits");
+    auto data = proxy->call_finish(result);
     if (!data) return units;
     if (!data.is_of_type(ListUnitsReply::variant_type())) {
       spdlog::warn("Unexpected DBus signature for ListUnits: {}", data.get_type_string());
@@ -224,12 +259,14 @@ std::string SystemdFailedUnits::BuildTooltipFailedList() const {
   bool first = true;
   for (const auto& unit : failed_units_) {
     try {
-      auto line = fmt::format(
-          fmt::runtime(tooltip_unit_format_),
-          fmt::arg("name", Glib::Markup::escape_text(unit.name).raw()),
-          fmt::arg("description", Glib::Markup::escape_text(unit.description).raw()),
-          fmt::arg("load_state", unit.load_state), fmt::arg("active_state", unit.active_state),
-          fmt::arg("sub_state", unit.sub_state), fmt::arg("scope", unit.scope));
+      auto line =
+          fmt::format(fmt::runtime(tooltip_unit_format_),
+                      fmt::arg("name", Glib::Markup::escape_text(unit.name).raw()),
+                      fmt::arg("description", Glib::Markup::escape_text(unit.description).raw()),
+                      fmt::arg("load_state", Glib::Markup::escape_text(unit.load_state).raw()),
+                      fmt::arg("active_state", Glib::Markup::escape_text(unit.active_state).raw()),
+                      fmt::arg("sub_state", Glib::Markup::escape_text(unit.sub_state).raw()),
+                      fmt::arg("scope", unit.scope));
       if (!first) {
         list += "\n";
       }
@@ -245,23 +282,30 @@ std::string SystemdFailedUnits::BuildTooltipFailedList() const {
 }
 
 void SystemdFailedUnits::updateData() {
+  /* One round at a time: a change seen meanwhile stays pending and the last reply restarts. */
+  if (update_running_) return;
   update_pending_ = false;
+  update_running_ = true;
 
-  RequestSystemState();
-  if (overall_state_ == "degraded") {
-    RequestFailedUnits();
-    RequestFailedUnitsList();
-  } else {
-    nr_failed_system_ = nr_failed_user_ = nr_failed_ = 0;
-    failed_units_.clear();
-  }
-
-  dp.emit();
+  auto done = [this] {
+    update_running_ = false;
+    dp.emit();
+    if (update_pending_) updateData();
+  };
+  RequestSystemState([this, done] {
+    if (overall_state_ == "degraded") {
+      RequestFailedUnits([this, done] { RequestFailedUnitsList(done); });
+    } else {
+      nr_failed_system_ = nr_failed_user_ = nr_failed_ = 0;
+      failed_units_.clear();
+      done();
+    }
+  });
 }
 
 auto SystemdFailedUnits::update() -> void {
-  // Hide if needed.
-  if (overall_state_ == "ok" && hide_on_ok_) {
+  // Hide if needed, and until the first replies are in.
+  if (overall_state_.empty() || (overall_state_ == "ok" && hide_on_ok_)) {
     event_box_.set_visible(false);
     last_status_ = overall_state_;
     return;

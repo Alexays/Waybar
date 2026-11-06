@@ -1,5 +1,6 @@
 #include "modules/hyprland/backend.hpp"
 
+#include <fmt/format.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <spdlog/spdlog.h>
@@ -11,9 +12,11 @@
 
 #include <array>
 #include <cerrno>
+#include <chrono>
 #include <cstring>
 #include <filesystem>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 
@@ -21,6 +24,29 @@
 #include "util/string.hpp"
 
 namespace waybar::modules::hyprland {
+
+namespace {
+
+// Quotes `s` as a Lua short string literal, which may not contain a raw newline.
+std::string luaQuote(const std::string& s) {
+  std::string out;
+  out.reserve(s.size() + 2);
+  out += '"';
+  for (const unsigned char c : s) {
+    if (c == '"' || c == '\\') {
+      out += '\\';
+      out += static_cast<char>(c);
+    } else if (c < 0x20) {
+      out += fmt::format("\\{:03d}", static_cast<int>(c));
+    } else {
+      out += static_cast<char>(c);
+    }
+  }
+  out += '"';
+  return out;
+}
+
+}  // namespace
 
 std::filesystem::path IPC::socketFolder_;
 std::optional<bool> IPC::s_luaProtocolDetected_;
@@ -70,6 +96,7 @@ IPC::~IPC() {
       }
     }
   }
+  reconnectCv_.notify_all();
   if (ipcThread_.joinable()) {
     ipcThread_.join();
   }
@@ -91,12 +118,28 @@ void IPC::socketListener() {
 
   spdlog::info("Hyprland IPC starting");
 
+  // Hyprland drops an event client that falls too far behind, so a closed stream does not mean
+  // the compositor is gone: only a failing connect ends the listener.
+  bool reconnected = false;
+  while (readEvents(his, reconnected)) {
+    spdlog::info("Hyprland IPC: reconnecting");
+    std::unique_lock<std::mutex> lock(socketMutex_);
+    if (reconnectCv_.wait_for(lock, std::chrono::seconds(2),
+                              [this] { return !running_.load(std::memory_order_relaxed); })) {
+      break;
+    }
+    reconnected = true;
+  }
+  spdlog::debug("Hyprland IPC stopped");
+}
+
+bool IPC::readEvents(const char* his, bool reconnected) {
   struct sockaddr_un addr = {};
-  const int socketfd = socket(AF_UNIX, SOCK_STREAM, 0);
+  const int socketfd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 
   if (socketfd == -1) {
     spdlog::error("Hyprland IPC: socketfd failed");
-    return;
+    return false;
   }
 
   addr.sun_family = AF_UNIX;
@@ -105,7 +148,7 @@ void IPC::socketListener() {
   if (socketPath.native().size() >= sizeof(addr.sun_path)) {
     spdlog::error("Hyprland IPC: Socket path is too long: {}", socketPath.string());
     close(socketfd);
-    return;
+    return false;
   }
   strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
 
@@ -114,12 +157,16 @@ void IPC::socketListener() {
   if (connect(socketfd, (struct sockaddr*)&addr, l) == -1) {
     spdlog::error("Hyprland IPC: Unable to connect? {}", std::strerror(errno));
     close(socketfd);
-    return;
+    return false;
   }
 
   {
     std::lock_guard<std::mutex> lock(socketMutex_);
     socketfd_ = socketfd;
+  }
+
+  if (reconnected) {
+    notifyReconnect();
   }
 
   std::string pending;
@@ -173,7 +220,23 @@ void IPC::socketListener() {
       socketfd_ = -1;
     }
   }
-  spdlog::debug("Hyprland IPC stopped");
+  return running_.load(std::memory_order_relaxed);
+}
+
+void IPC::notifyReconnect() {
+  std::unique_lock lock(callbackMutex_);
+
+  std::set<EventHandler*> notified;  // a handler is listed once per event it registered for
+  for (auto& [eventname, handler] : callbacks_) {
+    if (!notified.insert(handler).second) {
+      continue;
+    }
+    try {
+      handler->onReconnect();
+    } catch (std::exception& e) {
+      spdlog::warn("Hyprland IPC: failed to refresh a module after reconnecting: {}", e.what());
+    }
+  }
 }
 
 void IPC::parseIPC(const std::string& ev) {
@@ -216,7 +279,7 @@ void IPC::unregisterForIPC(EventHandler* ev_handler) {
 std::string IPC::getSocket1Reply(const std::string& rq) {
   // basically hyprctl
 
-  util::ScopedFd serverSocket(socket(AF_UNIX, SOCK_STREAM, 0));
+  util::ScopedFd serverSocket(socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0));
 
   if (serverSocket < 0) {
     throw std::runtime_error("Hyprland IPC: Couldn't open a socket (1)");
@@ -357,23 +420,24 @@ std::string IPC::buildLuaDispatch(const std::string& dispatcher, const std::stri
   // New format:  /dispatch hl.dsp.workspace.toggle_special("name")
 
   if (dispatcher == "workspace") {
-    return "/dispatch hl.dsp.focus({ workspace = \"" + arg + "\" })";
+    return "/dispatch hl.dsp.focus({ workspace = " + luaQuote(arg) + " })";
   }
   if (dispatcher == "focusworkspaceoncurrentmonitor") {
-    return "/dispatch hl.dsp.focus({ workspace = \"" + arg + "\", on_current_monitor = true })";
+    return "/dispatch hl.dsp.focus({ workspace = " + luaQuote(arg) +
+           ", on_current_monitor = true })";
   }
   if (dispatcher == "togglespecialworkspace") {
     if (arg.empty()) {
       return "/dispatch hl.dsp.workspace.toggle_special()";
     }
-    return "/dispatch hl.dsp.workspace.toggle_special(\"" + arg + "\")";
+    return "/dispatch hl.dsp.workspace.toggle_special(" + luaQuote(arg) + ")";
   }
 
   // Fallback for any other dispatcher: try the old format wrapped in dispatch().
   // This may not work for all dispatchers, but it's a reasonable default.
   spdlog::warn("Hyprland IPC: unknown dispatcher '{}' in Lua mode, attempting generic format",
                dispatcher);
-  return "/dispatch hl.dsp." + dispatcher + "(\"" + arg + "\")";
+  return "/dispatch hl.dsp." + dispatcher + "(" + luaQuote(arg) + ")";
 }
 
 std::string IPC::dispatch(const std::string& dispatcher, const std::string& arg) {

@@ -7,8 +7,11 @@
 #include <giomm/desktopappinfo.h>
 #include <giomm/icon.h>
 
+#include <algorithm>
+
 #include "modules/niri/backend.hpp"
 #include "modules/niri/workspaces.hpp"
+#include "util/tooltip.hpp"
 
 namespace waybar::modules::niri {
 
@@ -129,9 +132,7 @@ void Workspace::update(const Json::Value& data, const std::vector<Json::Value>& 
     taskbar_box_.show();
     label_.hide();
   } else {
-    for (auto* child : taskbar_box_.get_children()) {
-      taskbar_box_.remove(*child);
-    }
+    taskbar_buttons_.clear();
     taskbar_box_.hide();
   }
 }
@@ -139,42 +140,70 @@ void Workspace::update(const Json::Value& data, const std::vector<Json::Value>& 
 // ── Taskbar rebuild ──────────────────────────────────────────────────────────
 
 void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
-  for (auto* child : taskbar_box_.get_children()) {
-    taskbar_box_.remove(*child);
-  }
+  std::erase_if(taskbar_buttons_, [&](const auto& entry) {
+    return std::none_of(my_windows.begin(), my_windows.end(), [&](const Json::Value& win) {
+      return win["id"].asUInt64() == entry.first;
+    });
+  });
 
   const auto& taskbar_cfg = manager_.config()["workspace-taskbar"];
   const int icon_size = taskbar_cfg["icon-size"].isInt() ? taskbar_cfg["icon-size"].asInt() : 16;
 
+  int position = 0;
   for (const auto& win : my_windows) {
     const auto win_id = win["id"].asUInt64();
     const std::string app_id = win["app_id"].isString() ? win["app_id"].asString() : "";
     const std::string title = win["title"].isString() ? win["title"].asString() : app_id;
     const bool is_focused = win["is_focused"].asBool();
 
-    auto* btn = Gtk::make_managed<Gtk::Button>();
-    btn->set_relief(Gtk::RELIEF_NONE);
-    btn->get_style_context()->add_class("niri-taskbar-btn");
-    if (is_focused) btn->get_style_context()->add_class("focused");
-    btn->set_tooltip_text(title);
+    const auto [it, is_new] = taskbar_buttons_.try_emplace(win_id);
+    auto& entry = it->second;
+    auto& btn = entry.button;
+    if (is_new) {
+      btn.set_relief(Gtk::RELIEF_NONE);
+      btn.get_style_context()->add_class("niri-taskbar-btn");
+      taskbar_box_.pack_start(btn, false, false, 0);
+      btn.show();
+    }
+    taskbar_box_.reorder_child(btn, position++);
 
-    auto pixbuf = loadIcon(app_id, icon_size);
-    if (pixbuf) {
-      auto* img = Gtk::make_managed<Gtk::Image>(pixbuf);
-      btn->add(*img);
+    if (is_focused) {
+      btn.get_style_context()->add_class("focused");
     } else {
-      std::string fallback = app_id.empty() ? title : app_id;
-      if (!fallback.empty()) {
-        fallback = fallback.substr(0, 3);
-      } else {
-        fallback = "?";
+      btn.get_style_context()->remove_class("focused");
+    }
+    util::set_tooltip_markup(btn, Glib::Markup::escape_text(title));
+
+    if (is_new || entry.app_id != app_id) {
+      entry.app_id = app_id;
+      auto pixbuf = loadIcon(app_id, icon_size);
+      if (pixbuf) entry.image.set(pixbuf);
+      Gtk::Widget& child = pixbuf ? static_cast<Gtk::Widget&>(entry.image) : entry.label;
+      if (btn.get_child() != &child) {
+        if (btn.get_child() != nullptr) btn.remove();
+        btn.add(child);
+        child.show();
       }
-      auto* lbl = Gtk::make_managed<Gtk::Label>(fallback);
-      btn->add(*lbl);
+    }
+    if (btn.get_child() == &entry.label) {
+      // Three characters, not bytes, and none that break or widen the line
+      std::string fallback;
+      const char* p = (app_id.empty() ? title : app_id).c_str();
+      for (int n = 0; n < 3 && *p != '\0'; p = g_utf8_next_char(p)) {
+        const gunichar c = g_utf8_get_char_validated(p, -1);
+        if (c == static_cast<gunichar>(-1) || c == static_cast<gunichar>(-2)) break;
+        if (g_unichar_iscntrl(c) || c == 0x2028 || c == 0x2029) continue;
+        fallback.append(p, g_utf8_next_char(p) - p);
+        ++n;
+      }
+      if (fallback.empty()) fallback = "?";
+      if (entry.label.get_text() != fallback) entry.label.set_text(fallback);
     }
 
+    if (!is_new) continue;
+
     // Left click → focus window.
-    btn->signal_clicked().connect([win_id] {
+    btn.signal_clicked().connect([win_id] {
       try {
         Json::Value request(Json::objectValue);
         auto& action = (request["Action"] = Json::Value(Json::objectValue));
@@ -186,9 +215,16 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
       }
     });
 
-    // Middle click → close window.
-    btn->signal_button_release_event().connect([win_id](GdkEventButton* event) -> bool {
+    // Middle click closes the window. GtkButton only pairs press and release for the primary
+    // button, and a release on a button that did not see the press must not close its window.
+    btn.signal_button_press_event().connect([&entry](GdkEventButton* event) -> bool {
+      if (event->button == GDK_BUTTON_MIDDLE) entry.middle_pressed = true;
+      return false;
+    });
+    btn.signal_button_release_event().connect([win_id, &entry](GdkEventButton* event) -> bool {
       if (event->button == GDK_BUTTON_MIDDLE) {
+        if (!entry.middle_pressed) return true;
+        entry.middle_pressed = false;
         try {
           Json::Value request(Json::objectValue);
           auto& action = (request["Action"] = Json::Value(Json::objectValue));
@@ -202,9 +238,6 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
       }
       return false;
     });
-
-    taskbar_box_.pack_start(*btn, false, false, 0);
-    btn->show_all();
   }
 }
 

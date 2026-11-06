@@ -2,7 +2,6 @@
 
 #include <atomic>
 #include <chrono>
-#include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -144,10 +143,5 @@ class CavaBackend final {
   std::atomic<bool> shutdown_{false};
   bool audio_raw_initialized_{false};
   mutable std::recursive_mutex state_mutex_;
-
-  // Synchronization for joining read_thread_ during destruction
-  bool read_thread_exited_{false};
-  mutable std::mutex read_thread_exit_mutex_;
-  std::condition_variable read_thread_exit_cv_;
 };
 }  // namespace waybar::modules::cava

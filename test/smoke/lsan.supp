@@ -1,0 +1,4 @@
+# LeakSanitizer suppressions for the smoke tiers: third-party allocations only.
+# fontconfig keeps the patterns and font sets pango asks it for in caches it
+# never frees before exit.
+leak:libfontconfig.so.1

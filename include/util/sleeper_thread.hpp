@@ -68,6 +68,12 @@ class SleeperThread {
 
   bool isRunning() const { return do_run_.load(std::memory_order_relaxed); }
 
+  void join() {
+    if (thread_.joinable()) {
+      thread_.join();
+    }
+  }
+
   auto sleep() {
     std::unique_lock lk(mutex_);
     CancellationGuard cancel_lock;
@@ -128,7 +134,9 @@ class SleeperThread {
     }
     condvar_.notify_all();
     auto handle = thread_.native_handle();
-    if (handle != 0) {
+    // A self-stopping worker leaves the loop when its callback returns; a pending self-cancel
+    // would instead fire at the next cancellation point, possibly inside a noexcept destructor.
+    if (handle != 0 && thread_.get_id() != std::this_thread::get_id()) {
       // TODO: find a proper way to terminate thread...
       pthread_cancel(handle);
     }

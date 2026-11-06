@@ -29,6 +29,8 @@ void add_registry_listener(void* data) {
 
   wl_registry_add_listener(registry, &registry_listener_impl, data);
   wl_display_roundtrip(display);
+  // The listener points at this module and must not fire for globals announced after it is gone
+  wl_registry_destroy(registry);
 }
 
 static void workspace_manager_handle_workspace_group(

@@ -61,6 +61,11 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	default: {H} h {M} min ++
 	The format, how the time should be displayed.
 
+*format-eta*: ++
+	typeof: string ++
+	default: {:%H:%M} ++
+	The format of the estimated local time at which the battery will be full or empty. See https://fmt.dev/latest/syntax/#chrono-format-specifications for the available specifiers.
+
 *format-icons*: ++
 	typeof: array/object ++
 	Based on the current capacity, the corresponding icon gets selected. ++
@@ -165,6 +170,8 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 *{icon}*: Icon, as defined in *format-icons*.
 
 *{time}*: Estimate of time until full or empty. Note that this is based on the power draw at the last refresh time, not an average.
+
+*{eta}*: Estimate of the local time at which the battery will be full or empty, formatted via *format-eta*. Same caveat as for *{time}*.
 
 *{cycles}*: Amount of charge cycles the highest-capacity battery has seen. *(Linux only)*
 

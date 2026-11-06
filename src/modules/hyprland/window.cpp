@@ -12,8 +12,10 @@
 
 #include "modules/hyprland/backend.hpp"
 #include "modules/hyprland/workspace_identity.hpp"
+#include "util/css_class.hpp"
 #include "util/rewrite_string.hpp"
 #include "util/sanitize_str.hpp"
+#include "util/string.hpp"
 
 namespace waybar::modules::hyprland {
 
@@ -45,7 +47,13 @@ auto Window::update() -> void {
 
   queryActiveWorkspace();
 
-  std::string windowName = waybar::util::sanitize_string(workspace_.last_window_title);
+  std::string windowName =
+      waybar::util::sanitize_string(toSingleLine(workspace_.last_window_title));
+  const std::string initialTitle =
+      waybar::util::sanitize_string(toSingleLine(windowData_.initial_title));
+  const std::string className = waybar::util::sanitize_string(toSingleLine(windowData_.class_name));
+  const std::string initialClass =
+      waybar::util::sanitize_string(toSingleLine(windowData_.initial_class_name));
   std::string windowAddress = workspace_.last_window;
 
   windowData_.title = windowName;
@@ -62,9 +70,8 @@ auto Window::update() -> void {
 
     label_text = waybar::util::rewriteString(
         fmt::format(fmt::runtime(format_), fmt::arg("title", displayTitle),
-                    fmt::arg("initialTitle", windowData_.initial_title),
-                    fmt::arg("class", windowData_.class_name),
-                    fmt::arg("initialClass", windowData_.initial_class_name)),
+                    fmt::arg("initialTitle", initialTitle), fmt::arg("class", className),
+                    fmt::arg("initialClass", initialClass)),
         config_["rewrite"]);
     setLabelMarkup(label_text);
   } else {
@@ -78,9 +85,9 @@ auto Window::update() -> void {
     }
     if (!tooltip_format.empty()) {
       setTooltipMarkup(fmt::format(fmt::runtime(tooltip_format), fmt::arg("title", windowName),
-                                   fmt::arg("initialTitle", windowData_.initial_title),
-                                   fmt::arg("class", windowData_.class_name),
-                                   fmt::arg("initialClass", windowData_.initial_class_name)));
+                                   fmt::arg("initialTitle", initialTitle),
+                                   fmt::arg("class", className),
+                                   fmt::arg("initialClass", initialClass)));
     } else if (!label_text.empty()) {
       setTooltipMarkup(label_text);
     }
@@ -98,18 +105,18 @@ auto Window::update() -> void {
   setClass("swallowing", swallowing_);
   setClass("fullscreen", fullscreen_);
 
-  if (!lastSoloClass_.empty() && soloClass_ != lastSoloClass_) {
-    if (bar_.window.get_style_context()->has_class(lastSoloClass_)) {
+  // lastSoloClass_ is only ever a class this module added, so nothing else is removed
+  if (soloClass_ != lastSoloClass_) {
+    if (!lastSoloClass_.empty()) {
       bar_.window.get_style_context()->remove_class(lastSoloClass_);
       spdlog::trace("Removing solo class: {}", lastSoloClass_);
+      lastSoloClass_.clear();
+    }
+    if (waybar::util::add_app_id_class(bar_.window.get_style_context(), soloClass_)) {
+      spdlog::trace("Adding solo class: {}", soloClass_);
+      lastSoloClass_ = soloClass_;
     }
   }
-
-  if (!soloClass_.empty() && soloClass_ != lastSoloClass_) {
-    bar_.window.get_style_context()->add_class(soloClass_);
-    spdlog::trace("Adding solo class: {}", soloClass_);
-  }
-  lastSoloClass_ = soloClass_;
 
   AAppIconLabel::update();
 }
@@ -257,6 +264,8 @@ void Window::queryActiveWorkspace() {
 }
 
 void Window::onEvent(const std::string& ev) { dp.emit(); }
+
+void Window::onReconnect() { dp.emit(); }
 
 void Window::setClass(const std::string& classname, bool enable) {
   if (enable) {

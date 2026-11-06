@@ -4,7 +4,9 @@
 #include <gtkmm/image.h>
 
 #include <csignal>
+#include <mutex>
 #include <string>
+#include <vector>
 
 #include "ALabel.hpp"
 #include "gtkmm/box.h"
@@ -20,9 +22,10 @@ class IStrategy {
  public:
   virtual ~IStrategy() = default;
   // Runs on the worker thread before update(). Use it for blocking work (e.g.
-  // spawning a user script) so the GTK main loop isn't stalled. Default no-op.
+  // spawning a user script, decoding an image) so the GTK main loop isn't stalled.
   virtual void fetch() {}
-  virtual void update() = 0;
+  // Returns false when fetch() has to run again
+  virtual bool update() = 0;
 };
 
 class SingleImageStrategy : public IStrategy {
@@ -30,7 +33,8 @@ class SingleImageStrategy : public IStrategy {
   SingleImageStrategy(const std::string&, const Json::Value&, const std::string&, Gtk::EventBox&,
                       bool);
   ~SingleImageStrategy() override = default;
-  void update() override;
+  void fetch() override;
+  bool update() override;
 
  private:
   void parseOutputRaw();
@@ -39,10 +43,15 @@ class SingleImageStrategy : public IStrategy {
   Json::Value config_;
   Gtk::Image image_;
   std::string path_;
-  std::string tooltip_;
   int size_;
   Gtk::Box box_;
   bool hasTooltip_;
+  // Shared by fetch() on the worker thread and update()
+  std::mutex mutex_;
+  std::string tooltip_;
+  Glib::RefPtr<Gdk::Pixbuf> pixbuf_;
+  int pixbuf_scale_factor_;
+  int scale_factor_;
 };
 
 class MultipleImageStrategy : public IStrategy {
@@ -50,7 +59,7 @@ class MultipleImageStrategy : public IStrategy {
   MultipleImageStrategy(const std::string&, const Json::Value&, const std::string&, Gtk::EventBox&);
   ~MultipleImageStrategy() override = default;
   void fetch() override;
-  void update() override;
+  bool update() override;
 
  private:
   struct ImageData {
@@ -58,11 +67,12 @@ class MultipleImageStrategy : public IStrategy {
     std::string marker;
     std::string tooltip;
     std::string on_click;
+    Glib::RefPtr<Gdk::Pixbuf> pixbuf;
     std::shared_ptr<Gtk::Image> img;
     std::shared_ptr<Gtk::Button> btn;
   };
 
-  void setImagesData(const Json::Value&);
+  static void setImagesData(const Json::Value&, std::vector<ImageData>&);
   void setupAndDraw();
   void resetBoxAndMemory();
   void handleClick(const Glib::ustring& data);
@@ -71,8 +81,9 @@ class MultipleImageStrategy : public IStrategy {
   int size_;
   Gtk::Box box_;
   std::vector<ImageData> images_data_;
-  // stdout captured by fetch() on the worker thread and consumed by update()
-  std::string exec_output_;
+  // Decoded by fetch() on the worker thread and drawn by update()
+  std::mutex mutex_;
+  std::vector<ImageData> fetched_images_data_;
 };
 
 }  // namespace image

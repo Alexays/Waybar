@@ -2,7 +2,6 @@
 
 #include <fmt/args.h>
 #include <fmt/format.h>
-#include <glibmm/dispatcher.h>
 #include <glibmm/markup.h>
 #include <gtkmm.h>
 #include <gtkmm/eventbox.h>
@@ -12,6 +11,7 @@
 #include <utility>
 
 #include "IModule.hpp"
+#include "util/coalescing_dispatcher.hpp"
 
 namespace waybar {
 
@@ -26,8 +26,9 @@ class AModule : public IModule {
   operator Gtk::Widget&() override;
   auto doAction(const std::string& name) -> void override;
 
-  /// Emitting on this dispatcher triggers a update() call
-  Glib::Dispatcher dp;
+  /// Emitting on this dispatcher triggers a update() call. It starts pending: Bar runs the first
+  /// update from the main loop, so emits before it never write to the dispatcher pipe.
+  util::CoalescingDispatcher dp{true};
 
   bool expandEnabled() const;
 

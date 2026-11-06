@@ -88,6 +88,7 @@ class IPC : public std::enable_shared_from_this<IPC> {
 
   static auto connect() -> Sock;
   auto receive(Sock& sock) -> Json::Value;
+  auto init_state() -> void;
   auto start() -> void;
   auto root_event_handler(const std::string& event, const Json::Value& data) -> void;
   auto update_state_handler(const std::string& event, const Json::Value& data) -> void;

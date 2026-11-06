@@ -14,7 +14,8 @@ Addressed by *custom/<name>*
 
 *exec*: ++
 	typeof: string ++
-	The path to the script, which should be executed.
+	The path to the script, which should be executed. ++
+	At most 256 KiB of its output (of each line, if the script runs continuously) is used; the rest is discarded.
 
 *exec-if*: ++
 	typeof: string ++
@@ -40,7 +41,7 @@ Addressed by *custom/<name>*
 	Minimum value is 0.001 (1ms). Values smaller than 1ms will be set to 1ms. ++
 	Use *once* if you want to execute the module only on startup. ++
 	You can update it manually with a signal. If no *interval* or *signal* is defined, it is assumed that the out script loops itself. ++
-	If a *signal* is defined then the script will run once on startup and will only update with a signal.
+	If both *interval* and *signal* are defined, the script keeps running every *interval* and a signal triggers an extra update in between.
 
 *restart-interval*: ++
 	typeof: integer or float ++
@@ -53,7 +54,7 @@ Addressed by *custom/<name>*
 	typeof: integer ++
 	The signal number used to update the module. ++
 	The number is valid between 1 and N, where *SIGRTMIN+N* = *SIGRTMAX*. ++
-	If no interval is defined then a signal will be the only way to update the module.
+	If no *interval* is defined, or it is set to *once*, the script runs once on startup and a signal is the only way to update the module.
 
 *format*: ++
 	typeof: string ++

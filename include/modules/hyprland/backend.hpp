@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <condition_variable>
 #include <filesystem>
 #include <list>
 #include <mutex>
@@ -16,6 +17,8 @@ namespace waybar::modules::hyprland {
 class EventHandler {
  public:
   virtual void onEvent(const std::string& ev) = 0;
+  // Called on the IPC thread after the event socket reconnected: events were lost.
+  virtual void onReconnect() {}
   virtual ~EventHandler() = default;
 };
 
@@ -59,11 +62,14 @@ class IPC {
 
  private:
   void socketListener();
+  bool readEvents(const char* his, bool reconnected);
+  void notifyReconnect();
   void parseIPC(const std::string&);
 
   std::thread ipcThread_;
   std::mutex callbackMutex_;
   std::mutex socketMutex_;
+  std::condition_variable reconnectCv_;  // cuts the reconnect back-off short on teardown
   util::JsonParser parser_;
   std::list<std::pair<std::string, EventHandler*>> callbacks_;
   int socketfd_ = -1;  // the hyprland socket file descriptor

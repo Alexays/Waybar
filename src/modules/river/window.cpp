@@ -68,6 +68,8 @@ Window::Window(const std::string& id, const waybar::Bar& bar, const Json::Value&
   struct wl_registry* registry = wl_display_get_registry(display);
   wl_registry_add_listener(registry, &registry_listener_impl, this);
   wl_display_roundtrip(display);
+  // The listener points at this module and must not fire for globals announced after it is gone
+  wl_registry_destroy(registry);
 
   output_ = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
 
@@ -110,7 +112,7 @@ void Window::handle_focused_view(const char* title) {
     auto text = fmt::format(fmt::runtime(format_), Glib::Markup::escape_text(title).raw());
     label_.set_markup(text);
     if (tooltipEnabled()) {
-      label_.set_tooltip_markup(text);
+      setTooltipMarkup(text);
     }
   }
 

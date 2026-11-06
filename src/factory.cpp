@@ -1,5 +1,8 @@
 #include "factory.hpp"
 
+#include <dlfcn.h>
+#include <fmt/format.h>
+
 #include "bar.hpp"
 
 #if defined(HAVE_CHRONO_TIMEZONES) || defined(HAVE_LIBDATE)
@@ -48,6 +51,11 @@
 #include "modules/mango/layout.hpp"
 #include "modules/mango/window.hpp"
 #include "modules/mango/workspaces.hpp"
+#endif
+#ifdef HAVE_UMBRIEL
+#include "modules/umbriel/layout.hpp"
+#include "modules/umbriel/window.hpp"
+#include "modules/umbriel/workspaces.hpp"
 #endif
 #ifdef HAVE_WAYFIRE
 #include "modules/wayfire/window.hpp"
@@ -119,10 +127,6 @@
 #ifdef HAVE_SYSTEMD_MONITOR
 #include "modules/systemd_failed_units.hpp"
 #endif
-#ifdef HAVE_LIBGPS
-#include "modules/gps.hpp"
-#endif
-#include "modules/cava/cava_frontend.hpp"
 #ifdef HAVE_LIBMM_GLIB
 #include "modules/wwan.hpp"
 #endif
@@ -132,6 +136,28 @@
 #include "modules/image.hpp"
 #include "modules/temperature.hpp"
 #include "modules/user.hpp"
+
+#if defined(HAVE_LIBCAVA) || defined(HAVE_LIBGPS)
+// Modules with heavy optional dependencies live in their own shared object, so
+// packagers can ship them separately. Their undefined symbols (AModule, ALabel,
+// ...) resolve against the waybar executable, which is linked with
+// export_dynamic. The handle is never closed: the module code must outlive
+// every instance it creates.
+static waybar::AModule* loadModule(const char* file, const std::string& id,
+                                   const Json::Value& config) {
+  const std::string path = fmt::format("{}/{}", WAYBAR_MODULE_DIR, file);
+  void* handle = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
+  if (handle == nullptr) {
+    throw std::runtime_error(fmt::format("cannot load {}: {}", path, dlerror()));
+  }
+  using Create = waybar::AModule* (*)(const std::string&, const Json::Value&);
+  auto create = reinterpret_cast<Create>(dlsym(handle, "waybar_module_create"));
+  if (create == nullptr) {
+    throw std::runtime_error(fmt::format("cannot load {}: {}", path, dlerror()));
+  }
+  return create(id, config);
+}
+#endif
 
 waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {}
 
@@ -260,6 +286,17 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::mango::Layout(id, bar_, config_[name]);
     }
 #endif
+#ifdef HAVE_UMBRIEL
+    if (ref == "umbriel/window") {
+      return new waybar::modules::umbriel::Window(id, bar_, config_[name]);
+    }
+    if (ref == "umbriel/workspaces") {
+      return new waybar::modules::umbriel::Workspaces(id, bar_, config_[name]);
+    }
+    if (ref == "umbriel/layout") {
+      return new waybar::modules::umbriel::Layout(id, bar_, config_[name]);
+    }
+#endif
 #ifdef HAVE_WAYFIRE
     if (ref == "wayfire/window") {
       return new waybar::modules::wayfire::Window(id, bar_, config_[name]);
@@ -371,9 +408,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::Wireplumber(id, config_[name]);
     }
 #endif
+#ifdef HAVE_LIBCAVA
     if (ref == "cava") {
-      return waybar::modules::cava::getModule(id, config_[name]).release();
+      return loadModule("waybar-cava.so", id, config_[name]);
     }
+#endif
 #ifdef HAVE_SYSTEMD_MONITOR
     if (ref == "systemd-failed-units") {
       return new waybar::modules::SystemdFailedUnits(id, config_[name]);
@@ -381,7 +420,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #endif
 #ifdef HAVE_LIBGPS
     if (ref == "gps") {
-      return new waybar::modules::Gps(id, config_[name]);
+      return loadModule("waybar-gps.so", id, config_[name]);
     }
 #endif
 #ifdef HAVE_LIBMM_GLIB

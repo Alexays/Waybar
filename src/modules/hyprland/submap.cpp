@@ -72,7 +72,7 @@ auto Submap::update() -> void {
     label_.set_markup(
         fmt::format(fmt::runtime(format_), fmt::arg("submap", submap_), fmt::arg("icon", icon_)));
     if (tooltipEnabled()) {
-      label_.set_tooltip_markup(submap_);
+      setTooltipMarkup(submap_);
     }
     event_box_.show();
   }

@@ -20,6 +20,7 @@ class Language : public waybar::ALabel, public EventHandler {
 
  private:
   void onEvent(const std::string&) override;
+  void onReconnect() override;
 
   void initLanguage();
 

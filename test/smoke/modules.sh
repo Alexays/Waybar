@@ -43,7 +43,12 @@ EOF
     smoke::assert_alive || ok=0
     smoke::assert_clean || ok=0
     if [ "$ok" = 1 ]; then
-        smoke::screenshot "$SHOTDIR/$safe.png"
+        # The first bar on a cold runner (TSan above all) can draw after the settle time.
+        for _ in 1 2 3 4 5; do
+            smoke::screenshot "$SHOTDIR/$safe.png"
+            smoke::assert_not_blank "$SHOTDIR/$safe.png" >/dev/null && break
+            sleep 2
+        done
         smoke::assert_not_blank "$SHOTDIR/$safe.png" || ok=0
     fi
     [ "$ok" = 1 ] || fails+=("$mod")

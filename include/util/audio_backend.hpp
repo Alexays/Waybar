@@ -8,6 +8,7 @@
 
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include "util/backend_common.hpp"
@@ -23,6 +24,7 @@ class AudioBackend {
  private:
   static void subscribeCb(pa_context*, pa_subscription_event_type_t, uint32_t, void*);
   static void contextStateCb(pa_context*, void*);
+  static void reconnectTimerCb(pa_mainloop_api*, pa_time_event*, const struct timeval*, void*);
   static void sinkInfoCb(pa_context*, const pa_sink_info*, int, void*);
   static void sourceInfoCb(pa_context*, const pa_source_info* i, int, void* data);
   static void serverInfoCb(pa_context*, const pa_server_info*, void*);
@@ -33,6 +35,7 @@ class AudioBackend {
   // across the libpulse C callback boundary calls std::terminate, so this
   // swallows any failure and reports it via the return value instead.
   bool reconnectContext() noexcept;
+  void scheduleReconnect();
 
   pa_threaded_mainloop* mainloop_;
   pa_mainloop_api* mainloop_api_;
@@ -40,6 +43,8 @@ class AudioBackend {
   // Guards against the FAILED -> connect -> FAILED recursion / busy loop when a
   // reconnect attempt fails synchronously inside pa_context_connect().
   bool reconnecting_{false};
+  // Pending reconnect, or nullptr. Only touched with the mainloop lock held.
+  pa_time_event* reconnect_timer_{nullptr};
   pa_cvolume pa_volume_;
   pa_cvolume pa_source_volume_;
 
@@ -68,6 +73,10 @@ class AudioBackend {
 
   std::function<void()> on_updated_cb_ = NOOP;
 
+  // Guards the sink/source state above between the PulseAudio callbacks and the GTK-thread
+  // getters. Not the mainloop lock: the callbacks hold that while on_updated_cb_() may block.
+  mutable std::mutex state_mutex_;
+
   /* Hack to keep constructor inaccessible but still public.
    * This is required to be able to use std::make_shared.
    * It is important to keep this class only accessible via a reference-counted
@@ -90,19 +99,58 @@ class AudioBackend {
   void setIgnoredSinks(const Json::Value& config);
   void setSinkMapping(const Json::Value& config);
 
-  std::string getSinkPortName() const { return port_name_; }
-  std::string getFormFactor() const { return form_factor_; }
-  std::string getSinkDesc() const { return desc_; }
-  std::string getMonitor() const { return monitor_; }
-  std::string getCurrentSinkName() const { return current_sink_name_; }
-  bool getCurrentSinkRunning() const { return current_sink_running_; }
-  uint16_t getSinkVolume() const { return volume_; }
-  bool getSinkMuted() const { return muted_; }
-  uint16_t getSourceVolume() const { return source_volume_; }
-  bool getSourceMuted() const { return source_muted_; }
-  std::string getSourcePortName() const { return source_port_name_; }
-  std::string getSourceDesc() const { return source_desc_; }
-  std::string getDefaultSourceName() const { return default_source_name_; }
+  std::string getSinkPortName() const {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return port_name_;
+  }
+  std::string getFormFactor() const {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return form_factor_;
+  }
+  std::string getSinkDesc() const {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return desc_;
+  }
+  std::string getMonitor() const {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return monitor_;
+  }
+  std::string getCurrentSinkName() const {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return current_sink_name_;
+  }
+  bool getCurrentSinkRunning() const {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return current_sink_running_;
+  }
+  uint16_t getSinkVolume() const {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return volume_;
+  }
+  bool getSinkMuted() const {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return muted_;
+  }
+  uint16_t getSourceVolume() const {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return source_volume_;
+  }
+  bool getSourceMuted() const {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return source_muted_;
+  }
+  std::string getSourcePortName() const {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return source_port_name_;
+  }
+  std::string getSourceDesc() const {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return source_desc_;
+  }
+  std::string getDefaultSourceName() const {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return default_source_name_;
+  }
 
   void toggleSinkMute();
   void toggleSinkMute(bool);

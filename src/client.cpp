@@ -355,8 +355,10 @@ int waybar::Client::main(int argc, char* argv[]) {
   if (!log_level.empty()) {
     spdlog::set_level(spdlog::level::from_str(log_level));
   }
-  gtk_app = Gtk::Application::create(argc, argv, "fr.arouillard.waybar",
-                                     Gio::APPLICATION_HANDLES_COMMAND_LINE);
+  // Non-unique: a remote instance aborts in GIO when run() is called again on reload
+  gtk_app =
+      Gtk::Application::create(argc, argv, "fr.arouillard.waybar",
+                               Gio::APPLICATION_HANDLES_COMMAND_LINE | Gio::APPLICATION_NON_UNIQUE);
 
   // Initialize Waybars GTK resources with our custom icons
   auto theme = Gtk::IconTheme::get_default();

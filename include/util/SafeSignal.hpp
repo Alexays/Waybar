@@ -1,6 +1,5 @@
 #pragma once
 
-#include <glibmm/dispatcher.h>
 #include <sigc++/signal.h>
 
 #include <cstddef>
@@ -11,6 +10,8 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+
+#include "util/coalescing_dispatcher.hpp"
 
 namespace waybar {
 
@@ -83,7 +84,7 @@ struct SafeSignal : sigc::signal<void(std::decay_t<Args>...)> {
     }
   }
 
-  Glib::Dispatcher dp_;
+  util::CoalescingDispatcher dp_;
   std::mutex mutex_;
   std::queue<arg_tuple_t> queue_;
   std::size_t max_queued_events_ = 4096;

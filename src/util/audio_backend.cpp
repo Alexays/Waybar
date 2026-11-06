@@ -6,6 +6,7 @@
 #include <pulse/introspect.h>
 #include <pulse/operation.h>
 #include <pulse/subscribe.h>
+#include <pulse/timeval.h>
 #include <pulse/volume.h>
 #include <spdlog/spdlog.h>
 
@@ -15,6 +16,10 @@
 #include <utility>
 
 namespace waybar::util {
+
+// Retrying at once turns a persistent failure (a server dropping every connection, a reply
+// libpulse rejects) into a connect/fail busy loop on the PulseAudio thread.
+static constexpr pa_usec_t kReconnectDelay = 1 * PA_USEC_PER_SEC;
 
 AudioBackend::AudioBackend(std::function<void()> on_updated_cb, private_constructor_tag tag)
     : mainloop_(nullptr),
@@ -34,9 +39,23 @@ AudioBackend::AudioBackend(std::function<void()> on_updated_cb, private_construc
   }
   pa_threaded_mainloop_lock(mainloop_);
   mainloop_api_ = pa_threaded_mainloop_get_api(mainloop_);
-  connectContext();
-  if (pa_threaded_mainloop_start(mainloop_) < 0) {
-    throw std::runtime_error("pa_mainloop_run() failed.");
+  try {
+    connectContext();
+    if (pa_threaded_mainloop_start(mainloop_) < 0) {
+      throw std::runtime_error("pa_mainloop_run() failed.");
+    }
+  } catch (...) {
+    // The destructor does not run for a throwing constructor; contextStateCb() may have
+    // already dropped context_ on a synchronous failure.
+    if (context_ != nullptr) {
+      pa_context_disconnect(context_);
+      pa_context_unref(context_);
+      context_ = nullptr;
+    }
+    pa_threaded_mainloop_unlock(mainloop_);
+    pa_threaded_mainloop_free(mainloop_);
+    mainloop_ = nullptr;
+    throw;
   }
   pa_threaded_mainloop_unlock(mainloop_);
 }
@@ -46,6 +65,10 @@ AudioBackend::~AudioBackend() {
     // Lock the mainloop so we can safely disconnect the context.
     // This must be done before stopping the thread.
     pa_threaded_mainloop_lock(mainloop_);
+    if (reconnect_timer_ != nullptr) {
+      mainloop_api_->time_free(reconnect_timer_);
+      reconnect_timer_ = nullptr;
+    }
     if (context_ != nullptr) {
       pa_context_disconnect(context_);
       pa_context_unref(context_);
@@ -91,6 +114,35 @@ bool AudioBackend::reconnectContext() noexcept {
   }
 }
 
+// Called with the mainloop lock held.
+void AudioBackend::scheduleReconnect() {
+  if (reconnect_timer_ != nullptr) return;
+  struct timeval when;
+  pa_timeval_add(pa_gettimeofday(&when), kReconnectDelay);
+  reconnect_timer_ = mainloop_api_->time_new(mainloop_api_, &when, reconnectTimerCb, this);
+  if (reconnect_timer_ == nullptr) {
+    spdlog::error("PulseAudio reconnect could not be scheduled");
+  }
+}
+
+void AudioBackend::reconnectTimerCb(pa_mainloop_api* api, pa_time_event* e,
+                                    const struct timeval* /*tv*/, void* data) {
+  auto* backend = static_cast<AudioBackend*>(data);
+  api->time_free(e);
+  backend->reconnect_timer_ = nullptr;
+  backend->reconnecting_ = true;
+  // Never throw across the libpulse C callback boundary.
+  if (!backend->reconnectContext()) {
+    spdlog::warn("PulseAudio context reconnect failed; retrying");
+    if (backend->context_ != nullptr) {
+      pa_context_unref(backend->context_);
+      backend->context_ = nullptr;
+    }
+    backend->scheduleReconnect();
+  }
+  backend->reconnecting_ = false;
+}
+
 void AudioBackend::contextStateCb(pa_context* c, void* data) {
   auto* backend = static_cast<AudioBackend*>(data);
   switch (pa_context_get_state(c)) {
@@ -129,22 +181,14 @@ void AudioBackend::contextStateCb(pa_context* c, void* data) {
         if (backend->reconnecting_) {
           break;
         }
+        spdlog::debug("PulseAudio context failed: {}; reconnecting in {} s",
+                      pa_strerror(pa_context_errno(c)), kReconnectDelay / PA_USEC_PER_SEC);
         if (backend->context_ != nullptr) {
           pa_context_disconnect(backend->context_);
           pa_context_unref(backend->context_);
           backend->context_ = nullptr;
         }
-        backend->reconnecting_ = true;
-        // Never throw across the libpulse C callback boundary: a failed reconnect
-        // is logged and left for a later PA event to retry instead of aborting.
-        if (!backend->reconnectContext()) {
-          spdlog::warn("PulseAudio context reconnect failed; will retry on next event");
-          if (backend->context_ != nullptr) {
-            pa_context_unref(backend->context_);
-            backend->context_ = nullptr;
-          }
-        }
-        backend->reconnecting_ = false;
+        backend->scheduleReconnect();
       }
       break;
     case PA_CONTEXT_CONNECTING:
@@ -224,6 +268,7 @@ void AudioBackend::sinkInfoCb(pa_context* /*context*/, const pa_sink_info* i, in
   spdlog::trace("Sink name {} Running:[{}] Idle:[{}]", i->name, running, idle);
 
   auto* backend = static_cast<AudioBackend*>(data);
+  std::unique_lock<std::mutex> lock(backend->state_mutex_);
 
   if (!backend->ignored_sinks_.empty()) {
     for (const auto& ignored_sink : backend->ignored_sinks_) {
@@ -304,6 +349,7 @@ void AudioBackend::sinkInfoCb(pa_context* /*context*/, const pa_sink_info* i, in
     } else {
       backend->form_factor_ = "";
     }
+    lock.unlock();
     backend->on_updated_cb_();
   }
 }
@@ -314,6 +360,7 @@ void AudioBackend::sinkInfoCb(pa_context* /*context*/, const pa_sink_info* i, in
 void AudioBackend::sourceInfoCb(pa_context* /*context*/, const pa_source_info* i, int /*eol*/,
                                 void* data) {
   auto* backend = static_cast<AudioBackend*>(data);
+  std::unique_lock<std::mutex> lock(backend->state_mutex_);
   if (i != nullptr && backend->default_source_name_ == i->name) {
     if (pa_cvolume_valid(&i->volume) != 0) {
       backend->pa_source_volume_ = i->volume;
@@ -326,6 +373,7 @@ void AudioBackend::sourceInfoCb(pa_context* /*context*/, const pa_source_info* i
     backend->source_muted_ = i->mute != 0;
     backend->source_desc_ = i->description;
     backend->source_port_name_ = i->active_port != nullptr ? i->active_port->name : "Unknown";
+    lock.unlock();
     backend->on_updated_cb_();
   }
 }
@@ -337,15 +385,19 @@ void AudioBackend::sourceInfoCb(pa_context* /*context*/, const pa_source_info* i
 void AudioBackend::serverInfoCb(pa_context* context, const pa_server_info* i, void* data) {
   auto* backend = static_cast<AudioBackend*>(data);
   if (i == nullptr) return;
-  backend->current_sink_name_ = i->default_sink_name ? i->default_sink_name : "";
-  backend->default_sink_name = i->default_sink_name ? i->default_sink_name : "";
-  backend->default_source_name_ = i->default_source_name ? i->default_source_name : "";
+  {
+    std::lock_guard<std::mutex> lock(backend->state_mutex_);
+    backend->current_sink_name_ = i->default_sink_name ? i->default_sink_name : "";
+    backend->default_sink_name = i->default_sink_name ? i->default_sink_name : "";
+    backend->default_source_name_ = i->default_source_name ? i->default_source_name : "";
+  }
 
   if (auto* o = pa_context_get_sink_info_list(context, sinkInfoCb, data)) pa_operation_unref(o);
   if (auto* o = pa_context_get_source_info_list(context, sourceInfoCb, data)) pa_operation_unref(o);
 }
 
 uint16_t AudioBackend::getVolume(PulseaudioTarget target) const {
+  std::lock_guard<std::mutex> lock(state_mutex_);
   if (target == PulseaudioTarget::Source) {
     return source_volume_;
   } else {
@@ -363,8 +415,11 @@ void AudioBackend::changeVolume(uint16_t volume, uint16_t min_volume, uint16_t m
 
   bool is_source = target == PulseaudioTarget::Source;
 
-  // Select the appropriate stored volume structure
-  auto& ref_volume = is_source ? pa_source_volume_ : pa_volume_;
+  pa_cvolume ref_volume;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    ref_volume = is_source ? pa_source_volume_ : pa_volume_;
+  }
 
   // Prepare volume structure
   pa_cvolume pa_volume;
@@ -413,9 +468,13 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
 
   bool is_source = target == PulseaudioTarget::Source;
 
-  // Select the appropriate stored volume structure and current volume
-  auto& ref_volume = is_source ? pa_source_volume_ : pa_volume_;
-  auto current_volume = is_source ? source_volume_ : volume_;
+  pa_cvolume ref_volume;
+  uint16_t current_volume;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    ref_volume = is_source ? pa_source_volume_ : pa_volume_;
+    current_volume = is_source ? source_volume_ : volume_;
+  }
 
   // Prepare volume structure
   pa_cvolume pa_volume;
@@ -500,6 +559,7 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
 }
 
 bool AudioBackend::getMuted(PulseaudioTarget target) const {
+  std::lock_guard<std::mutex> lock(state_mutex_);
   if (target == PulseaudioTarget::Source) {
     return source_muted_;
   } else {
@@ -509,7 +569,10 @@ bool AudioBackend::getMuted(PulseaudioTarget target) const {
 
 void AudioBackend::toggleSinkMute() {
   if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
-  muted_ = !muted_;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    muted_ = !muted_;
+  }
   pa_threaded_mainloop_lock(mainloop_);
   if (auto* o = pa_context_set_sink_mute_by_index(context_, sink_idx_, static_cast<int>(muted_),
                                                   nullptr, nullptr))
@@ -519,7 +582,10 @@ void AudioBackend::toggleSinkMute() {
 
 void AudioBackend::toggleSinkMute(bool mute) {
   if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
-  muted_ = mute;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    muted_ = mute;
+  }
   pa_threaded_mainloop_lock(mainloop_);
   if (auto* o = pa_context_set_sink_mute_by_index(context_, sink_idx_, static_cast<int>(muted_),
                                                   nullptr, nullptr))
@@ -529,7 +595,10 @@ void AudioBackend::toggleSinkMute(bool mute) {
 
 void AudioBackend::toggleSourceMute() {
   if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
-  source_muted_ = !source_muted_;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    source_muted_ = !source_muted_;
+  }
   pa_threaded_mainloop_lock(mainloop_);
   if (auto* o = pa_context_set_source_mute_by_index(
           context_, source_idx_, static_cast<int>(source_muted_), nullptr, nullptr))
@@ -539,7 +608,10 @@ void AudioBackend::toggleSourceMute() {
 
 void AudioBackend::toggleSourceMute(bool mute) {
   if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
-  source_muted_ = mute;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    source_muted_ = mute;
+  }
   pa_threaded_mainloop_lock(mainloop_);
   if (auto* o = pa_context_set_source_mute_by_index(
           context_, source_idx_, static_cast<int>(source_muted_), nullptr, nullptr))
@@ -556,12 +628,14 @@ void AudioBackend::unmute(PulseaudioTarget target) {
 }
 
 bool AudioBackend::isBluetooth() {
+  std::lock_guard<std::mutex> lock(state_mutex_);
   return monitor_.find("a2dp_sink") != std::string::npos ||  // PulseAudio
          monitor_.find("a2dp-sink") != std::string::npos ||  // PipeWire
          monitor_.find("bluez") != std::string::npos;
 }
 
 void AudioBackend::setIgnoredSinks(const Json::Value& config) {
+  std::lock_guard<std::mutex> lock(state_mutex_);
   if (config.isArray()) {
     for (const auto& ignored_sink : config) {
       if (ignored_sink.isString()) {
@@ -572,6 +646,7 @@ void AudioBackend::setIgnoredSinks(const Json::Value& config) {
 }
 
 void AudioBackend::setSinkMapping(const Json::Value& config) {
+  std::lock_guard<std::mutex> lock(state_mutex_);
   if (config.isObject()) {
     for (auto it = config.begin(); it != config.end(); ++it) {
       if (it.key().isString() && it->isString()) {

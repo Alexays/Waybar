@@ -4,6 +4,7 @@
 
 #include <csignal>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include "AIconLabel.hpp"
@@ -31,6 +32,7 @@ class Custom : public AIconLabel {
   void parseOutputRaw();
   void parseOutputJson();
   void handleEvent();
+  void setOutput(util::command::res output);
   bool handleScroll(GdkEventScroll* e) override;
   bool handleToggle(GdkEventButton* const& e) override;
 
@@ -44,9 +46,13 @@ class Custom : public AIconLabel {
   std::string image_path_;
   std::string image_name_;
   unsigned app_icon_size_{24};
+  // Widget carrying the #custom-<name> name, MODULE_CLASS and script classes.
+  Gtk::Widget* module_widget_{&box_};
   const bool tooltip_format_enabled_;
   std::vector<std::string> class_;
   int percentage_;
+  // Written by the worker thread, read by update() on the main thread
+  std::mutex output_mutex_;
   util::command::res output_;
   util::JsonParser parser_;
   std::unique_ptr<util::command::LineStream> continuous_stream_;

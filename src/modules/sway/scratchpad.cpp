@@ -15,14 +15,15 @@ Scratchpad::Scratchpad(const std::string& id, const Json::Value& config)
       tooltip_text_(""),
       count_(0) {
   ipc_.subscribe(R"(["window"])");
-  ipc_.signal_event.connect(sigc::mem_fun(*this, &Scratchpad::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Scratchpad::onCmd));
+  // Only the newest tree matters
+  ipc_.signal_cmd.set_max_queued_events(1);
 
   getTree();
 
   ipc_.setWorker([this] {
     try {
-      ipc_.handleEvent();
+      ipc_.handleEvents(IPC_GET_TREE);
     } catch (const std::exception& e) {
       spdlog::error("Scratchpad: {}", e.what());
     }
@@ -65,9 +66,10 @@ auto Scratchpad::onCmd(const struct Ipc::ipc_response& res) -> void {
     if (tooltip_enabled_) {
       tooltip_text_.clear();
       for (const auto& window : tree["nodes"][0]["nodes"][0]["floating_nodes"]) {
-        tooltip_text_.append(fmt::format(fmt::runtime(tooltip_format_ + '\n'),
-                                         fmt::arg("app", window["app_id"].asString()),
-                                         fmt::arg("title", window["name"].asString())));
+        tooltip_text_.append(fmt::format(
+            fmt::runtime(tooltip_format_ + '\n'),
+            fmt::arg("app", Glib::Markup::escape_text(window["app_id"].asString()).raw()),
+            fmt::arg("title", Glib::Markup::escape_text(window["name"].asString()).raw())));
       }
       if (!tooltip_text_.empty()) {
         tooltip_text_.pop_back();
@@ -78,6 +80,4 @@ auto Scratchpad::onCmd(const struct Ipc::ipc_response& res) -> void {
     spdlog::error("Scratchpad: {}", e.what());
   }
 }
-
-auto Scratchpad::onEvent(const struct Ipc::ipc_response& res) -> void { getTree(); }
 }  // namespace waybar::modules::sway
