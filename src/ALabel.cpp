@@ -174,19 +174,19 @@ bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
 }
 
 std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_t max) {
-  auto format_icons = config_["format-icons"];
-  if (format_icons.isObject()) {
-    if (!alt.empty() && (format_icons[alt].isString() || format_icons[alt].isArray())) {
-      format_icons = format_icons[alt];
+  const Json::Value* format_icons = &config_["format-icons"];
+  if (format_icons->isObject()) {
+    if (!alt.empty() && ((*format_icons)[alt].isString() || (*format_icons)[alt].isArray())) {
+      format_icons = &(*format_icons)[alt];
     } else {
-      format_icons = format_icons["default"];
+      format_icons = &(*format_icons)["default"];
     }
   }
-  if (format_icons.isArray()) {
-    auto size = format_icons.size();
-    if (size != 0U && format_icons[0].isObject()) {
+  if (format_icons->isArray()) {
+    auto size = format_icons->size();
+    if (size != 0U && (*format_icons)[0].isObject()) {
       std::string last_icon;
-      for (const auto& threshold : format_icons) {
+      for (const auto& threshold : *format_icons) {
         if (!threshold.isObject() || !threshold["icon"].isString() || !threshold["max"].isUInt()) {
           static bool warned = false;
           if (!warned) {
@@ -208,33 +208,33 @@ std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_
     } else if (size != 0U) {
       auto divisor = std::max(1U, (max == 0 ? 100U : static_cast<unsigned>(max)) / size);
       auto idx = std::clamp(percentage / divisor, 0U, size - 1);
-      format_icons = format_icons[idx];
+      format_icons = &(*format_icons)[idx];
     }
   }
-  if (format_icons.isString()) {
-    return format_icons.asString();
+  if (format_icons->isString()) {
+    return format_icons->asString();
   }
   return "";
 }
 
 std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>& alts,
                             uint16_t max) {
-  auto format_icons = config_["format-icons"];
-  if (format_icons.isObject()) {
-    std::string _alt = "default";
+  const Json::Value* format_icons = &config_["format-icons"];
+  if (format_icons->isObject()) {
+    const Json::Value* icons = &(*format_icons)["default"];
     for (const auto& alt : alts) {
-      if (!alt.empty() && (format_icons[alt].isString() || format_icons[alt].isArray())) {
-        _alt = alt;
+      if (!alt.empty() && ((*format_icons)[alt].isString() || (*format_icons)[alt].isArray())) {
+        icons = &(*format_icons)[alt];
         break;
       }
     }
-    format_icons = format_icons[_alt];
+    format_icons = icons;
   }
-  if (format_icons.isArray()) {
-    auto size = format_icons.size();
-    if (size != 0U && format_icons[0].isObject()) {
+  if (format_icons->isArray()) {
+    auto size = format_icons->size();
+    if (size != 0U && (*format_icons)[0].isObject()) {
       std::string last_icon;
-      for (const auto& threshold : format_icons) {
+      for (const auto& threshold : *format_icons) {
         if (!threshold.isObject() || !threshold["icon"].isString() || !threshold["max"].isUInt()) {
           static bool warned = false;
           if (!warned) {
@@ -256,11 +256,11 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
     } else if (size != 0U) {
       auto divisor = std::max(1U, (max == 0 ? 100U : static_cast<unsigned>(max)) / size);
       auto idx = std::clamp(percentage / divisor, 0U, size - 1);
-      format_icons = format_icons[idx];
+      format_icons = &(*format_icons)[idx];
     }
   }
-  if (format_icons.isString()) {
-    return format_icons.asString();
+  if (format_icons->isString()) {
+    return format_icons->asString();
   }
   return "";
 }
