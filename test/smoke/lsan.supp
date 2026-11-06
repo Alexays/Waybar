@@ -2,3 +2,6 @@
 # fontconfig keeps the patterns and font sets pango asks it for in caches it
 # never frees before exit.
 leak:libfontconfig.so.1
+# Mesa's EGL keeps the display GTK initializes for GL rendering until process
+# exit: GTK never terminates it.
+leak:libEGL_mesa.so
