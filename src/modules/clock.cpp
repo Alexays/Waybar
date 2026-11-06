@@ -17,6 +17,13 @@
 using namespace date;
 namespace fmt_lib = waybar::util::date::format;
 
+static void replace_all(std::string& text, std::string_view from, std::string_view to) {
+  for (auto pos = text.find(from); pos != std::string::npos;
+       pos = text.find(from, pos + to.size())) {
+    text.replace(pos, from.size(), to);
+  }
+}
+
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     : ALabel(config, "clock", id, "{:%H:%M}", 60, false, false, true),
       m_locale_{std::locale(config_["locale"].isString() ? config_["locale"].asString() : "")},
@@ -217,13 +224,11 @@ auto waybar::modules::Clock::update() -> void {
     try {
       if (tzInTooltip_ || cldInTooltip_ || ordInTooltip_) {
         // std::vformat doesn't support named arguments.
-        m_tlpText_ =
-            std::regex_replace(m_tlpFmt_, std::regex("\\{" + kTZPlaceholder + "\\}"), tzText_);
-        m_tlpText_ = std::regex_replace(
-            m_tlpText_, std::regex("\\{" + kCldPlaceholder + "\\}"),
-            fmt_lib::vformat(m_locale_, cldText_, fmt_lib::make_format_args(shiftedNow)));
-        m_tlpText_ =
-            std::regex_replace(m_tlpText_, std::regex("\\{" + kOrdPlaceholder + "\\}"), ordText_);
+        m_tlpText_ = m_tlpFmt_;
+        replace_all(m_tlpText_, "{" + kTZPlaceholder + "}", tzText_);
+        replace_all(m_tlpText_, "{" + kCldPlaceholder + "}",
+                    fmt_lib::vformat(m_locale_, cldText_, fmt_lib::make_format_args(shiftedNow)));
+        replace_all(m_tlpText_, "{" + kOrdPlaceholder + "}", ordText_);
       } else {
         m_tlpText_ = m_tlpFmt_;
       }
@@ -261,6 +266,8 @@ auto waybar::modules::Clock::update() -> void {
         {"calendar-months", "class='months'"}};
 
     for (const auto& [css_class, search_str] : calendar_class_map) {
+      // Looking the color up restyles the label
+      if (m_tlpText_.find(search_str) == std::string::npos) continue;
       try {
         label_.add_css_class(css_class);
         const Gdk::RGBA color = label_.get_color();
@@ -270,7 +277,7 @@ auto waybar::modules::Clock::update() -> void {
             "color='#{:02x}{:02x}{:02x}'", static_cast<int>(color.get_red() * 255),
             static_cast<int>(color.get_green() * 255), static_cast<int>(color.get_blue() * 255));
 
-        m_tlpText_ = std::regex_replace(m_tlpText_, std::regex(search_str), replace_str);
+        replace_all(m_tlpText_, search_str, replace_str);
       } catch (const Glib::Error& e) {
         spdlog::warn("Clock: Failed to fetch CSS color for {}: {}", css_class, e.what());
         continue;
