@@ -5,6 +5,7 @@
 #include <glibmm/variant.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <stdexcept>
 
 namespace waybar::modules {

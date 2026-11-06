@@ -51,7 +51,7 @@ waybar::util::Rfkill::~Rfkill() {
 }
 
 bool waybar::util::Rfkill::on_event(Glib::IOCondition cond) {
-  if (cond & Glib::IOCondition::IO_IN) {
+  if ((cond & Glib::IOCondition::IO_IN) == Glib::IOCondition::IO_IN) {
     struct rfkill_event event;
     ssize_t len;
 

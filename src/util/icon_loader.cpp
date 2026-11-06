@@ -1,5 +1,7 @@
 #include "util/icon_loader.hpp"
 
+#include <algorithm>
+
 #include "util/string.hpp"
 
 std::vector<std::string> IconLoader::search_prefix() {

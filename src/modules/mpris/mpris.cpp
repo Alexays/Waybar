@@ -2,6 +2,7 @@
 
 #include <fmt/core.h>
 
+#include <algorithm>
 #include <optional>
 #include <sstream>
 #include <string>

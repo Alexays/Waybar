@@ -4,6 +4,7 @@
 #include <spdlog/spdlog.h>
 #include <sys/epoll.h>
 
+#include <algorithm>
 #include <cmath>
 #include <optional>
 #include <utility>

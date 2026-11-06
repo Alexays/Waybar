@@ -1,5 +1,6 @@
 #include "modules/niri/window.hpp"
 
+#include <algorithm>
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
 #include <spdlog/spdlog.h>
