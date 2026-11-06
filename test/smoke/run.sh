@@ -15,8 +15,20 @@ smoke::start_compositor
 trap smoke::stop EXIT
 smoke::launch_waybar "$CONFIG" "$STYLE"
 
+# ASan and software GL can delay the first map past the launch settle
+if [ -n "$SHOT" ]; then
+    for _ in $(seq 1 60); do
+        grep -q "Bar configured" "$SMOKE_LOG" && break
+        sleep 0.5
+    done
+fi
+
 echo "::group::waybar log"; smoke::log; echo "::endgroup::"
 
 smoke::assert_alive
 smoke::assert_clean
-[ -n "$SHOT" ] && smoke::screenshot "$SHOT"
+if [ -n "$SHOT" ]; then
+    grep -q "Bar configured" "$SMOKE_LOG" || { echo "::error::bar never configured"; exit 1; }
+    sleep 1
+    smoke::screenshot "$SHOT"
+fi
