@@ -14,9 +14,9 @@ ext_idle_notification_v1* waybar::modules::IdleInhibitor::idle_notification_ = n
 waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar,
                                               const Json::Value& config)
     : ALabel(config, "idle_inhibitor", id, "{status}", 0, false, true),
+      idle_timeout_ms_(0),
       bar_(bar),
       idle_inhibitor_(nullptr),
-      idle_timeout_ms_(0),
       pid_(-1),
       timeout(config_["timeout"].asDouble()),
       timeout_step(config_["timeout-step"].isDouble() ? config_["timeout-step"].asDouble() : 10),

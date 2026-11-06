@@ -302,7 +302,7 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
       return;
     }
     while (1) {
-      int BUF_LEN = 1024 * (sizeof(struct inotify_event) + 16);
+      constexpr size_t BUF_LEN = 1024 * (sizeof(struct inotify_event) + 16);
       char buf[BUF_LEN];
       int length = read(fd, buf, BUF_LEN);
       if (length < 0) {

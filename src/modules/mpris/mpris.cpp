@@ -36,11 +36,11 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
       dynamic_separator_(" - "),
       truncate_hours_(true),
       tooltip_len_limits_(false),
-      prefer_album_artist_(false),
-      hide_on_paused_(false),
       // this character is used in Gnome so it's fine to use it here
       ellipsis_("\u2026"),
-      player_("playerctld") {
+      player_("playerctld"),
+      prefer_album_artist_(false),
+      hide_on_paused_(false) {
   if (config_["format-playing"].isString()) {
     format_playing_ = config_["format-playing"].asString();
   }

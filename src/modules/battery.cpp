@@ -15,7 +15,6 @@
 #include <libudev.h>
 #include <poll.h>
 #include <spdlog/spdlog.h>
-#include <sys/signalfd.h>
 
 waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "battery", id, "{capacity}%", 60), last_event_(""), bar_(bar) {
@@ -105,8 +104,7 @@ void waybar::modules::Battery::worker() {
       return;
     }
     if ((poll_fds_[0].revents & POLLIN) != 0) {
-      signalfd_siginfo signal_info;
-      read(poll_fds_[0].fd, &signal_info, sizeof(signal_info));
+      udev_device_unref(udev_monitor_receive_device(mon_.get()));
     }
     refreshBatteries();
     dp.emit();
@@ -195,6 +193,7 @@ void waybar::modules::Battery::refreshBatteries() {
 #endif
 }
 
+#if !defined(__FreeBSD__)
 // Unknown > Full > Not charging > Discharging > Charging
 static bool status_gt(const std::string& a, const std::string& b) {
   if (a == b)
@@ -209,6 +208,7 @@ static bool status_gt(const std::string& a, const std::string& b) {
     return true;
   return false;
 }
+#endif
 
 std::tuple<uint8_t, float, std::string, float, uint16_t, float>
 waybar::modules::Battery::getInfos() {

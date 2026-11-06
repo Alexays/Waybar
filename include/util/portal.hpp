@@ -29,7 +29,7 @@ class Portal : private Gio::DBus::Proxy {
   void setAppearance(Appearance newMode);
   bool announceAppearance();
   void on_signal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
-                 const Glib::VariantContainerBase& parameters);
+                 const Glib::VariantContainerBase& parameters) override;
   void onAppearanceReceived(Glib::RefPtr<Gio::AsyncResult>& result);
 };
 

@@ -59,7 +59,7 @@ class Workspaces : public AModule, public EventHandler {
   auto taskbarOrientation() const -> Gtk::Orientation { return m_taskbarOrientation; }
   auto taskbarReverseDirection() const -> bool { return m_taskbarReverseDirection; }
   auto onClickWindow() const -> std::string { return m_onClickWindow; }
-  auto getIgnoredWindows() const -> std::vector<std::regex> { return m_ignoreWindows; }
+  auto getIgnoredWindows() const -> const std::vector<std::regex>& { return m_ignoreWindows; }
   auto maxWindows() const -> int { return m_maxWindows; }
 
   enum class ActiveWindowPosition { NONE, FIRST, LAST };

@@ -426,7 +426,7 @@ void Workspace::update(const std::string& workspace_icon, const std::string& wor
 }
 
 bool Workspace::isEmpty() const {
-  auto ignore_list = m_workspaceManager.getIgnoredWindows();
+  const auto& ignore_list = m_workspaceManager.getIgnoredWindows();
   const bool no_ignore_rules = ignore_list.empty();
 
   if (no_ignore_rules) {
@@ -435,7 +435,7 @@ bool Workspace::isEmpty() const {
   // If there are windows but they are all ignored, consider the workspace empty
   return std::all_of(
       m_windowMap.begin(), m_windowMap.end(),
-      [this, &ignore_list](const auto& window_repr) { return shouldSkipWindow(window_repr); });
+      [this](const auto& window_repr) { return shouldSkipWindow(window_repr); });
 }
 
 void Workspace::updateTaskbar(const std::string& workspace_icon) {
@@ -585,7 +585,7 @@ void Workspace::handleClick(guint button, WindowAddress const& addr) const {
 }
 
 bool Workspace::shouldSkipWindow(const WindowRepr& window_repr) const {
-  auto ignore_list = m_workspaceManager.getIgnoredWindows();
+  const auto& ignore_list = m_workspaceManager.getIgnoredWindows();
   auto matches = [](const std::string& text, const std::regex& rule) {
     try {
       util::RegexInput input{text};

@@ -95,15 +95,16 @@ libinput = dependency('libinput', required: get_option('libinput'))
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 upower_glib = dependency('upower-glib', required: get_option('upower_glib'))
-pipewire = dependency('libpipewire-0.3', required: get_option('pipewire'))
+pipewire = dependency('libpipewire-0.3', required: get_option('pipewire'), include_type: 'system')
 playerctl = dependency('playerctl', version : ['>=2.0.0'], required: get_option('mpris'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libudev = dependency('libudev', required: get_option('libudev'))
 libevdev = dependency('libevdev', required: get_option('libevdev'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
 xkbregistry = dependency('xkbregistry')
-libjack = dependency('jack', required: get_option('jack'))
-libwireplumber = dependency('wireplumber-0.5', required: get_option('wireplumber'))
+libjack = dependency('jack', required: get_option('jack'), include_type: 'system')
+libwireplumber = dependency('wireplumber-0.5', required: get_option('wireplumber'),
+                            include_type: 'system')
 libgps = dependency('libgps', required: get_option('gps'))
 libmm_glib = dependency('mm-glib', required: get_option('wwan'))
 
@@ -573,6 +574,8 @@ cava = dependency('libcava',
                   version : '>=1.0.0',
                   required: get_option('cava'),
                   fallback : ['libcava', 'cava_dep'],
+                  default_options : ['warning_level=0'],
+                  include_type : 'system',
                   not_found_message: 'cava is not found. Building waybar without cava')
 
 epoxy = dependency('epoxy', required: false)

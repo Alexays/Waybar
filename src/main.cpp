@@ -192,8 +192,8 @@ static void logToJournalIfRunAsService() {
   char const* journal_stream = std::getenv("JOURNAL_STREAM");
 
   if (journal_stream != nullptr) {
-    dev_t device;
-    ino_t inode;
+    dev_t device = 0;
+    ino_t inode = 0;
     size_t len = std::strlen(journal_stream);
 
     auto result = std::from_chars(journal_stream, journal_stream + len, device);

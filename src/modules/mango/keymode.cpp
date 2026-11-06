@@ -4,8 +4,8 @@
 
 namespace waybar::modules::mango {
 
-Keymode::Keymode(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "keymode", id, "{}", 0, false), bar_(bar) {
+Keymode::Keymode(const std::string& id, const Bar& /*bar*/, const Json::Value& config)
+    : ALabel(config, "keymode", id, "{}", 0, false) {
   IPC::getInstance().registerForIPC("monitor", this);
 }
 

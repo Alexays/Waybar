@@ -43,19 +43,21 @@ class Battery : public ALabel {
 
   std::map<fs::path, int> batteries_;
   std::unique_ptr<udev, util::UdevDeleter> udev_;
-  std::array<pollfd, 1> poll_fds_;
   std::unique_ptr<udev_monitor, util::UdevMonitorDeleter> mon_;
   fs::path adapter_;
-  int battery_watch_fd_;
   std::mutex battery_list_mutex_;
   std::string old_status_;
   std::string last_event_;
+  const Bar& bar_;
+#if !defined(__FreeBSD__)
+  std::array<pollfd, 1> poll_fds_;
+  int battery_watch_fd_;
   bool warnFirstTime_{true};
   bool weightedAverage_{true};
-  const Bar& bar_;
   bool smoothPowerEnable_{false};
   double time_constant_s_{260.0};
   double smooth_power_{0.0};  // µW
+#endif
   std::chrono::steady_clock::time_point last_t_{std::chrono::steady_clock::now()};
   std::string old_status_raw_{""};
 
