@@ -741,6 +741,12 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int reque
     pixbuf = DefaultGtkIconThemeWrapper::load_icon(name, request_size);
     symbolic = name.ends_with("-symbolic");
   }
+  // GTK3 carried its own copies of the stock icons (dialog-information, media-playback-start...),
+  // which themes now often ship only as symbolic icons
+  if (!pixbuf && !symbolic) {
+    pixbuf = DefaultGtkIconThemeWrapper::load_icon(name + "-symbolic", request_size);
+    symbolic = true;
+  }
   // GTK draws symbolic icons in the foreground color; its other symbolic colors are not kept
   if (pixbuf && symbolic && pixbuf->get_has_alpha() && pixbuf->get_n_channels() == 4) {
     const auto color = event_box.get_color();
