@@ -9,12 +9,11 @@ RUN apk add --no-cache \
     fftw-dev \
     git \
     gpsd-dev \
-    gtkmm3-dev \
     gtkmm4-dev \
     iniparser-dev \
     jack-dev \
     jsoncpp-dev \
-    libdbusmenu-gtk3-dev \
+    libdbusmenu-glib-dev \
     libevdev-dev \
     libinput-dev \
     libmpdclient-dev \

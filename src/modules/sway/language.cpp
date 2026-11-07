@@ -119,15 +119,15 @@ auto Language::update() -> void {
   // thread, so mutating label_'s style context there would crash (#3702).
   if (layout_.short_name != applied_class_) {
     if (!applied_class_.empty()) {
-      label_.get_style_context()->remove_class(applied_class_);
+      label_.remove_css_class(applied_class_);
     }
     if (!layout_.short_name.empty()) {
-      label_.get_style_context()->add_class(layout_.short_name);
+      label_.add_css_class(layout_.short_name);
     }
     applied_class_ = layout_.short_name;
   }
   if (hide_single_ && layouts_map_.size() <= 1) {
-    event_box_.hide();
+    event_box_.set_visible(false);
     return;
   }
   auto display_layout = trim(fmt::format(
@@ -148,7 +148,7 @@ auto Language::update() -> void {
     }
   }
 
-  event_box_.show();
+  event_box_.set_visible(true);
 
   // Call parent update
   ALabel::update();

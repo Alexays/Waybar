@@ -9,12 +9,11 @@
 
 namespace waybar::modules::hyprland {
 
-Language::Language(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "language", id, "{}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
+Language::Language(const std::string& id, const Bar& /*bar*/, const Json::Value& config)
+    : ALabel(config, "language", id, "{}", 0, true), m_ipc(IPC::inst()) {
   // get the active layout when open
   initLanguage();
 
-  label_.hide();
   update();
 
   // register for hyprland ipc
@@ -34,10 +33,10 @@ auto Language::update() -> void {
   // thread and must never touch GTK -- that race corrupts the heap (#4665).
   if (prev_short_name_ != layout_.short_name) {
     if (!prev_short_name_.empty()) {
-      label_.get_style_context()->remove_class(prev_short_name_);
+      label_.remove_css_class(prev_short_name_);
     }
     if (!layout_.short_name.empty()) {
-      label_.get_style_context()->add_class(layout_.short_name);
+      label_.add_css_class(layout_.short_name);
     }
     prev_short_name_ = layout_.short_name;
   }
@@ -101,13 +100,13 @@ auto Language::update() -> void {
   }
 
   if (!format_.empty()) {
-    label_.show();
+    label_.set_visible(true);
     setLabelMarkup(layoutName);
     if (tooltip_enabled) {
       setTooltipMarkup(tooltipContent);
     }
   } else {
-    label_.hide();
+    label_.set_visible(false);
   }
 
   ALabel::update();

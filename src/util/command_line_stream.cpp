@@ -107,9 +107,9 @@ void waybar::util::command::LineStream::start(const std::string& cmd) {
 
   std::vector<std::string> argv{"/bin/sh", "-c", cmd};
   auto envp = buildChildEnvironment(output_name_);
-  Glib::spawn_async_with_pipes("", argv, envp,
-                               Glib::SPAWN_DO_NOT_REAP_CHILD | Glib::SPAWN_CLOEXEC_PIPES,
-                               sigc::ptr_fun(&prepareChild), &pid_, nullptr, &stdout_fd_, nullptr);
+  Glib::spawn_async_with_pipes(
+      "", argv, envp, Glib::SpawnFlags::DO_NOT_REAP_CHILD | Glib::SpawnFlags::CLOEXEC_PIPES,
+      sigc::ptr_fun(&prepareChild), &pid_, nullptr, &stdout_fd_, nullptr);
 
   const auto flags = fcntl(stdout_fd_, F_GETFL, 0);
   if (flags == -1 || fcntl(stdout_fd_, F_SETFL, flags | O_NONBLOCK) == -1) {
@@ -121,7 +121,8 @@ void waybar::util::command::LineStream::start(const std::string& cmd) {
 
   stdout_connection_ =
       Glib::signal_io().connect(sigc::mem_fun(*this, &LineStream::handleStdout), stdout_fd_,
-                                Glib::IO_IN | Glib::IO_HUP | Glib::IO_ERR | Glib::IO_NVAL);
+                                Glib::IOCondition::IO_IN | Glib::IOCondition::IO_HUP |
+                                    Glib::IOCondition::IO_ERR | Glib::IOCondition::IO_NVAL);
   child_connection_ =
       Glib::signal_child_watch().connect(sigc::mem_fun(*this, &LineStream::handleExit), pid_);
 }
@@ -157,7 +158,8 @@ bool waybar::util::command::LineStream::running() const { return pid_ != 0; }
 
 bool waybar::util::command::LineStream::handleStdout(Glib::IOCondition condition) {
   const auto should_flush =
-      static_cast<bool>(condition & (Glib::IO_HUP | Glib::IO_ERR | Glib::IO_NVAL));
+      static_cast<bool>(condition & (Glib::IOCondition::IO_HUP | Glib::IOCondition::IO_ERR |
+                                     Glib::IOCondition::IO_NVAL));
   drainStdout(should_flush);
 
   if (!running() || should_flush) {

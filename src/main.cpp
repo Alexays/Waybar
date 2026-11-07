@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <glib.h>
 #include <spdlog/spdlog.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -192,8 +193,8 @@ static void logToJournalIfRunAsService() {
   char const* journal_stream = std::getenv("JOURNAL_STREAM");
 
   if (journal_stream != nullptr) {
-    dev_t device;
-    ino_t inode;
+    dev_t device = 0;
+    ino_t inode = 0;
     size_t len = std::strlen(journal_stream);
 
     auto result = std::from_chars(journal_stream, journal_stream + len, device);
@@ -225,6 +226,9 @@ static void logToJournalIfRunAsService() {
 }
 
 int main(int argc, char* argv[]) {
+  // A bar redraws little: cairo keeps the GTK3 memory footprint, where the GL and Vulkan renderers
+  // load a whole graphics driver. GSK_RENDERER still selects them.
+  g_setenv("GSK_RENDERER", "cairo", FALSE);
   logToJournalIfRunAsService();
 
   try {
@@ -256,9 +260,6 @@ int main(int argc, char* argv[]) {
     return ret;
   } catch (const std::exception& e) {
     spdlog::error("{}", e.what());
-    return 1;
-  } catch (const Glib::Exception& e) {
-    spdlog::error("{}", static_cast<std::string>(e.what()));
     return 1;
   }
 }

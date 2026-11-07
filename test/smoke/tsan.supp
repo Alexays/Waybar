@@ -13,3 +13,6 @@ race:libgio-2.0.so.0
 race:libdconfsettings.so
 race:libpangoft2-1.0.so.0
 race:libfontconfig.so.1
+# Mesa's llvmpipe (software GL on GPU-less runners) tears down its worker
+# threads' mutexes at exit while they still hold them.
+race:libgallium

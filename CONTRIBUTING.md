@@ -165,7 +165,7 @@ Have fun :)
 - Throw `std::runtime_error` (or similar) for fatal initialization failures that should bubble up to `main()`.
 
 ## 9. GTK / Glib Patterns
-- Prefer gtkmm-3.0 types (`Gtk::Button`, `Gtk::Label`, `Gdk::Pixbuf`, `Glib::RefPtr`, `Glib::ustring`) over raw C GTK APIs.
+- Prefer gtkmm-4.0 types (`Gtk::Button`, `Gtk::Label`, `Gdk::Pixbuf`, `Glib::RefPtr`, `Glib::ustring`) over raw C GTK APIs.
 - Access the default icon theme through thread-safe wrappers if off the main thread (`DefaultGtkIconThemeWrapper`).
 - Tooltips and labels should respect the module `tooltip` toggle (see `tooltipEnabled()` in `AModule`).
 

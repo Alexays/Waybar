@@ -36,10 +36,10 @@ auto fmt::formatter<waybar::Appearance>::format(waybar::Appearance c, format_con
 }
 
 waybar::Portal::Portal()
-    : Gio::DBus::Proxy(Gio::DBus::Connection::get_sync(Gio::DBus::BusType::BUS_TYPE_SESSION),
+    : Gio::DBus::Proxy(Gio::DBus::Connection::get_sync(Gio::DBus::BusType::SESSION),
                        PORTAL_BUS_NAME, PORTAL_OBJ_PATH, PORTAL_INTERFACE,
                        Glib::RefPtr<Gio::DBus::InterfaceInfo>(),
-                       Gio::DBus::PROXY_FLAGS_DO_NOT_AUTO_START),
+                       Gio::DBus::ProxyFlags::DO_NOT_AUTO_START),
       currentMode(Appearance::UNKNOWN),
       pendingMode(Appearance::UNKNOWN) {
   // Without DO_NOT_AUTO_START the proxy asks the bus to spawn the portal and

@@ -34,12 +34,12 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
   if (image_path_.empty() && image_name_.empty() &&
       !(config_["icon"].isBool() && config_["icon"].asBool())) {
     box_.unset_name();
-    box_.get_style_context()->remove_class(MODULE_CLASS);
+    box_.remove_css_class(MODULE_CLASS);
     label_.set_name("custom-" + name);
-    label_.get_style_context()->add_class(MODULE_CLASS);
+    label_.add_css_class(MODULE_CLASS);
     if (!id.empty()) {
-      box_.get_style_context()->remove_class(id);
-      label_.get_style_context()->add_class(id);
+      box_.remove_css_class(id);
+      label_.add_css_class(id);
     }
     module_widget_ = &label_;
   }
@@ -107,11 +107,11 @@ void waybar::modules::Custom::startContinuousProcess(bool throw_on_failure) {
     continuous_stream_->start(cmd);
   } catch (const Glib::SpawnError& e) {
     if (throw_on_failure) {
-      throw std::runtime_error("Unable to open " + cmd + ": " + e.what().raw());
+      throw std::runtime_error("Unable to open " + cmd + ": " + e.what());
     }
     setOutput({.exit_code = 1, .out = ""});
     dp.emit();
-    spdlog::error("Unable to restart {}: {}", name_, e.what().raw());
+    spdlog::error("Unable to restart {}: {}", name_, e.what());
     scheduleContinuousRestart();
   } catch (const std::exception& e) {
     if (throw_on_failure) {
@@ -189,13 +189,13 @@ void waybar::modules::Custom::handleEvent() {
   }
 }
 
-bool waybar::modules::Custom::handleScroll(GdkEventScroll* e) {
+bool waybar::modules::Custom::handleScroll(const ScrollEvent& e) {
   auto ret = ALabel::handleScroll(e);
   handleEvent();
   return ret;
 }
 
-bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
+bool waybar::modules::Custom::handleToggle(const ButtonEvent& e) {
   auto ret = ALabel::handleToggle(e);
   handleEvent();
   return ret;
@@ -207,7 +207,7 @@ auto waybar::modules::Custom::update() -> void {
   // Hide label if output is empty
   if ((config_["exec"].isString() || config_["exec-if"].isString()) &&
       (output_.out.empty() || output_.exit_code != 0)) {
-    event_box_.hide();
+    event_box_.set_visible(false);
   } else {
     if (config_["return-type"].asString() == "json") {
       parseOutputJson();
@@ -221,7 +221,7 @@ auto waybar::modules::Custom::update() -> void {
                              fmt::arg("percentage", percentage_));
       if ((config_["hide-empty-text"].asBool() && text_.empty()) ||
           (str.empty() && image_path_.empty() && image_name_.empty())) {
-        event_box_.hide();
+        event_box_.set_visible(false);
       } else {
         setLabelMarkup(str);
         if (tooltipEnabled()) {
@@ -240,42 +240,39 @@ auto waybar::modules::Custom::update() -> void {
 
           setTooltipMarkup(tooltip_markup);
         }
-        auto style = label_.get_style_context();
         if (module_widget_ != &label_) {
-          for (auto const& c : style->list_classes()) {
+          for (auto const& c : label_.get_css_classes()) {
             if (c == id_) continue;
-            style->remove_class(c);
+            label_.remove_css_class(c);
           }
         }
         // Module-level classes belong only on the widget that carries the
         // #custom-<name> widget name and MODULE_CLASS. Adding them to both box_
         // and label_ makes both match a .<class> selector, so any background,
         // border or padding is applied twice, inset by the box's padding.
-        auto module_style = module_widget_->get_style_context();
-        for (auto const& c : module_style->list_classes()) {
+        for (auto const& c : module_widget_->get_css_classes()) {
           if (c == id_ || c == MODULE_CLASS) continue;
-          module_style->remove_class(c);
+          module_widget_->remove_css_class(c);
         }
         for (auto const& c : class_) {
-          module_style->add_class(c);
+          module_widget_->add_css_class(c);
         }
-        style->add_class("flat");
-        style->add_class("text-button");
-        auto image_style = image_.get_style_context();
-        image_style->add_class("image-button");
-        event_box_.show();
+        label_.add_css_class("flat");
+        label_.add_css_class("text-button");
+        image_.add_css_class("image-button");
+        event_box_.set_visible(true);
         if (!image_path_.empty()) {
           try {
             auto pixbuf =
                 Gdk::Pixbuf::create_from_file(image_path_, app_icon_size_, app_icon_size_);
-            image_.set(pixbuf);
+            image_.set_pixbuf(pixbuf, 1);
           } catch (const Glib::Error& e) {
             spdlog::warn("custom {}: failed to load image-path '{}': {}", name_, image_path_,
                          std::string(e.what()));
             image_.clear();
           }
         } else if (!image_name_.empty()) {
-          image_.set_from_icon_name(image_name_, Gtk::ICON_SIZE_INVALID);
+          image_.set_from_icon_name(image_name_);
           image_.set_pixel_size(app_icon_size_);
         }
 
@@ -283,7 +280,7 @@ auto waybar::modules::Custom::update() -> void {
       }
     } catch (const fmt::format_error& e) {
       spdlog::warn("{}: {}", name_, e.what());
-      event_box_.show();
+      event_box_.set_visible(true);
       label_.set_visible(true);
       setLabelMarkup(fmt::format(fmt::runtime("{text}"), fmt::arg("text", text_)));
       if (tooltipEnabled()) {

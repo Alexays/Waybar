@@ -17,7 +17,7 @@ class Inhibitor : public ALabel {
   auto activated() -> bool;
 
  private:
-  auto handleToggle(::GdkEventButton* const& e) -> bool override;
+  auto handleToggle(const ButtonEvent& e) -> bool override;
 
   std::unique_ptr<::GDBusConnection, void (*)(::GDBusConnection*)> dbus_;
   const std::string inhibitors_;

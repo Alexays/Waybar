@@ -17,6 +17,13 @@
 using namespace date;
 namespace fmt_lib = waybar::util::date::format;
 
+static void replace_all(std::string& text, std::string_view from, std::string_view to) {
+  for (auto pos = text.find(from); pos != std::string::npos;
+       pos = text.find(from, pos + to.size())) {
+    text.replace(pos, from.size(), to);
+  }
+}
+
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     : ALabel(config, "clock", id, "{:%H:%M}", 60, false, false, true),
       m_locale_{std::locale(config_["locale"].isString() ? config_["locale"].asString() : "")},
@@ -152,17 +159,15 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       cldMonCols_ = 1;
     if (config_[kCldPlaceholder]["on-scroll"].isInt()) {
       cldShift_ = config_[kCldPlaceholder]["on-scroll"].asInt();
-      event_box_.add_events(Gdk::LEAVE_NOTIFY_MASK);
-      event_box_.signal_leave_notify_event().connect([this](GdkEventCrossing*) {
-        cldCurrShift_ = months{0};
-        return false;
-      });
+      auto motion = Gtk::EventControllerMotion::create();
+      motion->signal_leave().connect([this] { cldCurrShift_ = months{0}; });
+      event_box_.add_controller(motion);
     }
   }
 
   if (tooltipEnabled()) {
     label_.set_has_tooltip(true);
-    label_.signal_query_tooltip().connect(sigc::mem_fun(*this, &Clock::query_tlp_cb));
+    label_.signal_query_tooltip().connect(sigc::mem_fun(*this, &Clock::query_tlp_cb), true);
   }
 
   thread_ = [this] {
@@ -219,13 +224,11 @@ auto waybar::modules::Clock::update() -> void {
     try {
       if (tzInTooltip_ || cldInTooltip_ || ordInTooltip_) {
         // std::vformat doesn't support named arguments.
-        m_tlpText_ =
-            std::regex_replace(m_tlpFmt_, std::regex("\\{" + kTZPlaceholder + "\\}"), tzText_);
-        m_tlpText_ = std::regex_replace(
-            m_tlpText_, std::regex("\\{" + kCldPlaceholder + "\\}"),
-            fmt_lib::vformat(m_locale_, cldText_, fmt_lib::make_format_args(shiftedNow)));
-        m_tlpText_ =
-            std::regex_replace(m_tlpText_, std::regex("\\{" + kOrdPlaceholder + "\\}"), ordText_);
+        m_tlpText_ = m_tlpFmt_;
+        replace_all(m_tlpText_, "{" + kTZPlaceholder + "}", tzText_);
+        replace_all(m_tlpText_, "{" + kCldPlaceholder + "}",
+                    fmt_lib::vformat(m_locale_, cldText_, fmt_lib::make_format_args(shiftedNow)));
+        replace_all(m_tlpText_, "{" + kOrdPlaceholder + "}", ordText_);
       } else {
         m_tlpText_ = m_tlpFmt_;
       }
@@ -255,8 +258,6 @@ auto waybar::modules::Clock::update() -> void {
     //
     // It's also forwards compatible to where if this implemention ever changes
     // to support proper classes anyone using them will continue to work.
-    auto context = label_.get_style_context();
-
     static const std::vector<std::pair<std::string, std::string>> calendar_class_map = {
         {"calendar-today", "class='today'"},
         {"calendar-days", "class='days'"},
@@ -265,18 +266,20 @@ auto waybar::modules::Clock::update() -> void {
         {"calendar-months", "class='months'"}};
 
     for (const auto& [css_class, search_str] : calendar_class_map) {
+      // Looking the color up restyles the label
+      if (m_tlpText_.find(search_str) == std::string::npos) continue;
       try {
-        context->add_class(css_class);
-        const Gdk::RGBA color = context->get_color();
-        context->remove_class(css_class);
+        label_.add_css_class(css_class);
+        const Gdk::RGBA color = label_.get_color();
+        label_.remove_css_class(css_class);
 
         const std::string replace_str = fmt::format(
             "color='#{:02x}{:02x}{:02x}'", static_cast<int>(color.get_red() * 255),
             static_cast<int>(color.get_green() * 255), static_cast<int>(color.get_blue() * 255));
 
-        m_tlpText_ = std::regex_replace(m_tlpText_, std::regex(search_str), replace_str);
+        replace_all(m_tlpText_, search_str, replace_str);
       } catch (const Glib::Error& e) {
-        spdlog::warn("Clock: Failed to fetch CSS color for {}: {}", css_class, e.what().raw());
+        spdlog::warn("Clock: Failed to fetch CSS color for {}: {}", css_class, e.what());
         continue;
       } catch (...) {
         // Catch-all for any other weirdness.

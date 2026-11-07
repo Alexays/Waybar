@@ -51,7 +51,6 @@ class Window : public waybar::AAppIconLabel, public EventHandler {
   bool separateOutputs_ = false;
   std::mutex mutex_;
   const Bar& bar_;
-  util::JsonParser parser_;
   WindowData windowData_;
   Workspace workspace_;
   std::string soloClass_;

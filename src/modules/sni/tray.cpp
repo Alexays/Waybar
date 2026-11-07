@@ -40,11 +40,11 @@ Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
             std::bind(&Tray::onRemove, this, std::placeholders::_1),
             std::bind(&Tray::reorderBox, this), std::bind(&Tray::queueUpdate, this)) {
   box_.set_name("tray");
-  event_box_.add(box_);
+  event_box_.set_child(box_);
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(MODULE_CLASS);
+  box_.add_css_class(MODULE_CLASS);
   if (config_["spacing"].isUInt()) {
     box_.set_spacing(config_["spacing"].asUInt());
   }
@@ -72,11 +72,13 @@ void Tray::onAdd(std::unique_ptr<Item>& item) {
     return;
   }
 
-  if (config_["reverse-direction"].isBool() && config_["reverse-direction"].asBool()) {
-    box_.pack_end(item->event_box);
+  // Items share any extra space of the tray box
+  if (box_.get_orientation() == Gtk::Orientation::HORIZONTAL) {
+    item->event_box.set_hexpand(true);
   } else {
-    box_.pack_start(item->event_box);
+    item->event_box.set_vexpand(true);
   }
+  box_.append(item->event_box);
   items_.push_back(item.get());
 
   auto show_conn = item->event_box.signal_show().connect([this] { dp.emit(); });
@@ -116,14 +118,16 @@ void Tray::onRemove(std::unique_ptr<Item>& item) {
 }
 
 void Tray::reorderBox() {
-  const bool reverse =
-      config_["reverse-direction"].isBool() && config_["reverse-direction"].asBool();
   // Stable sort keeps insertion order among items sharing the same order value.
   std::stable_sort(items_.begin(), items_.end(),
                    [](const Item* a, const Item* b) { return a->order_ < b->order_; });
-  for (std::size_t i = 0; i < items_.size(); ++i) {
-    const int pos = reverse ? static_cast<int>(items_.size() - 1 - i) : static_cast<int>(i);
-    box_.reorder_child(items_[i]->event_box, pos);
+  if (items_.empty()) {
+    return;
+  }
+  // reverse-direction leaves this order as is, matching the released GTK3 tray
+  box_.reorder_child_at_start(items_.front()->event_box);
+  for (std::size_t i = 1; i < items_.size(); ++i) {
+    box_.reorder_child_after(items_[i]->event_box, items_[i - 1]->event_box);
   }
 }
 

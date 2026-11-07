@@ -5,11 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
-#include <fstream>
-#include <iostream>
 #include <util/command.hpp>
-
-#include "config.hpp"
 
 namespace waybar {
 
@@ -25,19 +21,19 @@ AGraph::AGraph(const Json::Value& config, const std::string& name, const std::st
                               ? static_cast<long>(
                                     std::clamp(config_["interval"].asDouble(), 0.001, 1e9) * 1000)
                               : 1000L * static_cast<long>(interval))) {
-  graph_.signal_draw().connect(sigc::mem_fun(*this, &AGraph::onDraw));
+  graph_.set_draw_func(sigc::mem_fun(*this, &AGraph::onDraw));
   graph_.set_name(name);
   if (!id.empty()) {
-    graph_.get_style_context()->add_class(id);
+    graph_.add_css_class(id);
   }
-  graph_.get_style_context()->add_class(MODULE_CLASS);
+  graph_.add_css_class(MODULE_CLASS);
   if (config_["width"].isUInt()) {
     graph_.set_size_request(config_["width"].asUInt(), -1);
   } else {
     graph_.set_size_request(100, -1);
   }
 
-  event_box_.add(graph_);
+  event_box_.set_child(graph_);
 
   if (config_["datapoints"].isUInt() && config_["datapoints"].asUInt() > 0) {
     datapoints_ = config_["datapoints"].asUInt();
@@ -54,75 +50,12 @@ AGraph::AGraph(const Json::Value& config, const std::string& name, const std::st
     }
   }
 
-  // If a GTKMenu is requested in the config
-  if (config_["menu"].isString()) {
-    // Create the GTKMenu widget
-    try {
-      // Check that the file exists
-      std::string menuFile = config_["menu-file"].asString();
-
-      // there might be "~" or "$HOME" in original path, try to expand it.
-      auto result = Config::tryExpandPath(menuFile, "");
-      if (result.empty()) {
-        throw std::runtime_error("Failed to expand file: " + menuFile);
-      }
-
-      menuFile = result.front();
-      // Read the menu descriptor file
-      std::ifstream file(menuFile);
-      if (!file.is_open()) {
-        throw std::runtime_error("Failed to open file: " + menuFile);
-      }
-      std::stringstream fileContent;
-      fileContent << file.rdbuf();
-      GtkBuilder* builder = gtk_builder_new();
-
-      // Make the GtkBuilder and check for errors in his parsing
-      if (gtk_builder_add_from_string(builder, fileContent.str().c_str(), -1, nullptr) == 0U) {
-        g_object_unref(builder);
-        throw std::runtime_error("Error found in the file " + menuFile);
-      }
-
-      menu_ = gtk_builder_get_object(builder, "menu");
-      if (menu_ == nullptr) {
-        g_object_unref(builder);
-        throw std::runtime_error("Failed to get 'menu' object from GtkBuilder");
-      }
-      // Keep the menu alive after dropping the transient GtkBuilder.
-      g_object_ref(menu_);
-      submenus_ = std::map<std::string, GtkMenuItem*>();
-      menuActionsMap_ = std::map<std::string, std::string>();
-
-      // Linking actions to the GTKMenu based on
-      for (Json::Value::const_iterator it = config_["menu-actions"].begin();
-           it != config_["menu-actions"].end(); ++it) {
-        std::string key = it.key().asString();
-        auto* item = gtk_builder_get_object(builder, key.c_str());
-        if (item == nullptr) {
-          spdlog::warn("Menu item '{}' not found in builder file", key);
-          continue;
-        }
-        submenus_[key] = GTK_MENU_ITEM(item);
-        menuActionsMap_[key] = it->asString();
-        // A popped up menu can outlive the module, so the closure owns its copy of the command
-        g_signal_connect_data(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
-                              g_strdup(menuActionsMap_[key].c_str()), (GClosureNotify)g_free,
-                              (GConnectFlags)0);
-      }
-      g_object_unref(builder);
-    } catch (std::runtime_error& e) {
-      spdlog::warn("Error while creating the menu : {}. Menu popup not activated.", e.what());
-    }
-  }
+  setupMenu();
 }
 
 auto AGraph::update() -> void {
   graph_.queue_draw();
   AModule::update();
-}
-
-void AGraph::handleGtkMenuEvent(GtkMenuItem* /*menuitem*/, gpointer data) {
-  waybar::util::command::res res = waybar::util::command::exec((char*)data, "GtkMenu");
 }
 
 void AGraph::addValue(const int n) {
@@ -132,16 +65,14 @@ void AGraph::addValue(const int n) {
   values_.push_back(n);
 }
 
-bool AGraph::onDraw(const Cairo::RefPtr<Cairo::Context>& cr) {
-  const int width = graph_.get_allocated_width();
-  const int height = graph_.get_allocated_height() - 1;
+void AGraph::onDraw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int full_height) {
+  const int height = full_height - 1;
 
   if (values_.empty() || width <= 0 || height <= 0) {
-    return false;
+    return;
   }
 
-  auto style_context = graph_.get_style_context();
-  Gdk::RGBA fg_color = style_context->get_color(Gtk::STATE_FLAG_NORMAL);
+  Gdk::RGBA fg_color = graph_.get_color();
   Gdk::RGBA bg_color = fg_color;
   bg_color.set_alpha(0.3);
 
@@ -175,8 +106,6 @@ bool AGraph::onDraw(const Cairo::RefPtr<Cairo::Context>& cr) {
         break;
     }
   }
-
-  return false;
 }
 void AGraph::drawFilledArea(const Cairo::RefPtr<Cairo::Context>& cr,
                             const std::vector<std::pair<double, double>>& points, double height,

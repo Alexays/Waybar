@@ -35,10 +35,10 @@ void PulseaudioSlider::update() {
       display_value = min_;
     }
     if (!previously_muted) {
-      scale_.get_style_context()->add_class("muted");
+      scale_.add_css_class("muted");
     }
   } else if (previously_muted) {
-    scale_.get_style_context()->remove_class("muted");
+    scale_.remove_css_class("muted");
   }
 
   scale_.set_value(display_value);

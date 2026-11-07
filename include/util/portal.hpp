@@ -18,7 +18,7 @@ class Portal : private Gio::DBus::Proxy {
   void refreshAppearance();
   Appearance getAppearance();
 
-  typedef sigc::signal<void, Appearance> type_signal_appearance_changed;
+  typedef sigc::signal<void(Appearance)> type_signal_appearance_changed;
   type_signal_appearance_changed signal_appearance_changed() { return m_signal_appearance_changed; }
 
  private:
@@ -29,7 +29,7 @@ class Portal : private Gio::DBus::Proxy {
   void setAppearance(Appearance newMode);
   bool announceAppearance();
   void on_signal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
-                 const Glib::VariantContainerBase& parameters);
+                 const Glib::VariantContainerBase& parameters) override;
   void onAppearanceReceived(Glib::RefPtr<Gio::AsyncResult>& result);
 };
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <glib.h>
-#include <gtkmm/stylecontext.h>
+#include <gtkmm/widget.h>
 
 #include <algorithm>
 #include <array>
@@ -13,11 +13,11 @@ namespace waybar::util {
 // Adds a class named by another program, and returns whether it did. GTK interns every class name
 // as a GQuark, which GLib never frees, so only a name that a loaded stylesheet already interned
 // (one that a selector can match) is added; a skipped name is tried again on the next update.
-inline bool try_add_class(const Glib::RefPtr<Gtk::StyleContext>& context, const std::string& name) {
+inline bool try_add_class(Gtk::Widget& widget, const std::string& name) {
   if (g_quark_try_string(name.c_str()) == 0) {
     return false;
   }
-  gtk_style_context_add_class(context->gobj(), name.c_str());
+  widget.add_css_class(name);
   return true;
 }
 
@@ -34,13 +34,11 @@ inline bool is_bar_state_class(std::string_view name) {
 
 // Adds a window's app_id for window#waybar.<app_id>, unless it names the bar's own state or a class
 // the widget already has (output or bar name). Returns whether it did: only then may it be removed.
-inline bool add_app_id_class(const Glib::RefPtr<Gtk::StyleContext>& context,
-                             const std::string& app_id) {
-  if (app_id.empty() || is_bar_state_class(app_id) ||
-      gtk_style_context_has_class(context->gobj(), app_id.c_str())) {
+inline bool add_app_id_class(Gtk::Widget& widget, const std::string& app_id) {
+  if (app_id.empty() || is_bar_state_class(app_id) || widget.has_css_class(app_id)) {
     return false;
   }
-  return try_add_class(context, app_id);
+  return try_add_class(widget, app_id);
 }
 
 }  // namespace waybar::util

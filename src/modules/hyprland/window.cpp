@@ -60,7 +60,7 @@ auto Window::update() -> void {
 
   std::string label_text;
   if (!format_.empty()) {
-    label_.show();
+    label_.set_visible(true);
 
     // If the focused window name is empty and fallback is configured, use fallback text
     std::string displayTitle = windowName;
@@ -75,7 +75,7 @@ auto Window::update() -> void {
         config_["rewrite"]);
     setLabelMarkup(label_text);
   } else {
-    label_.hide();
+    label_.set_visible(false);
   }
 
   if (tooltipEnabled()) {
@@ -93,11 +93,7 @@ auto Window::update() -> void {
     }
   }
 
-  if (focused_) {
-    image_.show();
-  } else {
-    image_.hide();
-  }
+  image_.set_visible(focused_);
 
   setClass("empty", workspace_.windows == 0);
   setClass("solo", solo_);
@@ -107,12 +103,13 @@ auto Window::update() -> void {
 
   // lastSoloClass_ is only ever a class this module added, so nothing else is removed
   if (soloClass_ != lastSoloClass_) {
+    auto& window = const_cast<Bar&>(bar_).window;
     if (!lastSoloClass_.empty()) {
-      bar_.window.get_style_context()->remove_class(lastSoloClass_);
+      window.remove_css_class(lastSoloClass_);
       spdlog::trace("Removing solo class: {}", lastSoloClass_);
       lastSoloClass_.clear();
     }
-    if (waybar::util::add_app_id_class(bar_.window.get_style_context(), soloClass_)) {
+    if (waybar::util::add_app_id_class(window, soloClass_)) {
       spdlog::trace("Adding solo class: {}", soloClass_);
       lastSoloClass_ = soloClass_;
     }
@@ -268,12 +265,11 @@ void Window::onEvent(const std::string& ev) { dp.emit(); }
 void Window::onReconnect() { dp.emit(); }
 
 void Window::setClass(const std::string& classname, bool enable) {
+  auto& window = const_cast<Bar&>(bar_).window;
   if (enable) {
-    if (!bar_.window.get_style_context()->has_class(classname)) {
-      bar_.window.get_style_context()->add_class(classname);
-    }
+    window.add_css_class(classname);
   } else {
-    bar_.window.get_style_context()->remove_class(classname);
+    window.remove_css_class(classname);
   }
 }
 

@@ -1,18 +1,23 @@
 #include "client.hpp"
 
-#include <gtk-layer-shell.h>
+#include <gtk4-layer-shell.h>
+#include <gtkmm/icontheme.h>
+#include <gtkmm/init.h>
+#include <gtkmm/settings.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <fstream>
 #include <iostream>
+#include <map>
+#include <regex>
+#include <sstream>
 #include <utility>
 
-#include "gtkmm/icontheme.h"
 #include "ext-idle-notify-v1-client-protocol.h"
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "util/clara.hpp"
 #include "util/format.hpp"
-#include "util/hex_checker.hpp"
 #ifdef HAVE_BAR_BLUR
 #include "ext-background-effect-v1-client-protocol.h"
 #endif
@@ -186,28 +191,41 @@ void waybar::Client::handleOutputDescription(void* data, struct zxdg_output_v1* 
 
 void waybar::Client::handleMonitorAdded(Glib::RefPtr<Gdk::Monitor> monitor) {
   auto& output = outputs_.emplace_back();
+  // A disconnected output invalidates its monitor before it leaves the display's list
+  output.invalidate_conn =
+      monitor->signal_invalidate().connect([this, weak = std::weak_ptr<Gdk::Monitor>(monitor)] {
+        auto monitor = weak.lock();
+        if (!monitor) {
+          return;
+        }
+        spdlog::debug("Output removed: {} {}", monitor->get_manufacturer().c_str(),
+                      monitor->get_model().c_str());
+        /* This event can be triggered from wl_display_roundtrip called by GTK or our code.
+         * Defer destruction of bars for the output to the next iteration of the event loop to avoid
+         * deleting objects referenced by currently executed code.
+         */
+        Glib::signal_idle().connect_once(
+            sigc::bind(sigc::mem_fun(*this, &Client::handleDeferredMonitorRemoval), monitor),
+            Glib::PRIORITY_HIGH_IDLE);
+      });
   output.monitor = std::move(monitor);
   handleOutput(output);
 }
 
-void waybar::Client::handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor) {
-  spdlog::debug("Output removed: {} {}", monitor->get_manufacturer().c_str(),
-                monitor->get_model().c_str());
-  /* This event can be triggered from wl_display_roundtrip called by GTK or our code.
-   * Defer destruction of bars for the output to the next iteration of the event loop to avoid
-   * deleting objects referenced by currently executed code.
-   */
-  Glib::signal_idle().connect_once(
-      sigc::bind(sigc::mem_fun(*this, &Client::handleDeferredMonitorRemoval), monitor),
-      Glib::PRIORITY_HIGH_IDLE);
+void waybar::Client::handleMonitorsChanged(guint position, guint /*removed*/, guint added) {
+  auto monitors = gdk_display->get_monitors();
+  for (auto i = position; i < position + added; ++i) {
+    if (auto monitor = std::dynamic_pointer_cast<Gdk::Monitor>(monitors->get_object(i))) {
+      handleMonitorAdded(monitor);
+    }
+  }
 }
 
 void waybar::Client::handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> monitor) {
   for (auto it = bars.begin(); it != bars.end();) {
     if ((*it)->output->monitor == monitor) {
       auto output_name = (*it)->output->name;
-      (*it)->window.hide();
-      gtk_app->remove_window((*it)->window);
+      (*it)->window.set_visible(false);
       it = bars.erase(it);
       spdlog::info("Bar removed from output: {}", output_name);
     } else {
@@ -250,29 +268,154 @@ const std::string waybar::Client::getStyle(const std::string& style,
   return css_file.value();
 };
 
+// Returns the rules of `css` written for GTK3 that GTK4 ignores, rewritten for GTK4: GtkPopoverMenu
+// nodes for the `menu` and `menuitem` ones, and -gtk-icon-filter for -gtk-icon-effect.
+static std::string gtk3CompatCss(const std::string& css) {
+  auto is_ident = [](char c) {
+    return std::isalnum(static_cast<unsigned char>(c)) != 0 || c == '-' || c == '_';
+  };
+  // Rewrites the `menu`/`menuitem` type selectors of one selector, empty when it has none
+  auto rewrite = [&](std::string_view selector) {
+    std::string out;
+    bool found = false;
+    for (size_t i = 0; i < selector.size();) {
+      if (is_ident(selector[i])) {
+        size_t end = i;
+        while (end < selector.size() && is_ident(selector[end])) ++end;
+        const auto word = selector.substr(i, end - i);
+        const char before = i > 0 ? selector[i - 1] : ' ';
+        const bool type_selector = before != '.' && before != '#' && before != ':' &&
+                                   before != '@' && before != '-' && before != '\\';
+        if (type_selector && word == "menu") {
+          out += "popover.menu > contents";
+          found = true;
+        } else if (type_selector && word == "menuitem") {
+          out += "modelbutton";
+          found = true;
+        } else {
+          out += word;
+        }
+        i = end;
+      } else {
+        out += selector[i++];
+      }
+    }
+    return found ? out : std::string();
+  };
+
+  std::string result;
+  size_t pos = 0;
+  while (pos < css.size()) {
+    // Skip comments, then read the prelude of the next rule up to its block
+    if (css.compare(pos, 2, "/*") == 0) {
+      const auto end = css.find("*/", pos + 2);
+      pos = end == std::string::npos ? css.size() : end + 2;
+      continue;
+    }
+    const auto open = css.find_first_of("{;/", pos);
+    if (open == std::string::npos) break;
+    if (css[open] == '/') {
+      if (css.compare(open, 2, "/*") == 0) {
+        pos = open;
+        const auto end = css.find("*/", pos + 2);
+        pos = end == std::string::npos ? css.size() : end + 2;
+      } else {
+        pos = open + 1;
+      }
+      continue;
+    }
+    if (css[open] == ';') {  // an at-rule statement such as @define-color
+      pos = open + 1;
+      continue;
+    }
+    const std::string_view prelude(css.data() + pos, open - pos);
+    size_t close = open + 1;
+    for (int depth = 1; close < css.size() && depth > 0; ++close) {
+      if (css[close] == '{') ++depth;
+      if (css[close] == '}') --depth;
+    }
+    std::string selectors;
+    if (prelude.find('@') == std::string_view::npos) {
+      size_t start = 0;
+      int parens = 0;
+      for (size_t i = 0; i <= prelude.size(); ++i) {
+        if (i < prelude.size() && prelude[i] == '(') ++parens;
+        if (i < prelude.size() && prelude[i] == ')') --parens;
+        if (i == prelude.size() || (prelude[i] == ',' && parens == 0)) {
+          auto rewritten = rewrite(prelude.substr(start, i - start));
+          if (!rewritten.empty()) {
+            selectors += selectors.empty() ? rewritten : "," + rewritten;
+          }
+          start = i + 1;
+        }
+      }
+    }
+    std::string block = css.substr(open, close - open);
+    if (block.find("-gtk-icon-effect") != std::string::npos) {
+      static const std::regex effect(R"(-gtk-icon-effect\s*:\s*([a-z]+))");
+      static const std::map<std::string, std::string> filters{
+          {"dim", "opacity(0.5)"}, {"highlight", "brightness(1.11)"}, {"none", "none"}};
+      std::string converted;
+      auto last = block.cbegin();
+      for (std::sregex_iterator it(block.begin(), block.end(), effect), end; it != end; ++it) {
+        converted.append(last, (*it)[0].first);
+        auto filter = filters.find((*it)[1].str());
+        converted += "-gtk-icon-filter: " + (filter != filters.end() ? filter->second : "none");
+        last = (*it)[0].second;
+      }
+      converted.append(last, block.cend());
+      block = std::move(converted);
+      if (selectors.empty() && prelude.find('@') == std::string_view::npos) {
+        selectors = prelude;
+      }
+    }
+    if (!selectors.empty()) {
+      result += selectors;
+      result += block;
+      result += '\n';
+    }
+    pos = close;
+  }
+  return result;
+}
+
 auto waybar::Client::setupCss(const std::string& css_file) -> void {
-  auto screen = Gdk::Screen::get_default();
-  if (!screen) {
-    throw std::runtime_error("No default screen");
+  if (!gdk_display) {
+    throw std::runtime_error("No default display");
   }
-
-  if (css_provider_) {
-    Gtk::StyleContext::remove_provider_for_screen(screen, css_provider_);
-    css_provider_.reset();
+  std::ifstream file(css_file);
+  if (!file.is_open() || !Glib::file_test(css_file, Glib::FileTest::IS_REGULAR)) {
+    throw std::runtime_error("Can't open style file");
   }
+  std::stringstream content;
+  content << file.rdbuf();
 
-  css_provider_ = Gtk::CssProvider::create();
-  auto [modified_css, was_transformed] = transform_8bit_to_hex(css_file);
-  if (was_transformed) {
-    css_provider_->load_from_data(modified_css);
-  } else {
-    if (!css_provider_->load_from_path(css_file)) {
-      css_provider_.reset();
-      throw std::runtime_error("Can't open style file");
+  // GTK4 skips what it cannot parse instead of failing the whole file: report it like GTK3 did.
+  auto report = [](const Glib::RefPtr<const Gtk::CssSection>& section, const Glib::Error& error) {
+    auto start = section->get_start_location();
+    spdlog::warn("{}:{}:{}: {}", section->get_file() ? section->get_file()->get_path() : "",
+                 start.get_lines() + 1, start.get_line_chars() + 1, error.what());
+  };
+  auto provider = Gtk::CssProvider::create();
+  provider->signal_parsing_error().connect(report);
+  provider->load_from_path(css_file);
+
+  for (const auto& old : {css_provider_, compat_css_provider_}) {
+    if (old) {
+      Gtk::StyleProvider::remove_provider_for_display(gdk_display, old);
     }
   }
-  Gtk::StyleContext::add_provider_for_screen(screen, css_provider_,
-                                             GTK_STYLE_PROVIDER_PRIORITY_USER);
+  css_provider_ = std::move(provider);
+  compat_css_provider_.reset();
+  Gtk::StyleProvider::add_provider_for_display(gdk_display, css_provider_,
+                                               GTK_STYLE_PROVIDER_PRIORITY_USER);
+  if (auto compat_css = gtk3CompatCss(content.str()); !compat_css.empty()) {
+    compat_css_provider_ = Gtk::CssProvider::create();
+    compat_css_provider_->signal_parsing_error().connect(report);
+    compat_css_provider_->load_from_string(compat_css);
+    Gtk::StyleProvider::add_provider_for_display(gdk_display, compat_css_provider_,
+                                                 GTK_STYLE_PROVIDER_PRIORITY_USER);
+  }
 #ifdef HAVE_BAR_BLUR
   // The bar's border-radius may have changed without a resize event.
   for (auto& bar : bars) {
@@ -299,8 +442,7 @@ void waybar::Client::bindInterfaces() {
   }
 
   // Disconnect previous signal handlers to prevent duplicate handlers on reload
-  monitor_added_connection_.disconnect();
-  monitor_removed_connection_.disconnect();
+  monitors_changed_connection_.disconnect();
 
   // Clear stale outputs from previous run
   outputs_.clear();
@@ -315,14 +457,10 @@ void waybar::Client::bindInterfaces() {
   bars_scheduled_ = false;
 
   // add existing outputs and subscribe to updates
-  for (auto i = 0; i < gdk_display->get_n_monitors(); ++i) {
-    auto monitor = gdk_display->get_monitor(i);
-    handleMonitorAdded(monitor);
-  }
-  monitor_added_connection_ = gdk_display->signal_monitor_added().connect(
-      sigc::mem_fun(*this, &Client::handleMonitorAdded));
-  monitor_removed_connection_ = gdk_display->signal_monitor_removed().connect(
-      sigc::mem_fun(*this, &Client::handleMonitorRemoved));
+  auto monitors = gdk_display->get_monitors();
+  handleMonitorsChanged(0, 0, monitors->get_n_items());
+  monitors_changed_connection_ = monitors->signal_items_changed().connect(
+      sigc::mem_fun(*this, &Client::handleMonitorsChanged));
 }
 
 int waybar::Client::main(int argc, char* argv[]) {
@@ -355,18 +493,41 @@ int waybar::Client::main(int argc, char* argv[]) {
   if (!log_level.empty()) {
     spdlog::set_level(spdlog::level::from_str(log_level));
   }
-  // Non-unique: a remote instance aborts in GIO when run() is called again on reload
-  gtk_app =
-      Gtk::Application::create(argc, argv, "fr.arouillard.waybar",
-                               Gio::APPLICATION_HANDLES_COMMAND_LINE | Gio::APPLICATION_NON_UNIQUE);
-
-  // Initialize Waybars GTK resources with our custom icons
-  auto theme = Gtk::IconTheme::get_default();
-  theme->add_resource_path("/fr/arouillard/waybar/icons");
+  // No Gtk::Application: it would export Waybar on the session bus, which nothing uses
+  if (!main_loop) {
+    // Names the application on the accessibility bus, as argv[0] did with GTK3's gtk_init
+    g_set_prgname("waybar");
+    gtk_init_check();
+#if GTK_CHECK_VERSION(4, 16, 0)
+    // Text hinted and placed on whole pixels following the gtk-xft settings, as GTK3 draws it
+    g_object_set(gtk_settings_get_default(), "gtk-font-rendering", GTK_FONT_RENDERING_MANUAL,
+                 nullptr);
+#endif
+    Gtk::init_gtkmm_internals();
+    main_loop = Glib::MainLoop::create();
+  }
 
   gdk_display = Gdk::Display::get_default();
   if (!gdk_display) {
     throw std::runtime_error("Can't find display");
+  }
+
+  // Initialize Waybars GTK resources with our custom icons
+  Gtk::IconTheme::get_for_display(gdk_display)->add_resource_path("/fr/arouillard/waybar/icons");
+  if (!menu_css_provider_) {
+    // GTK3 Adwaita menu metrics, above the theme and below the user's style: 6px item padding plus
+    // the check indicator room (16px + 7px) that GTK3 menus reserve on both sides.
+    menu_css_provider_ = Gtk::CssProvider::create();
+    menu_css_provider_->load_from_string(R"(
+popover.menu.background > contents { padding: 4px 0; border-radius: 5px; }
+popover.menu modelbutton { min-height: 16px; min-width: 40px; padding: 4px 29px; border-radius: 0; }
+popover.menu modelbutton:hover, popover.menu modelbutton:selected {
+  color: @theme_selected_fg_color; background-color: @theme_selected_bg_color; }
+popover.menu modelbutton > image { margin-left: -23px; margin-right: 7px; }
+popover.menu check.left, popover.menu radio.left { margin-left: -22px; margin-right: 8px; }
+)");
+    Gtk::StyleProvider::add_provider_for_display(gdk_display, menu_css_provider_,
+                                                 GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
   }
   if (!GDK_IS_WAYLAND_DISPLAY(gdk_display->gobj())) {
     throw std::runtime_error("Bar need to run under Wayland");
@@ -408,15 +569,14 @@ int waybar::Client::main(int argc, char* argv[]) {
   }
 
   bindInterfaces();
-  gtk_app->hold();
-  gtk_app->run();
+  main_loop->run();
   m_cssReloadHelper.reset();  // stop watching css file
   bars.clear();
   return 0;
 }
 
 void waybar::Client::reset() {
-  gtk_app->quit();
+  main_loop->quit();
   // delete signal handler for css changes
   if (portal) {
     portal->signal_appearance_changed().clear();

@@ -24,7 +24,7 @@ class GeoClueBackend {
   struct PrivateConstructorTag {};
 
  public:
-  sigc::signal<void> in_use_changed_signal_event;
+  sigc::signal<void()> in_use_changed_signal_event;
 
   std::atomic<bool> location_in_use;  // GeoClue is being used
 

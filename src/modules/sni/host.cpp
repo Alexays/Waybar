@@ -23,7 +23,7 @@ Host::Host(std::size_t id, const Json::Value& config, const Bar& bar,
     : bus_name_("org.kde.StatusNotifierHost-" + std::to_string(getpid()) + "-" +
                 std::to_string(id)),
       object_path_("/StatusNotifierHost/" + std::to_string(id)),
-      bus_name_id_(Gio::DBus::own_name(Gio::DBus::BusType::BUS_TYPE_SESSION, bus_name_,
+      bus_name_id_(Gio::DBus::own_name(Gio::DBus::BusType::SESSION, bus_name_,
                                        sigc::mem_fun(*this, &Host::busAcquired))),
       config_(config),
       bar_(bar),
@@ -165,7 +165,7 @@ void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
             return false;
           }
           try {
-            auto conn = Gio::DBus::Connection::get_sync(Gio::DBus::BusType::BUS_TYPE_SESSION);
+            auto conn = Gio::DBus::Connection::get_sync(Gio::DBus::BusType::SESSION);
             // nameVanished disconnects this timer, so the last owner seen is still the current one.
             host->nameAppeared(conn, "org.kde.StatusNotifierWatcher", host->watcher_owner_);
           } catch (const Glib::Error& e) {

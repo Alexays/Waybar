@@ -154,8 +154,8 @@ auto waybar::modules::Gps::update() -> void {
 
   if (!alt_) {
     auto state = getFixModeName();
-    if (!state_.empty() && label_.get_style_context()->has_class(state_)) {
-      label_.get_style_context()->remove_class(state_);
+    if (!state_.empty() && label_.has_css_class(state_)) {
+      label_.remove_css_class(state_);
     }
     if (config_["format-" + state].isString()) {
       default_format_ = config_["format-" + state].asString();
@@ -164,8 +164,8 @@ auto waybar::modules::Gps::update() -> void {
     } else {
       default_format_ = DEFAULT_FORMAT;
     }
-    if (!label_.get_style_context()->has_class(state)) {
-      label_.get_style_context()->add_class(state);
+    if (!label_.has_css_class(state)) {
+      label_.add_css_class(state);
     }
     format_ = default_format_;
     state_ = state;

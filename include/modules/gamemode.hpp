@@ -41,7 +41,7 @@ class Gamemode : public AModule, public sigc::trackable {
 
   void getData();
   void getData_cb(Glib::RefPtr<Gio::AsyncResult>& result);
-  bool handleToggle(GdkEventButton* const&) override;
+  bool handleToggle(const ButtonEvent& e) override;
 
   // Config
   std::string format = DEFAULT_FORMAT;

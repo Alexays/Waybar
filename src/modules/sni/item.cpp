@@ -10,12 +10,14 @@
 #include <sys/stat.h>
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <map>
+#include <string_view>
 #include <typeinfo>
 #include <unordered_map>
 
@@ -25,6 +27,7 @@
 #include "util/css_class.hpp"
 #include "util/format.hpp"  // IWYU pragma: keep
 #include "util/gtk_icon.hpp"
+#include "util/menu_a11y.hpp"
 #include "util/tooltip.hpp"
 
 template <>
@@ -58,6 +61,8 @@ static const goffset MAX_ICON_FILE_SIZE = 64 << 20;
 static const guint64 MAX_ICON_FILE_PIXELS = MAX_ICON_FILE_SIZE / 4;
 // Largest dbusmenu layout accepted from an item, see filterMenuLayout()
 static const gsize MENU_MAX_ENTRIES = 1000;
+// Largest PNG accepted as the icon of a menu entry, which GTK draws at 16 pixels
+static const guint64 MENU_ICON_MAX_PIXELS = 512 * 512;
 
 Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar,
            const std::function<void(Item&)>& on_ready,
@@ -86,64 +91,55 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
     show_tooltip_ = config["tooltip"].asBool();
   }
 
-  auto& window = const_cast<Bar&>(bar).window;
-  window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Item::onConfigure));
-  event_box.add(image);
-  event_box.add_events(Gdk::BUTTON_PRESS_MASK | Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-  event_box.signal_button_press_event().connect(sigc::mem_fun(*this, &Item::handleClick));
-  event_box.signal_scroll_event().connect(sigc::mem_fun(*this, &Item::handleScroll));
-  event_box.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Item::handleMouseEnter));
-  event_box.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Item::handleMouseLeave));
+  // Redraws the pixmap at the device scale of the output the bar is on
+  image.property_scale_factor().signal_changed().connect(sigc::mem_fun(*this, &Item::updateImage));
+  event_box.set_child(image);
+  click_ = Gtk::GestureClick::create();
+  click_->set_button(0);
+  click_->signal_pressed().connect(sigc::mem_fun(*this, &Item::handleClick));
+  event_box.add_controller(click_);
+  scroll_ = Gtk::EventControllerScroll::create();
+  scroll_->set_flags(Gtk::EventControllerScroll::Flags::BOTH_AXES);
+  scroll_->signal_scroll().connect(sigc::mem_fun(*this, &Item::handleScroll), false);
+  event_box.add_controller(scroll_);
   // initial visibility
-  event_box.show_all();
   event_box.set_visible(show_passive_);
 
   cancellable_ = Gio::Cancellable::create();
 
   auto interface = Glib::wrap(sn_item_interface_info(), true);
   // The bus name is the registering client's choice: never have the bus activate a service for it.
-  Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SESSION, bus_name, object_path,
+  Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::SESSION, bus_name, object_path,
                                    SNI_INTERFACE_NAME, sigc::mem_fun(*this, &Item::proxyReady),
                                    cancellable_, interface,
-                                   Gio::DBus::PROXY_FLAGS_DO_NOT_AUTO_START);
+                                   Gio::DBus::ProxyFlags::DO_NOT_AUTO_START);
 }
 
 Item::~Item() {
-  if (this->gtk_menu != nullptr) {
-    this->gtk_menu->popdown();
-    this->gtk_menu->detach();
+  menu_rebuild_.disconnect();
+  if (gtk_menu != nullptr) {
+    gtk_menu->unparent();
+    delete gtk_menu;
+    gtk_menu = nullptr;
   }
-  if (this->dbus_menu != nullptr) {
-    g_object_weak_unref(G_OBJECT(this->dbus_menu), (GWeakNotify)onMenuDestroyed, this);
-    // makeMenu() holds a reference (g_object_ref_sink), and a GtkMenu is a toplevel that GTK keeps
-    // in its window list. Without destroying it and dropping the reference, the menu and its whole
-    // dbusmenu tree outlive the item, e.g. for every tray item of a removed bar.
-    // libdbusmenu-gtk never disconnects the menu from its client, and a pending GetLayout keeps
-    // the client alive: without this its reply runs root_changed() on the freed menu.
-    DbusmenuGtkClient* client = dbusmenu_gtkmenu_get_client(this->dbus_menu);
-    if (client != nullptr) {
-      g_signal_handlers_disconnect_by_data(client, this->dbus_menu);
+  if (dbus_menu != nullptr) {
+    // A pending GetLayout keeps the client alive past the unref below: its reply must not run the
+    // handlers of this item, on the client or on any of its menu items.
+    g_signal_handlers_disconnect_by_data(dbus_menu, this);
+    if (DbusmenuMenuitem* root = dbusmenu_client_get_root(dbus_menu); root != nullptr) {
+      dbusmenu_menuitem_foreach(
+          root,
+          [](DbusmenuMenuitem* item, gpointer self) {
+            g_signal_handlers_disconnect_by_data(item, self);
+          },
+          this);
     }
-    gtk_widget_destroy(GTK_WIDGET(this->dbus_menu));
-    g_object_unref(this->dbus_menu);
-    this->dbus_menu = nullptr;
-    this->gtk_menu = nullptr;
+    g_object_unref(dbus_menu);
+    dbus_menu = nullptr;
   }
 }
 
 bool Item::isReady() const { return ready_; }
-
-bool Item::handleMouseEnter(GdkEventCrossing* const& e) {
-  event_box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
-  return false;
-}
-
-bool Item::handleMouseLeave(GdkEventCrossing* const& e) {
-  event_box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
-  return false;
-}
-
-void Item::onConfigure(GdkEventConfigure* ev) { this->updateImage(); }
 
 // The proxy caches whatever the item announces, of any name and size, and nothing reads it. A raw
 // handler: glibmm's signal_properties_changed() unpacks the names into a collating std::map.
@@ -313,16 +309,13 @@ void Item::setStatus(const Glib::ustring& value) {
   status_ = value.lowercase().raw();
   event_box.set_visible(!is_hidden_ && (show_passive_ || status_.compare("passive") != 0));
 
-  auto style = event_box.get_style_context();
-  for (const auto& class_name : style->list_classes()) {
-    style->remove_class(class_name);
-  }
+  event_box.set_css_classes({});
   auto css_class = status_;
   if (css_class.compare("needsattention") == 0) {
     // convert status to dash-case for CSS
     css_class = "needs-attention";
   }
-  waybar::util::try_add_class(style, css_class);
+  waybar::util::try_add_class(event_box, css_class);
   on_updated_();
 }
 
@@ -492,8 +485,8 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
   }
   g_variant_iter_free(it);
   if (array != nullptr) {
-    auto pixbuf = Gdk::Pixbuf::create_from_data(array, Gdk::Colorspace::COLORSPACE_RGB, true, 8,
-                                                lwidth, lheight, 4 * lwidth, &pixbuf_data_deleter);
+    auto pixbuf = Gdk::Pixbuf::create_from_data(array, Gdk::Colorspace::RGB, true, 8, lwidth,
+                                                lheight, 4 * lwidth, &pixbuf_data_deleter);
     // The item picks the size (up to 64 MiB) and the pixmap lives as long as the item does
     const int max_height = std::max(1, icon_size * MAX_PIXMAP_SCALE);
     const int max_width = max_height * MAX_ICON_ASPECT_RATIO;
@@ -502,7 +495,7 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
                                      static_cast<double>(max_width) / lwidth);
       pixbuf = pixbuf->scale_simple(std::max(1, static_cast<int>(lwidth * factor)),
                                     std::max(1, static_cast<int>(lheight * factor)),
-                                    Gdk::InterpType::INTERP_BILINEAR);
+                                    Gdk::InterpType::BILINEAR);
     }
     return pixbuf;
   }
@@ -524,15 +517,13 @@ void Item::updateImage() {
       (pixbuf->get_height() != scaled_icon_size || pixbuf->get_width() > max_width)) {
     double width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
     pixbuf = pixbuf->scale_simple(static_cast<int>(std::clamp(width, 1.0, max_width)),
-                                  scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
+                                  scaled_icon_size, Gdk::InterpType::BILINEAR);
     if (!pixbuf) return;
   }
 
   pixbuf = overlayPixbufs(pixbuf, getOverlayIconPixbuf());
 
-  auto surface =
-      Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image.get_scale_factor(), image.get_window());
-  image.set(surface);
+  image.set_pixbuf(pixbuf, image.get_scale_factor());
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
@@ -577,6 +568,20 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getOverlayIconPixbuf() {
   return overlay_icon_pixmap;
 }
 
+// Whether data is a PNG of at most max_pixels pixels, as its header says
+static bool isAcceptedPng(const guint8* data, gsize size, guint64 max_pixels) {
+  static const guint8 png_header[] = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n',
+                                      0,    0,   0,   13,  'I',  'H',  'D',  'R'};
+  if (size < sizeof(png_header) + 8 || std::memcmp(data, png_header, sizeof(png_header)) != 0) {
+    return false;
+  }
+  guint32 width = 0;
+  guint32 height = 0;
+  std::memcpy(&width, data + sizeof(png_header), 4);
+  std::memcpy(&height, data + sizeof(png_header) + 4, 4);
+  return static_cast<guint64>(GUINT32_FROM_BE(width)) * GUINT32_FROM_BE(height) <= max_pixels;
+}
+
 // Loads an icon file an item named, at the given height, or returns null if it is refused. Only a
 // regular file is read, through the opened descriptor so it cannot be swapped for a FIFO, and only
 // PNG (size checked in its header) and SVG (rendered at that height) are decoded: gdk-pixbuf
@@ -603,17 +608,8 @@ static Glib::RefPtr<Gdk::Pixbuf> loadIconFromFile(const std::string& path, int h
     return {};
   }
 
-  static const guint8 png_header[] = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n',
-                                      0,    0,   0,   13,  'I',  'H',  'D',  'R'};
-  bool accepted = false;
-  if (size >= sizeof(png_header) + 8 && std::memcmp(data, png_header, sizeof(png_header)) == 0) {
-    guint32 width = 0;
-    guint32 png_height = 0;
-    std::memcpy(&width, data + sizeof(png_header), 4);
-    std::memcpy(&png_height, data + sizeof(png_header) + 4, 4);
-    accepted = static_cast<guint64>(GUINT32_FROM_BE(width)) * GUINT32_FROM_BE(png_height) <=
-               MAX_ICON_FILE_PIXELS;
-  } else {
+  bool accepted = isAcceptedPng(data, size, MAX_ICON_FILE_PIXELS);
+  if (!accepted) {
     // By content like gdk-pixbuf does; the file name is the item's choice
     g_autofree gchar* type = g_content_type_guess(nullptr, data, size, nullptr);
     accepted = g_content_type_is_a(type, "image/svg+xml") != FALSE;
@@ -667,8 +663,8 @@ Glib::RefPtr<Gdk::Pixbuf> Item::overlayPixbufs(const Glib::RefPtr<Gdk::Pixbuf>& 
 
   int overlay_target_size =
       std::max(1, std::min(composed->get_width(), composed->get_height()) / 2);
-  auto scaled_overlay = overlay->scale_simple(overlay_target_size, overlay_target_size,
-                                              Gdk::InterpType::INTERP_BILINEAR);
+  auto scaled_overlay =
+      overlay->scale_simple(overlay_target_size, overlay_target_size, Gdk::InterpType::BILINEAR);
   if (!scaled_overlay) {
     return composed;
   }
@@ -677,7 +673,7 @@ Glib::RefPtr<Gdk::Pixbuf> Item::overlayPixbufs(const Glib::RefPtr<Gdk::Pixbuf>& 
   int dest_y = std::max(0, composed->get_height() - scaled_overlay->get_height());
   scaled_overlay->composite(composed, dest_x, dest_y, scaled_overlay->get_width(),
                             scaled_overlay->get_height(), dest_x, dest_y, 1.0, 1.0,
-                            Gdk::InterpType::INTERP_BILINEAR, 255);
+                            Gdk::InterpType::BILINEAR, 255);
   return composed;
 }
 
@@ -732,47 +728,48 @@ static std::string findIconInThemePath(const std::string& theme_path, const std:
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int request_size) {
+  Glib::RefPtr<Gdk::Pixbuf> pixbuf;
+  bool symbolic = false;
   if (!icon_theme_path.empty()) {
     auto file = findIconInThemePath(icon_theme_path, name, request_size);
-    auto pixbuf = file.empty() ? Glib::RefPtr<Gdk::Pixbuf>() : loadIconFromFile(file, request_size);
-    if (pixbuf) {
-      // GTK draws symbolic icons in the foreground color; its other symbolic colors are not kept
-      if ((file.ends_with("-symbolic.svg") || file.ends_with(".symbolic.png")) &&
-          pixbuf->get_has_alpha() && pixbuf->get_n_channels() == 4) {
-        auto style = event_box.get_style_context();
-        auto color = style->get_color(style->get_state());
-        const auto red = static_cast<guint8>(color.get_red() * 255);
-        const auto green = static_cast<guint8>(color.get_green() * 255);
-        const auto blue = static_cast<guint8>(color.get_blue() * 255);
-        const double alpha = color.get_alpha();
-        for (int y = 0; y < pixbuf->get_height(); ++y) {
-          guint8* pixel = pixbuf->get_pixels() + (y * pixbuf->get_rowstride());
-          for (int x = 0; x < pixbuf->get_width(); ++x, pixel += 4) {
-            pixel[0] = red;
-            pixel[1] = green;
-            pixel[2] = blue;
-            pixel[3] = static_cast<guint8>(pixel[3] * alpha);
-          }
-        }
-      }
-      return pixbuf;
+    if (!file.empty()) {
+      pixbuf = loadIconFromFile(file, request_size);
+      symbolic = file.ends_with("-symbolic.svg") || file.ends_with(".symbolic.png");
     }
   }
-  return DefaultGtkIconThemeWrapper::load_icon(name.c_str(), request_size,
-                                               Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE,
-                                               event_box.get_style_context());
+  if (!pixbuf) {
+    pixbuf = DefaultGtkIconThemeWrapper::load_icon(name, request_size);
+    symbolic = name.ends_with("-symbolic");
+  }
+  // GTK3 carried its own copies of the stock icons (dialog-information, media-playback-start...),
+  // which themes now often ship only as symbolic icons
+  if (!pixbuf && !symbolic) {
+    pixbuf = DefaultGtkIconThemeWrapper::load_icon(name + "-symbolic", request_size);
+    symbolic = true;
+  }
+  // GTK draws symbolic icons in the foreground color; its other symbolic colors are not kept
+  if (pixbuf && symbolic && pixbuf->get_has_alpha() && pixbuf->get_n_channels() == 4) {
+    const auto color = event_box.get_color();
+    const auto red = static_cast<guint8>(color.get_red() * 255);
+    const auto green = static_cast<guint8>(color.get_green() * 255);
+    const auto blue = static_cast<guint8>(color.get_blue() * 255);
+    const double alpha = color.get_alpha();
+    for (int y = 0; y < pixbuf->get_height(); ++y) {
+      guint8* pixel = pixbuf->get_pixels() + (y * pixbuf->get_rowstride());
+      for (int x = 0; x < pixbuf->get_width(); ++x, pixel += 4) {
+        pixel[0] = red;
+        pixel[1] = green;
+        pixel[2] = blue;
+        pixel[3] = static_cast<guint8>(pixel[3] * alpha);
+      }
+    }
+  }
+  return pixbuf;
 }
 
 double Item::getScaledIconSize() {
   // apply the scale factor from the Gtk window to the requested icon size
   return icon_size * image.get_scale_factor();
-}
-
-void Item::onMenuDestroyed(Item* self, GObject* old_menu_pointer) {
-  if (old_menu_pointer == reinterpret_cast<GObject*>(self->dbus_menu)) {
-    self->gtk_menu = nullptr;
-    self->dbus_menu = nullptr;
-  }
 }
 
 // Counts the entries below a "(ia{sv}av)" layout node, giving up once there are too many
@@ -818,126 +815,439 @@ static GDBusMessage* filterMenuLayout(GDBusConnection* /*connection*/, GDBusMess
   return error;
 }
 
+// Whether a boolean property is set, like libdbusmenu-gtk: true when unset, false when mistyped
+static bool menuItemFlag(DbusmenuMenuitem* item, const gchar* name) {
+  GVariant* value = dbusmenu_menuitem_property_get_variant(item, name);
+  return value == nullptr ||
+         (g_variant_is_of_type(value, G_VARIANT_TYPE_BOOLEAN) && g_variant_get_boolean(value));
+}
+
+static bool menuItemToggled(DbusmenuMenuitem* item) {
+  GVariant* value =
+      dbusmenu_menuitem_property_get_variant(item, DBUSMENU_MENUITEM_PROP_TOGGLE_STATE);
+  return value != nullptr && g_variant_is_of_type(value, G_VARIANT_TYPE_INT32) &&
+         g_variant_get_int32(value) == DBUSMENU_MENUITEM_TOGGLE_STATE_CHECKED;
+}
+
 void Item::makeMenu() {
-  if (gtk_menu == nullptr && !menu.empty()) {
-    // libdbusmenu uses the shared session bus connection of the proxies: one filter covers all
-    [[maybe_unused]] static const guint layout_filter = g_dbus_connection_add_filter(
-        proxy_->get_connection()->gobj(), filterMenuLayout, nullptr, nullptr);
-    dbus_menu = dbusmenu_gtkmenu_new(bus_name.data(), menu.data());
-    if (dbus_menu != nullptr) {
-      g_object_ref_sink(G_OBJECT(dbus_menu));
-      g_object_weak_ref(G_OBJECT(dbus_menu), (GWeakNotify)onMenuDestroyed, this);
-      // Provide an accel group to the dbusmenu client. Without one, items that export menu
-      // accelerators (e.g. Mattermost) trigger gtk_widget_set_accel_path() with a NULL accel group,
-      // which raises a Gtk-CRITICAL and corrupts menu state (or aborts under fatal-criticals).
-      DbusmenuGtkClient* client = dbusmenu_gtkmenu_get_client(DBUSMENU_GTKMENU(dbus_menu));
-      if (client != nullptr) {
-        GtkAccelGroup* accel_group = gtk_accel_group_new();
-        dbusmenu_gtkclient_set_accel_group(client, accel_group);
-        g_object_unref(accel_group);
-        // The client adds the menu's IconThemePath to the default icon theme of every module; it
-        // belongs to the item, like the item's own (see findIconInThemePath).
-        g_signal_handlers_disconnect_matched(
-            client, G_SIGNAL_MATCH_ID,
-            g_signal_lookup(DBUSMENU_CLIENT_SIGNAL_ICON_THEME_DIRS_CHANGED, DBUSMENU_TYPE_CLIENT),
-            0, nullptr, nullptr, nullptr);
-      }
-      gtk_menu = Glib::wrap(GTK_MENU(dbus_menu));
-      gtk_menu->attach_to_widget(event_box);
-    }
+  if (dbus_menu != nullptr || menu.empty()) {
+    return;
   }
-  // Manually reset prelight to make sure the tray item doesn't stay in a hover state even though
-  // the menu is focused
-  event_box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  // libdbusmenu uses the shared session bus connection of the proxies: one filter covers all
+  [[maybe_unused]] static const guint layout_filter = g_dbus_connection_add_filter(
+      proxy_->get_connection()->gobj(), filterMenuLayout, nullptr, nullptr);
+  dbus_menu = dbusmenu_client_new(bus_name.c_str(), menu.c_str());
+  if (dbus_menu == nullptr) {
+    return;
+  }
+  auto on_layout_updated =
+      +[](DbusmenuClient* /*client*/, Item* self) { self->queueMenuRebuild(); };
+  auto on_root_changed = +[](DbusmenuClient* /*client*/, DbusmenuMenuitem* /*root*/, Item* self) {
+    self->queueMenuRebuild();
+  };
+  g_signal_connect(dbus_menu, DBUSMENU_CLIENT_SIGNAL_LAYOUT_UPDATED, G_CALLBACK(on_layout_updated),
+                   this);
+  g_signal_connect(dbus_menu, DBUSMENU_CLIENT_SIGNAL_ROOT_CHANGED, G_CALLBACK(on_root_changed),
+                   this);
+  g_signal_connect(dbus_menu, DBUSMENU_CLIENT_SIGNAL_NEW_MENUITEM, G_CALLBACK(&Item::onMenuNewItem),
+                   this);
 }
 
 bool Item::hasMenuLayout() const {
-  if (dbus_menu == nullptr) {
-    return false;
-  }
-  DbusmenuGtkClient* client = dbusmenu_gtkmenu_get_client(dbus_menu);
-  return client != nullptr && dbusmenu_client_get_root(DBUSMENU_CLIENT(client)) != nullptr;
+  return dbus_menu != nullptr && dbusmenu_client_get_root(dbus_menu) != nullptr;
 }
 
-bool Item::handleClick(GdkEventButton* const& ev) {
-  if (!proxy_) {
-    return false;
-  }
-  auto parameters = Glib::VariantContainerBase::create_tuple(
-      {Glib::Variant<int>::create(ev->x_root + bar_.x_global),
-       Glib::Variant<int>::create(ev->y_root + bar_.y_global)});
-  if ((ev->button == 1 && item_is_menu) || ev->button == 3) {
-    makeMenu();
-    // Some items advertise a Menu path without serving com.canonical.dbusmenu (e.g. Steam), so
-    // the client never gets a layout root. Use the item's own ContextMenu for those instead of
-    // popping up an empty GTK menu.
-    if (gtk_menu != nullptr && hasMenuLayout()) {
-#if GTK_CHECK_VERSION(3, 22, 0)
-      gtk_menu->popup_at_pointer(reinterpret_cast<GdkEvent*>(ev));
-#else
-      gtk_menu->popup(ev->button, ev->time);
-#endif
-      return true;
-    } else {
-      proxy_->call("ContextMenu", parameters);
-      return true;
+// The client emits this once an item it added to the tree has all its properties
+void Item::onMenuNewItem(DbusmenuClient* /*client*/, DbusmenuMenuitem* item, Item* self) {
+  g_signal_connect(item, DBUSMENU_MENUITEM_SIGNAL_PROPERTY_CHANGED,
+                   G_CALLBACK(&Item::onMenuPropertyChanged), self);
+  self->queueMenuRebuild();
+}
+
+void Item::onMenuPropertyChanged(DbusmenuMenuitem* item, const gchar* name, GVariant* /*value*/,
+                                 Item* self) {
+  const bool enabled = strcmp(name, DBUSMENU_MENUITEM_PROP_ENABLED) == 0;
+  if (!self->menu_dirty_ && (enabled || strcmp(name, DBUSMENU_MENUITEM_PROP_TOGGLE_STATE) == 0)) {
+    // The shown model stays: GTK follows the state of its actions
+    GAction* action =
+        g_action_map_lookup_action(G_ACTION_MAP(self->menu_actions_->gobj()),
+                                   std::to_string(dbusmenu_menuitem_get_id(item)).c_str());
+    if (action == nullptr) {
+      return;
     }
-  } else if (ev->button == 1) {
-    proxy_->call("Activate", parameters);
-    return true;
-  } else if (ev->button == 2) {
-    proxy_->call("SecondaryActivate", parameters);
-    return true;
+    if (enabled) {
+      g_simple_action_set_enabled(G_SIMPLE_ACTION(action),
+                                  menuItemFlag(item, DBUSMENU_MENUITEM_PROP_ENABLED));
+    } else if (const GVariantType* type = g_action_get_state_type(action); type != nullptr) {
+      const bool on = menuItemToggled(item);
+      g_simple_action_set_state(G_SIMPLE_ACTION(action),
+                                g_variant_type_equal(type, G_VARIANT_TYPE_BOOLEAN)
+                                    ? g_variant_new_boolean(on)
+                                    : g_variant_new_string(on ? "1" : "0"));
+    }
+    return;
   }
-  return false;
+  static constexpr std::array<std::string_view, 8> shown = {
+      DBUSMENU_MENUITEM_PROP_LABEL,         DBUSMENU_MENUITEM_PROP_VISIBLE,
+      DBUSMENU_MENUITEM_PROP_TYPE,          DBUSMENU_MENUITEM_PROP_TOGGLE_TYPE,
+      DBUSMENU_MENUITEM_PROP_CHILD_DISPLAY, DBUSMENU_MENUITEM_PROP_ICON_NAME,
+      DBUSMENU_MENUITEM_PROP_ICON_DATA,     DBUSMENU_MENUITEM_PROP_SHORTCUT};
+  if (std::ranges::find(shown, name) != shown.end()) {
+    self->queueMenuRebuild();
+  }
 }
 
-bool Item::handleScroll(GdkEventScroll* const& ev) {
+// Clients update menus in bursts of signals: the model is rebuilt once they are handled, and only
+// while it is shown; a hidden menu is rebuilt when it pops up.
+void Item::queueMenuRebuild() {
+  menu_dirty_ = true;
+  if (gtk_menu != nullptr && gtk_menu->get_visible() && !menu_rebuild_.connected()) {
+    menu_rebuild_ = Glib::signal_idle().connect([this] {
+      rebuildMenu();
+      return false;
+    });
+  }
+}
+
+void Item::rebuildMenu() {
+  menu_dirty_ = false;
+  GMenu* model = g_menu_new();
+  auto actions = Gio::SimpleActionGroup::create();
+  if (DbusmenuMenuitem* root = dbusmenu_client_get_root(dbus_menu); root != nullptr) {
+    appendMenuItems(model, root, actions->gobj());
+  }
+  menu_actions_ = std::move(actions);
+  gtk_menu->insert_action_group("tray", menu_actions_);
+  if (GMenuModel* shown = gtk_popover_menu_get_menu_model(gtk_menu->gobj()); shown != nullptr) {
+    syncMenu(G_MENU(shown), G_MENU_MODEL(model));
+  } else {
+    gtk_popover_menu_set_menu_model(gtk_menu->gobj(), G_MENU_MODEL(model));
+  }
+  g_object_unref(model);
+  if (gtk_menu->get_mapped()) {
+    util::update_menu_items(GTK_WIDGET(gtk_menu->gobj()), true);
+  }
+}
+
+// Updates the shown menu in place, like libdbusmenu-gtk updates its widgets: GTK recreates the
+// widgets of replaced items, which would close their open submenus.
+void Item::syncMenu(GMenu* shown, GMenuModel* model) {
+  const int n_items = g_menu_model_get_n_items(model);
+  for (int i = 0; i < n_items; ++i) {
+    bool same = i < g_menu_model_get_n_items(G_MENU_MODEL(shown));
+    int n_attributes = 0;
+    if (same) {
+      GMenuAttributeIter* it = g_menu_model_iterate_item_attributes(G_MENU_MODEL(shown), i);
+      const gchar* name = nullptr;
+      GVariant* value = nullptr;
+      while (same && g_menu_attribute_iter_get_next(it, &name, &value)) {
+        g_autoptr(GVariant) other = g_menu_model_get_item_attribute_value(model, i, name, nullptr);
+        same = other != nullptr && g_variant_equal(value, other);
+        g_variant_unref(value);
+        ++n_attributes;
+      }
+      g_object_unref(it);
+    }
+    if (same) {
+      GMenuAttributeIter* it = g_menu_model_iterate_item_attributes(model, i);
+      while (g_menu_attribute_iter_next(it)) {
+        --n_attributes;
+      }
+      g_object_unref(it);
+      same = n_attributes == 0;
+    }
+    // Both models come from appendMenuItems: an item has at most one link, a section or a submenu
+    GMenuModel* link = nullptr;
+    const gchar* link_name = nullptr;
+    if (same) {
+      GMenuLinkIter* it = g_menu_model_iterate_item_links(model, i);
+      if (g_menu_link_iter_get_next(it, &link_name, &link)) {
+        g_autoptr(GMenuModel) shown_link =
+            g_menu_model_get_item_link(G_MENU_MODEL(shown), i, link_name);
+        if (shown_link != nullptr) {
+          syncMenu(G_MENU(shown_link), link);
+        }
+        same = shown_link != nullptr;
+        g_object_unref(link);
+      } else {
+        g_autoptr(GMenuLinkIter) shown_links =
+            g_menu_model_iterate_item_links(G_MENU_MODEL(shown), i);
+        same = !g_menu_link_iter_next(shown_links);
+      }
+      g_object_unref(it);
+    }
+    if (!same) {
+      GMenuItem* item = g_menu_item_new_from_model(model, i);
+      if (i < g_menu_model_get_n_items(G_MENU_MODEL(shown))) {
+        g_menu_remove(shown, i);
+      }
+      g_menu_insert_item(shown, i, item);
+      g_object_unref(item);
+    }
+  }
+  for (int i = g_menu_model_get_n_items(G_MENU_MODEL(shown)); i > n_items; --i) {
+    g_menu_remove(shown, i - 1);
+  }
+}
+
+// Maps the children of a dbusmenu item to GMenu items, like libdbusmenu-gtk maps them to widgets:
+// only standard items and separators, which delimit sections, and only "submenu" children.
+void Item::appendMenuItems(GMenu* menu, DbusmenuMenuitem* parent, GSimpleActionGroup* actions) {
+  GMenu* section = g_menu_new();
+  for (GList* child = dbusmenu_menuitem_get_children(parent); child != nullptr;
+       child = child->next) {
+    auto* item = DBUSMENU_MENUITEM(child->data);
+    if (!menuItemFlag(item, DBUSMENU_MENUITEM_PROP_VISIBLE)) {
+      continue;
+    }
+    const gchar* type = dbusmenu_menuitem_property_get(item, DBUSMENU_MENUITEM_PROP_TYPE);
+    if (g_strcmp0(type, DBUSMENU_CLIENT_TYPES_SEPARATOR) == 0) {
+      if (g_menu_model_get_n_items(G_MENU_MODEL(section)) > 0) {
+        g_menu_append_section(menu, nullptr, G_MENU_MODEL(section));
+        g_object_unref(section);
+        section = g_menu_new();
+      }
+      continue;
+    }
+    if (type != nullptr && strcmp(type, DBUSMENU_CLIENT_TYPES_DEFAULT) != 0) {
+      continue;
+    }
+
+    // Labels use "_" mnemonics in dbusmenu and GMenu alike
+    const gchar* label = dbusmenu_menuitem_property_get(item, DBUSMENU_MENUITEM_PROP_LABEL);
+    GMenuItem* entry = g_menu_item_new(label, nullptr);
+    auto name = std::to_string(dbusmenu_menuitem_get_id(item));
+    const gchar* toggle = dbusmenu_menuitem_property_get(item, DBUSMENU_MENUITEM_PROP_TOGGLE_TYPE);
+    const bool radio = g_strcmp0(toggle, DBUSMENU_MENUITEM_TOGGLE_RADIO) == 0;
+    const bool check = g_strcmp0(toggle, DBUSMENU_MENUITEM_TOGGLE_CHECK) == 0;
+    if (g_strcmp0(dbusmenu_menuitem_property_get(item, DBUSMENU_MENUITEM_PROP_CHILD_DISPLAY),
+                  DBUSMENU_MENUITEM_CHILD_DISPLAY_SUBMENU) == 0) {
+      GMenu* submenu = g_menu_new();
+      appendMenuItems(submenu, item, actions);
+      g_menu_item_set_submenu(entry, G_MENU_MODEL(submenu));
+      g_object_unref(submenu);
+      // GTK sets the state of the submenu action to whether the submenu is shown. It carries over
+      // rebuilds, or GTK would see an open submenu as closed and open it again.
+      name.insert(0, "s");
+      GAction* previous = menu_actions_ ? g_action_map_lookup_action(
+                                              G_ACTION_MAP(menu_actions_->gobj()), name.c_str())
+                                        : nullptr;
+      g_autoptr(GVariant) shown = previous != nullptr ? g_action_get_state(previous) : nullptr;
+      GSimpleAction* action = g_simple_action_new_stateful(
+          name.c_str(), nullptr, shown != nullptr ? shown : g_variant_new_boolean(FALSE));
+      g_signal_connect(action, "change-state", G_CALLBACK(&Item::onSubmenuShown), this);
+      g_action_map_add_action(G_ACTION_MAP(actions), G_ACTION(action));
+      g_object_unref(action);
+      name.insert(0, "tray.");
+      g_menu_item_set_attribute(entry, "submenu-action", "s", name.c_str());
+    } else {
+      // A boolean state shows a check mark, a string state equal to the item target a radio
+      GSimpleAction* action = nullptr;
+      if (radio) {
+        action =
+            g_simple_action_new_stateful(name.c_str(), G_VARIANT_TYPE_STRING,
+                                         g_variant_new_string(menuItemToggled(item) ? "1" : "0"));
+      } else if (check) {
+        action = g_simple_action_new_stateful(name.c_str(), nullptr,
+                                              g_variant_new_boolean(menuItemToggled(item)));
+      } else {
+        action = g_simple_action_new(name.c_str(), nullptr);
+      }
+      g_simple_action_set_enabled(action, menuItemFlag(item, DBUSMENU_MENUITEM_PROP_ENABLED));
+      // With a handler, activating does not change the state: the item reports its new one
+      g_signal_connect(action, "activate", G_CALLBACK(&Item::onMenuActivate), this);
+      g_action_map_add_action(G_ACTION_MAP(actions), G_ACTION(action));
+      g_object_unref(action);
+      name.insert(0, "tray.");
+      g_menu_item_set_action_and_target_value(entry, name.c_str(),
+                                              radio ? g_variant_new_string("1") : nullptr);
+    }
+
+    GVariant* shortcut =
+        dbusmenu_menuitem_property_get_variant(item, DBUSMENU_MENUITEM_PROP_SHORTCUT);
+    if (shortcut != nullptr && g_variant_is_of_type(shortcut, G_VARIANT_TYPE("aas")) &&
+        g_variant_n_children(shortcut) > 0) {
+      // [["Control", "Shift", "q"]] is "<Control><Shift>q"
+      g_autoptr(GVariant) keys = g_variant_get_child_value(shortcut, 0);
+      const gsize n_keys = g_variant_n_children(keys);
+      std::string accel;
+      for (gsize i = 0; i < n_keys; ++i) {
+        const gchar* key = nullptr;
+        g_variant_get_child(keys, i, "&s", &key);
+        if (i + 1 < n_keys) {
+          accel.append("<").append(key).append(">");
+        } else {
+          accel.append(key);
+        }
+      }
+      g_menu_item_set_attribute(entry, "accel", "s", accel.c_str());
+    }
+
+    // Like libdbusmenu-gtk, which shows icons on standard items only, not on check or radio ones
+    if (!radio && !check) {
+      const gchar* icon_name =
+          dbusmenu_menuitem_property_get(item, DBUSMENU_MENUITEM_PROP_ICON_NAME);
+      GVariant* icon_data =
+          dbusmenu_menuitem_property_get_variant(item, DBUSMENU_MENUITEM_PROP_ICON_DATA);
+      GIcon* icon = nullptr;
+      // A name is looked up in the theme directories, a path could name any file
+      if (icon_name != nullptr && *icon_name != '\0' && strchr(icon_name, '/') == nullptr &&
+          strcmp(icon_name, DBUSMENU_MENUITEM_ICON_NAME_BLANK) != 0) {
+        icon = g_themed_icon_new(icon_name);
+      } else if (icon_data != nullptr &&
+                 g_variant_is_of_type(icon_data, G_VARIANT_TYPE_BYTESTRING) &&
+                 isAcceptedPng(static_cast<const guint8*>(g_variant_get_data(icon_data)),
+                               g_variant_get_size(icon_data), MENU_ICON_MAX_PIXELS)) {
+        g_autoptr(GBytes) bytes = g_variant_get_data_as_bytes(icon_data);
+        icon = g_bytes_icon_new(bytes);
+      }
+      if (icon != nullptr) {
+        g_menu_item_set_icon(entry, icon);
+        g_object_unref(icon);
+      }
+    }
+
+    g_menu_append_item(section, entry);
+    g_object_unref(entry);
+  }
+  if (g_menu_model_get_n_items(G_MENU_MODEL(section)) > 0) {
+    g_menu_append_section(menu, nullptr, G_MENU_MODEL(section));
+  }
+  g_object_unref(section);
+}
+
+void Item::onMenuActivate(GSimpleAction* action, GVariant* /*parameter*/, Item* self) {
+  DbusmenuMenuitem* root = dbusmenu_client_get_root(self->dbus_menu);
+  if (root == nullptr) {
+    return;
+  }
+  // Looked up by id: the item may have left the tree since the menu was built
+  DbusmenuMenuitem* item =
+      dbusmenu_menuitem_find_id(root, std::atoi(g_action_get_name(G_ACTION(action))));
+  if (item != nullptr) {
+    dbusmenu_menuitem_handle_event(item, DBUSMENU_MENUITEM_EVENT_ACTIVATED, g_variant_new_int32(0),
+                                   GDK_CURRENT_TIME);
+  }
+}
+
+void Item::onSubmenuShown(GSimpleAction* action, GVariant* value, Item* self) {
+  // GTK asks again for the state it is setting, from the state change notification
+  g_autoptr(GVariant) state = g_action_get_state(G_ACTION(action));
+  if (g_variant_equal(state, value)) {
+    return;
+  }
+  g_simple_action_set_state(action, value);
+  DbusmenuMenuitem* root = dbusmenu_client_get_root(self->dbus_menu);
+  if (root == nullptr) {
+    return;
+  }
+  // Named "s<id>"
+  DbusmenuMenuitem* item =
+      dbusmenu_menuitem_find_id(root, std::atoi(g_action_get_name(G_ACTION(action)) + 1));
+  if (item == nullptr) {
+    return;
+  }
+  // Like libdbusmenu-gtk, without waiting for the about-to-show reply
+  if (g_variant_get_boolean(value)) {
+    dbusmenu_menuitem_send_about_to_show(item, nullptr, nullptr);
+    dbusmenu_menuitem_handle_event(item, DBUSMENU_MENUITEM_EVENT_OPENED, nullptr, GDK_CURRENT_TIME);
+  } else {
+    dbusmenu_menuitem_handle_event(item, DBUSMENU_MENUITEM_EVENT_CLOSED, nullptr, GDK_CURRENT_TIME);
+  }
+}
+
+void Item::handleClick(int n_press, double x, double y) {
+  if (!proxy_) {
+    return;
+  }
+  const guint button = click_->get_current_button();
+  const bool menu_button = (button == 1 && item_is_menu) || button == 3;
+  if (!menu_button && button != 1 && button != 2) {
+    return;
+  }
+  // Surface coordinates, like the GTK3 root coordinates of a Wayland surface
+  double surface_x = 0;
+  double surface_y = 0;
+  auto& window = const_cast<Bar&>(bar_).window;
+  gtk_native_get_surface_transform(GTK_NATIVE(window.gobj()), &surface_x, &surface_y);
+  const auto point = event_box.compute_point(window, Gdk::Graphene::Point(x, y))
+                         .value_or(Gdk::Graphene::Point(x, y));
+  auto parameters = Glib::VariantContainerBase::create_tuple(
+      {Glib::Variant<int>::create(point.get_x() + surface_x + bar_.x_global),
+       Glib::Variant<int>::create(point.get_y() + surface_y + bar_.y_global)});
+
+  // A double (triple) click is handled as a press then a double (triple) press, like in GTK3
+  for (int i = (n_press - 1) % 3 == 0 ? 1 : 2; i > 0; --i) {
+    if (menu_button) {
+      makeMenu();
+      // Some items advertise a Menu path without serving com.canonical.dbusmenu (e.g. Steam), so
+      // the client never gets a layout root. Use the item's own ContextMenu for those instead of
+      // popping up an empty menu.
+      if (hasMenuLayout()) {
+        // Like libdbusmenu-gtk, without waiting for the reply: an updated layout shows up live
+        dbusmenu_menuitem_send_about_to_show(dbusmenu_client_get_root(dbus_menu), nullptr, nullptr);
+        if (gtk_menu == nullptr) {
+          // Nested submenus open beside their item, like cascading GTK3 menus
+          gtk_menu = new Gtk::PopoverMenu({}, Gtk::PopoverMenu::Flags::NESTED);
+          gtk_menu->set_has_arrow(false);
+          gtk_menu->set_halign(Gtk::Align::START);
+          gtk_menu->set_parent(event_box);
+          util::unhover_menu_ancestors(GTK_WIDGET(gtk_menu->gobj()));
+          gtk_menu->signal_map().connect(
+              [this] { util::update_menu_items(GTK_WIDGET(gtk_menu->gobj()), true); });
+        }
+        if (menu_dirty_) {
+          menu_rebuild_.disconnect();
+          rebuildMenu();
+        }
+        gtk_menu->set_pointing_to(Gdk::Rectangle(static_cast<int>(x), static_cast<int>(y), 1, 1));
+        gtk_menu->popup();
+      } else {
+        proxy_->call("ContextMenu", parameters);
+      }
+    } else if (button == 1) {
+      proxy_->call("Activate", parameters);
+    } else {
+      proxy_->call("SecondaryActivate", parameters);
+    }
+  }
+  click_->set_state(Gtk::EventSequenceState::CLAIMED);
+}
+
+bool Item::handleScroll(double dx, double dy) {
   if (!proxy_) {
     return false;
   }
-  int dx = 0, dy = 0;
-  switch (ev->direction) {
-    case GDK_SCROLL_UP:
-      dy = -1;
-      break;
-    case GDK_SCROLL_DOWN:
-      dy = 1;
-      break;
-    case GDK_SCROLL_LEFT:
-      dx = -1;
-      break;
-    case GDK_SCROLL_RIGHT:
-      dx = 1;
-      break;
-    case GDK_SCROLL_SMOOTH:
-      distance_scrolled_x_ += ev->delta_x;
-      distance_scrolled_y_ += ev->delta_y;
-      // check against the configured threshold and ensure that the absolute value >= 1
-      if (distance_scrolled_x_ > scroll_threshold_) {
-        dx = (int)lround(std::max(distance_scrolled_x_, 1.0));
-        distance_scrolled_x_ = 0;
-      } else if (distance_scrolled_x_ < -scroll_threshold_) {
-        dx = (int)lround(std::min(distance_scrolled_x_, -1.0));
-        distance_scrolled_x_ = 0;
-      }
-      if (distance_scrolled_y_ > scroll_threshold_) {
-        dy = (int)lround(std::max(distance_scrolled_y_, 1.0));
-        distance_scrolled_y_ = 0;
-      } else if (distance_scrolled_y_ < -scroll_threshold_) {
-        dy = (int)lround(std::min(distance_scrolled_y_, -1.0));
-        distance_scrolled_y_ = 0;
-      }
-      break;
+  // Scaled to the smooth deltas GTK3 gave on Wayland, which smooth-scrolling-threshold is tuned
+  // for: 1.5 per wheel detent and a tenth of a surface pixel.
+  const double factor = scroll_->get_unit() == Gdk::ScrollUnit::WHEEL ? 1.5 : 0.1;
+  distance_scrolled_x_ += dx * factor;
+  distance_scrolled_y_ += dy * factor;
+  int scroll_x = 0;
+  int scroll_y = 0;
+  // check against the configured threshold and ensure that the absolute value >= 1
+  if (distance_scrolled_x_ > scroll_threshold_) {
+    scroll_x = (int)lround(std::max(distance_scrolled_x_, 1.0));
+    distance_scrolled_x_ = 0;
+  } else if (distance_scrolled_x_ < -scroll_threshold_) {
+    scroll_x = (int)lround(std::min(distance_scrolled_x_, -1.0));
+    distance_scrolled_x_ = 0;
   }
-  if (dx != 0) {
+  if (distance_scrolled_y_ > scroll_threshold_) {
+    scroll_y = (int)lround(std::max(distance_scrolled_y_, 1.0));
+    distance_scrolled_y_ = 0;
+  } else if (distance_scrolled_y_ < -scroll_threshold_) {
+    scroll_y = (int)lround(std::min(distance_scrolled_y_, -1.0));
+    distance_scrolled_y_ = 0;
+  }
+  if (scroll_x != 0) {
     auto parameters = Glib::VariantContainerBase::create_tuple(
-        {Glib::Variant<int>::create(dx), Glib::Variant<Glib::ustring>::create("horizontal")});
+        {Glib::Variant<int>::create(scroll_x), Glib::Variant<Glib::ustring>::create("horizontal")});
     proxy_->call("Scroll", parameters);
   }
-  if (dy != 0) {
+  if (scroll_y != 0) {
     auto parameters = Glib::VariantContainerBase::create_tuple(
-        {Glib::Variant<int>::create(dy), Glib::Variant<Glib::ustring>::create("vertical")});
+        {Glib::Variant<int>::create(scroll_y), Glib::Variant<Glib::ustring>::create("vertical")});
     proxy_->call("Scroll", parameters);
   }
   return true;

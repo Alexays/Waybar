@@ -32,11 +32,23 @@ waybar.overrideAttrs (oldAttrs: {
   nativeInstallCheckInputs = [ ];
 
   buildInputs =
-    (builtins.filter (p: p.pname != "wireplumber" && p.pname != "gps") oldAttrs.buildInputs)
+    (builtins.filter (
+      p:
+      !(builtins.elem (p.pname or "") [
+        "wireplumber"
+        "gps"
+        "gtkmm"
+        "gtk-layer-shell"
+        "libdbusmenu-gtk3"
+      ])
+    ) oldAttrs.buildInputs)
     ++ [
       pkgs.wireplumber
       pkgs.gpsd
       pkgs.modemmanager
+      pkgs.gtkmm4
+      pkgs.gtk4-layer-shell
+      pkgs.libdbusmenu
     ];
 
   postUnpack = ''

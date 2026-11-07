@@ -83,7 +83,7 @@ Window::Window(const std::string& id, const waybar::Bar& bar, const Json::Value&
     return;
   }
 
-  label_.hide();  // hide the label until populated
+  label_.set_visible(false);  // hide the label until populated
   ALabel::update();
 
   seat_status_ = zriver_status_manager_v1_get_river_seat_status(status_manager_, seat_);
@@ -106,9 +106,9 @@ void Window::handle_focused_view(const char* title) {
   if (focused_output_ != output_) return;
 
   if (std::strcmp(title, "") == 0 || format_.empty()) {
-    label_.hide();  // hide empty labels or labels with empty format
+    label_.set_visible(false);  // hide empty labels or labels with empty format
   } else {
-    label_.show();
+    label_.set_visible(true);
     auto text = fmt::format(fmt::runtime(format_), Glib::Markup::escape_text(title).raw());
     label_.set_markup(text);
     if (tooltipEnabled()) {
@@ -121,7 +121,7 @@ void Window::handle_focused_view(const char* title) {
 
 void Window::handle_focused_output(struct wl_output* output) {
   if (output_ == output) {  // if we focused the output this bar belongs to
-    label_.get_style_context()->add_class("focused");
+    label_.add_css_class("focused");
     ALabel::update();
   }
   focused_output_ = output;
@@ -129,7 +129,7 @@ void Window::handle_focused_output(struct wl_output* output) {
 
 void Window::handle_unfocused_output(struct wl_output* output) {
   if (output_ == output) {  // if we unfocused the output this bar belongs to
-    label_.get_style_context()->remove_class("focused");
+    label_.remove_css_class("focused");
     ALabel::update();
   }
 }

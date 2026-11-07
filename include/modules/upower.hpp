@@ -6,6 +6,7 @@
 #include <libupower-glib/upower.h>
 #include <sigc++/trackable.h>
 
+#include <mutex>
 #include <unordered_map>
 
 #include "AIconLabel.hpp"

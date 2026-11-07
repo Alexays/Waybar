@@ -82,7 +82,7 @@ Mode::Mode(const std::string& id, const waybar::Bar& bar, const Json::Value& con
     return;
   }
 
-  label_.hide();
+  label_.set_visible(false);
   ALabel::update();
 
   seat_status_ = zriver_status_manager_v1_get_river_seat_status(status_manager_, seat_);
@@ -99,15 +99,15 @@ Mode::~Mode() {
 
 void Mode::handle_mode(const char* mode) {
   if (format_.empty()) {
-    label_.hide();
+    label_.set_visible(false);
   } else {
     if (!mode_.empty()) {
-      label_.get_style_context()->remove_class(mode_);
+      label_.remove_css_class(mode_);
     }
 
-    label_.get_style_context()->add_class(mode);
+    label_.add_css_class(mode);
     label_.set_markup(fmt::format(fmt::runtime(format_), Glib::Markup::escape_text(mode).raw()));
-    label_.show();
+    label_.set_visible(true);
   }
 
   mode_ = mode;

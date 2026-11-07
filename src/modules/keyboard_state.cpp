@@ -165,22 +165,28 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
 
   box_.set_name("keyboard-state");
   if (config_["numlock"].asBool()) {
-    numlock_label_.get_style_context()->add_class("numlock");
-    box_.pack_end(numlock_label_, false, false, 0);
+    numlock_label_.add_css_class("numlock");
+    box_.prepend(numlock_label_);
   }
   if (config_["capslock"].asBool()) {
-    capslock_label_.get_style_context()->add_class("capslock");
-    box_.pack_end(capslock_label_, false, false, 0);
+    capslock_label_.add_css_class("capslock");
+    box_.prepend(capslock_label_);
   }
   if (config_["scrolllock"].asBool()) {
-    scrolllock_label_.get_style_context()->add_class("scrolllock");
-    box_.pack_end(scrolllock_label_, false, false, 0);
+    scrolllock_label_.add_css_class("scrolllock");
+    box_.prepend(scrolllock_label_);
   }
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
+  box_.add_css_class(MODULE_CLASS);
+  // The labels are end-packed: extra width goes before them, without making the module expand
+  if (auto* first = box_.get_first_child()) {
+    first->set_hexpand(true);
+    first->set_halign(Gtk::Align::END);
+    box_.set_hexpand(false);
+  }
+  event_box_.set_child(box_);
 
   if (config_["device-path"].isString()) {
     std::string dev_path = config_["device-path"].asString();
@@ -296,7 +302,7 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
       return;
     }
     while (1) {
-      int BUF_LEN = 1024 * (sizeof(struct inotify_event) + 16);
+      constexpr size_t BUF_LEN = 1024 * (sizeof(struct inotify_event) + 16);
       char buf[BUF_LEN];
       int length = read(fd, buf, BUF_LEN);
       if (length < 0) {
@@ -450,9 +456,9 @@ auto waybar::modules::KeyboardState::update() -> void {
                        fmt::arg("name", label_state.name));
     label_state.label.set_markup(text);
     if (label_state.state) {
-      label_state.label.get_style_context()->add_class("locked");
+      label_state.label.add_css_class("locked");
     } else {
-      label_state.label.get_style_context()->remove_class("locked");
+      label_state.label.remove_css_class("locked");
     }
   }
 

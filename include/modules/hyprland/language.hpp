@@ -34,8 +34,6 @@ class Language : public waybar::ALabel, public EventHandler {
   static auto getLayout(const std::string&) -> Layout;
 
   std::mutex mutex_;
-  const Bar& bar_;
-  util::JsonParser parser_;
 
   Layout layout_;
   std::string prev_short_name_;  // applied CSS class; touched only in update() (#4665)

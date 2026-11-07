@@ -40,7 +40,8 @@ auto Window::update_icon_label() -> void {
   if (wset_it == ipc->get_wsets().end()) return;
   const auto& wset = wset_it->second;
   const auto& views = ipc->get_views();
-  auto ctx = bar_.window.get_style_context();
+  // The module only holds a const Bar, yet styles the bar window
+  auto& window = const_cast<BarWindow&>(bar_.window);
 
   if (views.contains(wset.focused_view_id)) {
     const auto& view = views.at(wset.focused_view_id);
@@ -55,27 +56,27 @@ auto Window::update_icon_label() -> void {
 
     // update window#waybar.solo
     if (wset.locate_ws(view["geometry"]).num_views > 1)
-      ctx->remove_class("solo");
+      window.remove_css_class("solo");
     else
-      ctx->add_class("solo");
+      window.add_css_class("solo");
 
     // update window#waybar.<app_id>; old_app_id_ is only ever a class this module added
     if (old_app_id_ != app_id) {
-      if (!old_app_id_.empty()) ctx->remove_class(old_app_id_);
-      old_app_id_ = waybar::util::add_app_id_class(ctx, app_id) ? app_id : "";
+      if (!old_app_id_.empty()) window.remove_css_class(old_app_id_);
+      old_app_id_ = waybar::util::add_app_id_class(window, app_id) ? app_id : "";
     }
 
     // update window#waybar.empty
-    ctx->remove_class("empty");
+    window.remove_css_class("empty");
 
     //
     updateAppIconName(app_id, "");
-    label_.show();
+    label_.set_visible(true);
   } else {
-    ctx->add_class("empty");
+    window.add_css_class("empty");
 
     updateAppIconName("", "");
-    label_.hide();
+    label_.set_visible(false);
   }
 }
 

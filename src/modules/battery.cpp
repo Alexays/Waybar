@@ -15,7 +15,6 @@
 #include <libudev.h>
 #include <poll.h>
 #include <spdlog/spdlog.h>
-#include <sys/signalfd.h>
 
 waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "battery", id, "{capacity}%", 60), last_event_(""), bar_(bar) {
@@ -105,8 +104,7 @@ void waybar::modules::Battery::worker() {
       return;
     }
     if ((poll_fds_[0].revents & POLLIN) != 0) {
-      signalfd_siginfo signal_info;
-      read(poll_fds_[0].fd, &signal_info, sizeof(signal_info));
+      udev_device_unref(udev_monitor_receive_device(mon_.get()));
     }
     refreshBatteries();
     dp.emit();
@@ -195,6 +193,7 @@ void waybar::modules::Battery::refreshBatteries() {
 #endif
 }
 
+#if !defined(__FreeBSD__)
 // Unknown > Full > Not charging > Discharging > Charging
 static bool status_gt(const std::string& a, const std::string& b) {
   if (a == b)
@@ -209,6 +208,7 @@ static bool status_gt(const std::string& a, const std::string& b) {
     return true;
   return false;
 }
+#endif
 
 std::tuple<uint8_t, float, std::string, float, uint16_t, float>
 waybar::modules::Battery::getInfos() {
@@ -748,7 +748,7 @@ const std::string waybar::modules::Battery::formatETA(float hoursRemaining) {
 auto waybar::modules::Battery::update() -> void {
 #if defined(__linux__)
   if (batteries_.empty()) {
-    event_box_.hide();
+    event_box_.set_visible(false);
     return;
   }
 #endif
@@ -802,9 +802,9 @@ auto waybar::modules::Battery::update() -> void {
         fmt::arg("eta", eta_formatted), fmt::arg("health", fmt::format("{:.3}", health))));
   }
   if (!old_status_.empty()) {
-    label_.get_style_context()->remove_class(old_status_);
+    label_.remove_css_class(old_status_);
   }
-  label_.get_style_context()->add_class(status);
+  label_.add_css_class(status);
   old_status_ = status;
   if (!state.empty() && config_["format-" + status + "-" + state].isString()) {
     format = config_["format-" + status + "-" + state].asString();
@@ -814,9 +814,9 @@ auto waybar::modules::Battery::update() -> void {
     format = config_["format-" + state].asString();
   }
   if (format.empty()) {
-    event_box_.hide();
+    event_box_.set_visible(false);
   } else {
-    event_box_.show();
+    event_box_.set_visible(true);
     auto icons = std::vector<std::string>{status + "-" + state, status, state};
     setLabelMarkup(fmt::format(fmt::runtime(format), fmt::arg("capacity", capacity),
                                fmt::arg("power", power), fmt::arg("icon", getIcon(capacity, icons)),
@@ -829,7 +829,9 @@ auto waybar::modules::Battery::update() -> void {
 }
 
 void waybar::modules::Battery::setBarClass(std::string& state) {
-  auto classes = bar_.window.get_style_context()->list_classes();
+  // The bar CSS classes are the only state the module changes on its bar
+  auto& window = const_cast<BarWindow&>(bar_.window);
+  auto classes = window.get_css_classes();
   const std::string prefix = "battery-";
 
   auto old_class_it = std::find_if(classes.begin(), classes.end(), [&prefix](auto classname) {
@@ -841,7 +843,7 @@ void waybar::modules::Battery::setBarClass(std::string& state) {
   // If the bar doesn't have any `battery-` class
   if (old_class_it == classes.end()) {
     if (!state.empty()) {
-      bar_.window.get_style_context()->add_class(new_class);
+      window.add_css_class(new_class);
     }
     return;
   }
@@ -851,15 +853,15 @@ void waybar::modules::Battery::setBarClass(std::string& state) {
   // If the bar has a `battery-` class,
   // but `state` is empty
   if (state.empty()) {
-    bar_.window.get_style_context()->remove_class(old_class);
+    window.remove_css_class(old_class);
     return;
   }
 
   // If the bar has a `battery-` class,
   // and `state` is NOT empty
   if (old_class != new_class) {
-    bar_.window.get_style_context()->remove_class(old_class);
-    bar_.window.get_style_context()->add_class(new_class);
+    window.remove_css_class(old_class);
+    window.add_css_class(new_class);
   }
 }
 

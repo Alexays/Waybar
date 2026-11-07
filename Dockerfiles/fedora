@@ -11,15 +11,13 @@ RUN dnf upgrade -y && \
     scdoc \
     'pkgconfig(catch2)' \
     'pkgconfig(date)' \
-    'pkgconfig(dbusmenu-gtk3-0.4)' \
+    'pkgconfig(dbusmenu-glib-0.4)' \
     'pkgconfig(fftw3)' \
     'pkgconfig(fmt)' \
     'pkgconfig(gdk-pixbuf-2.0)' \
     'pkgconfig(gio-unix-2.0)' \
-    'pkgconfig(glibmm-2.4)' \
-    'pkgconfig(gtk-layer-shell-0)' \
+    'pkgconfig(glibmm-2.68)' \
     'pkgconfig(gtk4-layer-shell-0)' \
-    'pkgconfig(gtkmm-3.0)' \
     'pkgconfig(gtkmm-4.0)' \
     'pkgconfig(iniparser)' \
     'pkgconfig(jack)' \
@@ -35,7 +33,7 @@ RUN dnf upgrade -y && \
     'pkgconfig(mm-glib)' \
     'pkgconfig(playerctl)' \
     'pkgconfig(pugixml)' \
-    'pkgconfig(sigc++-2.0)' \
+    'pkgconfig(sigc++-3.0)' \
     'pkgconfig(spdlog)' \
     'pkgconfig(upower-glib)' \
     'pkgconfig(wayland-client)' \

@@ -70,11 +70,8 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
                                                    : "Audio/Sink");
   only_physical_ = config_["only-physical"].isBool() ? config_["only-physical"].asBool() : false;
 
-  // Wire the scroll handler once, here, rather than in onMixerApiLoaded: the latter now re-runs on
-  // every reconnect and would accumulate duplicate handlers. handleScroll no-ops while mixer_api_
-  // is null, so wiring it before the first successful connect is safe.
-  event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Wireplumber::handleScroll));
+  // handleScroll no-ops while mixer_api_ is null, so it is enabled before the first connect.
+  enableScroll();
 
   if (!setupConnection()) {
     // A null wp_core_ means PipeWire is not usable at all, so retrying cannot help.
@@ -685,10 +682,10 @@ std::vector<std::string> waybar::modules::Wireplumber::getWPIcon() {
 
 auto waybar::modules::Wireplumber::update() -> void {
   if (mixer_api_ == nullptr || !isValidNodeId(node_id_)) {
-    event_box_.hide();
+    event_box_.set_visible(false);
     return;
   }
-  event_box_.show();
+  event_box_.set_visible(true);
 
   auto format = format_;
   std::string format_name = "format";
@@ -699,9 +696,9 @@ auto waybar::modules::Wireplumber::update() -> void {
   auto bt = name.find("bluez") != std::string::npos || name.find("a2dp-sink") != std::string::npos;
   if (bt) {
     format_name += "-bluetooth";
-    label_.get_style_context()->add_class("bluetooth");
+    label_.add_css_class("bluetooth");
   } else {
-    label_.get_style_context()->remove_class("bluetooth");
+    label_.remove_css_class("bluetooth");
   }
 
   // A module configured with node-type "Audio/Source" tracks a source as its primary node, so its
@@ -714,18 +711,18 @@ auto waybar::modules::Wireplumber::update() -> void {
     if (format_name != "format" && !config_[format_name + "-muted"].isString())
       format_name = "format";
     format_name += "-muted";
-    label_.get_style_context()->add_class("muted");
+    label_.add_css_class("muted");
     if (is_source_type) {
-      label_.get_style_context()->add_class("source-muted");
+      label_.add_css_class("source-muted");
     } else {
-      label_.get_style_context()->add_class("sink-muted");
+      label_.add_css_class("sink-muted");
     }
   } else {
-    label_.get_style_context()->remove_class("muted");
+    label_.remove_css_class("muted");
     if (is_source_type) {
-      label_.get_style_context()->remove_class("source-muted");
+      label_.remove_css_class("source-muted");
     } else {
-      label_.get_style_context()->remove_class("sink-muted");
+      label_.remove_css_class("sink-muted");
     }
   }
 
@@ -733,9 +730,9 @@ auto waybar::modules::Wireplumber::update() -> void {
   // track the default source for {format_source}). A source module already owns source-muted above.
   if (!is_source_type) {
     if (source_muted_) {
-      label_.get_style_context()->add_class("source-muted");
+      label_.add_css_class("source-muted");
     } else {
-      label_.get_style_context()->remove_class("source-muted");
+      label_.remove_css_class("source-muted");
     }
   }
 
@@ -806,7 +803,7 @@ auto waybar::modules::Wireplumber::update() -> void {
   ALabel::update();
 }
 
-bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
+bool waybar::modules::Wireplumber::handleScroll(const ScrollEvent& e) {
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
     return AModule::handleScroll(e);
   }

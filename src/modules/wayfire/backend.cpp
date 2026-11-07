@@ -28,8 +28,10 @@ inline auto byteswap(uint32_t x) -> uint32_t {
 auto pack_and_write(Sock& sock, std::string&& buf) -> void {
   uint32_t len = buf.size();
   if constexpr (std::endian::native != std::endian::little) len = byteswap(len);
-  (void)write(sock, &len, 4);
-  (void)write(sock, buf.data(), buf.size());
+  if (write(sock, &len, 4) != 4 ||
+      write(sock, buf.data(), buf.size()) != static_cast<ssize_t>(buf.size())) {
+    throw std::runtime_error("Wayfire IPC: write failed");
+  }
 }
 
 auto read_exact(Sock& sock, size_t n) -> std::string {

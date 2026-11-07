@@ -76,10 +76,11 @@ auto Window::update() -> void {
     }
   }
 
+  auto& window = const_cast<Bar&>(bar_).window;
   if (!old_app_id_.empty() && ((mode & 2) == 0 || old_app_id_ != app_id_) &&
-      bar_.window.get_style_context()->has_class(old_app_id_)) {
+      window.has_css_class(old_app_id_)) {
     spdlog::trace("Removing app_id class: {}", old_app_id_);
-    bar_.window.get_style_context()->remove_class(old_app_id_);
+    window.remove_css_class(old_app_id_);
     old_app_id_ = "";
   }
 
@@ -90,7 +91,7 @@ auto Window::update() -> void {
   setClass("stacked", ((mode & 16) > 0));
   setClass("tiled", ((mode & 32) > 0));
 
-  if ((mode & 2) > 0 && waybar::util::add_app_id_class(bar_.window.get_style_context(), app_id_)) {
+  if ((mode & 2) > 0 && waybar::util::add_app_id_class(window, app_id_)) {
     spdlog::trace("Adding app_id class: {}", app_id_);
     old_app_id_ = app_id_;
   }
@@ -115,12 +116,11 @@ auto Window::update() -> void {
 }
 
 void Window::setClass(const std::string& classname, bool enable) {
+  auto& window = const_cast<Bar&>(bar_).window;
   if (enable) {
-    if (!bar_.window.get_style_context()->has_class(classname)) {
-      bar_.window.get_style_context()->add_class(classname);
-    }
+    window.add_css_class(classname);
   } else {
-    bar_.window.get_style_context()->remove_class(classname);
+    window.remove_css_class(classname);
   }
 }
 

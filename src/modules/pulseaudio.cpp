@@ -4,8 +4,7 @@
 
 waybar::modules::Pulseaudio::Pulseaudio(const std::string& id, const Json::Value& config)
     : ALabel(config, "pulseaudio", id, "{volume}%") {
-  event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Pulseaudio::handleScroll));
+  enableScroll();
 
   backend = util::AudioBackend::getInstance([this] { this->dp.emit(); });
   backend->setIgnoredSinks(config_["ignored-sinks"]);
@@ -16,7 +15,7 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string& id, const Json::Value
   }
 }
 
-bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll* e) {
+bool waybar::modules::Pulseaudio::handleScroll(const ScrollEvent& e) {
   // change the pulse volume only when no user provided
   // events are configured
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
@@ -80,9 +79,9 @@ auto waybar::modules::Pulseaudio::update() -> void {
     std::string format_name = "format";
     if (backend->isBluetooth()) {
       format_name = format_name + "-bluetooth";
-      label_.get_style_context()->add_class("bluetooth");
+      label_.add_css_class("bluetooth");
     } else {
-      label_.get_style_context()->remove_class("bluetooth");
+      label_.remove_css_class("bluetooth");
     }
     if (backend->getSinkMuted()) {
       // Check muted bluetooth format exist, otherwise fallback to default muted format
@@ -90,11 +89,11 @@ auto waybar::modules::Pulseaudio::update() -> void {
         format_name = "format";
       }
       format_name = format_name + "-muted";
-      label_.get_style_context()->add_class("muted");
-      label_.get_style_context()->add_class("sink-muted");
+      label_.add_css_class("muted");
+      label_.add_css_class("sink-muted");
     } else {
-      label_.get_style_context()->remove_class("muted");
-      label_.get_style_context()->remove_class("sink-muted");
+      label_.remove_css_class("muted");
+      label_.remove_css_class("sink-muted");
     }
     auto state = getState(sink_volume, true);
     if (!state.empty() && config_[format_name + "-" + state].isString()) {
@@ -106,12 +105,12 @@ auto waybar::modules::Pulseaudio::update() -> void {
   // TODO: find a better way to split source/sink
   std::string format_source = "{volume}%";
   if (backend->getSourceMuted()) {
-    label_.get_style_context()->add_class("source-muted");
+    label_.add_css_class("source-muted");
     if (config_["format-source-muted"].isString()) {
       format_source = config_["format-source-muted"].asString();
     }
   } else {
-    label_.get_style_context()->remove_class("source-muted");
+    label_.remove_css_class("source-muted");
     if (config_["format-source"].isString()) {
       format_source = config_["format-source"].asString();
     }
@@ -136,10 +135,10 @@ auto waybar::modules::Pulseaudio::update() -> void {
 
   auto text = fmt::vformat(format, store);
   if (text.empty()) {
-    label_.hide();
+    label_.set_visible(false);
   } else {
     setLabelMarkup(text);
-    label_.show();
+    label_.set_visible(true);
   }
 
   if (tooltipEnabled()) {

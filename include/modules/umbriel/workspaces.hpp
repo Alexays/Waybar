@@ -34,7 +34,7 @@ class Workspaces : public AModule, public EventHandler {
   void createWorkspace(const Json::Value& workspace_data);
   void sortWorkspaces(std::vector<const Json::Value*>& workspaces) const;
   bool isWorkspaceIgnored(const std::string& name) const;
-  bool handleScroll(GdkEventScroll* /*unused*/) override;
+  bool handleScroll(const ScrollEvent& e) override;
 
   void populateWindowRewriteConfig();
   void populateFormatWindowSeparatorConfig();
@@ -44,6 +44,7 @@ class Workspaces : public AModule, public EventHandler {
 
   const Bar& bar_;
   Gtk::Box box_;
+  // Scroll controller on the bar window, for enable-bar-scroll
 
   std::vector<std::unique_ptr<Workspace>> workspaces_;
 

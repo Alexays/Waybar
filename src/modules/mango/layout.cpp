@@ -19,14 +19,14 @@ void Layout::doUpdate() {
   std::string symbol = IPC::getInstance().getLayoutSymbolForMonitor(bar_.output->name);
 
   if (symbol.empty()) {
-    label_.hide();
+    label_.set_visible(false);
     last_symbol_.clear();
     return;
   }
 
   if (symbol != last_symbol_) {
-    if (!last_symbol_.empty()) label_.get_style_context()->remove_class(last_symbol_);
-    label_.get_style_context()->add_class(symbol);
+    if (!last_symbol_.empty()) label_.remove_css_class(last_symbol_);
+    label_.add_css_class(symbol);
     last_symbol_ = symbol;
   }
 
@@ -40,10 +40,10 @@ void Layout::doUpdate() {
   }
 
   if (!text.empty()) {
-    label_.show();
+    label_.set_visible(true);
     label_.set_markup(text);
   } else {
-    label_.hide();
+    label_.set_visible(false);
   }
 }
 

@@ -65,7 +65,7 @@ class MPD : public ALabel {
   std::string getTitleStr(bool truncated) const;
 
   // GUI-side methods
-  bool handlePlayPause(GdkEventButton* const&);
+  bool handleToggle(const ButtonEvent& e) override;
   void emit() { dp.emit(); }
 
   // MPD-side, Non-GUI methods.

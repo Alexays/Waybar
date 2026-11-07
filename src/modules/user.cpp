@@ -7,8 +7,6 @@
 #include <algorithm>
 #include <chrono>
 
-#include "gdkmm/event.h"
-#include "gdkmm/types.h"
 #include "glibmm/fileutils.h"
 #include "sigc++/functors/mem_fun.h"
 #include "sigc++/functors/ptr_fun.h"
@@ -33,9 +31,9 @@ User::User(const std::string& id, const Json::Value& config)
   this->init_update_worker();
 }
 
-bool User::handleToggle(GdkEventButton* const& e) {
+bool User::handleToggle(const ButtonEvent& e) {
   if (AIconLabel::config_["open-on-click"].isBool() &&
-      AIconLabel::config_["open-on-click"].asBool() && e->button == LEFT_MOUSE_BUTTON_CODE) {
+      AIconLabel::config_["open-on-click"].asBool() && e.button == LEFT_MOUSE_BUTTON_CODE) {
     std::string openPath = this->get_user_home_dir();
     if (AIconLabel::config_["open-path"].isString()) {
       std::string customPath = AIconLabel::config_["open-path"].asString();
@@ -116,9 +114,10 @@ void User::init_default_user_avatar(int width, int height) {
 }
 
 void User::init_user_avatar(const std::string& path, int width, int height) {
-  if (Glib::file_test(path, Glib::FILE_TEST_EXISTS)) {
+  if (Glib::file_test(path, Glib::FileTest::EXISTS)) {
     Glib::RefPtr<Gdk::Pixbuf> pixbuf_ = Gdk::Pixbuf::create_from_file(path, width, height);
-    AIconLabel::image_.set(pixbuf_);
+    AIconLabel::image_.set_pixbuf(pixbuf_, 1);
+    AIconLabel::image_.set_visible(true);
   } else {
     AIconLabel::box_.remove(AIconLabel::image_);
   }

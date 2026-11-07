@@ -117,7 +117,9 @@ void IPC::startIPC(int initial_socketfd) {
       request["events"].append("workspaces");
       request["events"].append("windows");
 
-      if (!ostream->put_string(serialize(request)) || !ostream->flush()) {
+      // put_string writes through (the data stream is unbuffered); giomm's flush() wrapper
+      // returns false on unix streams, which have no flush
+      if (!ostream->put_string(serialize(request))) {
         spdlog::error("Umbriel IPC: failed to start event stream");
         std::this_thread::sleep_for(std::chrono::seconds(2));
         continue;
@@ -218,7 +220,7 @@ Json::Value IPC::send(const Json::Value& request) {
   auto istream = Gio::DataInputStream::create(unix_istream);
   auto ostream = Gio::DataOutputStream::create(unix_ostream);
 
-  if (!ostream->put_string(serialize(request)) || !ostream->flush()) {
+  if (!ostream->put_string(serialize(request))) {
     throw std::runtime_error("Umbriel IPC: error writing request");
   }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <giomm/icon.h>
 #include <gtkmm/box.h>
 #include <gtkmm/button.h>
 #include <gtkmm/image.h>
@@ -30,7 +31,7 @@ class Workspace {
  private:
   void rebuildTaskbar(const std::vector<Json::Value>& my_windows);
 
-  Glib::RefPtr<Gdk::Pixbuf> loadIcon(const std::string& app_id, int size);
+  static Glib::RefPtr<Gio::Icon> loadIcon(const std::string& app_id);
 
   Workspaces& manager_;
   std::string id_;

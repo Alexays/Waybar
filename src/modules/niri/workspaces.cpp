@@ -37,10 +37,11 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
 
   box_.set_name("workspaces");
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
+  box_.add_css_class(MODULE_CLASS);
+  event_box_.set_child(box_);
+  enableChildMultiClick();
 
   // Parse ignore-workspaces rules.
   auto ignoreWorkspaces = config["ignore-workspaces"];
@@ -80,9 +81,7 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
   gIPC->registerForIPC("WindowClosed", this);
 
   if (config["enable-bar-scroll"].asBool()) {
-    auto& window = const_cast<Bar&>(bar_).window;
-    window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
+    enableBarScroll(const_cast<Bar&>(bar_).window);
   }
 }
 
@@ -159,17 +158,22 @@ void Workspaces::doUpdate() {
     (*it)->update(ws, windows_vec, windows_str, my_workspaces.size());
   }
 
-  for (auto pos_it = my_workspaces.cbegin(); pos_it != my_workspaces.cend(); ++pos_it) {
-    const auto& ws = **pos_it;
+  Gtk::Widget* previous = nullptr;
+  for (const auto* ws_ptr : my_workspaces) {
+    const auto& ws = *ws_ptr;
     const auto ws_id = ws.isMember("id") ? ws["id"].asUInt64() : 0;
-
-    const auto pos = static_cast<int>(std::distance(my_workspaces.cbegin(), pos_it));
 
     auto it =
         std::find_if(workspaces_.begin(), workspaces_.end(),
                      [ws_id](const std::unique_ptr<Workspace>& w) { return w->id() == ws_id; });
     if (it != workspaces_.end()) {
-      box_.reorder_child((*it)->button(), pos);
+      auto& button = (*it)->button();
+      if (previous != nullptr) {
+        box_.reorder_child_after(button, *previous);
+      } else {
+        box_.reorder_child_at_start(button);
+      }
+      previous = &button;
     }
   }
 }
@@ -181,7 +185,7 @@ void Workspaces::update() {
 
 void Workspaces::createWorkspace(const Json::Value& workspace_data) {
   auto ws = std::make_unique<Workspace>(workspace_data, *this);
-  box_.pack_start(ws->button(), false, false, 0);
+  box_.append(ws->button());
   workspaces_.push_back(std::move(ws));
 }
 
@@ -329,14 +333,7 @@ bool Workspaces::isWorkspaceIgnored(const std::string& name) {
   return false;
 }
 
-bool Workspaces::handleScroll(GdkEventScroll* e) {
-  if (gdk_event_get_pointer_emulated((GdkEvent*)e) != 0) {
-    /**
-     * Ignore emulated scroll events on window
-     */
-    return false;
-  }
-
+bool Workspaces::handleScroll(const ScrollEvent& e) {
   auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {
     return true;
