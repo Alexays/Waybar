@@ -59,6 +59,9 @@ Waybar draws with the cairo renderer of GTK, like the GTK3 version did. Set the
 *GSK_RENDERER* environment variable to *ngl* or *vulkan* to draw on the GPU
 instead, at the cost of loading the graphics driver into the bar.
 
+Text is drawn like GTK3 drew it too: hinted and placed on whole pixels, following
+the *gtk-xft-antialias*, *gtk-xft-hinting* and *gtk-xft-hintstyle* settings.
+
 ## Setting cursor style
 
 Most, if not all, module types support setting the `cursor` option. This is

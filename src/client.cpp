@@ -498,6 +498,11 @@ int waybar::Client::main(int argc, char* argv[]) {
     // Names the application on the accessibility bus, as argv[0] did with GTK3's gtk_init
     g_set_prgname("waybar");
     gtk_init_check();
+#if GTK_CHECK_VERSION(4, 16, 0)
+    // Text hinted and placed on whole pixels following the gtk-xft settings, as GTK3 draws it
+    g_object_set(gtk_settings_get_default(), "gtk-font-rendering", GTK_FONT_RENDERING_MANUAL,
+                 nullptr);
+#endif
     Gtk::init_gtkmm_internals();
     main_loop = Glib::MainLoop::create();
   }
