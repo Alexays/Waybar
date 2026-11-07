@@ -147,18 +147,74 @@ static void limitSize(int& minimum, int& natural, int available) {
   natural = std::max(natural, 1);
 }
 
+static GtkBorder cssInset(const Gtk::Widget& widget) {
+  GtkBorder border;
+  GtkBorder padding;
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+  auto* context = gtk_widget_get_style_context(const_cast<GtkWidget*>(widget.gobj()));
+  gtk_style_context_get_border(context, &border);
+  gtk_style_context_get_padding(context, &padding);
+  G_GNUC_END_IGNORE_DEPRECATIONS
+  return {.left = static_cast<gint16>(border.left + padding.left),
+          .right = static_cast<gint16>(border.right + padding.right),
+          .top = static_cast<gint16>(border.top + padding.top),
+          .bottom = static_cast<gint16>(border.bottom + padding.bottom)};
+}
+
 };  // namespace waybar
 
 void waybar::BarWindow::measure_vfunc(Gtk::Orientation orientation, int for_size, int& minimum,
                                       int& natural, int& minimum_baseline,
                                       int& natural_baseline) const {
-  Gtk::Window::measure_vfunc(orientation, for_size, minimum, natural, minimum_baseline,
-                             natural_baseline);
+  // GTK adds the inset around this size, so the window ends up the size of its child
+  const auto inset = cssInset(*this);
+  const bool horizontal = orientation == Gtk::Orientation::HORIZONTAL;
+  const int inset_size = horizontal ? inset.left + inset.right : inset.top + inset.bottom;
+  const int other_inset_size = horizontal ? inset.top + inset.bottom : inset.left + inset.right;
+  Gtk::Window::measure_vfunc(orientation, for_size < 0 ? for_size : for_size + other_inset_size,
+                             minimum, natural, minimum_baseline, natural_baseline);
+  minimum = std::max(minimum - inset_size, 0);
+  natural = std::max(natural - inset_size, 0);
   Gdk::Rectangle geometry;
   monitor_->get_geometry(geometry);
-  limitSize(
-      minimum, natural,
-      orientation == Gtk::Orientation::HORIZONTAL ? geometry.get_width() : geometry.get_height());
+  const int available = horizontal ? geometry.get_width() : geometry.get_height();
+  limitSize(minimum, natural, available > inset_size ? available - inset_size : available);
+}
+
+void waybar::BarWindow::size_allocate_vfunc(int width, int height, int baseline) {
+  const auto inset = cssInset(*this);
+  const int child_width = width + inset.left + inset.right;
+  const int child_height = height + inset.top + inset.bottom;
+  Gtk::Window::size_allocate_vfunc(child_width, child_height, baseline);
+  auto* child = get_child();
+  if (child == nullptr || !child->get_visible()) {
+    return;
+  }
+  // The allocations below keep each widget's size, so GTK only moves it
+  if (inset.left != 0 || inset.top != 0) {
+    child->size_allocate(Gdk::Rectangle(-inset.left, -inset.top, child_width, child_height), -1);
+  }
+  // Every resize reaches the window, so the CenterBox is never laid out without this correction
+  auto* center_box = dynamic_cast<Gtk::CenterBox*>(child);
+  auto* center = center_box != nullptr ? center_box->get_center_widget() : nullptr;
+  if (center == nullptr || !center->get_visible()) {
+    return;
+  }
+  const bool horizontal = center_box->get_orientation() == Gtk::Orientation::HORIZONTAL;
+  const int size = horizontal ? child_width : child_height;
+  GtkAllocation allocation;
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+  gtk_widget_get_allocation(center->gobj(), &allocation);
+  G_GNUC_END_IGNORE_DEPRECATIONS
+  int& pos = horizontal ? allocation.x : allocation.y;
+  const int center_size = horizontal ? allocation.width : allocation.height;
+  // CenterBox puts it at size / 2 - center_size / 2, a pixel after GTK3's (size - center_size) / 2
+  // when only center_size is odd. A center widget pushed aside by a side widget stays put.
+  if (size % 2 == 0 && center_size % 2 != 0 && pos == size / 2 - center_size / 2) {
+    --pos;
+    center->size_allocate(
+        Gtk::Allocation(allocation.x, allocation.y, allocation.width, allocation.height), -1);
+  }
 }
 
 waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)

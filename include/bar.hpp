@@ -65,13 +65,18 @@ class BarIpcClient;
 
 // Never asks for more than its output: GDK cannot create a surface past 32767 pixels, and
 // module text would otherwise set the size. Content that does not fit is clipped.
+// Like GTK3, the window's CSS border and padding are drawn under the modules and take no room,
+// and a CenterBox child centers as GTK3's Gtk::Box did.
 class BarWindow : public Gtk::Window {
  public:
-  explicit BarWindow(const Glib::RefPtr<Gdk::Monitor>& monitor) : monitor_(monitor) {}
+  explicit BarWindow(const Glib::RefPtr<Gdk::Monitor>& monitor) : monitor_(monitor) {
+    set_overflow(Gtk::Overflow::VISIBLE);
+  }
 
  protected:
   void measure_vfunc(Gtk::Orientation orientation, int for_size, int& minimum, int& natural,
                      int& minimum_baseline, int& natural_baseline) const override;
+  void size_allocate_vfunc(int width, int height, int baseline) override;
 
  private:
   Glib::RefPtr<Gdk::Monitor> monitor_;

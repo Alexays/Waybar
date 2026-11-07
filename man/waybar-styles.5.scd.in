@@ -62,6 +62,9 @@ instead, at the cost of loading the graphics driver into the bar.
 Text is drawn like GTK3 drew it too: hinted and placed on whole pixels, following
 the *gtk-xft-antialias*, *gtk-xft-hinting* and *gtk-xft-hintstyle* settings.
 
+As in GTK3, the border and padding of *window#waybar* are drawn under the
+modules: they take no room in the bar.
+
 ## Setting cursor style
 
 Most, if not all, module types support setting the `cursor` option. This is
