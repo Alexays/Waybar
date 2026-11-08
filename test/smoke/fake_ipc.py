@@ -106,6 +106,7 @@ class Hyprland(Fake):
         self.workspaces = {1: [self.window("foot", "foot ~")],
                            2: [self.window("firefox", "Waybar wiki")]}
         self.active = 1
+        self.submap = ""
         super().__init__(paths)
 
     def servers(self):
@@ -157,6 +158,8 @@ class Hyprland(Fake):
                     for ws, windows in self.workspaces.items() for w in windows])
             elif request == "j/workspacerules":
                 body = "[]"
+            elif request == "submap":
+                body = f"{self.submap or 'default'}\n"
             elif request == "devices":
                 body = ("mice:\n\nKeyboards:\n"
                         "\tKeyboard at 55d1a0c0e000:\n"
@@ -213,6 +216,7 @@ class Hyprland(Fake):
         self.emit(f"activelayout>>{KEYBOARD},{LAYOUTS[self.layout]}")
 
     def op_submap(self, name=""):
+        self.submap = name
         self.emit(f"submap>>{name}")
 
 
