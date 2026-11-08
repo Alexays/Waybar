@@ -1,5 +1,6 @@
 #include "modules/temperature.hpp"
 
+#include <algorithm>
 #include <filesystem>
 #include <optional>
 #include <stdexcept>
@@ -136,23 +137,23 @@ auto waybar::modules::Temperature::update() -> void {
   auto format = format_;
   if (critical) {
     format = config_["format-critical"].isString() ? config_["format-critical"].asString() : format;
-    label_.get_style_context()->add_class("critical");
+    label_.add_css_class("critical");
   } else {
-    label_.get_style_context()->remove_class("critical");
+    label_.remove_css_class("critical");
     if (warning) {
       format = config_["format-warning"].isString() ? config_["format-warning"].asString() : format;
-      label_.get_style_context()->add_class("warning");
+      label_.add_css_class("warning");
     } else {
-      label_.get_style_context()->remove_class("warning");
+      label_.remove_css_class("warning");
     }
   }
 
   if (format.empty()) {
-    event_box_.hide();
+    event_box_.set_visible(false);
     return;
   }
 
-  event_box_.show();
+  event_box_.set_visible(true);
 
   auto max_temp = config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
   updateLabelAndTooltip(format, "{temperatureC}°C", fmt::arg("temperatureC", temperature_c),

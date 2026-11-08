@@ -33,8 +33,8 @@ class Custom : public AIconLabel {
   void parseOutputJson();
   void handleEvent();
   void setOutput(util::command::res output);
-  bool handleScroll(GdkEventScroll* e) override;
-  bool handleToggle(GdkEventButton* const& e) override;
+  bool handleScroll(const ScrollEvent& e) override;
+  bool handleToggle(const ButtonEvent& e) override;
 
   const std::string name_;
   const std::string output_name_;

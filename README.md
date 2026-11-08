@@ -77,13 +77,12 @@ ninja -C build install   # optional
 <summary><b>Runtime dependencies</b></summary>
 
 ```
-gtkmm3       jsoncpp      libsigc++    fmt          wayland
-chrono-date  spdlog       xkbregistry  libgtk-3-dev upower
+gtkmm-4.0    jsoncpp      libsigc++-3.0  fmt          wayland
+chrono-date  spdlog       xkbregistry    gtk4-layer-shell  upower
 
 libpulse             [Pulseaudio module]
 libnl                [Network module]
-libappindicator-gtk3 [Tray module]
-libdbusmenu-gtk3     [Tray module]
+libdbusmenu-glib     [Tray module]
 libmpdclient         [MPD module]
 libsndio             [sndio module]
 libevdev             [KeyboardState module]
@@ -103,10 +102,10 @@ cmake   meson   scdoc   wayland-protocols
 
 ```bash
 sudo apt install \
-  clang-tidy gobject-introspection libdbusmenu-gtk3-dev libevdev-dev \
-  libfmt-dev libgirepository1.0-dev libgtk-3-dev libgtkmm-3.0-dev \
+  clang-tidy gobject-introspection libdbusmenu-glib-dev libevdev-dev \
+  libfmt-dev libgirepository1.0-dev libgtk-4-dev libgtkmm-4.0-dev libgtk4-layer-shell-dev \
   libinput-dev libjsoncpp-dev libmpdclient-dev libnl-3-dev libnl-genl-3-dev \
-  libpulse-dev libsigc++-2.0-dev libspdlog-dev libwayland-dev scdoc upower \
+  libpulse-dev libsigc++-3.0-dev libspdlog-dev libwayland-dev scdoc upower \
   libxkbregistry-dev
 ```
 </details>
@@ -116,9 +115,9 @@ sudo apt install \
 
 ```bash
 pacman -S --asdeps \
-  gtkmm3 jsoncpp libsigc++ fmt wayland chrono-date spdlog gtk3 \
-  gobject-introspection libgirepository libpulse libnl libappindicator-gtk3 \
-  libdbusmenu-gtk3 libmpdclient sndio libevdev libxkbcommon upower meson \
+  gtkmm-4.0 jsoncpp libsigc++-3.0 fmt wayland chrono-date spdlog gtk4 gtk4-layer-shell \
+  gobject-introspection libgirepository libpulse libnl \
+  libdbusmenu-glib libmpdclient sndio libevdev libxkbcommon upower meson \
   cmake scdoc wayland-protocols glib2-devel
 ```
 </details>

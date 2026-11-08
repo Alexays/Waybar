@@ -23,8 +23,6 @@ class Submap : public waybar::ALabel, public EventHandler {
   void onEvent(const std::string& ev) override;
 
   std::mutex mutex_;
-  const Bar& bar_;
-  util::JsonParser parser_;
   std::string submap_;
   std::string icon_;
   std::string prev_submap_;

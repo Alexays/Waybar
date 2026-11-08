@@ -50,9 +50,6 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
     server_ = config["server"].asCString();
   }
 
-  event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
-  event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &MPD::handlePlayPause));
-
   // The state machine already armed its first timer on main_context_.
   thread_ = std::thread([this] {
     while (running_) {
@@ -112,19 +109,19 @@ std::string waybar::modules::MPD::getFilename() const {
 void waybar::modules::MPD::setLabel() {
   // status_ is null when a `status` command failed without closing the connection (an ACK).
   if (connection_ == nullptr || status_ == nullptr) {
-    label_.get_style_context()->add_class("disconnected");
-    label_.get_style_context()->remove_class("stopped");
-    label_.get_style_context()->remove_class("playing");
-    label_.get_style_context()->remove_class("paused");
+    label_.add_css_class("disconnected");
+    label_.remove_css_class("stopped");
+    label_.remove_css_class("playing");
+    label_.remove_css_class("paused");
 
     auto format = config_["format-disconnected"].isString()
                       ? config_["format-disconnected"].asString()
                       : "disconnected";
     if (!format.empty()) {
       setLabelMarkup(format);
-      label_.show();
+      label_.set_visible(true);
     } else {
-      label_.hide();
+      label_.set_visible(false);
     }
 
     if (tooltipEnabled()) {
@@ -137,7 +134,7 @@ void waybar::modules::MPD::setLabel() {
     }
     return;
   }
-  label_.get_style_context()->remove_class("disconnected");
+  label_.remove_css_class("disconnected");
 
   auto format = format_;
   std::string date, filename, uri;
@@ -151,20 +148,20 @@ void waybar::modules::MPD::setLabel() {
     if (no_song && !is_stopped) spdlog::warn("mpd: no current song while state is not stopped");
     format =
         config_["format-stopped"].isString() ? config_["format-stopped"].asString() : "stopped";
-    label_.get_style_context()->add_class("stopped");
-    label_.get_style_context()->remove_class("playing");
-    label_.get_style_context()->remove_class("paused");
+    label_.add_css_class("stopped");
+    label_.remove_css_class("playing");
+    label_.remove_css_class("paused");
   } else {
-    label_.get_style_context()->remove_class("stopped");
+    label_.remove_css_class("stopped");
     if (playing()) {
-      label_.get_style_context()->add_class("playing");
-      label_.get_style_context()->remove_class("paused");
+      label_.add_css_class("playing");
+      label_.remove_css_class("paused");
     } else if (paused()) {
       if (config_["format-paused"].isString()) {
         format = config_["format-paused"].asString();
       }
-      label_.get_style_context()->add_class("paused");
-      label_.get_style_context()->remove_class("playing");
+      label_.add_css_class("paused");
+      label_.remove_css_class("playing");
     }
 
     stateIcon = getStateIcon();
@@ -202,9 +199,9 @@ void waybar::modules::MPD::setLabel() {
         fmt::arg("randomIcon", randomIcon), fmt::arg("repeatIcon", repeatIcon),
         fmt::arg("singleIcon", singleIcon), fmt::arg("filename", filename), fmt::arg("uri", uri));
     if (text.empty()) {
-      label_.hide();
+      label_.set_visible(false);
     } else {
-      label_.show();
+      label_.set_visible(true);
       setLabelMarkup(text);
     }
   } catch (fmt::format_error const& e) {
@@ -438,8 +435,11 @@ void waybar::modules::MPD::fetchState() {
   song_ = std::move(song);
 }
 
-bool waybar::modules::MPD::handlePlayPause(GdkEventButton* const& e) {
-  if (e->type == GDK_2BUTTON_PRESS || e->type == GDK_3BUTTON_PRESS) {
+bool waybar::modules::MPD::handleToggle(const ButtonEvent& e) {
+  if (ALabel::handleToggle(e)) {
+    return true;
+  }
+  if (e.type != ButtonEvent::Type::PRESS) {
     return false;
   }
   {
@@ -451,7 +451,7 @@ bool waybar::modules::MPD::handlePlayPause(GdkEventButton* const& e) {
 
   // The commands wait for the server's reply, so they run on thread_. An exception escaping a
   // Glib slot aborts the bar.
-  main_context_->signal_idle().connect_once([this, button = e->button] {
+  main_context_->signal_idle().connect_once([this, button = e.button] {
     try {
       if (button == 1) {
         if (state_ == MPD_STATE_PLAY)

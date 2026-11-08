@@ -13,12 +13,11 @@ using namespace waybar::modules::SNI;
 static const std::size_t MAX_SERVICE_LENGTH = 1024;
 
 Watcher::Watcher()
-    : bus_name_id_(Gio::DBus::own_name(Gio::DBus::BusType::BUS_TYPE_SESSION,
-                                       "org.kde.StatusNotifierWatcher",
-                                       sigc::mem_fun(*this, &Watcher::busAcquired),
-                                       Gio::DBus::SlotNameAcquired(), Gio::DBus::SlotNameLost(),
-                                       Gio::DBus::BUS_NAME_OWNER_FLAGS_ALLOW_REPLACEMENT |
-                                           Gio::DBus::BUS_NAME_OWNER_FLAGS_REPLACE)),
+    : bus_name_id_(Gio::DBus::own_name(
+          Gio::DBus::BusType::SESSION, "org.kde.StatusNotifierWatcher",
+          sigc::mem_fun(*this, &Watcher::busAcquired), Gio::DBus::SlotNameAcquired(),
+          Gio::DBus::SlotNameLost(),
+          Gio::DBus::BusNameOwnerFlags::ALLOW_REPLACEMENT | Gio::DBus::BusNameOwnerFlags::REPLACE)),
       watcher_(sn_watcher_skeleton_new()) {}
 
 Watcher::~Watcher() {

@@ -20,7 +20,6 @@ class Keymode : public ALabel, public EventHandler {
   void doUpdate();
 
   std::mutex mutex_;
-  const Bar& bar_;
   std::string last_keymode_;
 };
 

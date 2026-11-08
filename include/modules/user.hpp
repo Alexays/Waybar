@@ -14,7 +14,7 @@ class User : public AIconLabel {
   virtual ~User() = default;
   auto update() -> void override;
 
-  bool handleToggle(GdkEventButton* const& e) override;
+  bool handleToggle(const ButtonEvent& e) override;
 
  private:
   util::SleeperThread thread_;

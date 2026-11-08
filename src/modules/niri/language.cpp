@@ -10,7 +10,7 @@ namespace waybar::modules::niri {
 
 Language::Language(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "language", id, "{}", 0, false), bar_(bar) {
-  label_.hide();
+  label_.set_visible(false);
 
   if (!gIPC) gIPC = std::make_unique<IPC>();
 
@@ -48,7 +48,7 @@ void Language::doUpdate() {
 
   if (layouts_.size() <= current_idx_) {
     spdlog::error("niri language layout index out of bounds");
-    label_.hide();
+    label_.set_visible(false);
     return;
   }
   const auto& layout = layouts_[current_idx_];
@@ -59,10 +59,10 @@ void Language::doUpdate() {
   spdlog::debug("niri language update with variant {}", layout.variant);
 
   if (!last_short_name_.empty()) {
-    label_.get_style_context()->remove_class(last_short_name_);
+    label_.remove_css_class(last_short_name_);
   }
   if (!layout.short_name.empty()) {
-    label_.get_style_context()->add_class(layout.short_name);
+    label_.add_css_class(layout.short_name);
     last_short_name_ = layout.short_name;
   } else {
     last_short_name_.clear();
@@ -85,10 +85,10 @@ void Language::doUpdate() {
   spdlog::debug("niri language formatted layout name {}", layoutName);
 
   if (!layoutName.empty()) {
-    label_.show();
+    label_.set_visible(true);
     label_.set_markup(layoutName);
   } else {
-    label_.hide();
+    label_.set_visible(false);
   }
 }
 

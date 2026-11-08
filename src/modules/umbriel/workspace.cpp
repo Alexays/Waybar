@@ -1,9 +1,9 @@
 #include "modules/umbriel/workspace.hpp"
 
 #include <fmt/format.h>
-#include <gdkmm/pixbuf.h>
 #include <giomm/desktopappinfo.h>
-#include <giomm/icon.h>
+#include <giomm/themedicon.h>
+#include <gtkmm/gestureclick.h>
 #include <gtkmm/icontheme.h>
 #include <spdlog/spdlog.h>
 
@@ -13,6 +13,7 @@
 
 #include "modules/umbriel/backend.hpp"
 #include "modules/umbriel/workspaces.hpp"
+#include "util/gtk_icon.hpp"
 #include "util/tooltip.hpp"
 
 namespace waybar::modules::umbriel {
@@ -24,24 +25,25 @@ Workspace::Workspace(const Json::Value& workspace_data, Workspaces& manager)
       output_(workspace_data["output"].asString()),
       index_(workspace_data["index"].asUInt()),
       named_(workspace_data["named"].asBool()),
-      box_(Gtk::ORIENTATION_HORIZONTAL, 0),
-      taskbar_box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
-  button_.add(box_);
-  box_.pack_start(label_, false, false, 0);
-  box_.pack_start(taskbar_box_, false, false, 0);
+      box_(Gtk::Orientation::HORIZONTAL, 0),
+      taskbar_box_(Gtk::Orientation::HORIZONTAL, 0) {
+  button_.set_child(box_);
+  box_.append(label_);
+  box_.append(taskbar_box_);
 
   // Keep the button content centered when the button is wider than its
   // natural size (for example when a min-width is set in CSS).
-  box_.set_halign(Gtk::ALIGN_CENTER);
-  box_.set_valign(Gtk::ALIGN_CENTER);
+  box_.set_halign(Gtk::Align::CENTER);
+  box_.set_valign(Gtk::Align::CENTER);
   label_.set_xalign(0.5F);
-  label_.set_justify(Gtk::JUSTIFY_CENTER);
+  label_.set_justify(Gtk::Justification::CENTER);
 
-  button_.set_relief(Gtk::RELIEF_NONE);
-  button_.get_style_context()->add_class("umbriel-workspace");
+  button_.set_has_frame(false);
+  button_.add_css_class("umbriel-workspace");
 
   if (!manager_.config()["disable-click"].asBool()) {
-    button_.signal_pressed().connect([this] {
+    auto click = Gtk::GestureClick::create();
+    click->signal_pressed().connect([this](int, double, double) {
       try {
         Json::Value request(Json::objectValue);
         request["cmd"] = "action";
@@ -63,9 +65,8 @@ Workspace::Workspace(const Json::Value& workspace_data, Workspaces& manager)
         spdlog::error("Umbriel: error switching workspace: {}", e.what());
       }
     });
+    button_.add_controller(click);
   }
-
-  button_.show_all();
 }
 
 void Workspace::update(const Json::Value& data, const std::vector<Json::Value>& all_windows,
@@ -75,13 +76,11 @@ void Workspace::update(const Json::Value& data, const std::vector<Json::Value>& 
   index_ = data["index"].asUInt();
   named_ = data["named"].asBool();
 
-  auto style = button_.get_style_context();
-
   const auto setClass = [&](const char* cls, bool on) {
     if (on) {
-      style->add_class(cls);
+      button_.add_css_class(cls);
     } else {
-      style->remove_class(cls);
+      button_.remove_css_class(cls);
     }
   };
 
@@ -118,12 +117,11 @@ void Workspace::update(const Json::Value& data, const std::vector<Json::Value>& 
   const bool alloutputs = cfg["all-outputs"].asBool();
   if (cfg["current-only"].asBool()) {
     const auto* prop = alloutputs ? "focused" : "active";
-    data[prop].asBool() ? button_.show() : button_.hide();
+    button_.set_visible(data[prop].asBool());
   } else if (cfg["hide-empty"].asBool()) {
-    (data["window_count"].asInt() == 0 && !data["focused"].asBool()) ? button_.hide()
-                                                                     : button_.show();
+    button_.set_visible(data["window_count"].asInt() != 0 || data["focused"].asBool());
   } else {
-    button_.show();
+    button_.set_visible(true);
   }
 
   const auto& taskbar_cfg = cfg["workspace-taskbar"];
@@ -157,18 +155,18 @@ void Workspace::update(const Json::Value& data, const std::vector<Json::Value>& 
     });
 
     rebuildTaskbar(my_windows);
-    taskbar_box_.show();
-    label_.hide();
+    taskbar_box_.set_visible(true);
+    label_.set_visible(false);
   } else {
-    for (auto* child : taskbar_box_.get_children()) {
+    while (auto* child = taskbar_box_.get_first_child()) {
       taskbar_box_.remove(*child);
     }
-    taskbar_box_.hide();
+    taskbar_box_.set_visible(false);
   }
 }
 
 void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
-  for (auto* child : taskbar_box_.get_children()) {
+  while (auto* child = taskbar_box_.get_first_child()) {
     taskbar_box_.remove(*child);
   }
 
@@ -184,17 +182,17 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
     const bool is_focused = win["focused"].asBool();
 
     auto* btn = Gtk::make_managed<Gtk::Button>();
-    btn->set_relief(Gtk::RELIEF_NONE);
-    btn->get_style_context()->add_class("umbriel-taskbar-btn");
-    if (is_focused) btn->get_style_context()->add_class("focused");
+    btn->set_has_frame(false);
+    btn->add_css_class("umbriel-taskbar-btn");
+    if (is_focused) btn->add_css_class("focused");
     std::string tooltip = title;
     util::limit_tooltip_text(tooltip);
     btn->set_tooltip_text(tooltip);
 
-    auto pixbuf = loadIcon(app_id, icon_size);
-    if (pixbuf) {
-      auto* img = Gtk::make_managed<Gtk::Image>(pixbuf);
-      btn->add(*img);
+    if (auto icon = loadIcon(app_id)) {
+      auto* img = Gtk::make_managed<Gtk::Image>(icon);
+      img->set_pixel_size(icon_size);
+      btn->set_child(*img);
     } else {
       // Three characters, not bytes, and none that break or widen the line
       std::string fallback;
@@ -207,8 +205,7 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
         ++n;
       }
       if (fallback.empty()) fallback = "?";
-      auto* lbl = Gtk::make_managed<Gtk::Label>(fallback);
-      btn->add(*lbl);
+      btn->set_child(*Gtk::make_managed<Gtk::Label>(fallback));
     }
 
     if (!win_id.empty()) {
@@ -226,70 +223,54 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
       });
 
       // Middle click → close window.
-      btn->signal_button_release_event().connect([win_id](GdkEventButton* event) -> bool {
-        if (event->button == GDK_BUTTON_MIDDLE) {
-          try {
-            Json::Value request(Json::objectValue);
-            request["cmd"] = "action";
-            request["action"] = "window-close";
-            request["window"] = win_id;
-            IPC::send(request);
-          } catch (const std::exception& e) {
-            spdlog::error("Umbriel: error closing window {}: {}", win_id, e.what());
-          }
-          return true;
+      auto middle = Gtk::GestureClick::create();
+      middle->set_button(GDK_BUTTON_MIDDLE);
+      middle->signal_released().connect([win_id, gesture = middle.get()](int, double, double) {
+        gesture->set_state(Gtk::EventSequenceState::CLAIMED);
+        try {
+          Json::Value request(Json::objectValue);
+          request["cmd"] = "action";
+          request["action"] = "window-close";
+          request["window"] = win_id;
+          IPC::send(request);
+        } catch (const std::exception& e) {
+          spdlog::error("Umbriel: error closing window {}: {}", win_id, e.what());
         }
-        return false;
       });
+      btn->add_controller(middle);
     }
 
-    taskbar_box_.pack_start(*btn, false, false, 0);
-    btn->show_all();
+    taskbar_box_.append(*btn);
   }
 }
 
-Glib::RefPtr<Gdk::Pixbuf> Workspace::loadIcon(const std::string& app_id, int size) {
+Glib::RefPtr<Gio::Icon> Workspace::loadIcon(const std::string& app_id) {
   if (app_id.empty()) return {};
 
   auto app_info = Gio::DesktopAppInfo::create(app_id + ".desktop");
   if (app_info) {
     auto icon = app_info->get_icon();
-    if (icon) {
-      auto theme = Gtk::IconTheme::get_default();
-      auto icon_info = theme->lookup_icon(icon, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
-      if (icon_info) {
-        try {
-          return icon_info.load_icon();
-        } catch (...) {
-        }
-      }
-    }
+    if (icon && DefaultGtkIconThemeWrapper::theme()->has_gicon(icon)) return icon;
   }
 
-  auto theme = Gtk::IconTheme::get_default();
-
-  auto tryLoad = [&](const std::string& name) -> Glib::RefPtr<Gdk::Pixbuf> {
-    if (!theme->has_icon(name)) return {};
-    try {
-      return theme->load_icon(name, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
-    } catch (...) {
-      return {};
-    }
+  const auto tryLoad = [](const std::string& name) -> Glib::RefPtr<Gio::Icon> {
+    if (!DefaultGtkIconThemeWrapper::has_icon(name)) return {};
+    return Gio::ThemedIcon::create(name);
   };
 
-  if (auto pb = tryLoad(app_id)) return pb;
+  if (auto icon = tryLoad(app_id)) return icon;
 
   std::string lower = app_id;
   std::transform(lower.begin(), lower.end(), lower.begin(),
                  [](unsigned char c) { return std::tolower(c); });
-  if (auto pb = tryLoad(lower)) return pb;
+  if (auto icon = tryLoad(lower)) return icon;
 
   const auto dot = app_id.rfind('.');
   if (dot != std::string::npos) {
     std::string last = app_id.substr(dot + 1);
     std::transform(last.begin(), last.end(), last.begin(),
                    [](unsigned char c) { return std::tolower(c); });
-    if (auto pb = tryLoad(last)) return pb;
+    if (auto icon = tryLoad(last)) return icon;
   }
 
   return {};

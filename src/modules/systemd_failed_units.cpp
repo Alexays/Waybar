@@ -49,13 +49,13 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
   }
 
   /* The cached properties are never read, so don't wait for the name owner's GetAll. */
-  const auto proxy_flags = Gio::DBus::PROXY_FLAGS_DO_NOT_LOAD_PROPERTIES;
+  const auto proxy_flags = Gio::DBus::ProxyFlags::DO_NOT_LOAD_PROPERTIES;
 
   /* Default to enable both "system" and "user". */
   if (!config["system"].isBool() || config["system"].asBool()) {
     system_props_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
-        Gio::DBus::BusType::BUS_TYPE_SYSTEM, "org.freedesktop.systemd1",
-        "/org/freedesktop/systemd1", "org.freedesktop.DBus.Properties", {}, proxy_flags);
+        Gio::DBus::BusType::SYSTEM, "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
+        "org.freedesktop.DBus.Properties", {}, proxy_flags);
     if (!system_props_proxy_) {
       throw std::runtime_error("Unable to connect to systemwide systemd DBus!");
     }
@@ -63,17 +63,16 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
         sigc::mem_fun(*this, &SystemdFailedUnits::notify_cb));
     try {
       system_manager_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
-          Gio::DBus::BusType::BUS_TYPE_SYSTEM, "org.freedesktop.systemd1",
-          "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", {}, proxy_flags);
+          Gio::DBus::BusType::SYSTEM, "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
+          "org.freedesktop.systemd1.Manager", {}, proxy_flags);
     } catch (const Glib::Error& e) {
-      spdlog::warn("Unable to connect to systemwide systemd Manager interface: {}",
-                   e.what().c_str());
+      spdlog::warn("Unable to connect to systemwide systemd Manager interface: {}", e.what());
     }
   }
   if (!config["user"].isBool() || config["user"].asBool()) {
     user_props_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
-        Gio::DBus::BusType::BUS_TYPE_SESSION, "org.freedesktop.systemd1",
-        "/org/freedesktop/systemd1", "org.freedesktop.DBus.Properties", {}, proxy_flags);
+        Gio::DBus::BusType::SESSION, "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
+        "org.freedesktop.DBus.Properties", {}, proxy_flags);
     if (!user_props_proxy_) {
       throw std::runtime_error("Unable to connect to user systemd DBus!");
     }
@@ -81,10 +80,10 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
         sigc::mem_fun(*this, &SystemdFailedUnits::notify_cb));
     try {
       user_manager_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
-          Gio::DBus::BusType::BUS_TYPE_SESSION, "org.freedesktop.systemd1",
-          "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", {}, proxy_flags);
+          Gio::DBus::BusType::SESSION, "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
+          "org.freedesktop.systemd1.Manager", {}, proxy_flags);
     } catch (const Glib::Error& e) {
-      spdlog::warn("Unable to connect to user systemd Manager interface: {}", e.what().c_str());
+      spdlog::warn("Unable to connect to user systemd Manager interface: {}", e.what());
     }
   }
 
@@ -134,7 +133,7 @@ void SystemdFailedUnits::RequestSystemState(const std::function<void()>& next) {
         }
       }
     } catch (Glib::Error& e) {
-      spdlog::error("Failed to get {} state: {}", kind, e.what().c_str());
+      spdlog::error("Failed to get {} state: {}", kind, e.what());
     }
     return "unknown";
   };
@@ -170,7 +169,7 @@ void SystemdFailedUnits::RequestFailedUnits(const std::function<void()>& next) {
         }
       }
     } catch (Glib::Error& e) {
-      spdlog::error("Failed to get {} failed units: {}", kind, e.what().c_str());
+      spdlog::error("Failed to get {} failed units: {}", kind, e.what());
     }
     return 0;
   };
@@ -243,7 +242,7 @@ auto SystemdFailedUnits::LoadFailedUnitsList(const char* kind,
       }
     }
   } catch (const Glib::Error& e) {
-    spdlog::error("Failed to list {} units: {}", kind, e.what().c_str());
+    spdlog::error("Failed to list {} units: {}", kind, e.what());
   }
 
   return units;
@@ -314,11 +313,11 @@ auto SystemdFailedUnits::update() -> void {
   event_box_.set_visible(true);
 
   // Set state class.
-  if (!last_status_.empty() && label_.get_style_context()->has_class(last_status_)) {
-    label_.get_style_context()->remove_class(last_status_);
+  if (!last_status_.empty() && label_.has_css_class(last_status_)) {
+    label_.remove_css_class(last_status_);
   }
-  if (!label_.get_style_context()->has_class(overall_state_)) {
-    label_.get_style_context()->add_class(overall_state_);
+  if (!label_.has_css_class(overall_state_)) {
+    label_.add_css_class(overall_state_);
   }
 
   last_status_ = overall_state_;

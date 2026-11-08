@@ -26,8 +26,8 @@ class IdleInhibitor : public ALabel {
   static long deactivationTime;
 
  private:
-  bool handleToggle(GdkEventButton* const& e) override;
-  bool handleScroll(GdkEventScroll* e) override;
+  bool handleToggle(const ButtonEvent& e) override;
+  bool handleScroll(const ScrollEvent& e) override;
 
   void toggleStatus(int force_status = -1);
   void setupIdleNotification();

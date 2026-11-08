@@ -1,5 +1,6 @@
 #pragma once
 
+#include <giomm/icon.h>
 #include <gtkmm/box.h>
 #include <gtkmm/button.h>
 #include <gtkmm/image.h>
@@ -28,18 +29,23 @@ class Workspace {
               const std::string& windows_str, std::size_t total);
 
  private:
-  // Kept per window id so that the press and release of a click reach the same widget.
+  // Kept per window id, so a window keeps its widget across updates.
   struct TaskbarButton {
+    // gtkmm leaves a deleted widget in its parent: take it out of the taskbar
+    ~TaskbarButton() {
+      if (button.get_parent() != nullptr) {
+        button.unparent();
+      }
+    }
     Gtk::Button button;
     Gtk::Image image;
     Gtk::Label label;
     std::string app_id;
-    bool middle_pressed = false;
   };
 
   void rebuildTaskbar(const std::vector<Json::Value>& my_windows);
 
-  Glib::RefPtr<Gdk::Pixbuf> loadIcon(const std::string& app_id, int size);
+  static Glib::RefPtr<Gio::Icon> loadIcon(const std::string& app_id);
 
   Workspaces& manager_;
   uint64_t id_;

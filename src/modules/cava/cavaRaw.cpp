@@ -35,9 +35,8 @@ void waybar::modules::cava::CavaRaw::pauseResume() { backend_->doPauseResume(); 
 auto waybar::modules::cava::CavaRaw::onUpdate(const std::string& input) -> void {
   if (silence_) {
     silence_ = false;
-    label_.get_style_context()->remove_class("silent");
-    if (!label_.get_style_context()->has_class("updated"))
-      label_.get_style_context()->add_class("updated");
+    label_.remove_css_class("silent");
+    if (!label_.has_css_class("updated")) label_.add_css_class("updated");
   }
   label_text_.clear();
   auto ascii_range = backend_->getAsciiRange();
@@ -47,23 +46,22 @@ auto waybar::modules::cava::CavaRaw::onUpdate(const std::string& input) -> void 
   }
 
   label_.set_markup(label_text_);
-  label_.show();
+  label_.set_visible(true);
   ALabel::update();
 }
 
 auto waybar::modules::cava::CavaRaw::onSilence() -> void {
   if (!silence_) {
-    if (label_.get_style_context()->has_class("updated"))
-      label_.get_style_context()->remove_class("updated");
+    if (label_.has_css_class("updated")) label_.remove_css_class("updated");
 
     if (hide_on_silence_) {
       // Clear the label markup before hiding to prevent GTK from rendering a NULL Pango layout
       label_.set_markup("");
-      label_.hide();
+      label_.set_visible(false);
     } else if (!format_silent_.empty()) {
       label_.set_markup(format_silent_);
     }
     silence_ = true;
-    label_.get_style_context()->add_class("silent");
+    label_.add_css_class("silent");
   }
 }

@@ -1,5 +1,6 @@
 #include "modules/niri/window.hpp"
 
+#include <algorithm>
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
 #include <spdlog/spdlog.h>
@@ -68,7 +69,7 @@ void Window::doUpdate() {
     const auto sanitizedTitle = waybar::util::sanitize_string(title);
     const auto sanitizedAppId = waybar::util::sanitize_string(appId);
 
-    label_.show();
+    label_.set_visible(true);
     label_.set_markup(waybar::util::rewriteString(
         fmt::format(fmt::runtime(format_), fmt::arg("title", sanitizedTitle),
                     fmt::arg("app_id", sanitizedAppId), fmt::arg("col", col),
@@ -92,19 +93,19 @@ void Window::doUpdate() {
         setClass(oldAppId_, false);
         oldAppId_.clear();
       }
-      if (isSolo && waybar::util::add_app_id_class(bar_.window.get_style_context(), appId)) {
+      if (isSolo && waybar::util::add_app_id_class(const_cast<Bar&>(bar_).window, appId)) {
         oldAppId_ = appId;
       }
     }
   } else {
     if (config_["show-empty"].asBool()) {
-      label_.show();
+      label_.set_visible(true);
       label_.set_markup(waybar::util::rewriteString(
           fmt::format(fmt::runtime(format_), fmt::arg("title", ""), fmt::arg("app_id", ""),
                       fmt::arg("col", -1), fmt::arg("max_col", -1)),
           config_["rewrite"]));
     } else {
-      label_.hide();
+      label_.set_visible(false);
     }
 
     updateAppIconName("", "");
@@ -120,13 +121,11 @@ void Window::update() {
 }
 
 void Window::setClass(const std::string& className, bool enable) {
-  auto styleContext = bar_.window.get_style_context();
+  auto& window = const_cast<Bar&>(bar_).window;
   if (enable) {
-    if (!styleContext->has_class(className)) {
-      styleContext->add_class(className);
-    }
+    window.add_css_class(className);
   } else {
-    styleContext->remove_class(className);
+    window.remove_css_class(className);
   }
 }
 

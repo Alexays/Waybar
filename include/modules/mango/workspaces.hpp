@@ -26,7 +26,8 @@ class Workspaces : public AModule, public EventHandler {
   Gtk::Button& addButton(uint64_t idx);
   void updateButtonState(Gtk::Button& button, const Json::Value& tag, const Json::Value& monitor);
   std::string getIcon(const std::string& value, const Json::Value& tag);
-  bool handleButtonClick(GdkEventButton* event, uint64_t idx, bool isOverview);
+  void addClickHandler(Gtk::Button& button, uint64_t idx, bool isOverview);
+  void handleButtonClick(guint button, uint64_t idx, bool isOverview);
 
   const Bar& bar_;
   Gtk::Box box_;

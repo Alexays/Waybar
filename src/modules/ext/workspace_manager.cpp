@@ -1,6 +1,6 @@
 #include "modules/ext/workspace_manager.hpp"
 
-#include <gdk/gdkwayland.h>
+#include <gdk/wayland/gdkwayland.h>
 #include <gtkmm.h>
 #include <spdlog/spdlog.h>
 
@@ -59,14 +59,13 @@ WorkspaceManager::WorkspaceManager(const std::string& id, const waybar::Bar& bar
 
   box_.set_name("workspaces");
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
+  box_.add_css_class(MODULE_CLASS);
+  event_box_.set_child(box_);
+  // Scrolls over the module itself reach handleScroll through AModule and stop there
   if (!config_["disable-scroll"].asBool() && config_["enable-bar-scroll"].asBool()) {
-    auto& window = const_cast<Bar&>(bar_).window;
-    window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    window.signal_scroll_event().connect(sigc::mem_fun(*this, &WorkspaceManager::handleScroll));
+    enableBarScroll(const_cast<Bar&>(bar_).window);
   }
 
   spdlog::debug("[ext/workspaces]: Workspace manager created");
@@ -127,6 +126,9 @@ void WorkspaceManager::remove_workspace(uint32_t id) {
     return;
   }
 
+  if (has_button(&(*it)->button())) {
+    box_.remove((*it)->button());
+  }
   workspaces_.erase(it);
 }
 
@@ -156,11 +158,7 @@ void WorkspaceManager::commit() const {
   if (ext_manager_) ext_workspace_manager_v1_commit(ext_manager_);
 }
 
-bool WorkspaceManager::handleScroll(GdkEventScroll* e) {
-  if (gdk_event_get_pointer_emulated(reinterpret_cast<GdkEvent*>(e)) != 0) {
-    return false;
-  }
-
+bool WorkspaceManager::handleScroll(const ScrollEvent& e) {
   const auto dir = getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {
     return true;
@@ -211,8 +209,7 @@ void WorkspaceManager::update() {
 }
 
 bool WorkspaceManager::has_button(const Gtk::Button* button) {
-  const auto buttons = box_.get_children();
-  return std::find(buttons.begin(), buttons.end(), button) != buttons.end();
+  return button->get_parent() == &box_;
 }
 
 void WorkspaceManager::sort_workspaces() {
@@ -296,8 +293,7 @@ void WorkspaceManager::update_buttons() {
     if (workspace_on_any_group_for_output) {
       if (!bar_contains_button) {
         // add button to bar
-        box_.pack_start(workspace->button(), false, false);
-        workspace->button().show_all();
+        box_.append(workspace->button());
       }
       workspace->update();
     } else {
@@ -412,14 +408,25 @@ Workspace::Workspace(const Json::Value& config, WorkspaceManager& manager,
   // setup UI
 
   if (config_on_click || config_on_click_middle || config_on_click_right) {
-    button_.add_events(Gdk::BUTTON_PRESS_MASK);
-    button_.signal_button_press_event().connect(sigc::mem_fun(*this, &Workspace::handle_clicked),
-                                                false);
+    // Capture phase: every press is claimed before the button's own click gesture sees it
+    auto click = Gtk::GestureClick::create();
+    click->set_button(0);
+    click->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
+    click->signal_pressed().connect([this, click = click.get()](int n_press, double, double) {
+      const guint button = click->get_current_button();
+      handle_clicked(button);
+      // Like AModule, a double (triple) click is a press followed by a second event
+      if ((n_press - 1) % 3 != 0) {
+        handle_clicked(button);
+      }
+      click->set_state(Gtk::EventSequenceState::CLAIMED);
+    });
+    button_.add_controller(click);
   }
 
-  button_.set_relief(Gtk::RELIEF_NONE);
+  button_.set_has_frame(false);
   content_.set_center_widget(label_);
-  button_.add(content_);
+  button_.set_child(content_);
 }
 
 Workspace::~Workspace() {
@@ -430,31 +437,29 @@ Workspace::~Workspace() {
 }
 
 void Workspace::update() {
-  const auto style_context = button_.get_style_context();
-
   // update style and visibility
 
   if (!has_state(EXT_WORKSPACE_HANDLE_V1_STATE_ACTIVE)) {
-    style_context->remove_class("active");
+    button_.remove_css_class("active");
   }
   if (!has_state(EXT_WORKSPACE_HANDLE_V1_STATE_URGENT)) {
-    style_context->remove_class("urgent");
+    button_.remove_css_class("urgent");
   }
   if (!has_state(EXT_WORKSPACE_HANDLE_V1_STATE_HIDDEN)) {
-    style_context->remove_class("hidden");
+    button_.remove_css_class("hidden");
   }
 
   if (has_state(EXT_WORKSPACE_HANDLE_V1_STATE_ACTIVE)) {
     button_.set_visible(true);
-    style_context->add_class("active");
+    button_.add_css_class("active");
   }
   if (has_state(EXT_WORKSPACE_HANDLE_V1_STATE_URGENT)) {
     button_.set_visible(true);
-    style_context->add_class("urgent");
+    button_.add_css_class("urgent");
   }
   if (has_state(EXT_WORKSPACE_HANDLE_V1_STATE_HIDDEN)) {
     button_.set_visible(!active_only_ && !ignore_hidden_);
-    style_context->add_class("hidden");
+    button_.add_css_class("hidden");
   }
   if (state_ == 0) {
     button_.set_visible(!active_only_);
@@ -506,18 +511,18 @@ void Workspace::handle_removed() {
   workspace_manager_.remove_workspace(id_);
 }
 
-bool Workspace::handle_clicked(const GdkEventButton* button) const {
+void Workspace::handle_clicked(guint button) const {
   std::string action;
-  if (button->button == GDK_BUTTON_PRIMARY) {
+  if (button == GDK_BUTTON_PRIMARY) {
     action = on_click_action_;
-  } else if (button->button == GDK_BUTTON_MIDDLE) {
+  } else if (button == GDK_BUTTON_MIDDLE) {
     action = on_click_middle_action_;
-  } else if (button->button == GDK_BUTTON_SECONDARY) {
+  } else if (button == GDK_BUTTON_SECONDARY) {
     action = on_click_right_action_;
   }
 
   if (action.empty()) {
-    return true;
+    return;
   }
 
   if (action == "activate") {
@@ -530,7 +535,6 @@ bool Workspace::handle_clicked(const GdkEventButton* button) const {
     spdlog::warn("[ext/workspaces]: Unknown action {}", action);
   }
   workspace_manager_.commit();
-  return true;
 }
 
 std::string Workspace::icon() {

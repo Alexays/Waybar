@@ -16,11 +16,10 @@ RUN zypper addrepo -f https://download.opensuse.org/repositories/X11:Wayland/ope
 		git \
 		glib2-devel \
 		gpsd-devel \
-		gtkmm3-devel \
 		gtkmm4-devel \
 		jack-devel \
 		jsoncpp-devel \
-		libdbusmenu-gtk3-devel \
+		libdbusmenu-glib-devel \
 		libevdev-devel \
 		libgbm-devel \
 		libiniparser-devel \

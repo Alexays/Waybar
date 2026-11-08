@@ -1,16 +1,16 @@
 #include "modules/niri/workspace.hpp"
 
-#include <gdkmm/pixbuf.h>
-#include <gtkmm/icontheme.h>
-#include <gtkmm/image.h>
-#include <spdlog/spdlog.h>
 #include <giomm/desktopappinfo.h>
-#include <giomm/icon.h>
+#include <giomm/themedicon.h>
+#include <gtkmm/gestureclick.h>
+#include <gtkmm/icontheme.h>
+#include <spdlog/spdlog.h>
 
 #include <algorithm>
 
 #include "modules/niri/backend.hpp"
 #include "modules/niri/workspaces.hpp"
+#include "util/gtk_icon.hpp"
 #include "util/tooltip.hpp"
 
 namespace waybar::modules::niri {
@@ -18,18 +18,19 @@ namespace waybar::modules::niri {
 Workspace::Workspace(const Json::Value& workspace_data, Workspaces& manager)
     : manager_(manager),
       id_(workspace_data["id"].asUInt64()),
-      box_(Gtk::ORIENTATION_HORIZONTAL, 0),
-      taskbar_box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
-  button_.add(box_);
-  box_.pack_start(label_, false, false, 0);
-  box_.pack_start(taskbar_box_, false, false, 0);
+      box_(Gtk::Orientation::HORIZONTAL, 0),
+      taskbar_box_(Gtk::Orientation::HORIZONTAL, 0) {
+  button_.set_child(box_);
+  box_.append(label_);
+  box_.append(taskbar_box_);
 
-  button_.set_relief(Gtk::RELIEF_NONE);
-  button_.get_style_context()->add_class("niri-workspace");
+  button_.set_has_frame(false);
+  button_.add_css_class("niri-workspace");
 
   if (!manager_.config()["disable-click"].asBool()) {
     const auto ws_id = id_;
-    button_.signal_pressed().connect([ws_id] {
+    auto click = Gtk::GestureClick::create();
+    click->signal_pressed().connect([ws_id](int, double, double) {
       try {
         Json::Value request(Json::objectValue);
         auto& action = (request["Action"] = Json::Value(Json::objectValue));
@@ -41,21 +42,18 @@ Workspace::Workspace(const Json::Value& workspace_data, Workspaces& manager)
         spdlog::error("Niri: error focusing workspace: {}", e.what());
       }
     });
+    button_.add_controller(click);
   }
-
-  button_.show_all();
 }
 
 void Workspace::update(const Json::Value& data, const std::vector<Json::Value>& all_windows,
                        const std::string& windows_str, std::size_t total) {
   // ── CSS classes ──────────────────────────────────────────────────────────
-  auto style = button_.get_style_context();
-
   auto setClass = [&](const char* cls, bool on) {
     if (on)
-      style->add_class(cls);
+      button_.add_css_class(cls);
     else
-      style->remove_class(cls);
+      button_.remove_css_class(cls);
   };
 
   setClass("focused", data["is_focused"].asBool());
@@ -96,12 +94,11 @@ void Workspace::update(const Json::Value& data, const std::vector<Json::Value>& 
   const bool alloutputs = cfg["all-outputs"].asBool();
   if (cfg["current-only"].asBool()) {
     const auto* prop = alloutputs ? "is_focused" : "is_active";
-    data[prop].asBool() ? button_.show() : button_.hide();
+    button_.set_visible(data[prop].asBool());
   } else if (cfg["hide-empty"].asBool()) {
-    (data["active_window_id"].isNull() && !data["is_focused"].asBool()) ? button_.hide()
-                                                                        : button_.show();
+    button_.set_visible(!data["active_window_id"].isNull() || data["is_focused"].asBool());
   } else {
-    button_.show();
+    button_.set_visible(true);
   }
 
   // ── Taskbar ───────────────────────────────────────────────────────────────
@@ -129,11 +126,11 @@ void Workspace::update(const Json::Value& data, const std::vector<Json::Value>& 
     });
 
     rebuildTaskbar(my_windows);
-    taskbar_box_.show();
-    label_.hide();
+    taskbar_box_.set_visible(true);
+    label_.set_visible(false);
   } else {
     taskbar_buttons_.clear();
-    taskbar_box_.hide();
+    taskbar_box_.set_visible(false);
   }
 }
 
@@ -149,7 +146,7 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
   const auto& taskbar_cfg = manager_.config()["workspace-taskbar"];
   const int icon_size = taskbar_cfg["icon-size"].isInt() ? taskbar_cfg["icon-size"].asInt() : 16;
 
-  int position = 0;
+  Gtk::Widget* previous = nullptr;
   for (const auto& win : my_windows) {
     const auto win_id = win["id"].asUInt64();
     const std::string app_id = win["app_id"].isString() ? win["app_id"].asString() : "";
@@ -160,29 +157,34 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
     auto& entry = it->second;
     auto& btn = entry.button;
     if (is_new) {
-      btn.set_relief(Gtk::RELIEF_NONE);
-      btn.get_style_context()->add_class("niri-taskbar-btn");
-      taskbar_box_.pack_start(btn, false, false, 0);
-      btn.show();
+      btn.set_has_frame(false);
+      btn.add_css_class("niri-taskbar-btn");
+      taskbar_box_.append(btn);
     }
-    taskbar_box_.reorder_child(btn, position++);
+    if (previous != nullptr) {
+      taskbar_box_.reorder_child_after(btn, *previous);
+    } else {
+      taskbar_box_.reorder_child_at_start(btn);
+    }
+    previous = &btn;
 
     if (is_focused) {
-      btn.get_style_context()->add_class("focused");
+      btn.add_css_class("focused");
     } else {
-      btn.get_style_context()->remove_class("focused");
+      btn.remove_css_class("focused");
     }
     util::set_tooltip_markup(btn, Glib::Markup::escape_text(title));
 
     if (is_new || entry.app_id != app_id) {
       entry.app_id = app_id;
-      auto pixbuf = loadIcon(app_id, icon_size);
-      if (pixbuf) entry.image.set(pixbuf);
-      Gtk::Widget& child = pixbuf ? static_cast<Gtk::Widget&>(entry.image) : entry.label;
+      auto icon = loadIcon(app_id);
+      if (icon) {
+        entry.image.set(icon);
+        entry.image.set_pixel_size(icon_size);
+      }
+      Gtk::Widget& child = icon ? static_cast<Gtk::Widget&>(entry.image) : entry.label;
       if (btn.get_child() != &child) {
-        if (btn.get_child() != nullptr) btn.remove();
-        btn.add(child);
-        child.show();
+        btn.set_child(child);
       }
     }
     if (btn.get_child() == &entry.label) {
@@ -215,80 +217,54 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
       }
     });
 
-    // Middle click closes the window. GtkButton only pairs press and release for the primary
-    // button, and a release on a button that did not see the press must not close its window.
-    btn.signal_button_press_event().connect([&entry](GdkEventButton* event) -> bool {
-      if (event->button == GDK_BUTTON_MIDDLE) entry.middle_pressed = true;
-      return false;
-    });
-    btn.signal_button_release_event().connect([win_id, &entry](GdkEventButton* event) -> bool {
-      if (event->button == GDK_BUTTON_MIDDLE) {
-        if (!entry.middle_pressed) return true;
-        entry.middle_pressed = false;
-        try {
-          Json::Value request(Json::objectValue);
-          auto& action = (request["Action"] = Json::Value(Json::objectValue));
-          auto& closeWindow = (action["CloseWindow"] = Json::Value(Json::objectValue));
-          closeWindow["id"] = win_id;
-          IPC::send(request);
-        } catch (const std::exception& e) {
-          spdlog::error("Niri: error closing window {}: {}", win_id, e.what());
-        }
-        return true;
+    // Middle click closes the window. The gesture only reports a release whose press it saw.
+    auto middle = Gtk::GestureClick::create();
+    middle->set_button(GDK_BUTTON_MIDDLE);
+    middle->signal_released().connect([win_id, gesture = middle.get()](int, double, double) {
+      gesture->set_state(Gtk::EventSequenceState::CLAIMED);
+      try {
+        Json::Value request(Json::objectValue);
+        auto& action = (request["Action"] = Json::Value(Json::objectValue));
+        auto& closeWindow = (action["CloseWindow"] = Json::Value(Json::objectValue));
+        closeWindow["id"] = win_id;
+        IPC::send(request);
+      } catch (const std::exception& e) {
+        spdlog::error("Niri: error closing window {}: {}", win_id, e.what());
       }
-      return false;
     });
+    btn.add_controller(middle);
   }
 }
 
 // ── Icon loading ─────────────────────────────────────────────────────────────
 
-Glib::RefPtr<Gdk::Pixbuf> Workspace::loadIcon(const std::string& app_id, int size) {
-    if (app_id.empty()) return {};
-    auto app_info = Gio::DesktopAppInfo::create(app_id + ".desktop");
-        
-    if (app_info) {
-        auto icon = app_info->get_icon();
-        if (icon) {
-          auto theme = Gtk::IconTheme::get_default();
-          auto icon_info = theme->lookup_icon(icon, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
-        
-          if (icon_info) {
-              try {
-                  
-                  return icon_info.load_icon(); 
-              } catch (...) {
-                
-              }
-          }
-      }
-    }
+Glib::RefPtr<Gio::Icon> Workspace::loadIcon(const std::string& app_id) {
+  if (app_id.empty()) return {};
+  auto app_info = Gio::DesktopAppInfo::create(app_id + ".desktop");
+  if (app_info) {
+    auto icon = app_info->get_icon();
+    if (icon && DefaultGtkIconThemeWrapper::theme()->has_gicon(icon)) return icon;
+  }
 
-    auto theme = Gtk::IconTheme::get_default();
-    
-    auto tryLoad = [&](const std::string& name) -> Glib::RefPtr<Gdk::Pixbuf> {
-        if (!theme->has_icon(name)) return {};
-        try {
-            return theme->load_icon(name, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
-        } catch (...) {
-            return {};
-        }
-    };
+  auto tryLoad = [](const std::string& name) -> Glib::RefPtr<Gio::Icon> {
+    if (!DefaultGtkIconThemeWrapper::has_icon(name)) return {};
+    return Gio::ThemedIcon::create(name);
+  };
 
-    if (auto pb = tryLoad(app_id)) return pb;
+  if (auto icon = tryLoad(app_id)) return icon;
 
-    std::string lower = app_id;
-    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-    if (auto pb = tryLoad(lower)) return pb;
+  std::string lower = app_id;
+  std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+  if (auto icon = tryLoad(lower)) return icon;
 
-    auto dot = app_id.rfind('.');
-    if (dot != std::string::npos) {
-        std::string last = app_id.substr(dot + 1);
-        std::transform(last.begin(), last.end(), last.begin(), ::tolower);
-        if (auto pb = tryLoad(last)) return pb;
-    }
+  auto dot = app_id.rfind('.');
+  if (dot != std::string::npos) {
+    std::string last = app_id.substr(dot + 1);
+    std::transform(last.begin(), last.end(), last.begin(), ::tolower);
+    if (auto icon = tryLoad(last)) return icon;
+  }
 
-    return {};
+  return {};
 }
 
 }  // namespace waybar::modules::niri

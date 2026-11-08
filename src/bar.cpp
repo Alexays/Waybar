@@ -1,6 +1,7 @@
 #include "bar.hpp"
 
-#include <gtk-layer-shell.h>
+#include <gdk/wayland/gdkwayland.h>
+#include <gtk4-layer-shell.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -18,8 +19,6 @@
 #include "modules/sway/bar.hpp"
 #endif
 #ifdef HAVE_BAR_BLUR
-#include <gtk/gtk.h>
-
 #include "ext-background-effect-v1-client-protocol.h"
 #endif
 
@@ -100,25 +99,25 @@ void from_json(const Json::Value& j, bar_mode& m) {
 /* Deserializer for enum Gtk::PositionType */
 void from_json(const Json::Value& j, Gtk::PositionType& pos) {
   if (j == "left") {
-    pos = Gtk::POS_LEFT;
+    pos = Gtk::PositionType::LEFT;
   } else if (j == "right") {
-    pos = Gtk::POS_RIGHT;
+    pos = Gtk::PositionType::RIGHT;
   } else if (j == "top") {
-    pos = Gtk::POS_TOP;
+    pos = Gtk::PositionType::TOP;
   } else if (j == "bottom") {
-    pos = Gtk::POS_BOTTOM;
+    pos = Gtk::PositionType::BOTTOM;
   }
 }
 
 Glib::ustring to_string(Gtk::PositionType pos) {
   switch (pos) {
-    case Gtk::POS_LEFT:
+    case Gtk::PositionType::LEFT:
       return "left";
-    case Gtk::POS_RIGHT:
+    case Gtk::PositionType::RIGHT:
       return "right";
-    case Gtk::POS_TOP:
+    case Gtk::PositionType::TOP:
       return "top";
-    case Gtk::POS_BOTTOM:
+    case Gtk::PositionType::BOTTOM:
       return "bottom";
   }
   throw std::runtime_error("Invalid Gtk::PositionType");
@@ -143,33 +142,79 @@ static void limitSize(int& minimum, int& natural, int available) {
     minimum = std::min(minimum, available);
     natural = std::min(natural, available);
   }
+  // A Wayland surface cannot be empty, and modules have no text before their first update
+  minimum = std::max(minimum, 1);
+  natural = std::max(natural, 1);
+}
+
+static GtkBorder cssInset(const Gtk::Widget& widget) {
+  GtkBorder border;
+  GtkBorder padding;
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+  auto* context = gtk_widget_get_style_context(const_cast<GtkWidget*>(widget.gobj()));
+  gtk_style_context_get_border(context, &border);
+  gtk_style_context_get_padding(context, &padding);
+  G_GNUC_END_IGNORE_DEPRECATIONS
+  return {.left = static_cast<gint16>(border.left + padding.left),
+          .right = static_cast<gint16>(border.right + padding.right),
+          .top = static_cast<gint16>(border.top + padding.top),
+          .bottom = static_cast<gint16>(border.bottom + padding.bottom)};
 }
 
 };  // namespace waybar
 
-waybar::BarWindow::BarWindow(const Glib::RefPtr<Gdk::Monitor>& monitor)
-    : Gtk::Window{Gtk::WindowType::WINDOW_TOPLEVEL}, monitor_(monitor) {}
-
-void waybar::BarWindow::get_preferred_width_vfunc(int& minimum, int& natural) const {
-  Gtk::Window::get_preferred_width_vfunc(minimum, natural);
-  limitSize(minimum, natural, monitor_->property_geometry().get_value().get_width());
+void waybar::BarWindow::measure_vfunc(Gtk::Orientation orientation, int for_size, int& minimum,
+                                      int& natural, int& minimum_baseline,
+                                      int& natural_baseline) const {
+  // GTK adds the inset around this size, so the window ends up the size of its child
+  const auto inset = cssInset(*this);
+  const bool horizontal = orientation == Gtk::Orientation::HORIZONTAL;
+  const int inset_size = horizontal ? inset.left + inset.right : inset.top + inset.bottom;
+  const int other_inset_size = horizontal ? inset.top + inset.bottom : inset.left + inset.right;
+  Gtk::Window::measure_vfunc(orientation, for_size < 0 ? for_size : for_size + other_inset_size,
+                             minimum, natural, minimum_baseline, natural_baseline);
+  minimum = std::max(minimum - inset_size, 0);
+  natural = std::max(natural - inset_size, 0);
+  Gdk::Rectangle geometry;
+  monitor_->get_geometry(geometry);
+  const int available = horizontal ? geometry.get_width() : geometry.get_height();
+  limitSize(minimum, natural, available > inset_size ? available - inset_size : available);
 }
 
-void waybar::BarWindow::get_preferred_height_vfunc(int& minimum, int& natural) const {
-  Gtk::Window::get_preferred_height_vfunc(minimum, natural);
-  limitSize(minimum, natural, monitor_->property_geometry().get_value().get_height());
-}
-
-void waybar::BarWindow::get_preferred_width_for_height_vfunc(int height, int& minimum,
-                                                             int& natural) const {
-  Gtk::Window::get_preferred_width_for_height_vfunc(height, minimum, natural);
-  limitSize(minimum, natural, monitor_->property_geometry().get_value().get_width());
-}
-
-void waybar::BarWindow::get_preferred_height_for_width_vfunc(int width, int& minimum,
-                                                             int& natural) const {
-  Gtk::Window::get_preferred_height_for_width_vfunc(width, minimum, natural);
-  limitSize(minimum, natural, monitor_->property_geometry().get_value().get_height());
+void waybar::BarWindow::size_allocate_vfunc(int width, int height, int baseline) {
+  const auto inset = cssInset(*this);
+  const int child_width = width + inset.left + inset.right;
+  const int child_height = height + inset.top + inset.bottom;
+  Gtk::Window::size_allocate_vfunc(child_width, child_height, baseline);
+  auto* child = get_child();
+  if (child == nullptr || !child->get_visible()) {
+    return;
+  }
+  // The allocations below keep each widget's size, so GTK only moves it
+  if (inset.left != 0 || inset.top != 0) {
+    child->size_allocate(Gdk::Rectangle(-inset.left, -inset.top, child_width, child_height), -1);
+  }
+  // Every resize reaches the window, so the CenterBox is never laid out without this correction
+  auto* center_box = dynamic_cast<Gtk::CenterBox*>(child);
+  auto* center = center_box != nullptr ? center_box->get_center_widget() : nullptr;
+  if (center == nullptr || !center->get_visible()) {
+    return;
+  }
+  const bool horizontal = center_box->get_orientation() == Gtk::Orientation::HORIZONTAL;
+  const int size = horizontal ? child_width : child_height;
+  GtkAllocation allocation;
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+  gtk_widget_get_allocation(center->gobj(), &allocation);
+  G_GNUC_END_IGNORE_DEPRECATIONS
+  int& pos = horizontal ? allocation.x : allocation.y;
+  const int center_size = horizontal ? allocation.width : allocation.height;
+  // CenterBox puts it at size / 2 - center_size / 2, a pixel after GTK3's (size - center_size) / 2
+  // when only center_size is odd. A center widget pushed aside by a side widget stays put.
+  if (size % 2 == 0 && center_size % 2 != 0 && pos == size / 2 - center_size / 2) {
+    --pos;
+    center->size_allocate(
+        Gtk::Allocation(allocation.x, allocation.y, allocation.width, allocation.height), -1);
+  }
 }
 
 waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
@@ -180,31 +225,34 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
       x_global(0),
       y_global(0),
       margins_{.top = 0, .right = 0, .bottom = 0, .left = 0},
-      left_(Gtk::ORIENTATION_HORIZONTAL, 0),
-      center_(Gtk::ORIENTATION_HORIZONTAL, 0),
-      right_(Gtk::ORIENTATION_HORIZONTAL, 0),
-      box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
+      left_(Gtk::Orientation::HORIZONTAL, 0),
+      center_(Gtk::Orientation::HORIZONTAL, 0),
+      right_(Gtk::Orientation::HORIZONTAL, 0),
+      box_(Gtk::Orientation::HORIZONTAL, 0) {
   window.set_title("waybar");
   window.set_name("waybar");
   window.set_decorated(false);
-  window.get_style_context()->add_class(output->name);
-  window.get_style_context()->add_class(config["name"].asString());
+  for (const auto& css_class : {output->name, config["name"].asString()}) {
+    if (!css_class.empty()) {
+      window.add_css_class(css_class);
+    }
+  }
 
   from_json(config["position"], position);
-  orientation = (position == Gtk::POS_LEFT || position == Gtk::POS_RIGHT)
-                    ? Gtk::ORIENTATION_VERTICAL
-                    : Gtk::ORIENTATION_HORIZONTAL;
+  orientation = (position == Gtk::PositionType::LEFT || position == Gtk::PositionType::RIGHT)
+                    ? Gtk::Orientation::VERTICAL
+                    : Gtk::Orientation::HORIZONTAL;
 
-  window.get_style_context()->add_class(to_string(position));
+  window.add_css_class(to_string(position));
 
-  left_ = Gtk::Box(orientation, 0);
-  center_ = Gtk::Box(orientation, 0);
-  right_ = Gtk::Box(orientation, 0);
-  box_ = Gtk::Box(orientation, 0);
+  for (Gtk::Orientable* box :
+       std::initializer_list<Gtk::Orientable*>{&left_, &center_, &right_, &box_, &center_box_}) {
+    box->set_orientation(orientation);
+  }
 
-  left_.get_style_context()->add_class("modules-left");
-  center_.get_style_context()->add_class("modules-center");
-  right_.get_style_context()->add_class("modules-right");
+  left_.add_css_class("modules-left");
+  center_.add_css_class("modules-center");
+  right_.add_css_class("modules-right");
 
   if (config["spacing"].isInt()) {
     int spacing = config["spacing"].asInt();
@@ -269,13 +317,6 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     margins_ = {.top = gaps, .right = gaps, .bottom = gaps, .left = gaps};
   }
 
-  window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Bar::onConfigure));
-  window.signal_draw().connect(
-      [this](const Cairo::RefPtr<Cairo::Context>&) {
-        painted_scale_ = window.get_scale_factor();
-        return false;
-      },
-      false);
   output->monitor->property_geometry().signal_changed().connect(
       sigc::mem_fun(*this, &Bar::onOutputGeometryChanged));
 
@@ -318,13 +359,14 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 
   unmap_conn_ = window.signal_unmap().connect([this]() {
     spdlog::debug("Output {} unmapped, suspending modules", output->name);
-    painted_scale_ = 0;  // GTK detaches the buffer
-    surface = nullptr;   // and destroys the wl_surface; onMap() fetches the new one
+    layout_conn_.disconnect();
+    compute_size_conn_.disconnect();
+    surface = nullptr;  // GTK destroys the wl_surface; onMap() fetches the new one
     toggleSuspend(true);
   });
 
-  // `map` is emitted synchronously from show_all(), so modules have the surface in their first
-  // update(); the queued `map-event` only arrives after those updates.
+  // `map` is emitted synchronously from present(), so modules have the surface in their first
+  // update().
   map_conn_ = window.signal_map().connect([this]() {
     spdlog::debug("Output {} mapped, resuming modules", output->name);
     onMap();
@@ -374,7 +416,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   }
 
   setupWidgets();
-  window.show_all();
+  window.present();
 
   // The first update of every module, in one source: a dispatcher emit per module before the
   // main loop runs fills the pipe and blocks the main thread with enough modules.
@@ -388,27 +430,14 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
                                   *this),
                               Glib::PRIORITY_DEFAULT);
 
-  /*
-   * If gtk-layer-shell's synchronous wait for the initial configure timed out, show_all() can
-   * return with a configured but not-yet-presented surface. Kick GTK/layer-shell once control has
-   * returned to the main loop, when any late initial configure has been dispatched and widgets have
-   * had a chance to allocate/draw.
-   */
-  Glib::signal_idle().connect(sigc::track_obj(
-      [this] {
-        window.queue_resize();
-        window.queue_draw();
-        forceLayerCommit();
-        return false;
-      },
-      *this));
-
   if (spdlog::should_log(spdlog::level::debug)) {
     // Unfortunately, this function isn't in the C++ bindings, so we have to call the C version.
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     char* gtk_tree = gtk_style_context_to_string(
-        window.get_style_context()->gobj(),
+        gtk_widget_get_style_context(GTK_WIDGET(window.gobj())),
         (GtkStyleContextPrintFlags)(GTK_STYLE_CONTEXT_PRINT_RECURSE |
                                     GTK_STYLE_CONTEXT_PRINT_SHOW_STYLE));
+    G_GNUC_END_IGNORE_DEPRECATIONS
     spdlog::debug("GTK widget tree:\n{}", gtk_tree);
     g_free(gtk_tree);
   }
@@ -420,6 +449,8 @@ waybar::Bar::~Bar() {
    * modules_all_ -- already freed by this point. Disconnect first (#5182). */
   unmap_conn_.disconnect();
   map_conn_.disconnect();
+  layout_conn_.disconnect();
+  compute_size_conn_.disconnect();
 #ifdef HAVE_BAR_BLUR
   if (background_effect_surface_) {
     ext_background_effect_surface_v1_destroy(background_effect_surface_);
@@ -431,19 +462,18 @@ waybar::Bar::~Bar() {
 void waybar::Bar::setMode(const std::string& mode) {
   using namespace std::literals::string_literals;
 
-  auto style = window.get_style_context();
   /* remove styles added by previous setMode calls */
-  style->remove_class("mode-"s + last_mode_);
+  window.remove_css_class("mode-"s + last_mode_);
 
   auto it = configured_modes.find(mode);
   if (it != configured_modes.end()) {
     last_mode_ = mode;
-    style->add_class("mode-"s + last_mode_);
+    window.add_css_class("mode-"s + last_mode_);
     setMode(it->second);
   } else {
     spdlog::warn("Unknown mode \"{}\" requested", mode);
     last_mode_ = MODE_DEFAULT;
-    style->add_class("mode-"s + last_mode_);
+    window.add_css_class("mode-"s + last_mode_);
     setMode(configured_modes.at(MODE_DEFAULT));
   }
 }
@@ -468,10 +498,10 @@ void waybar::Bar::setMode(const struct bar_mode& mode) {
   setPassThrough(passthrough_ = mode.passthrough);
 
   if (mode.visible) {
-    window.get_style_context()->remove_class("hidden");
+    window.remove_css_class("hidden");
     window.set_opacity(1);
   } else {
-    window.get_style_context()->add_class("hidden");
+    window.add_css_class("hidden");
     window.set_opacity(0);
   }
   /*
@@ -483,32 +513,25 @@ void waybar::Bar::setMode(const struct bar_mode& mode) {
 }
 
 void waybar::Bar::forceLayerCommit() {
-  auto* gtk_window = window.gobj();
-  if (gtk_window != nullptr && gtk_widget_get_realized(GTK_WIDGET(gtk_window))) {
-    /*
-     * On a scale change GTK sets the new buffer scale immediately but attaches a matching buffer
-     * only on its next paint. Committing in between applies the new scale to the old buffer, a
-     * protocol error that gets waybar disconnected. GTK commits itself once it has repainted.
-     */
-    int scale = window.get_scale_factor();
-    if (painted_scale_ != 0 && painted_scale_ != scale) {
-      spdlog::debug("Output {} scale changed {} -> {}, skipping forced commit until repainted",
-                    output->name, painted_scale_, scale);
-    } else {
-      gtk_layer_try_force_commit(gtk_window);
-    }
+  /*
+   * Mode changes are double-buffered layer-surface state, which GTK only commits with its next
+   * frame. A fully occluded bar gets no frame callback, so commit them now. GTK sets the buffer
+   * scale together with the buffer it attaches, so nothing half-done is committed.
+   */
+  if (surface != nullptr) {
+    wl_surface_commit(surface);
   }
   wl_display_flush(Client::inst()->wl_display);
 }
 
 void waybar::Bar::setPassThrough(bool passthrough) {
-  auto gdk_window = window.get_window();
-  if (gdk_window) {
-    Cairo::RefPtr<Cairo::Region> region;
-    if (passthrough) {
-      region = Cairo::Region::create();
+  if (auto gdk_surface = window.get_surface()) {
+    // An empty region lets every input through, NULL restores the default (the whole surface)
+    cairo_region_t* region = passthrough ? cairo_region_create() : nullptr;
+    gdk_surface_set_input_region(gdk_surface->gobj(), region);
+    if (region != nullptr) {
+      cairo_region_destroy(region);
     }
-    gdk_window->input_shape_combine_region(region, 0, 0);
   }
 }
 
@@ -516,21 +539,21 @@ void waybar::Bar::setPosition(Gtk::PositionType position) {
   std::array<gboolean, GTK_LAYER_SHELL_EDGE_ENTRY_NUMBER> anchors;
   anchors.fill(TRUE);
 
-  auto orientation = (position == Gtk::POS_LEFT || position == Gtk::POS_RIGHT)
-                         ? Gtk::ORIENTATION_VERTICAL
-                         : Gtk::ORIENTATION_HORIZONTAL;
+  auto orientation = (position == Gtk::PositionType::LEFT || position == Gtk::PositionType::RIGHT)
+                         ? Gtk::Orientation::VERTICAL
+                         : Gtk::Orientation::HORIZONTAL;
 
   switch (position) {
-    case Gtk::POS_LEFT:
+    case Gtk::PositionType::LEFT:
       anchors[GTK_LAYER_SHELL_EDGE_RIGHT] = FALSE;
       break;
-    case Gtk::POS_RIGHT:
+    case Gtk::PositionType::RIGHT:
       anchors[GTK_LAYER_SHELL_EDGE_LEFT] = FALSE;
       break;
-    case Gtk::POS_BOTTOM:
+    case Gtk::PositionType::BOTTOM:
       anchors[GTK_LAYER_SHELL_EDGE_TOP] = FALSE;
       break;
-    default: /* Gtk::POS_TOP */
+    default: /* Gtk::PositionType::TOP */
       anchors[GTK_LAYER_SHELL_EDGE_BOTTOM] = FALSE;
       break;
   };
@@ -539,10 +562,10 @@ void waybar::Bar::setPosition(Gtk::PositionType position) {
   // otherwise the bar will use all space
   uint32_t configured_width = config["width"].isUInt() ? config["width"].asUInt() : 0;
   uint32_t configured_height = config["height"].isUInt() ? config["height"].asUInt() : 0;
-  if (orientation == Gtk::ORIENTATION_VERTICAL && configured_height > 1) {
+  if (orientation == Gtk::Orientation::VERTICAL && configured_height > 1) {
     anchors[GTK_LAYER_SHELL_EDGE_TOP] = FALSE;
     anchors[GTK_LAYER_SHELL_EDGE_BOTTOM] = FALSE;
-  } else if (orientation == Gtk::ORIENTATION_HORIZONTAL && configured_width > 1) {
+  } else if (orientation == Gtk::Orientation::HORIZONTAL && configured_width > 1) {
     anchors[GTK_LAYER_SHELL_EDGE_LEFT] = FALSE;
     anchors[GTK_LAYER_SHELL_EDGE_RIGHT] = FALSE;
   }
@@ -557,20 +580,38 @@ void waybar::Bar::onMap() {
   /*
    * Obtain a pointer to the custom layer surface for modules that require it (idle_inhibitor).
    */
-  auto gdk_window_ref = window.get_window();
-  if (!gdk_window_ref) {
-    spdlog::warn("Failed to get GDK window during onMap, deferring surface initialization");
+  auto gdk_surface = window.get_surface();
+  if (!gdk_surface) {
+    spdlog::warn("Failed to get GDK surface during onMap, deferring surface initialization");
     return;
   }
 
-  auto* gdk_window = gdk_window_ref->gobj();
-  if (!gdk_window) {
-    spdlog::warn("GDK window object is null during onMap, deferring surface initialization");
-    return;
+  surface = gdk_wayland_surface_get_wl_surface(gdk_surface->gobj());
+  layout_conn_.disconnect();
+  layout_conn_ = gdk_surface->signal_layout().connect(sigc::mem_fun(*this, &Bar::onLayout));
+  // GtkWindow remembers the largest size it ever had as its default size, which gtk4-layer-shell
+  // requests: like GTK3, follow the natural size of the modules on the axis the compositor does
+  // not stretch, so the bar shrinks back with them.
+  compute_size_conn_.disconnect();
+  if (auto toplevel = std::dynamic_pointer_cast<Gdk::Toplevel>(gdk_surface)) {
+    compute_size_conn_ = toplevel->signal_compute_size().connect(
+        [this](Gdk::ToplevelSize& /*size*/) {
+          int width = 0;
+          int height = 0;
+          window.get_default_size(width, height);
+          int minimum = 0;
+          int natural = 0;
+          int baseline = 0;
+          const bool vertical = orientation == Gtk::Orientation::VERTICAL;
+          window.measure(vertical ? Gtk::Orientation::HORIZONTAL : Gtk::Orientation::VERTICAL,
+                         vertical || width <= 0 ? -1 : width, minimum, natural, baseline, baseline);
+          if (natural != (vertical ? width : height)) {
+            window.set_default_size(vertical ? natural : width, vertical ? height : natural);
+          }
+        },
+        true);
   }
-
-  surface = gdk_wayland_window_get_wl_surface(gdk_window);
-  configureGlobalOffset(gdk_window_get_width(gdk_window), gdk_window_get_height(gdk_window));
+  configureGlobalOffset(gdk_surface->get_width(), gdk_surface->get_height());
 
   setPassThrough(passthrough_);
 #ifdef HAVE_BAR_BLUR
@@ -602,16 +643,15 @@ void waybar::Bar::updateBlurRegion() {
   if (!blur_enabled_ || !background_effect_surface_ || !surface) {
     return;
   }
-  // Query the live GDK window size rather than width_/height_: those track the
+  // Query the live surface size rather than width_/height_: those track the
   // user-requested config size and may still be unset (0) the first time we're
-  // called, from onMap, before any configure event has landed.
-  auto gdk_window_ref = window.get_window();
-  if (!gdk_window_ref) {
+  // called, from onMap, before any layout has landed.
+  auto gdk_surface = window.get_surface();
+  if (!gdk_surface) {
     return;
   }
-  auto* gdk_window = gdk_window_ref->gobj();
-  const int32_t w = gdk_window_get_width(gdk_window);
-  const int32_t h = gdk_window_get_height(gdk_window);
+  const int32_t w = gdk_surface->get_width();
+  const int32_t h = gdk_surface->get_height();
   if (w <= 0 || h <= 0) {
     return;
   }
@@ -620,43 +660,43 @@ void waybar::Bar::updateBlurRegion() {
     return;
   }
 
-  auto* style_context = window.get_style_context()->gobj();
-  gint radius = 0;
-  gtk_style_context_get(style_context, GTK_STATE_FLAG_NORMAL, GTK_STYLE_PROPERTY_BORDER_RADIUS,
-                        &radius, nullptr);
-  radius = std::clamp<gint>(radius, 0, std::min(w, h) / 2);
+  // Rasterize the actual CSS background to find each row's opaque span, so rounded
+  // corners are clipped correctly even when the top and bottom radii differ.
+  cairo_surface_t* mask = cairo_image_surface_create(CAIRO_FORMAT_A8, w, h);
+  cairo_t* cr = cairo_create(mask);
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+  gtk_render_background(gtk_widget_get_style_context(GTK_WIDGET(window.gobj())), cr, 0, 0, w, h);
+  G_GNUC_END_IGNORE_DEPRECATIONS
+  cairo_surface_flush(mask);
+  const unsigned char* data = cairo_image_surface_get_data(mask);
+  const int stride = cairo_image_surface_get_stride(mask);
 
   wl_region* region = wl_compositor_create_region(compositor);
-  if (radius <= 0) {
-    wl_region_add(region, 0, 0, w, h);
-  } else {
-    // Middle band, full width, between the two corner strips.
-    wl_region_add(region, 0, radius, w, h - 2 * radius);
-    // Rasterize the actual CSS background to find each corner row's opaque span, so
-    // top and bottom corners are clipped correctly even when their radii differ.
-    cairo_surface_t* mask = cairo_image_surface_create(CAIRO_FORMAT_A8, w, h);
-    cairo_t* cr = cairo_create(mask);
-    gtk_render_background(style_context, cr, 0, 0, w, h);
-    cairo_surface_flush(mask);
-    const unsigned char* data = cairo_image_surface_get_data(mask);
-    const int stride = cairo_image_surface_get_stride(mask);
-
-    auto add_opaque_span = [&](int32_t y) {
-      const unsigned char* row = data + static_cast<size_t>(y) * stride;
-      int32_t left = 0;
-      while (left < w && row[left] == 0) ++left;
-      int32_t right = w;
-      while (right > left && row[right - 1] == 0) --right;
-      if (right > left) {
-        wl_region_add(region, left, y, right - left, 1);
-      }
-    };
-    for (int32_t y = 0; y < radius; ++y) add_opaque_span(y);
-    for (int32_t y = h - radius; y < h; ++y) add_opaque_span(y);
-
-    cairo_destroy(cr);
-    cairo_surface_destroy(mask);
+  // Rows are added as runs of identical spans, a single rectangle without rounded corners.
+  int32_t run_start = 0;
+  int32_t run_left = 0;
+  int32_t run_right = 0;
+  auto flush_run = [&](int32_t end) {
+    if (run_right > run_left && end > run_start) {
+      wl_region_add(region, run_left, run_start, run_right - run_left, end - run_start);
+    }
+  };
+  for (int32_t y = 0; y < h; ++y) {
+    const unsigned char* row = data + static_cast<size_t>(y) * stride;
+    int32_t left = 0;
+    while (left < w && row[left] == 0) ++left;
+    int32_t right = w;
+    while (right > left && row[right - 1] == 0) --right;
+    if (y == 0 || left != run_left || right != run_right) {
+      flush_run(y);
+      run_start = y;
+      run_left = left;
+      run_right = right;
+    }
   }
+  flush_run(h);
+  cairo_destroy(cr);
+  cairo_surface_destroy(mask);
   ext_background_effect_surface_v1_set_blur_region(background_effect_surface_, region);
   wl_region_destroy(region);
   forceLayerCommit();
@@ -754,8 +794,8 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           auto id_name = ref.substr(6, hash_pos - 6);
           auto class_name = hash_pos != std::string::npos ? ref.substr(hash_pos + 1) : "";
 
-          auto vertical = (group != nullptr ? group->getBox().get_orientation()
-                                            : box_.get_orientation()) == Gtk::ORIENTATION_VERTICAL;
+          auto vertical = (group != nullptr ? group->getBox().get_orientation() : orientation) ==
+                          Gtk::Orientation::VERTICAL;
 
           const Json::Value& group_config = config[ref];
           if (group_config["modules"].isNull()) {
@@ -800,22 +840,54 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
 }
 
 auto waybar::Bar::setupWidgets() -> void {
-  window.add(box_);
-
   bool expand_left = config["expand-left"].isBool() ? config["expand-left"].asBool() : false;
   bool expand_center = config["expand-center"].isBool() ? config["expand-center"].asBool() : false;
   bool expand_right = config["expand-right"].isBool() ? config["expand-right"].asBool() : false;
   bool no_center = config["no-center"].isBool() ? config["no-center"].asBool() : false;
+  bool fixed_center =
+      !no_center && (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true);
+  const bool horizontal = orientation == Gtk::Orientation::HORIZONTAL;
 
-  box_.pack_start(left_, expand_left, expand_left);
-  if (!no_center) {
-    if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
-      box_.set_center_widget(center_);
+  // Like GTK3 box packing: an expanding child gets a share of the free space. Expansion is always
+  // set explicitly, else a module asking for it would make every ancestor expand too.
+  auto set_expand = [horizontal](Gtk::Widget& widget, bool expand) {
+    if (horizontal) {
+      widget.set_hexpand(expand);
     } else {
-      box_.pack_start(center_, true, expand_center);
+      widget.set_vexpand(expand);
     }
+  };
+  auto set_align = [horizontal](Gtk::Widget& widget, Gtk::Align align) {
+    if (horizontal) {
+      widget.set_halign(align);
+    } else {
+      widget.set_valign(align);
+    }
+  };
+
+  set_expand(left_, expand_left);
+  set_expand(right_, expand_right);
+  if (fixed_center) {
+    set_expand(center_, expand_center);
+    center_box_.set_start_widget(left_);
+    center_box_.set_center_widget(center_);
+    center_box_.set_end_widget(right_);
+    window.set_child(center_box_);
+  } else {
+    box_.append(left_);
+    if (!no_center) {
+      // GTK3 packed it expanding, filling the free space only with expand-center
+      set_expand(center_, true);
+      set_align(center_, expand_center ? Gtk::Align::FILL : Gtk::Align::CENTER);
+      box_.append(center_);
+    } else if (!expand_right) {
+      // Packed at the end: the free space goes before it
+      set_expand(right_, !expand_left);
+      set_align(right_, Gtk::Align::END);
+    }
+    box_.append(right_);
+    window.set_child(box_);
   }
-  box_.pack_end(right_, expand_right, expand_right);
 
   // Convert to button code for every module that is used.
   setupAltFormatKeyForModuleList("modules-left");
@@ -829,88 +901,86 @@ auto waybar::Bar::setupWidgets() -> void {
   }
   getModules(factory, "modules-right");
 
-  for (auto const& module : modules_left_) {
-    left_.pack_start(*module, module->expandEnabled(), module->expandEnabled());
-  }
-
-  if (!no_center) {
-    for (auto const& module : modules_center_) {
-      center_.pack_start(*module, module->expandEnabled(), module->expandEnabled());
+  auto pack = [&](Gtk::Box& box, const std::vector<std::shared_ptr<AModule>>& modules) {
+    for (auto const& module : modules) {
+      Gtk::Widget& widget = *module;
+      set_expand(widget, module->expandEnabled());
+      box.append(widget);
     }
+  };
+  pack(left_, modules_left_);
+  if (!no_center) {
+    pack(center_, modules_center_);
   }
-
-  std::reverse(modules_right_.begin(), modules_right_.end());
-  for (auto const& module : modules_right_) {
-    right_.pack_end(*module, module->expandEnabled(), module->expandEnabled());
+  pack(right_, modules_right_);
+  // GTK3 packed the right modules at the end of their box: give the free space of an expanding
+  // box to the first module, drawn at the end of it.
+  if (expand_right && !modules_right_.empty() &&
+      std::none_of(modules_right_.begin(), modules_right_.end(),
+                   [](const auto& module) { return module->expandEnabled(); })) {
+    Gtk::Widget& first = *modules_right_.front();
+    set_expand(first, true);
+    set_align(first, Gtk::Align::END);
   }
 }
 
-void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
+void waybar::Bar::onLayout(int width, int height) {
   /*
-   * GTK wants new size for the window.
-   * Actual resizing and management of the exclusve zone is handled within the gtk-layer-shell
-   * code. This event handler only updates stored size of the window and prints some warnings.
-   *
-   * Note: forced resizing to a window smaller than required by GTK would not work with
-   * gtk-layer-shell.
+   * GTK got a new size for the window.
+   * Actual resizing and management of the exclusive zone is handled within the gtk4-layer-shell
+   * code. This only updates the stored size of the window and prints some warnings.
    */
-  if (orientation == Gtk::ORIENTATION_VERTICAL) {
-    if (width_ > 1 && ev->width > static_cast<int>(width_)) {
-      spdlog::warn(MIN_WIDTH_MSG, width_, ev->width);
+  if (orientation == Gtk::Orientation::VERTICAL) {
+    if (width_ > 1 && width > static_cast<int>(width_)) {
+      spdlog::warn(MIN_WIDTH_MSG, width_, width);
     }
   } else {
-    if (height_ > 1 && ev->height > static_cast<int>(height_)) {
-      spdlog::warn(MIN_HEIGHT_MSG, height_, ev->height);
+    if (height_ > 1 && height > static_cast<int>(height_)) {
+      spdlog::warn(MIN_HEIGHT_MSG, height_, height);
     }
   }
-  width_ = ev->width;
-  height_ = ev->height;
+  if (width_ == static_cast<uint32_t>(width) && height_ == static_cast<uint32_t>(height)) {
+    return;
+  }
+  width_ = width;
+  height_ = height;
 
-  configureGlobalOffset(ev->width, ev->height);
-  spdlog::info(BAR_SIZE_MSG, ev->width, ev->height, output->name);
+  configureGlobalOffset(width, height);
+  spdlog::info(BAR_SIZE_MSG, width, height, output->name);
 #ifdef HAVE_BAR_BLUR
   updateBlurRegion();
 #endif
-
-  /*
-   * gtk-layer-shell waits for the compositor's initial configure while realizing the window. On a
-   * busy compositor (common during session startup) that wait can time out even though the initial
-   * configure arrives shortly afterwards. In that case GTK may not schedule the frame commit that
-   * presents the first layer-surface buffer, leaving an otherwise configured bar invisible. Force a
-   * commit after every configure so late initial configures, and later compositor-driven resizes,
-   * always result in a submitted surface state.
-   */
-  window.queue_draw();
-  forceLayerCommit();
 }
 
 void waybar::Bar::configureGlobalOffset(int width, int height) {
-  auto monitor_geometry = *output->monitor->property_geometry().get_value().gobj();
+  Gdk::Rectangle geometry;
+  output->monitor->get_geometry(geometry);
+  const auto monitor_geometry = *geometry.gobj();
   int x;
   int y;
   switch (position) {
-    case Gtk::POS_BOTTOM:
+    case Gtk::PositionType::BOTTOM:
       if (width + margins_.left + margins_.right >= monitor_geometry.width)
         x = margins_.left;
       else
         x = (monitor_geometry.width - width) / 2;
       y = monitor_geometry.height - height - margins_.bottom;
       break;
-    case Gtk::POS_LEFT:
+    case Gtk::PositionType::LEFT:
       x = margins_.left;
       if (height + margins_.top + margins_.bottom >= monitor_geometry.height)
         y = margins_.top;
       else
         y = (monitor_geometry.height - height) / 2;
       break;
-    case Gtk::POS_RIGHT:
+    case Gtk::PositionType::RIGHT:
       x = monitor_geometry.width - width - margins_.right;
       if (height + margins_.top + margins_.bottom >= monitor_geometry.height)
         y = margins_.top;
       else
         y = (monitor_geometry.height - height) / 2;
       break;
-    default: /* Gtk::POS_TOP */
+    default: /* Gtk::PositionType::TOP */
       if (width + margins_.left + margins_.right >= monitor_geometry.width)
         x = margins_.left;
       else

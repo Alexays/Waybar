@@ -2,6 +2,7 @@
 
 #include <fmt/core.h>
 
+#include <algorithm>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -35,11 +36,11 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
       dynamic_separator_(" - "),
       truncate_hours_(true),
       tooltip_len_limits_(false),
-      prefer_album_artist_(false),
-      hide_on_paused_(false),
       // this character is used in Gnome so it's fine to use it here
       ellipsis_("\u2026"),
-      player_("playerctld") {
+      player_("playerctld"),
+      prefer_album_artist_(false),
+      hide_on_paused_(false) {
   if (config_["format-playing"].isString()) {
     format_playing_ = config_["format-playing"].asString();
   }
@@ -799,8 +800,8 @@ errorexit:
   return std::nullopt;
 }
 
-bool Mpris::handleToggle(GdkEventButton* const& e) {
-  if (!e || e->type != GdkEventType::GDK_BUTTON_PRESS) {
+bool Mpris::handleToggle(const ButtonEvent& e) {
+  if (e.type != ButtonEvent::Type::PRESS) {
     return false;
   }
 
@@ -822,7 +823,7 @@ bool Mpris::handleToggle(GdkEventButton* const& e) {
   };
 
   for (const auto& action : actions) {
-    if (e->button == action.button) {
+    if (e.button == action.button) {
       if (config_[action.config_key].isString()) {
         return ALabel::handleToggle(e);
       }
@@ -856,20 +857,20 @@ auto Mpris::update() -> void {
   spdlog::debug("mpris[{}]: running update", info.name);
 
   // set css class for player status
-  if (!lastStatus.empty() && label_.get_style_context()->has_class(lastStatus)) {
-    label_.get_style_context()->remove_class(lastStatus);
+  if (!lastStatus.empty() && label_.has_css_class(lastStatus)) {
+    label_.remove_css_class(lastStatus);
   }
-  if (!label_.get_style_context()->has_class(info.status_string)) {
-    label_.get_style_context()->add_class(info.status_string);
+  if (!label_.has_css_class(info.status_string)) {
+    label_.add_css_class(info.status_string);
   }
   lastStatus = info.status_string;
 
   // set css class for player name
-  if (!lastPlayer.empty() && label_.get_style_context()->has_class(lastPlayer)) {
-    label_.get_style_context()->remove_class(lastPlayer);
+  if (!lastPlayer.empty() && label_.has_css_class(lastPlayer)) {
+    label_.remove_css_class(lastPlayer);
   }
-  if (!label_.get_style_context()->has_class(info.name)) {
-    waybar::util::try_add_class(label_.get_style_context(), info.name);
+  if (!label_.has_css_class(info.name)) {
+    waybar::util::try_add_class(label_, info.name);
   }
   lastPlayer = info.name;
 
@@ -912,10 +913,10 @@ auto Mpris::update() -> void {
         fmt::arg("status_icon", getIconFromJson(config_["status-icons"], info.status_string)));
 
     if (label_format.empty()) {
-      label_.hide();
+      label_.set_visible(false);
     } else {
       setLabelMarkup(label_format);
-      label_.show();
+      label_.set_visible(true);
     }
   } catch (fmt::format_error const& e) {
     spdlog::warn("mpris: format error: {}", e.what());

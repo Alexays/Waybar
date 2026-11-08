@@ -28,9 +28,9 @@ auto waybar::modules::CpuFrequency::update() -> void {
   }
 
   if (format.empty()) {
-    event_box_.hide();
+    event_box_.set_visible(false);
   } else {
-    event_box_.show();
+    event_box_.set_visible(true);
     auto icons = std::vector<std::string>{state};
     updateLabelAndTooltip(
         format,

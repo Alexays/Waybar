@@ -1,11 +1,11 @@
 #pragma once
 
 #include <gtkmm/box.h>
+#include <gtkmm/revealer.h>
 #include <gtkmm/widget.h>
 #include <json/json.h>
 
 #include "AModule.hpp"
-#include "gtkmm/revealer.h"
 
 namespace waybar {
 
@@ -36,10 +36,17 @@ class Group : public AModule {
   bool empty_if_drawer_empty = false;
   int reveal_delay = 0;
   std::string add_class_to_drawer_children;
-  bool handleMouseEnter(GdkEventCrossing* const& ev) override;
-  bool handleMouseLeave(GdkEventCrossing* const& ev) override;
-  bool handleToggle(GdkEventButton* const& ev) override;
-  bool handleScroll(GdkEventScroll* e) override;
+  // Children of `box` packed at its start, in order. The others are packed at its end, like
+  // gtk_box_pack_end() did: each one before the previous ones.
+  std::vector<Gtk::Widget*> box_start_;
+  Glib::RefPtr<Gtk::EventControllerMotion> motion_;
+  void packStart(Gtk::Widget& widget);
+  void packEnd(Gtk::Widget& widget);
+  void removeFromBox(Gtk::Widget& widget);
+  void handleMouseEnter();
+  void handleMouseLeave();
+  bool handleToggle(const ButtonEvent& ev) override;
+  bool handleScroll(const ScrollEvent& e) override;
   void show_group();
   void hide_group();
   void manage_visibility(AModule* module);

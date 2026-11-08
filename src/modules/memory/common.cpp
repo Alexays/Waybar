@@ -74,9 +74,9 @@ auto waybar::modules::Memory::update() -> void {
     }
 
     if (format.empty()) {
-      event_box_.hide();
+      event_box_.set_visible(false);
     } else {
-      event_box_.show();
+      event_box_.set_visible(true);
       auto icons = std::vector<std::string>{state};
       updateLabelAndTooltip(
           format, fmt::format("{:.{}f}{} used", used_ram, 1, unit_), used_ram_percentage,
@@ -88,7 +88,7 @@ auto waybar::modules::Memory::update() -> void {
           fmt::arg("swapAvail", available_swap));
     }
   } else {
-    event_box_.hide();
+    event_box_.set_visible(false);
   }
   // Call parent update
   ALabel::update();

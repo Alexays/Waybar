@@ -7,7 +7,7 @@ project(
 shared_library('wb_cffi_example',
     ['main.c'],
     dependencies: [
-        dependency('gtk+-3.0', version : ['>=3.22.0'])
+        dependency('gtk4', version : ['>=4.0.0'])
     ],
     name_prefix: ''
 )

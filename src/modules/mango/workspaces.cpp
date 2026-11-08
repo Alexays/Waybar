@@ -9,9 +9,9 @@ namespace waybar::modules::mango {
 Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value& config)
     : AModule(config, "workspaces", id, false, false), bar_(bar), box_(bar.orientation, 0) {
   box_.set_name("workspaces");
-  if (!id.empty()) box_.get_style_context()->add_class(id);
-  box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
+  if (!id.empty()) box_.add_css_class(id);
+  box_.add_css_class(MODULE_CLASS);
+  event_box_.set_child(box_);
 
   if (config_["on-click"].isString()) on_click_left_ = config_["on-click"].asString();
   if (config_["on-click-middle"].isString())
@@ -37,14 +37,9 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
   }
 
   overview_button_ = new Gtk::Button("OVERVIEW");
-  overview_button_->set_relief(Gtk::RELIEF_NONE);
-  box_.pack_start(*overview_button_, false, false, 0);
-
-  if (!on_click_left_.empty() || !on_click_middle_.empty() || !on_click_right_.empty()) {
-    overview_button_->add_events(Gdk::BUTTON_PRESS_MASK);
-    overview_button_->signal_button_press_event().connect(
-        [this](GdkEventButton* event) -> bool { return handleButtonClick(event, 0, true); }, false);
-  }
+  overview_button_->set_has_frame(false);
+  box_.append(*overview_button_);
+  addClickHandler(*overview_button_, 0, true);
 
   IPC::getInstance().registerForIPC("monitor", this);
 }
@@ -85,17 +80,16 @@ void Workspaces::doUpdate() {
   }
 
   for (auto& [idx, btn] : buttons_) {
-    btn.hide();
+    btn.set_visible(false);
   }
 
   if (overview_mode) {
-    overview_button_->show();
-    auto style = overview_button_->get_style_context();
-    style->add_class("overview");
+    overview_button_->set_visible(true);
+    overview_button_->add_css_class("overview");
     if (monitor["active"].asBool())
-      style->add_class("current_output");
+      overview_button_->add_css_class("current_output");
     else
-      style->remove_class("current_output");
+      overview_button_->remove_css_class("current_output");
 
     std::string label =
         config_["overview-label"].isString() ? config_["overview-label"].asString() : "OVERVIEW";
@@ -108,7 +102,7 @@ void Workspaces::doUpdate() {
       overview_button_->set_label(label);
     }
   } else {
-    overview_button_->hide();
+    overview_button_->set_visible(false);
 
     for (auto btn_it = buttons_.begin(); btn_it != buttons_.end();) {
       uint64_t id = btn_it->first;
@@ -150,10 +144,11 @@ void Workspaces::doUpdate() {
 
     std::sort(indices.begin(), indices.end());
 
-    int pos = 0;
+    Gtk::Widget* prev = overview_button_;
     for (uint64_t idx : indices) {
-      box_.reorder_child(buttons_[idx], pos + 1);
-      pos++;
+      Gtk::Button& button = buttons_[idx];
+      box_.reorder_child_after(button, *prev);
+      prev = &button;
     }
   }
 }
@@ -166,46 +161,58 @@ void Workspaces::update() {
 Gtk::Button& Workspaces::addButton(uint64_t idx) {
   auto [it, _] = buttons_.emplace(idx, std::to_string(idx));
   auto& button = it->second;
-  box_.pack_start(button, false, false, 0);
-  button.set_relief(Gtk::RELIEF_NONE);
-
-  if (!on_click_left_.empty() || !on_click_middle_.empty() || !on_click_right_.empty()) {
-    button.add_events(Gdk::BUTTON_PRESS_MASK);
-    button.signal_button_press_event().connect(
-        [this, idx](GdkEventButton* event) -> bool { return handleButtonClick(event, idx, false); },
-        false);
-  }
-
-  button.show_all();
+  box_.append(button);
+  button.set_has_frame(false);
+  addClickHandler(button, idx, false);
   return button;
+}
+
+void Workspaces::addClickHandler(Gtk::Button& button, uint64_t idx, bool isOverview) {
+  if (on_click_left_.empty() && on_click_middle_.empty() && on_click_right_.empty()) {
+    return;
+  }
+  // Capture phase: every press is claimed before the button's own click gesture sees it
+  auto click = Gtk::GestureClick::create();
+  click->set_button(0);
+  click->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
+  click->signal_pressed().connect(
+      [this, click = click.get(), idx, isOverview](int n_press, double, double) {
+        const guint button = click->get_current_button();
+        handleButtonClick(button, idx, isOverview);
+        // Like AModule, a double (triple) click is a press followed by a second event
+        if ((n_press - 1) % 3 != 0) {
+          handleButtonClick(button, idx, isOverview);
+        }
+        click->set_state(Gtk::EventSequenceState::CLAIMED);
+      });
+  button.add_controller(click);
 }
 
 void Workspaces::updateButtonState(Gtk::Button& button, const Json::Value& tag,
                                    const Json::Value& monitor) {
-  auto style = button.get_style_context();
   bool active = tag["is_active"].asBool();
   bool urgent = tag["is_urgent"].asBool();
   bool empty = (tag["client_count"].asInt() == 0);
 
   if (active)
-    style->add_class("active");
+    button.add_css_class("active");
   else
-    style->remove_class("active");
+    button.remove_css_class("active");
 
   if (urgent)
-    style->add_class("urgent");
+    button.add_css_class("urgent");
   else
-    style->remove_class("urgent");
+    button.remove_css_class("urgent");
 
   if (empty)
-    style->add_class("empty");
+    button.add_css_class("empty");
   else
-    style->remove_class("empty");
+    button.remove_css_class("empty");
 
   if (monitor["active"].asBool())
-    style->add_class("current_output");
+    button.add_css_class("current_output");
   else
-    style->remove_class("current_output");
+    button.remove_css_class("current_output");
 
   uint64_t idx = tag["index"].asUInt64();
   std::string name = std::to_string(idx);
@@ -225,14 +232,9 @@ void Workspaces::updateButtonState(Gtk::Button& button, const Json::Value& tag,
   }
 
   if (config_["current-only"].asBool()) {
-    if (active)
-      button.show();
-    else
-      button.hide();
-  } else if (config_["hide-empty"].asBool() && empty && !active) {
-    button.hide();
+    button.set_visible(active);
   } else {
-    button.show();
+    button.set_visible(!(config_["hide-empty"].asBool() && empty && !active));
   }
 }
 
@@ -250,16 +252,16 @@ std::string Workspaces::getIcon(const std::string& value, const Json::Value& tag
   return value;
 }
 
-bool Workspaces::handleButtonClick(GdkEventButton* event, uint64_t idx, bool isOverview) {
+void Workspaces::handleButtonClick(guint button, uint64_t idx, bool isOverview) {
   std::string action;
-  if (event->button == 1)
+  if (button == 1)
     action = on_click_left_;
-  else if (event->button == 2)
+  else if (button == 2)
     action = on_click_middle_;
-  else if (event->button == 3)
+  else if (button == 3)
     action = on_click_right_;
 
-  if (action.empty()) return true;
+  if (action.empty()) return;
 
   try {
     std::string cmd;
@@ -283,8 +285,6 @@ bool Workspaces::handleButtonClick(GdkEventButton* event, uint64_t idx, bool isO
   } catch (const std::exception& e) {
     spdlog::error("Error sending IPC command: {}", e.what());
   }
-
-  return true;
 }
 
 }  // namespace waybar::modules::mango

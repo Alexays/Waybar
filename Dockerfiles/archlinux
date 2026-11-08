@@ -14,13 +14,11 @@ RUN pacman -Syu --noconfirm && \
         gobject-introspection \
         gpsd \
         graphviz \
-        gtk-layer-shell \
         gtk4-layer-shell \
         gtkmm-4.0 \
-        gtkmm3 \
         iniparser \
         jsoncpp \
-        libdbusmenu-gtk3 \
+        libdbusmenu-glib \
         libinput \
         libmpdclient \
         libpulse \

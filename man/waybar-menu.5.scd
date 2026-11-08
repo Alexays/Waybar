@@ -139,6 +139,10 @@ Module config :
 - *menuitem*
   Style for items in the menu
 
+The menu is a GTK4 *popover.menu*. Waybar rewrites the *menu* and *menuitem*
+selectors to *popover.menu > contents* and *modelbutton*, so both spellings
+work.
+
 # EXAMPLE:
 
 ```

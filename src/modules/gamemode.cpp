@@ -22,11 +22,11 @@
 
 namespace waybar::modules {
 Gamemode::Gamemode(const std::string& id, const Json::Value& config)
-    : AModule(config, "gamemode", id), box_(Gtk::ORIENTATION_HORIZONTAL, 0), icon_(), label_() {
-  box_.pack_start(icon_);
-  box_.pack_start(label_);
+    : AModule(config, "gamemode", id), box_(Gtk::Orientation::HORIZONTAL, 0), icon_(), label_() {
+  box_.append(icon_);
+  box_.append(label_);
   box_.set_name(name_);
-  event_box_.add(box_);
+  event_box_.set_child(box_);
 
   // Tooltip
   if (config_["tooltip"].isBool()) {
@@ -81,8 +81,8 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
 
   // Connect to gamemode; its cached properties are never read, so don't wait for a GetAll
   gamemode_proxy = Gio::DBus::Proxy::create_for_bus_sync(
-      Gio::DBus::BusType::BUS_TYPE_SESSION, dbus_name, dbus_obj_path, dbus_interface, {},
-      Gio::DBus::PROXY_FLAGS_DO_NOT_LOAD_PROPERTIES);
+      Gio::DBus::BusType::SESSION, dbus_name, dbus_obj_path, dbus_interface, {},
+      Gio::DBus::ProxyFlags::DO_NOT_LOAD_PROPERTIES);
   if (!gamemode_proxy) {
     throw std::runtime_error("Unable to connect to gamemode DBus!...");
   } else {
@@ -90,7 +90,7 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
   }
 
   // Connect to Login1 PrepareForSleep signal
-  system_connection = Gio::DBus::Connection::get_sync(Gio::DBus::BusType::BUS_TYPE_SYSTEM);
+  system_connection = Gio::DBus::Connection::get_sync(Gio::DBus::BusType::SYSTEM);
   if (!system_connection) {
     throw std::runtime_error("Unable to connect to the SYSTEM Bus!...");
   } else {
@@ -101,11 +101,10 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
 
   // Registered last: only the destructor removes it, and that never runs if the constructor throws
   gamemodeWatcher_id = Gio::DBus::watch_name(
-      Gio::DBus::BUS_TYPE_SESSION, dbus_name, sigc::mem_fun(*this, &Gamemode::appear),
-      sigc::mem_fun(*this, &Gamemode::disappear),
-      Gio::DBus::BusNameWatcherFlags::BUS_NAME_WATCHER_FLAGS_AUTO_START);
+      Gio::DBus::BusType::SESSION, dbus_name, sigc::mem_fun(*this, &Gamemode::appear),
+      sigc::mem_fun(*this, &Gamemode::disappear), Gio::DBus::BusNameWatcherFlags::AUTO_START);
 
-  event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &Gamemode::handleToggle));
+  enableClick();
 }
 
 Gamemode::~Gamemode() {
@@ -150,7 +149,7 @@ void Gamemode::getData_cb(Glib::RefPtr<Gio::AsyncResult>& result) {
       }
     }
   } catch (Glib::Error& e) {
-    spdlog::error("Gamemode Error {}", e.what().c_str());
+    spdlog::error("Gamemode Error {}", e.what());
   }
   dp.emit();
 
@@ -201,7 +200,7 @@ void Gamemode::disappear(const Glib::RefPtr<Gio::DBus::Connection>& connection,
   event_box_.set_visible(false);
 }
 
-bool Gamemode::handleToggle(GdkEventButton* const& event) {
+bool Gamemode::handleToggle(const ButtonEvent& /*e*/) {
   showAltText = !showAltText;
   dp.emit();
   return true;
@@ -220,12 +219,12 @@ auto Gamemode::update() -> void {
   // CSS status class
   const std::string status = gamemodeRunning && gameCount > 0 ? "running" : "";
   // Remove last status if it exists
-  if (!lastStatus.empty() && box_.get_style_context()->has_class(lastStatus)) {
-    box_.get_style_context()->remove_class(lastStatus);
+  if (!lastStatus.empty() && box_.has_css_class(lastStatus)) {
+    box_.remove_css_class(lastStatus);
   }
   // Add the new status class to the Box
-  if (!status.empty() && !box_.get_style_context()->has_class(status)) {
-    box_.get_style_context()->add_class(status);
+  if (!status.empty() && !box_.has_css_class(status)) {
+    box_.add_css_class(status);
   }
   lastStatus = status;
 
@@ -242,7 +241,7 @@ auto Gamemode::update() -> void {
     if (!DefaultGtkIconThemeWrapper::has_icon(iconName)) {
       iconName = DEFAULT_ICON_NAME;
     }
-    icon_.set_from_icon_name(iconName, Gtk::ICON_SIZE_INVALID);
+    icon_.set_from_icon_name(iconName);
     box_.set_spacing(iconSpacing);
     icon_.set_pixel_size(iconSize);
   } else {

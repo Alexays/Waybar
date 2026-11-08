@@ -17,9 +17,7 @@ waybar::modules::Backlight::Backlight(const std::string& id, const Json::Value& 
     : ALabel(config, "backlight", id, "{percent}%", 2),
       preferred_device_(config["device"].isString() ? config["device"].asString() : ""),
       backend(interval_, [this] { dp.emit(); }) {
-  // Set up scroll handler
-  event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Backlight::handleScroll));
+  enableScroll();
 }
 
 auto waybar::modules::Backlight::update() -> void {
@@ -33,7 +31,7 @@ auto waybar::modules::Backlight::update() -> void {
     }
 
     if (best->get_powered()) {
-      event_box_.show();
+      event_box_.set_visible(true);
 
       const uint8_t percent =
           best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
@@ -58,7 +56,7 @@ auto waybar::modules::Backlight::update() -> void {
                             fmt::arg("icon", getIcon(percent)),
                             fmt::arg("icon_exp", getIcon(percent_exp)));
     } else {
-      event_box_.hide();
+      event_box_.set_visible(false);
     }
   } else {
     if (previous_best_device == nullptr) {
@@ -71,7 +69,7 @@ auto waybar::modules::Backlight::update() -> void {
   ALabel::update();
 }
 
-bool waybar::modules::Backlight::handleScroll(GdkEventScroll* e) {
+bool waybar::modules::Backlight::handleScroll(const ScrollEvent& e) {
   // Check if the user has set a custom command for scrolling
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
     return AModule::handleScroll(e);

@@ -103,17 +103,6 @@ static void handle_global_remove(void* data, struct wl_registry* registry, uint3
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
-// dwl destroys the zdwl_ipc_output_v2 objects of a removed monitor; a request on one is fatal
-static bool monitor_present(const Glib::RefPtr<Gdk::Monitor>& monitor) {
-  auto display = monitor->get_display();
-  for (int i = 0; i < display->get_n_monitors(); ++i) {
-    if (display->get_monitor(i) == monitor) {
-      return true;
-    }
-  }
-  return false;
-}
-
 Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& config)
     : waybar::AModule(config, "tags", id, false, false),
       status_manager_{nullptr},
@@ -144,10 +133,10 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
 
   box_.set_name("tags");
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
+  box_.add_css_class(MODULE_CLASS);
+  event_box_.set_child(box_);
 
   // Default to 9 tags, cap at 32
   const uint32_t num_tags =
@@ -164,18 +153,31 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
     }
   }
 
+  buttons_.reserve(num_tags);
   uint32_t i = 1;
   for (const auto& tag_label : tag_labels) {
     Gtk::Button& button = buttons_.emplace_back(tag_label);
-    button.set_relief(Gtk::RELIEF_NONE);
-    box_.pack_start(button, false, false, 0);
+    button.set_has_frame(false);
+    box_.append(button);
     if (!config_["disable-click"].asBool()) {
       button.signal_clicked().connect(
           sigc::bind(sigc::mem_fun(*this, &Tags::handle_primary_clicked), i));
-      button.signal_button_press_event().connect(
-          sigc::bind(sigc::mem_fun(*this, &Tags::handle_button_press), i));
+      /* Claims the presses the button leaves to its parents, so they never reach the module's
+       * own click handling. Claiming the primary one would cancel the button's clicked. */
+      auto click = Gtk::GestureClick::create();
+      click->set_button(0);
+      click->signal_pressed().connect([this, click = click.get(), i](int, double, double) {
+        if (click->get_current_button() == GDK_BUTTON_PRIMARY) {
+          return;
+        }
+        click->set_state(Gtk::EventSequenceState::CLAIMED);
+        if (click->get_current_button() == GDK_BUTTON_SECONDARY && output_status_) {
+          // The tag state mask, not the num_tags count local to this constructor
+          zdwl_ipc_output_v2_set_tags(output_status_, dwl::num_tags ^ i, 0);
+        }
+      });
+      button.add_controller(click);
     }
-    button.show();
     i <<= 1;
   }
 
@@ -189,7 +191,8 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
 
 Tags::~Tags() {
   if (output_status_) {
-    if (monitor_present(bar_.output->monitor)) {
+    // dwl destroys the zdwl_ipc_output_v2 objects of a removed monitor; a request on one is fatal
+    if (bar_.output->monitor->is_valid()) {
       zdwl_ipc_output_v2_release(output_status_);
     } else {
       zdwl_ipc_output_v2_destroy(output_status_);
@@ -206,40 +209,32 @@ void Tags::handle_primary_clicked(uint32_t tag) {
   zdwl_ipc_output_v2_set_tags(output_status_, tag, 1);
 }
 
-bool Tags::handle_button_press(GdkEventButton* event_button, uint32_t tag) {
-  if (event_button->type == GDK_BUTTON_PRESS && event_button->button == 3) {
-    if (!output_status_) return true;
-    zdwl_ipc_output_v2_set_tags(output_status_, num_tags ^ tag, 0);
-  }
-  return true;
-}
-
 void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint32_t focused) {
   if (tag >= buttons_.size()) return;
   // First clear all occupied state
   auto& button = buttons_[tag];
   if (clients) {
-    button.get_style_context()->add_class("occupied");
+    button.add_css_class("occupied");
   } else {
-    button.get_style_context()->remove_class("occupied");
+    button.remove_css_class("occupied");
   }
 
   if (clients & TAG_INACTIVE) {
-    button.get_style_context()->remove_class("empty");
+    button.remove_css_class("empty");
   } else {
-    button.get_style_context()->add_class("empty");
+    button.add_css_class("empty");
   }
 
   if (state & TAG_ACTIVE) {
-    button.get_style_context()->add_class("focused");
+    button.add_css_class("focused");
   } else {
-    button.get_style_context()->remove_class("focused");
+    button.remove_css_class("focused");
   }
 
   if (state & TAG_URGENT) {
-    button.get_style_context()->add_class("urgent");
+    button.add_css_class("urgent");
   } else {
-    button.get_style_context()->remove_class("urgent");
+    button.remove_css_class("urgent");
   }
 
   if (hide_vacant_ && !clients && !(state & TAG_ACTIVE)) {
@@ -253,9 +248,9 @@ void Tags::handle_active_output(zdwl_ipc_output_v2* zdwl_output_v2, uint32_t act
   if (output_status_ == zdwl_output_v2) {
     for (size_t i = 0; i < buttons_.size(); ++i) {
       if (active == 0) {
-        buttons_[i].get_style_context()->remove_class("output");
+        buttons_[i].remove_css_class("output");
       } else {
-        buttons_[i].get_style_context()->add_class("output");
+        buttons_[i].add_css_class("output");
       }
     }
   }

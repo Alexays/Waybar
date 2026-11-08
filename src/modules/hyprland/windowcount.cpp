@@ -61,7 +61,7 @@ auto WindowCount::update() -> void {
     label_.set_markup(fmt::format("{}", workspace_.windows));
   }
 
-  label_.show();
+  label_.set_visible(true);
   AAppIconLabel::update();
 }
 
@@ -139,12 +139,11 @@ void WindowCount::onEvent(const std::string& ev) { dp.emit(); }
 void WindowCount::onReconnect() { dp.emit(); }
 
 void WindowCount::setClass(const std::string& classname, bool enable) {
+  auto& window = const_cast<Bar&>(bar_).window;
   if (enable) {
-    if (!bar_.window.get_style_context()->has_class(classname)) {
-      bar_.window.get_style_context()->add_class(classname);
-    }
+    window.add_css_class(classname);
   } else {
-    bar_.window.get_style_context()->remove_class(classname);
+    window.remove_css_class(classname);
   }
 }
 

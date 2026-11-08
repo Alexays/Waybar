@@ -9,15 +9,13 @@ RUN apt update && \
         cmake \
         git \
         gobject-introspection \
-        libdbusmenu-gtk3-dev \
+        libdbusmenu-glib-dev \
         libegl1-mesa-dev \
         libfmt-dev \
         libgbm-dev \
         libgirepository1.0-dev \
         libgles2-mesa-dev \
-        libgtk-layer-shell-dev \
         libgtk4-layer-shell-dev \
-        libgtkmm-3.0-dev \
         libgtkmm-4.0-dev \
         libhowardhinnant-date-dev \
         libiniparser-dev \

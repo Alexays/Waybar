@@ -44,7 +44,7 @@ smoke::setup() {
     # SMOKE_A11Y=1 exposes the widget tree to a11y.py (needs a session bus)
     if [ "${SMOKE_A11Y:-0}" = 1 ]; then
         unset NO_AT_BRIDGE
-        export GTK_A11Y=1
+        export GTK_A11Y=atspi
     fi
 }
 

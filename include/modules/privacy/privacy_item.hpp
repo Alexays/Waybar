@@ -5,6 +5,7 @@
 #include <string>
 
 #include "gtkmm/box.h"
+#include "gtkmm/centerbox.h"
 #include "gtkmm/image.h"
 #include "gtkmm/revealer.h"
 #include "util/pipewire/privacy_node_info.hpp"
@@ -40,7 +41,7 @@ class PrivacyItem : public Gtk::Revealer {
   std::string iconName = "image-missing-symbolic";
   bool tooltip = true;
 
-  Gtk::Box box_;
+  Gtk::CenterBox box_;
   Gtk::Image icon_;
 
   void update_tooltip();

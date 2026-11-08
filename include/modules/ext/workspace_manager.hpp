@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 #include <gtkmm/button.h>
+#include <gtkmm/centerbox.h>
 #include <gtkmm/image.h>
 #include <gtkmm/label.h>
 
@@ -35,7 +36,7 @@ class WorkspaceManager final : public AModule {
 
   // wl requests
   void commit() const;
-  bool handleScroll(GdkEventScroll* e) override;
+  bool handleScroll(const ScrollEvent& e) override;
 
  private:
   void update() override;
@@ -112,7 +113,7 @@ class Workspace {
   void handle_removed();
 
   // gdk events
-  bool handle_clicked(const GdkEventButton* button) const;
+  void handle_clicked(guint button) const;
 
  private:
   bool has_state(uint32_t state) const { return (state_ & state) == state; }
@@ -136,7 +137,7 @@ class Workspace {
   std::string on_click_right_action_;
 
   Gtk::Button button_;
-  Gtk::Box content_;
+  Gtk::CenterBox content_;
   Gtk::Label label_;
 };
 

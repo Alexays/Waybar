@@ -4,6 +4,7 @@
 #include <gtkmm/label.h>
 #include <json/json.h>
 
+#include <chrono>
 #include <deque>
 #include <vector>
 
@@ -30,11 +31,7 @@ class AGraph : public AModule {
 
   const std::chrono::milliseconds interval_;
 
-  bool onDraw(const Cairo::RefPtr<Cairo::Context>& cr);
-
-  std::map<std::string, GtkMenuItem*> submenus_;
-  std::map<std::string, std::string> menuActionsMap_;
-  static void handleGtkMenuEvent(GtkMenuItem* menuitem, gpointer data);
+  void onDraw(const Cairo::RefPtr<Cairo::Context>& cr, int width, int height);
 
  private:
   void drawFilledArea(const Cairo::RefPtr<Cairo::Context>& cr,

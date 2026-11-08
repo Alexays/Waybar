@@ -21,7 +21,7 @@ class Backlight : public ALabel {
   virtual ~Backlight() = default;
   auto update() -> void override;
 
-  bool handleScroll(GdkEventScroll* e) override;
+  bool handleScroll(const ScrollEvent& e) override;
 
   const std::string preferred_device_;
 

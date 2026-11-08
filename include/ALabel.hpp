@@ -7,6 +7,7 @@
 #include <gtkmm/tooltip.h>
 #include <json/json.h>
 
+#include <chrono>
 #include <optional>
 #include <string>
 #include <utility>
@@ -80,13 +81,9 @@ class ALabel : public AModule {
     updateLabelAndTooltipForState("", labelFormat, tooltipDefault, store);
   }
 
-  bool handleToggle(GdkEventButton* const& e) override;
+  bool handleToggle(const ButtonEvent& e) override;
   void copyToClipboard(const std::string&);
   virtual std::string getState(uint8_t value, bool lesser = false);
-
-  std::map<std::string, GtkMenuItem*> submenus_;
-  std::map<std::string, std::string> menuActionsMap_;
-  static void handleGtkMenuEvent(GtkMenuItem* menuitem, gpointer data);
 
  private:
   bool pointerOverModule() const;
@@ -97,6 +94,7 @@ class ALabel : public AModule {
   std::optional<std::string> last_label_markup_;
   std::optional<std::string> last_tooltip_markup_;
   Glib::RefPtr<Gtk::Tooltip> active_tooltip_;
+  Glib::RefPtr<Gtk::EventControllerScroll> tooltip_scroll_;
   sigc::connection tooltip_requery_;
 };
 

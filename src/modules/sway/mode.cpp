@@ -39,13 +39,13 @@ void Mode::onEvent(const struct Ipc::ipc_response& res) {
 
 auto Mode::update() -> void {
   if (mode_.empty()) {
-    event_box_.hide();
+    event_box_.set_visible(false);
   } else {
     label_.set_markup(fmt::format(fmt::runtime(format_), mode_));
     if (tooltipEnabled()) {
       setTooltipMarkup(mode_);
     }
-    event_box_.show();
+    event_box_.set_visible(true);
   }
   // Call parent update
   ALabel::update();

@@ -150,13 +150,13 @@ void waybar::modules::CustomGraph::handleEvent() {
   }
 }
 
-bool waybar::modules::CustomGraph::handleScroll(GdkEventScroll* e) {
+bool waybar::modules::CustomGraph::handleScroll(const ScrollEvent& e) {
   auto ret = AGraph::handleScroll(e);
   handleEvent();
   return ret;
 }
 
-bool waybar::modules::CustomGraph::handleToggle(GdkEventButton* const& e) {
+bool waybar::modules::CustomGraph::handleToggle(const ButtonEvent& e) {
   auto ret = AGraph::handleToggle(e);
   handleEvent();
   return ret;
@@ -168,7 +168,7 @@ auto waybar::modules::CustomGraph::update() -> void {
   // Hide label if output is empty
   if ((config_["exec"].isString() || config_["exec-if"].isString()) &&
       (output_.out.empty() || output_.exit_code != 0)) {
-    event_box_.hide();
+    event_box_.set_visible(false);
   } else {
     if (config_["return-type"].asString() == "json") {
       parseOutputJson();
@@ -193,18 +193,16 @@ auto waybar::modules::CustomGraph::update() -> void {
           }
         }
       }
-      auto style = graph_.get_style_context();
-      auto classes = style->list_classes();
-      for (auto const& c : classes) {
+      for (auto const& c : graph_.get_css_classes()) {
         if (c == id_) continue;
-        style->remove_class(c);
+        graph_.remove_css_class(c);
       }
       for (auto const& c : class_) {
-        style->add_class(c);
+        graph_.add_css_class(c);
       }
-      style->add_class("flat");
-      style->add_class(MODULE_CLASS);
-      event_box_.show();
+      graph_.add_css_class("flat");
+      graph_.add_css_class(MODULE_CLASS);
+      event_box_.set_visible(true);
     } catch (const fmt::format_error& e) {
       if (std::strcmp(e.what(), "cannot switch from manual to automatic argument indexing") != 0)
         throw;

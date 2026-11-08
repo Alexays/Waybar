@@ -27,8 +27,16 @@ CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& co
     throw std::runtime_error{std::string{"Missing wbcffi_version function: "} + dlerror()};
   }
 
-  // Fetch functions
+  // Versions 1 and 2 hand the module a GTK3 widget: such a library links GTK3, which cannot load
+  // into a GTK4 process
   if (*wbcffi_version == 1 || *wbcffi_version == 2) {
+    throw std::runtime_error{"CFFI module " + dynlib_path + " uses wbcffi_version " +
+                             std::to_string(*wbcffi_version) +
+                             ", built for GTK3: it must be ported to GTK4 and wbcffi_version 3"};
+  }
+
+  // Fetch functions
+  if (*wbcffi_version == 3) {
     // Mandatory functions
     hooks_.init = reinterpret_cast<InitFn*>(dlsym(handle, "wbcffi_init"));
     if (!hooks_.init) {
@@ -57,16 +65,7 @@ CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& co
   std::vector<std::string> config_entries_stringstor;
   const auto& keys = config.getMemberNames();
   for (size_t i = 0; i < keys.size(); i++) {
-    const auto& value = config[keys[i]];
-    if (*wbcffi_version == 1) {
-      if (value.isConvertibleTo(Json::ValueType::stringValue)) {
-        config_entries_stringstor.push_back(value.asString());
-      } else {
-        config_entries_stringstor.push_back(value.toStyledString());
-      }
-    } else {
-      config_entries_stringstor.push_back(value.toStyledString());
-    }
+    config_entries_stringstor.push_back(config[keys[i]].toStyledString());
   }
 
   // Prepare config_entries array
@@ -79,9 +78,14 @@ CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& co
   ffi::wbcffi_init_info init_info = {
       .obj = (ffi::wbcffi_module*)this,
       .waybar_version = VERSION,
-      .get_root_widget =
-          [](ffi::wbcffi_module* obj) {
-            return dynamic_cast<Gtk::Container*>(&((CFFI*)obj)->event_box_)->gobj();
+      .set_root_widget =
+          [](ffi::wbcffi_module* obj, GtkWidget* widget) {
+            auto& root = ((CFFI*)obj)->event_box_;
+            if (widget == nullptr) {
+              root.unset_child();
+            } else {
+              root.set_child(*Glib::wrap(widget));
+            }
           },
       .queue_update = [](ffi::wbcffi_module* obj) { ((CFFI*)obj)->dp.emit(); },
   };

@@ -69,10 +69,11 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
   }
   box_.set_name("workspaces");
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
+  box_.add_css_class(MODULE_CLASS);
+  event_box_.set_child(box_);
+  enableChildMultiClick();
   if (config_["format-window-separator"].isString()) {
     m_formatWindowSeparator = config_["format-window-separator"].asString();
   } else {
@@ -98,9 +99,7 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
     spdlog::error("Workspaces: {}", e.what());
   }
   if (config["enable-bar-scroll"].asBool()) {
-    auto& window = const_cast<Bar&>(bar_).window;
-    window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
+    enableBarScroll(const_cast<Bar&>(bar_).window);
   }
   // Launch worker
   ipc_.setWorker([this] {
@@ -294,6 +293,7 @@ bool Workspaces::filterButtons() {
                                                (*ws)["target_output"].asString() != ""
                                          : !config_["all-outputs"].asBool() &&
                                                (*ws)["output"].asString() != bar_.output->name)) {
+      box_.remove(it->second);
       it = buttons_.erase(it);
       needReorder = true;
     } else {
@@ -355,6 +355,7 @@ void Workspaces::updateWindows(const Json::Value& node, std::string& windows) {
 auto Workspaces::update() -> void {
   std::lock_guard<std::mutex> lock(mutex_);
   bool needReorder = filterButtons();
+  const Gtk::Widget* previous = nullptr;
   for (auto it = workspaces_.begin(); it != workspaces_.end(); ++it) {
     auto bit = buttons_.find((*it)["name"].asString());
     if (bit == buttons_.end()) {
@@ -362,54 +363,59 @@ auto Workspaces::update() -> void {
     }
     auto& button = bit == buttons_.end() ? addButton(*it) : bit->second;
     if (needReorder) {
-      box_.reorder_child(button, it - workspaces_.begin());
+      if (previous == nullptr) {
+        box_.reorder_child_at_start(button);
+      } else {
+        box_.reorder_child_after(button, *previous);
+      }
     }
+    previous = &button;
     bool noNodes = (*it)["nodes"].empty() && (*it)["floating_nodes"].empty();
     if (hasFlag((*it), "focused")) {
-      button.get_style_context()->add_class("focused");
+      button.add_css_class("focused");
     } else {
-      button.get_style_context()->remove_class("focused");
+      button.remove_css_class("focused");
     }
     if (hasFlag((*it), "visible") || ((*it)["output"].isString() && noNodes)) {
-      button.get_style_context()->add_class("visible");
+      button.add_css_class("visible");
     } else {
-      button.get_style_context()->remove_class("visible");
+      button.remove_css_class("visible");
     }
     if (hasFlag((*it), "urgent")) {
-      button.get_style_context()->add_class("urgent");
+      button.add_css_class("urgent");
     } else {
-      button.get_style_context()->remove_class("urgent");
+      button.remove_css_class("urgent");
     }
     if ((*it)["target_output"].isString()) {
-      button.get_style_context()->add_class("persistent");
+      button.add_css_class("persistent");
     } else {
-      button.get_style_context()->remove_class("persistent");
+      button.remove_css_class("persistent");
     }
     if (noNodes) {
-      button.get_style_context()->add_class("empty");
+      button.add_css_class("empty");
     } else {
-      button.get_style_context()->remove_class("empty");
+      button.remove_css_class("empty");
     }
     if ((*it)["output"].isString()) {
       // Simply attempt to remove all output classes every time to reset output classes. This works
       // even if a class has not been previously added to the style context.
       for (const auto& oclass : config_["output-classes"]) {
-        button.get_style_context()->remove_class(oclass.asString());
+        button.remove_css_class(oclass.asString());
       }
       // If output-classes contains a class for output associated with current workspace button, add
       // the class to its style context.
       std::string output_name = (*it)["output"].asString();
       if (config_["output-classes"].isMember(output_name) &&
           config_["output-classes"][output_name].isString()) {
-        button.get_style_context()->add_class(config_["output-classes"][output_name].asString());
+        button.add_css_class(config_["output-classes"][output_name].asString());
       }
       if (((*it)["output"].asString()) == bar_.output->name) {
-        button.get_style_context()->add_class("current_output");
+        button.add_css_class("current_output");
       } else {
-        button.get_style_context()->remove_class("current_output");
+        button.remove_css_class("current_output");
       }
     } else {
-      button.get_style_context()->remove_class("current_output");
+      button.remove_css_class("current_output");
     }
     std::string full_name;
     if (!config_["disable-markup"].asBool()) {
@@ -446,7 +452,7 @@ auto Workspaces::update() -> void {
     }
 
     if (!config_["disable-markup"].asBool()) {
-      static_cast<Gtk::Label*>(button.get_children()[0])->set_markup(full_name);
+      static_cast<Gtk::Label*>(button.get_child())->set_markup(full_name);
     } else {
       button.set_label(full_name);
     }
@@ -459,12 +465,18 @@ auto Workspaces::update() -> void {
 Gtk::Button& Workspaces::addButton(const Json::Value& node) {
   auto pair = buttons_.emplace(node["name"].asString(), node["name"].asString());
   auto&& button = pair.first->second;
-  box_.pack_start(button, false, false, 0);
+  box_.append(button);
   button.set_name("sway-workspace-" + node["name"].asString());
-  button.set_relief(Gtk::RELIEF_NONE);
-  button.get_style_context()->add_class("workspace-index-" + node["num"].asString());
+  button.set_has_frame(false);
+  button.add_css_class("workspace-index-" + node["num"].asString());
+  auto click = Gtk::GestureClick::create();
+  click->set_button(GDK_BUTTON_PRIMARY);
+  // A primary press stays on the button even with disable-click, as GtkButton claims it
+  click->signal_pressed().connect([click = click.get()](int, double, double) {
+    click->set_state(Gtk::EventSequenceState::CLAIMED);
+  });
   if (!config_["disable-click"].asBool()) {
-    button.signal_pressed().connect([this, node] {
+    click->signal_pressed().connect([this, node](int, double, double) {
       try {
         if (node["target_output"].isString()) {
           ipc_.sendCmd(IPC_COMMAND,
@@ -492,6 +504,7 @@ Gtk::Button& Workspaces::addButton(const Json::Value& node) {
       }
     });
   }
+  button.add_controller(click);
   return button;
 }
 
@@ -529,13 +542,7 @@ std::string Workspaces::getIcon(const std::string& name, const Json::Value& node
   return name;
 }
 
-bool Workspaces::handleScroll(GdkEventScroll* e) {
-  if (gdk_event_get_pointer_emulated((GdkEvent*)e) != 0) {
-    /**
-     * Ignore emulated scroll events on window
-     */
-    return false;
-  }
+bool Workspaces::handleScroll(const ScrollEvent& e) {
   auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {
     return true;
@@ -656,15 +663,7 @@ bool is_focused_recursive(const Json::Value& node) {
 }
 
 void Workspaces::onButtonReady(const Json::Value& node, Gtk::Button& button) {
-  if (config_["current-only"].asBool()) {
-    if (is_focused_recursive(node)) {
-      button.show();
-    } else {
-      button.hide();
-    }
-  } else {
-    button.show();
-  }
+  button.set_visible(!config_["current-only"].asBool() || is_focused_recursive(node));
 }
 
 }  // namespace waybar::modules::sway

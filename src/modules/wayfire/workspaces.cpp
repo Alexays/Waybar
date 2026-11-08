@@ -18,16 +18,14 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
       bar_{bar} {
   // init box_
   box_.set_name("workspaces");
-  if (!id.empty()) box_.get_style_context()->add_class(id);
-  box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
+  if (!id.empty()) box_.add_css_class(id);
+  box_.add_css_class(MODULE_CLASS);
+  event_box_.set_child(box_);
+  enableChildMultiClick();
 
-  // scroll events
-  if (!config_["disable-scroll"].asBool()) {
-    auto& target = config_["enable-bar-scroll"].asBool() ? const_cast<Bar&>(bar_).window
-                                                         : dynamic_cast<Gtk::Widget&>(box_);
-    target.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    target.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
+  // Scrolls over the module itself reach handleScroll through AModule and stop there
+  if (!config_["disable-scroll"].asBool() && config_["enable-bar-scroll"].asBool()) {
+    enableBarScroll(const_cast<Bar&>(bar_).window);
   }
 
   // listen events
@@ -48,10 +46,7 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
 
 Workspaces::~Workspaces() { ipc->unregister_handler(handler); }
 
-auto Workspaces::handleScroll(GdkEventScroll* e) -> bool {
-  // Ignore emulated scroll events on window
-  if (gdk_event_get_pointer_emulated((GdkEvent*)e) != 0) return false;
-
+auto Workspaces::handleScroll(const ScrollEvent& e) -> bool {
   auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) return true;
 
@@ -108,47 +103,53 @@ auto Workspaces::update_box() -> void {
   // add buttons for new workspaces
   for (auto i = buttons_.size(); i < num_wss; i++) {
     auto& btn = buttons_.emplace_back("");
-    box_.pack_start(btn, false, false, 0);
-    btn.set_relief(Gtk::RELIEF_NONE);
+    box_.append(btn);
+    btn.set_has_frame(false);
     if (!config_["disable-click"].asBool()) {
-      btn.signal_pressed().connect([=, this] {
+      // Acts on press like GtkButton::pressed: capture runs before the button claims the click
+      auto press = Gtk::GestureClick::create();
+      press->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
+      press->signal_pressed().connect([=, this](int, double, double) {
         Json::Value data;
         data["x"] = Json::Value((uint64_t)i % ws_w);
         data["y"] = Json::Value((uint64_t)i / ws_w);
         data["output-id"] = Json::Value((uint64_t)output.id);
         ipc->send("vswitch/set-workspace", std::move(data));
       });
+      btn.add_controller(press);
     }
   }
 
   // remove buttons for removed workspaces
+  for (auto i = num_wss; i < buttons_.size(); i++) {
+    box_.remove(buttons_[i]);
+  }
   buttons_.resize(num_wss);
 
   // update buttons
   for (size_t i = 0; i < num_wss; i++) {
     const auto& ws = wset.wss[i];
     auto& btn = buttons_[i];
-    auto ctx = btn.get_style_context();
     auto ws_focused = i == wset.ws_idx();
     auto ws_empty = ws.num_views == 0;
 
     // update #workspaces button.focused
     if (ws_focused)
-      ctx->add_class("focused");
+      btn.add_css_class("focused");
     else
-      ctx->remove_class("focused");
+      btn.remove_css_class("focused");
 
     // update #workspaces button.empty
     if (ws_empty)
-      ctx->add_class("empty");
+      btn.add_css_class("empty");
     else
-      ctx->remove_class("empty");
+      btn.remove_css_class("empty");
 
     // update #workspaces button.current_output
     if (output_focused)
-      ctx->add_class("current_output");
+      btn.add_css_class("current_output");
     else
-      ctx->remove_class("current_output");
+      btn.remove_css_class("current_output");
 
     // update label
     auto label = std::to_string(i + 1);
@@ -173,15 +174,12 @@ auto Workspaces::update_box() -> void {
                           fmt::arg("output", output_name));
     }
     if (!config_["disable-markup"].asBool())
-      static_cast<Gtk::Label*>(btn.get_children()[0])->set_markup(label);
+      static_cast<Gtk::Label*>(btn.get_child())->set_markup(label);
     else
       btn.set_label(label);
 
     //
-    if (config_["current-only"].asBool() && i != wset.ws_idx())
-      btn.hide();
-    else
-      btn.show();
+    btn.set_visible(!config_["current-only"].asBool() || i == wset.ws_idx());
   }
 }
 

@@ -74,17 +74,6 @@ static void handle_global_remove(void* data, struct wl_registry* registry, uint3
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
-// dwl destroys the zdwl_ipc_output_v2 objects of a removed monitor; a request on one is fatal
-static bool monitor_present(const Glib::RefPtr<Gdk::Monitor>& monitor) {
-  auto display = monitor->get_display();
-  for (int i = 0; i < display->get_n_monitors(); ++i) {
-    if (display->get_monitor(i) == monitor) {
-      return true;
-    }
-  }
-  return false;
-}
-
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     : AAppIconLabel(config, "window", id, "{}", 0, true),
       bar_(bar),
@@ -119,7 +108,8 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
 Window::~Window() {
   idle_render_.disconnect();
   if (output_status_ != nullptr) {
-    if (monitor_present(bar_.output->monitor)) {
+    // dwl destroys the zdwl_ipc_output_v2 objects of a removed monitor; a request on one is fatal
+    if (bar_.output->monitor->is_valid()) {
       zdwl_ipc_output_v2_release(output_status_);
     } else {
       zdwl_ipc_output_v2_destroy(output_status_);
@@ -163,10 +153,10 @@ bool Window::render() {
     box_.set_visible(false);
   } else {
     if (active_) {
-      box_.get_style_context()->add_class("active");
+      box_.add_css_class("active");
       box_.set_visible(true);
     } else {
-      box_.get_style_context()->remove_class("active");
+      box_.remove_css_class("active");
       box_.set_visible(!hide_inactive_);
     }
   }

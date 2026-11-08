@@ -9,11 +9,10 @@ namespace waybar::util::GeoClueBackend {
 GeoClueBackend::GeoClueBackend(PrivateConstructorTag tag)
     : watcherID_(0), signal_conn(), connected(false), location_in_use(false) {
   // Start watching DBUS
-  watcherID_ =
-      Gio::DBus::watch_name(Gio::DBus::BusType::BUS_TYPE_SYSTEM, "org.freedesktop.GeoClue2",
-                            sigc::mem_fun(*this, &GeoClueBackend::onAppear),
-                            sigc::mem_fun(*this, &GeoClueBackend::onVanished),
-                            Gio::DBus::BusNameWatcherFlags::BUS_NAME_WATCHER_FLAGS_AUTO_START);
+  watcherID_ = Gio::DBus::watch_name(Gio::DBus::BusType::SYSTEM, "org.freedesktop.GeoClue2",
+                                     sigc::mem_fun(*this, &GeoClueBackend::onAppear),
+                                     sigc::mem_fun(*this, &GeoClueBackend::onVanished),
+                                     Gio::DBus::BusNameWatcherFlags::AUTO_START);
 }
 
 GeoClueBackend::~GeoClueBackend() {

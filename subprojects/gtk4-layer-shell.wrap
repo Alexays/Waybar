@@ -1,0 +1,5 @@
+[wrap-file]
+directory = gtk4-layer-shell-1.1.1
+source_filename = gtk4-layer-shell-1.1.1.tar.gz
+source_hash = 5db158d570e28f56625d5fb2022bc487c0f1b1b21a965702e461a5a5a049a439
+source_url = https://github.com/wmww/gtk4-layer-shell/archive/v1.1.1/gtk4-layer-shell-1.1.1.tar.gz

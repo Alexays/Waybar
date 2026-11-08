@@ -51,11 +51,7 @@ Sndio::Sndio(const std::string& id, const Json::Value& config)
       muted_(false) {
   connect_to_sndio();
 
-  event_box_.show();
-
-  event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK | Gdk::BUTTON_PRESS_MASK);
-  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Sndio::handleScroll));
-  event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &Sndio::handleToggle));
+  enableScroll();
 
   thread_ = [this] {
     dp.emit();
@@ -115,18 +111,18 @@ auto Sndio::update() -> void {
                                    : 0;
 
   if (volume_ == 0) {
-    label_.get_style_context()->add_class("muted");
+    label_.add_css_class("muted");
   } else {
-    label_.get_style_context()->remove_class("muted");
+    label_.remove_css_class("muted");
   }
 
   auto text =
       fmt::format(fmt::runtime(format), fmt::arg("volume", vol), fmt::arg("raw_value", volume_));
   if (text.empty()) {
-    label_.hide();
+    label_.set_visible(false);
   } else {
     label_.set_markup(text);
-    label_.show();
+    label_.set_visible(true);
   }
 
   ALabel::update();
@@ -150,7 +146,7 @@ auto Sndio::put_val(unsigned int addr, unsigned int val) -> void {
   }
 }
 
-bool Sndio::handleScroll(GdkEventScroll* e) {
+bool Sndio::handleScroll(const ScrollEvent& e) {
   // change the volume only when no user provided
   // events are configured
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
@@ -190,7 +186,7 @@ bool Sndio::handleScroll(GdkEventScroll* e) {
   return true;
 }
 
-bool Sndio::handleToggle(GdkEventButton* const& e) {
+bool Sndio::handleToggle(const ButtonEvent& e) {
   // toggle mute only when no user provided events are configured
   if (config_["on-click"].isString()) {
     return AModule::handleToggle(e);
