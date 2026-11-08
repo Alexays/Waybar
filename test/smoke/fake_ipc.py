@@ -123,7 +123,8 @@ class Hyprland(Fake):
 
     def workspace_json(self, ws):
         windows = self.workspaces[ws]
-        last = windows[-1] if windows else {"address": "0x0", "title": ""}
+        focused = [w for w in windows if not w.get("pinned")]
+        last = focused[-1] if focused else {"address": "0x0", "title": ""}
         return {"id": ws, "name": str(ws), "monitor": OUTPUT, "monitorID": 0,
                 "windows": len(windows), "hasfullscreen": False,
                 "lastwindow": last["address"], "lastwindowtitle": last["title"],
@@ -149,9 +150,11 @@ class Hyprland(Fake):
                 body = json.dumps([{
                     "address": w["address"], "mapped": True, "hidden": False, "at": [0, 30],
                     "size": [WIDTH, HEIGHT - 30], "workspace": {"id": ws, "name": str(ws)},
-                    "floating": False, "pseudo": False, "monitor": 0, "class": w["class"],
+                    "floating": w.get("pinned", False), "pseudo": False, "monitor": 0,
+                    "class": w["class"],
                     "title": w["title"], "initialClass": w["class"], "initialTitle": w["title"],
-                    "pid": 1000, "xwayland": False, "pinned": False, "fullscreen": 0,
+                    "pid": 1000, "xwayland": False, "pinned": w.get("pinned", False),
+                    "fullscreen": 0,
                     "fullscreenClient": 0, "grouped": [], "tags": [], "swallowing": "0x0",
                     "focusHistoryID": 0}
                     for ws, windows in self.workspaces.items() for w in windows])
@@ -189,6 +192,14 @@ class Hyprland(Fake):
             del self.workspaces[previous]
             self.emit(f"destroyworkspace>>{previous}",
                       f"destroyworkspacev2>>{previous},{previous}")
+
+    def op_pinned_switch(self, name):
+        # A pinned window keeps its focus: the new workspace holds it, but has no last window.
+        w = self.workspaces[self.active].pop()
+        w["pinned"] = True
+        self.op_workspace(name)
+        self.workspaces[self.active].append(w)
+        self.emit(f"movewindow>>{w['address'][2:]},{name}")
 
     def op_open(self, app, title):
         w = self.window(app, title)
