@@ -103,6 +103,13 @@ step 'close'
 step 'workspace 1'
 "${A11Y[@]}" "ws 1*" "win: foot ~" "count 1"
 "${A11Y[@]}" --absent "ws 3"
+# A pinned window keeps its focus across the switch: workspace 3 has no last window (#4625)
+step 'open kitty "pinned"'
+"${A11Y[@]}" "win: pinned"
+step 'pinned_switch 3'
+"${A11Y[@]}" "ws 3*" "win: pinned"
+step 'workspace 1'
+"${A11Y[@]}" "ws 1*" "win: foot ~"
 step 'layout'
 "${A11Y[@]}" "kb German"
 step 'submap resize'
