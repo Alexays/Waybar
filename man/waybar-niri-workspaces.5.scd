@@ -106,6 +106,11 @@ If none of the sorting options are enabled, workspaces keep their output/index o
 		default: 16 ++
 		Size of the icons in the workspace taskbar.
 
+	*orientation*: ++
+		typeof: string ++
+		default: "horizontal" ++
+		Sets the orientation of the taskbar icons. By default is horizontal, can be changed to "vertical".
+
 *ignore-workspaces*: ++
 	typeof: array ++
 	default: [] ++
