@@ -2,6 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include "util/string.hpp"
+
 namespace waybar::modules::hyprland {
 
 Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
@@ -10,16 +12,6 @@ Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
 
   label_.hide();
   ALabel::update();
-
-  // Displays widget immediately if always_on_ assuming default submap
-  // Needs an actual way to retrieve current submap on startup
-  if (always_on_) {
-    submap_ = default_submap_;
-    label_.get_style_context()->add_class(submap_);
-  }
-
-  // register for hyprland ipc
-  m_ipc.registerForIPC("submap", this);
 
   if (config["icons"].isObject()) {
     const Json::Value& icons = config["icons"];
@@ -32,6 +24,12 @@ Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
       }
     }
   }
+
+  // get the active submap when open
+  initSubmap();
+
+  // register for hyprland ipc
+  m_ipc.registerForIPC("submap", this);
 }
 
 Submap::~Submap() {
@@ -92,9 +90,41 @@ void Submap::onEvent(const std::string& ev) {
     spdlog::warn("hyprland submap received malformed event: {}", ev);
     return;
   }
-  auto submapName = ev.substr(separator + 2);
+  setSubmap(ev.substr(separator + 2));
 
-  submap_ = submapName;
+  spdlog::debug("hyprland submap onevent with {}", submap_);
+
+  dp.emit();
+}
+
+void Submap::onReconnect() {
+  std::lock_guard<std::mutex> lg(mutex_);
+  initSubmap();
+}
+
+void Submap::initSubmap() {
+  // Events only announce a change, so a module created inside a submap has to ask for it (#4736)
+  std::string name;
+  try {
+    name = trim(m_ipc.getSocket1Reply("submap"));
+  } catch (const std::exception& e) {
+    spdlog::warn("hyprland submap: could not read the active submap: {}", e.what());
+  }
+
+  // Not in a submap, or a Hyprland too old to know the request
+  if (name == "default" || name == "unknown request") {
+    name.clear();
+  }
+
+  setSubmap(name);
+
+  spdlog::debug("hyprland submap initSubmap found {}", submap_);
+
+  dp.emit();
+}
+
+void Submap::setSubmap(const std::string& name) {
+  submap_ = name;
 
   if (!icons_[submap_].empty()) {
     icon_ = icons_[submap_];
@@ -105,9 +135,5 @@ void Submap::onEvent(const std::string& ev) {
   if (submap_.empty() && always_on_) {
     submap_ = default_submap_;
   }
-
-  spdlog::debug("hyprland submap onevent with {}", submap_);
-
-  dp.emit();
 }
 }  // namespace waybar::modules::hyprland

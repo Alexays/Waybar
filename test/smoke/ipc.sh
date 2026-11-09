@@ -76,7 +76,7 @@ export HYPRLAND_INSTANCE_SIGNATURE=smoke
 hypr="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE"
 mkdir -p "$hypr"
 start_fake hyprland "$hypr/.socket.sock" "$hypr/.socket2.sock"
-launch hyprland '{
+hypr_config='{
   "layer": "top", "position": "top", "height": 30,
   "modules-left": ["hyprland/workspaces", "hyprland/submap"],
   "modules-center": ["hyprland/window"],
@@ -88,6 +88,7 @@ launch hyprland '{
   "hyprland/language": {"format": "kb {long}"},
   "hyprland/submap": {"format": "mode {}"}
 }'
+launch hyprland "$hypr_config"
 "${A11Y[@]}" "ws 1*" "ws 2" "win: foot ~" "count 1" "kb English (US)"
 step 'workspace 3'
 "${A11Y[@]}" "ws 3*" "count 0"
@@ -113,6 +114,10 @@ step 'workspace 1'
 step 'layout'
 "${A11Y[@]}" "kb German"
 step 'submap resize'
+"${A11Y[@]}" "mode resize"
+# Hyprland only announces changes: a bar started inside a submap has to ask for it (#4736)
+smoke::assert_clean_exit
+launch hyprland "$hypr_config"
 "${A11Y[@]}" "mode resize"
 step 'submap'
 "${A11Y[@]}" --absent "mode resize"
