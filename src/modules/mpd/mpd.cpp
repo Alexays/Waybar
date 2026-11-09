@@ -51,7 +51,7 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
   }
 
   event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
-  event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &MPD::handlePlayPause));
+  connectPress(sigc::mem_fun(*this, &MPD::handlePlayPause));
 
   // The state machine already armed its first timer on main_context_.
   thread_ = std::thread([this] {

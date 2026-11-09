@@ -36,6 +36,13 @@ class AModule : public IModule {
   virtual void resume() {};
   bool shouldSuspend() const { return disable_on_sleep_; }
 
+  static bool fromTouchscreen(const GdkEvent* e);
+  // A drawer leader leaves touchscreen taps to its group, which toggles the drawer
+  void passTouchToParent() { pass_touch_to_parent_ = true; }
+
+ private:
+  bool pass_touch_to_parent_{false};
+
  protected:
   // Don't need to make an object directly
   // Derived classes are able to use it
@@ -46,6 +53,10 @@ class AModule : public IModule {
 
   SCROLL_DIR getScrollDir(GdkEventScroll* e);
   bool tooltipEnabled() const;
+  // Connects a press handler on event_box_ that a drawer leader skips for touchscreen taps
+  void connectPress(const sigc::slot<bool(GdkEventButton*)>& handler);
+  bool passesTouchToParent() const { return pass_touch_to_parent_; }
+  virtual bool leavesTouchToParent(GdkEventButton* e) const;
 
   // --- Generic format/tooltip resolution (config-only, usable by any module,
   // ALabel-derived or not). Prefers `<key>-<state>`, then `<key>`, then default.

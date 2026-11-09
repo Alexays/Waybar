@@ -39,8 +39,10 @@ class Group : public AModule {
   bool handleMouseEnter(GdkEventCrossing* const& ev) override;
   bool handleMouseLeave(GdkEventCrossing* const& ev) override;
   bool handleToggle(GdkEventButton* const& ev) override;
+  // A group leading a drawer still handles taps and lets them reach the outer drawer
+  bool leavesTouchToParent(GdkEventButton* /*e*/) const override { return false; }
   bool handleScroll(GdkEventScroll* e) override;
-  void show_group();
+  void show_group(bool keep_leader = false);
   void hide_group();
   void manage_visibility(AModule* module);
   void show_widget(Gtk::Widget& widget);
