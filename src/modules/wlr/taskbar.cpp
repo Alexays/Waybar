@@ -24,6 +24,7 @@
 #include "util/gtk_icon.hpp"
 #include "util/rewrite_string.hpp"
 #include "util/string.hpp"
+#include "util/tooltip.hpp"
 
 namespace waybar::modules::wlr {
 
@@ -256,23 +257,11 @@ void Task::handle_title(const char* title) {
   title_ = title;
   hide_if_ignored();
   hide_if_duplicate();
+  update_duplicates();
 
-  if ((!with_icon_ && !with_name_) || app_info_) {
-    return;
+  if (with_icon_ || with_name_) {
+    title_lookup_pending_ = true;
   }
-
-  app_info_ = IconLoader::get_app_info_from_app_id_list(title_);
-  name_ = app_info_ ? app_info_->get_display_name() : title;
-
-  if (!with_icon_) {
-    return;
-  }
-
-  int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
-  if (tbar_->icon_loader().image_load_icon(icon_, app_info_, icon_size))
-    icon_.show();
-  else
-    spdlog::debug("Couldn't find icon for {}", title_);
 }
 
 void Task::set_minimize_hint() {
@@ -285,14 +274,24 @@ void Task::hide_if_duplicate() {
   bool contains_app =
       squash_list.contains("*") || squash_list.contains(title_) || squash_list.contains(app_id_);
 
-  // Squashes if the app is in the squash list and more than 1 instance is open
-  if (contains_app && (tbar_->task_id_count(app_id_) > 1 || tbar_->task_title_count(title_) > 1)) {
-    squashed_ = true;
-    hide_button();
-  }
+  // Only an instance that has a button counts, or the last button of the app gets squashed too
+  squashed_ = contains_app && std::ranges::any_of(tbar_->tasks(), [this](auto&& task) {
+                return &task != this && task.button_visible_ &&
+                       (task.app_id_ == app_id_ || task.title_ == title_);
+              });
 
-  if (!squashed_ && !ignored_ && (tbar_->all_outputs() || on_bar_output_)) {
+  if (squashed_) {
+    hide_button();
+  } else if (!ignored_ && (tbar_->all_outputs() || on_bar_output_)) {
     show_button();
+  }
+}
+
+void Task::update_duplicates() {
+  for (auto&& task : tbar_->tasks()) {
+    if (&task != this && task.squashed_) {
+      task.hide_if_duplicate();
+    }
   }
 }
 
@@ -321,6 +320,7 @@ void Task::handle_app_id(const char* app_id) {
   app_id_ = app_id;
   hide_if_ignored();
   hide_if_duplicate();
+  update_duplicates();
 
   auto ids_replace_map = tbar_->app_ids_replace_map();
   if (ids_replace_map.count(app_id_)) {
@@ -330,14 +330,39 @@ void Task::handle_app_id(const char* app_id) {
     app_id_ = replaced_id;
   }
 
-  if (!with_icon_ && !with_name_) {
+  if ((!with_icon_ && !with_name_) || app_id_ == lookup_source_) {
     return;
   }
 
-  app_info_ = IconLoader::get_app_info_from_app_id_list(app_id_);
-  name_ = app_info_ ? app_info_->get_display_name() : app_id;
+  name_ = app_id;
+  app_id_lookup_pending_ = true;
+  title_lookup_pending_ = false;
+}
 
-  if (!with_icon_) {
+// Lookups cost file probes and an index search, and clients choose how often their app_id and
+// title change: they run from update(), once per batch of events, and never twice for one string
+void Task::lookup_app_info() {
+  bool looked_up = false;
+  if (app_id_lookup_pending_) {
+    app_id_lookup_pending_ = false;
+    lookup_source_ = app_id_;
+    looked_up = true;
+    app_info_ = IconLoader::get_app_info_from_app_id_list(app_id_);
+    if (app_info_) {
+      name_ = app_info_->get_display_name();
+    }
+  }
+  if (title_lookup_pending_) {
+    title_lookup_pending_ = false;
+    if (!app_info_ && title_ != lookup_source_) {
+      lookup_source_ = title_;
+      looked_up = true;
+      app_info_ = IconLoader::get_app_info_from_app_id_list(title_);
+      name_ = app_info_ ? app_info_->get_display_name() : title_;
+    }
+  }
+
+  if (!looked_up || !with_icon_) {
     return;
   }
 
@@ -345,7 +370,7 @@ void Task::handle_app_id(const char* app_id) {
   if (tbar_->icon_loader().image_load_icon(icon_, app_info_, icon_size))
     icon_.show();
   else
-    spdlog::debug("Couldn't find icon for {}", app_id_);
+    spdlog::debug("Couldn't find icon for {}", lookup_source_);
 }
 
 void Task::on_button_size_allocated(Gtk::Allocation& alloc) {
@@ -366,6 +391,7 @@ void Task::handle_output_enter(struct wl_output* output) {
     spdlog::debug("{} is ignored", repr());
     return;
   }
+  hide_if_duplicate();
   if (squashed_) {
     spdlog::debug("{} was squashed", repr());
     return;
@@ -387,6 +413,7 @@ void Task::handle_output_leave(struct wl_output* output) {
   if (!tbar_->all_outputs() && !on_bar_output_) {
     /* The task left the output of the current bar, make the button invisible */
     hide_button();
+    update_duplicates();
   }
 }
 
@@ -475,7 +502,10 @@ void Task::handle_done() {
   if (config_["active-first"].isBool() && config_["active-first"].asBool() && active())
     tbar_->move_button(button, 0);
 
-  tbar_->dp.emit();
+  if (!tbar_->update_queued_) {
+    tbar_->update_queued_ = true;
+    tbar_->dp.emit();
+  }
 }
 
 void Task::handle_closed() {
@@ -487,26 +517,7 @@ void Task::handle_closed() {
     button_visible_ = false;
   }
 
-  const auto& squash_list = tbar_->squash_list();
-  const bool in_squash_list =
-      squash_list.contains("*") || squash_list.contains(title_) || squash_list.contains(app_id_);
-  if (in_squash_list && !squashed_ &&
-      (tbar_->task_id_count(app_id_) > 1 || tbar_->task_title_count(title_) > 1)) {
-    // Find next squashed task with same title or id (excluding ourselves)
-    auto tasks = tbar_->tasks();
-    const auto it = std::ranges::find_if(tasks, [this](auto&& task) {
-      return &task != this && task.squashed_ &&
-             (task.app_id() == app_id_ || task.title() == title_);
-    });
-
-    if (it != tasks.end() && !(*it).ignored_) {
-      Task& task = *it;
-      task.squashed_ = false;
-      if (tbar_->all_outputs() || task.on_bar_output_) {
-        task.show_button();
-      }
-    }
-  }
+  update_duplicates();
 
   tbar_->remove_task(id_);
 }
@@ -595,10 +606,14 @@ bool Task::operator==(const Task& o) const { return o.id_ == id_; }
 bool Task::operator!=(const Task& o) const { return o.id_ != id_; }
 
 void Task::update() {
+  if (app_id_lookup_pending_ || title_lookup_pending_) {
+    lookup_app_info();
+  }
+
   bool markup = config_["markup"].isBool() ? config_["markup"].asBool() : false;
-  std::string title = title_;
-  std::string name = name_;
-  std::string app_id = app_id_;
+  std::string title = toSingleLine(title_);
+  std::string name = toSingleLine(name_);
+  std::string app_id = toSingleLine(app_id_);
   if (markup) {
     title = Glib::Markup::escape_text(title);
     name = Glib::Markup::escape_text(name);
@@ -641,10 +656,11 @@ void Task::update() {
 
     txt = waybar::util::rewriteString(txt, config_["rewrite"]);
 
-    if (markup)
-      button.set_tooltip_markup(txt);
-    else
-      button.set_tooltip_text(txt);
+    if (markup) {
+      waybar::util::set_tooltip_markup(button, txt);
+    } else {
+      waybar::util::set_tooltip_markup(button, Glib::Markup::escape_text(txt));
+    }
   }
 }
 
@@ -739,6 +755,8 @@ Taskbar::Taskbar(const std::string& id, const waybar::Bar& bar, const Json::Valu
 
   wl_registry_add_listener(registry, &registry_listener_impl, this);
   wl_display_roundtrip(display);
+  // The listener points at this module and must not fire for globals announced after it is gone
+  wl_registry_destroy(registry);
 
   if (!manager_) {
     spdlog::error("Failed to register as toplevel manager");
@@ -787,15 +805,6 @@ Taskbar::Taskbar(const std::string& id, const waybar::Bar& bar, const Json::Valu
 }
 
 Taskbar::~Taskbar() {
-  for (auto& workspace : workspaces_) {
-    ext_workspace_handle_v1_destroy(workspace->handle);
-  }
-  workspaces_.clear();
-  for (auto* group : workspace_groups_) {
-    ext_workspace_group_handle_v1_destroy(group);
-  }
-  workspace_groups_.clear();
-
   if (workspace_manager_) {
     struct wl_display* display = Client::inst()->wl_display;
     ext_workspace_manager_v1_stop(workspace_manager_);
@@ -807,6 +816,17 @@ Taskbar::~Taskbar() {
       workspace_manager_ = nullptr;
     }
   }
+
+  // Handle ids are server-allocated: destroyed before `stop` is processed, a late event naming one
+  // is a fatal protocol error
+  for (auto& workspace : workspaces_) {
+    ext_workspace_handle_v1_destroy(workspace->handle);
+  }
+  workspaces_.clear();
+  for (auto* group : workspace_groups_) {
+    ext_workspace_group_handle_v1_destroy(group);
+  }
+  workspace_groups_.clear();
 
   if (manager_) {
     struct wl_display* display = Client::inst()->wl_display;
@@ -834,6 +854,7 @@ Taskbar::~Taskbar() {
 }
 
 void Taskbar::update() {
+  update_queued_ = false;
   for (auto& t : tasks_) {
     t->update();
   }
@@ -1181,14 +1202,6 @@ const std::unordered_set<std::string>& Taskbar::squash_list() const { return squ
 
 const std::map<std::string, std::string>& Taskbar::app_ids_replace_map() const {
   return app_ids_replace_map_;
-}
-
-std::size_t Taskbar::task_id_count(std::string_view id) const {
-  return std::ranges::count_if(tasks_, [=](auto&& task) { return id == task->app_id(); });
-}
-
-std::size_t Taskbar::task_title_count(std::string_view title) const {
-  return std::ranges::count_if(tasks_, [=](auto&& task) { return title == task->title(); });
 }
 
 } /* namespace waybar::modules::wlr */

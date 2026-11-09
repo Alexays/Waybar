@@ -2,9 +2,15 @@
 
 #include <spdlog/spdlog.h>
 
+#include <cstring>
+
 #include "util/scope_guard.hpp"
 
 using namespace waybar::modules::SNI;
+
+// Every service is republished in the RegisteredStatusNotifierItems array, whose D-Bus size limit
+// (64 MiB) is below that of a single string argument. Keep in sync with Host.
+static const std::size_t MAX_SERVICE_LENGTH = 1024;
 
 Watcher::Watcher()
     : bus_name_id_(Gio::DBus::own_name(Gio::DBus::BusType::BUS_TYPE_SESSION,
@@ -28,7 +34,10 @@ Watcher::~Watcher() {
   if (watcher_ != nullptr) {
     g_signal_handlers_disconnect_by_data(watcher_, this);
     auto* iface = G_DBUS_INTERFACE_SKELETON(watcher_);
-    g_dbus_interface_skeleton_unexport(iface);
+    // Exported only once busAcquired() has run; unexporting before that is a GLib critical.
+    if (g_dbus_interface_skeleton_get_connection(iface) != nullptr) {
+      g_dbus_interface_skeleton_unexport(iface);
+    }
     g_clear_object(&watcher_);
   }
 }
@@ -61,6 +70,11 @@ gboolean Watcher::handleRegisterHost(Watcher* obj, GDBusMethodInvocation* invoca
   const gchar* bus_name = service;
   const gchar* object_path = "/StatusNotifierHost";
 
+  if (strlen(service) > MAX_SERVICE_LENGTH) {
+    g_dbus_method_invocation_return_error(invocation, G_DBUS_ERROR, G_DBUS_ERROR_LIMITS_EXCEEDED,
+                                          "Service is longer than %zu bytes", MAX_SERVICE_LENGTH);
+    return TRUE;
+  }
   if (*service == '/') {
     bus_name = g_dbus_method_invocation_get_sender(invocation);
     object_path = service;
@@ -68,6 +82,11 @@ gboolean Watcher::handleRegisterHost(Watcher* obj, GDBusMethodInvocation* invoca
   if (g_dbus_is_name(bus_name) == FALSE) {
     g_dbus_method_invocation_return_error(invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
                                           "D-Bus bus name '%s' is not valid", bus_name);
+    return TRUE;
+  }
+  if (g_variant_is_object_path(object_path) == FALSE) {
+    g_dbus_method_invocation_return_error(invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                                          "D-Bus object path '%s' is not valid", object_path);
     return TRUE;
   }
   auto* watch = gfWatchFind(obj->hosts_, bus_name, object_path);
@@ -93,6 +112,11 @@ gboolean Watcher::handleRegisterItem(Watcher* obj, GDBusMethodInvocation* invoca
   const gchar* object_path = "/StatusNotifierItem";
   g_autofree gchar* bus_name_buf = nullptr;
 
+  if (strlen(service) > MAX_SERVICE_LENGTH) {
+    g_dbus_method_invocation_return_error(invocation, G_DBUS_ERROR, G_DBUS_ERROR_LIMITS_EXCEEDED,
+                                          "Service is longer than %zu bytes", MAX_SERVICE_LENGTH);
+    return TRUE;
+  }
   if (*service == '/') {
     bus_name = g_dbus_method_invocation_get_sender(invocation);
     object_path = service;
@@ -107,10 +131,20 @@ gboolean Watcher::handleRegisterItem(Watcher* obj, GDBusMethodInvocation* invoca
                                           "D-Bus bus name '%s' is not valid", bus_name);
     return TRUE;
   }
+  if (g_variant_is_object_path(object_path) == FALSE) {
+    g_dbus_method_invocation_return_error(invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                                          "D-Bus object path '%s' is not valid", object_path);
+    return TRUE;
+  }
   auto* watch = gfWatchFind(obj->items_, bus_name, object_path);
   if (watch != nullptr) {
-    spdlog::debug("Ignoring duplicate Status Notifier Item registration for '{}' at '{}'", bus_name,
+    spdlog::debug("Duplicate Status Notifier Item registration for '{}' at '{}'", bus_name,
                   object_path);
+    // Hosts drop an item that was not exported yet when first announced, so announce it again;
+    // hosts that still track it skip it.
+    gchar* tmp = g_strdup_printf("%s%s", bus_name, object_path);
+    sn_watcher_emit_item_registered(obj->watcher_, tmp);
+    g_free(tmp);
     sn_watcher_complete_register_item(obj->watcher_, invocation);
     return TRUE;
   }

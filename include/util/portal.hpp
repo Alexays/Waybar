@@ -14,6 +14,7 @@ enum class Appearance {
 class Portal : private Gio::DBus::Proxy {
  public:
   Portal();
+  ~Portal() override;
   void refreshAppearance();
   Appearance getAppearance();
 
@@ -23,6 +24,10 @@ class Portal : private Gio::DBus::Proxy {
  private:
   type_signal_appearance_changed m_signal_appearance_changed;
   Appearance currentMode;
+  Appearance pendingMode;
+  sigc::connection holdOffTimer;
+  void setAppearance(Appearance newMode);
+  bool announceAppearance();
   void on_signal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
                  const Glib::VariantContainerBase& parameters);
   void onAppearanceReceived(Glib::RefPtr<Gio::AsyncResult>& result);

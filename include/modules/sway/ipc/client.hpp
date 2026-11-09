@@ -33,11 +33,15 @@ class Ipc {
   void sendCmd(uint32_t type, const std::string& payload = "");
   void subscribe(const std::string& payload);
   void handleEvent();
+  // Waits for events and answers all those that have arrived with one query of `type`.
+  void handleEvents(uint32_t type);
   void setWorker(std::function<void()>&& func);
 
  protected:
   static inline const std::string ipc_magic_ = "i3-ipc";
   static inline const size_t ipc_header_size_ = ipc_magic_.size() + 8;
+  // Keeps a steady stream of events from postponing the query of handleEvents() forever
+  static constexpr size_t max_events_per_query_ = 1000;
 
   static std::string getSocketPath();
   static int open(const std::string&);

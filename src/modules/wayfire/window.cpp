@@ -4,6 +4,7 @@
 #include <gtkmm/label.h>
 #include <spdlog/spdlog.h>
 
+#include "util/css_class.hpp"
 #include "util/rewrite_string.hpp"
 #include "util/sanitize_str.hpp"
 
@@ -58,9 +59,11 @@ auto Window::update_icon_label() -> void {
     else
       ctx->add_class("solo");
 
-    // update window#waybar.<app_id>
-    ctx->remove_class(old_app_id_);
-    ctx->add_class(old_app_id_ = app_id);
+    // update window#waybar.<app_id>; old_app_id_ is only ever a class this module added
+    if (old_app_id_ != app_id) {
+      if (!old_app_id_.empty()) ctx->remove_class(old_app_id_);
+      old_app_id_ = waybar::util::add_app_id_class(ctx, app_id) ? app_id : "";
+    }
 
     // update window#waybar.empty
     ctx->remove_class("empty");

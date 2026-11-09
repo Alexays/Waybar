@@ -12,10 +12,11 @@
 #include "gtkmm/image.h"
 #include "gtkmm/label.h"
 #include "gtkmm/overlay.h"
+#include "sigc++/trackable.h"
 
 namespace waybar::modules {
 
-class Gamemode : public AModule {
+class Gamemode : public AModule, public sigc::trackable {
  public:
   Gamemode(const std::string&, const Json::Value&);
   virtual ~Gamemode();
@@ -39,6 +40,7 @@ class Gamemode : public AModule {
                  const Glib::VariantContainerBase& arguments);
 
   void getData();
+  void getData_cb(Glib::RefPtr<Gio::AsyncResult>& result);
   bool handleToggle(GdkEventButton* const&) override;
 
   // Config
@@ -63,6 +65,8 @@ class Gamemode : public AModule {
   const std::string dbus_get_interface = "com.feralinteractive.GameMode";
 
   uint gameCount = 0;
+  bool getDataRunning = false;
+  bool getDataAgain = false;
 
   std::string lastStatus;
   bool showAltText = false;
@@ -70,7 +74,7 @@ class Gamemode : public AModule {
   guint login1_id;
   Glib::RefPtr<Gio::DBus::Proxy> gamemode_proxy;
   Glib::RefPtr<Gio::DBus::Connection> system_connection;
-  bool gamemodeRunning;
+  bool gamemodeRunning = false;
   guint gamemodeWatcher_id;
 };
 

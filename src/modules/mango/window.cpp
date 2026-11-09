@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cctype>
 
+#include "util/css_class.hpp"
 #include "util/rewrite_string.hpp"
 #include "util/sanitize_str.hpp"
 
@@ -103,11 +104,16 @@ void Window::doUpdate() {
     }
   }
   setClass("solo", solo);
-  if (!appid.empty()) setClass(appid, solo);
 
-  if (oldAppId_ != appid) {
-    if (!oldAppId_.empty()) setClass(oldAppId_, false);
-    oldAppId_ = appid;
+  // oldAppId_ is only ever a class this module added, so nothing else is removed
+  if (!solo || oldAppId_ != appid) {
+    if (!oldAppId_.empty()) {
+      setClass(oldAppId_, false);
+      oldAppId_.clear();
+    }
+    if (solo && waybar::util::add_app_id_class(event_box_.get_style_context(), appid)) {
+      oldAppId_ = appid;
+    }
   }
 }
 

@@ -40,6 +40,10 @@ class Context;
 ///
 /// NOTE: Since this statechart is non-hierarchical, the above
 /// states are flattened into a set.
+///
+/// NOTE: The states wait for MPD's replies, so they run on the MPD module's
+/// thread: their timers and IO watches come from Context::signal_timeout()
+/// and Context::signal_io(), never from the GTK main loop.
 
 class State {
  public:
@@ -51,9 +55,6 @@ class State {
   virtual void play() { spdlog::debug("mpd: ignore play state transition"); }
   virtual void stop() { spdlog::debug("mpd: ignore stop state transition"); }
   virtual void pause() { spdlog::debug("mpd: ignore pause state transition"); }
-
-  /// Request state update the GUI.
-  virtual void update() noexcept { spdlog::debug("mpd: ignoring update method request"); }
 };
 
 class Idle : public State {
@@ -70,7 +71,6 @@ class Idle : public State {
   void play() override;
   void stop() override;
   void pause() override;
-  void update() noexcept override;
 
  private:
   Idle(const Idle&) = delete;
@@ -93,7 +93,6 @@ class Playing : public State {
 
   void pause() override;
   void stop() override;
-  void update() noexcept override;
 
  private:
   Playing(Playing const&) = delete;
@@ -118,7 +117,6 @@ class Paused : public State {
 
   void play() override;
   void stop() override;
-  void update() noexcept override;
 
  private:
   Paused(Paused const&) = delete;
@@ -140,7 +138,6 @@ class Stopped : public State {
 
   void play() override;
   void pause() override;
-  void update() noexcept override;
 
  private:
   Stopped(Stopped const&) = delete;
@@ -160,8 +157,6 @@ class Disconnected : public State {
 
   void entry() noexcept override;
   void exit() noexcept override;
-
-  void update() noexcept override;
 
  private:
   Disconnected(Disconnected const&) = delete;
@@ -183,6 +178,7 @@ class Context {
   friend class Stopped;
   friend class Disconnected;
   friend class Idle;
+  friend class waybar::modules::MPD;
 
  protected:
   void setState(std::unique_ptr<State>&& new_state) noexcept {
@@ -201,11 +197,12 @@ class Context {
   unsigned playing_interval() const;
   void tryConnect() const;
   void checkErrors(mpd_connection*) const;
-  void do_update();
   void fetchState() const;
   constexpr mpd_state state() const;
   void emit() const;
   [[nodiscard]] unique_connection& connection();
+  Glib::SignalTimeout signal_timeout() const;
+  Glib::SignalIO signal_io() const;
 
  public:
   explicit Context(waybar::modules::MPD* const mpd_module)
@@ -216,7 +213,6 @@ class Context {
   void play() { state_->play(); }
   void stop() { state_->stop(); }
   void pause() { state_->pause(); }
-  void update() noexcept { state_->update(); }
 };
 
 }  // namespace waybar::modules::detail

@@ -51,7 +51,16 @@ waybar::modules::Gps::Gps(const std::string& id, const Json::Value& config)
 
     while (gps_waiting(&gps_data_, 5000000)) {
       if (gps_read(&gps_data_, NULL, 0) == -1) {
-        throw std::runtime_error("Can't read data from gpsd.");
+        // An exception escaping the SleeperThread would terminate Waybar: show as disconnected.
+        // The guard keeps a cancellation from ~Gps() out of the logger.
+        util::CancellationGuard guard;
+        if (gps_thread_.isRunning()) {
+          spdlog::error("gps: can't read data from gpsd, giving up");
+          gps_clear_fix(&gps_data_.fix);
+          dp.emit();
+          gps_thread_.stop();
+        }
+        return;
       }
 
       if (MODE_SET != (MODE_SET & gps_data_.set)) {
@@ -181,6 +190,14 @@ auto waybar::modules::Gps::update() -> void {
 }
 
 waybar::modules::Gps::~Gps() {
+  // gps_thread_ reads from the session closed below.
+  gps_thread_.stop();
+  gps_thread_.join();
   gps_stream(&gps_data_, WATCH_DISABLE, NULL);
   gps_close(&gps_data_);
+}
+
+// Entry point looked up by Factory once waybar-gps.so is loaded.
+extern "C" waybar::AModule* waybar_module_create(const std::string& id, const Json::Value& config) {
+  return new waybar::modules::Gps(id, config);
 }

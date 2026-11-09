@@ -6,13 +6,13 @@
 }:
 let
   libcava = rec {
-    version = "1.0.0";
+    # NOTE: Needs to match libcava.wrap, which expects the source in subprojects/cava-<rev>.
+    rev = "8d6e963db9cd29c2b3b5a5df1e46bb65c410f9cc";
     src = pkgs.fetchFromGitHub {
       owner = "LukashonakV";
       repo = "cava";
-      # NOTE: Needs to match the cava.wrap
-      tag = "${version}";
-      hash = "sha256-0r5aAmTs+FcmS501tNYKxG9H+Pq6i32BDRBEjWW6M74=";
+      inherit rev;
+      hash = "sha256-tWY3D3sEVFDHJjO/enCu0lEobM1CF4vupavOHgIslnA=";
     };
   };
 in
@@ -41,7 +41,7 @@ waybar.overrideAttrs (oldAttrs: {
 
   postUnpack = ''
     pushd "$sourceRoot"
-    cp -R --no-preserve=mode,ownership ${libcava.src} subprojects/cava-${libcava.version}
+    cp -R --no-preserve=mode,ownership ${libcava.src} subprojects/cava-${libcava.rev}
     patchShebangs .
     popd
   '';

@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 
+#include <optional>
 #include <string>
 
 #include "AAppIconLabel.hpp"
@@ -23,20 +24,24 @@ class Window : public AAppIconLabel, public sigc::trackable {
   void handle_layout_symbol(const char* layout_symbol);
   void handle_frame();
 
-  struct zdwl_ipc_manager_v2* status_manager_;
+  struct zdwl_ipc_manager_v2* status_manager_ = nullptr;
 
  private:
+  bool render();
+
   const Bar& bar_;
 
   std::string title_;
   std::string appid_;
+  std::optional<std::string> icon_appid_;
   std::string layout_symbol_;
   bool active_;
   bool hide_inactive_;
   bool hide_empty_;
   uint32_t layout_;
 
-  struct zdwl_ipc_output_v2* output_status_;
+  struct zdwl_ipc_output_v2* output_status_ = nullptr;
+  sigc::connection idle_render_;
 };
 
 }  // namespace waybar::modules::dwl

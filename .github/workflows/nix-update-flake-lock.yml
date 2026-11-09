@@ -4,15 +4,21 @@ on:
   schedule:
     - cron: '0 0 1 * *' # Run monthly
   push:
+    # Branches only: a tag push checks out a detached commit, which the action cannot open a PR from.
+    branches:
+      - master
     paths:
       - 'flake.nix'
 jobs:
   lockfile:
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: ubuntu-latest
     if: github.event_name != 'schedule' || github.repository == 'Alexays/Waybar'
     steps:
       - name: Checkout repository
-      - uses: actions/checkout@v6
+        uses: actions/checkout@v6
       - name: Install Nix
         uses: cachix/install-nix-action@v31
         with:

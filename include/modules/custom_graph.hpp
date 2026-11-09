@@ -3,11 +3,14 @@
 #include <fmt/format.h>
 
 #include <csignal>
+#include <functional>
+#include <mutex>
 #include <string>
 
 #include "AGraph.hpp"
 #include "util/command.hpp"
 #include "util/json.hpp"
+#include "util/scope_guard.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
@@ -26,6 +29,7 @@ class CustomGraph : public AGraph {
   void parseOutputRaw();
   void parseOutputJson();
   void handleEvent();
+  void setOutput(util::command::res output);
   bool handleScroll(GdkEventScroll* e) override;
   bool handleToggle(GdkEventButton* const& e) override;
 
@@ -40,8 +44,13 @@ class CustomGraph : public AGraph {
   int percentage_;
   FILE* fp_;
   int pid_;
+  // Written by the worker thread, read by update() on the main thread
+  std::mutex output_mutex_;
   util::command::res output_;
   util::JsonParser parser_;
+  // Declared before thread_, so that it runs once the worker is joined
+  util::ScopeGuard<std::function<void()>> release_command_{
+      [this] { util::command::abandon(fp_, pid_); }};
 
   util::SleeperThread thread_;
 };

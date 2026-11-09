@@ -2,7 +2,11 @@
 
 #include <spdlog/spdlog.h>
 
+#include <iterator>
 #include <regex>
+#include <utility>
+
+#include "util/regex_input.hpp"
 
 namespace waybar::util {
 std::string rewriteString(const std::string& value, const Json::Value& rules) {
@@ -18,11 +22,19 @@ std::string rewriteString(const std::string& value, const Json::Value& rules) {
         // malformated regexes will cause an exception.
         // in this case, log error and try the next rule.
         const std::regex rule{it.key().asString(), std::regex_constants::icase};
-        if (std::regex_match(res, rule)) {
-          res = std::regex_replace(res, rule, it->asString());
+        RegexInput input{res};
+        if (std::regex_match(input.begin(), input.end(), rule)) {
+          std::string rewritten;
+          std::regex_replace(std::back_inserter(rewritten), input.begin(), input.end(), rule,
+                             it->asString());
+          res = std::move(rewritten);
         }
       } catch (const std::regex_error& e) {
-        spdlog::error("Invalid rule {}: {}", it.key().asString(), e.what());
+        if (e.code() == std::regex_constants::error_complexity) {
+          spdlog::warn("Rule {} skipped: matching takes too long", it.key().asString());
+        } else {
+          spdlog::error("Invalid rule {}: {}", it.key().asString(), e.what());
+        }
       }
     }
   }

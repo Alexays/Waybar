@@ -33,7 +33,7 @@ class PowerProfilesDaemon : public ALabel, public sigc::trackable {
   void busConnectedCb(Glib::RefPtr<Gio::AsyncResult>& r);
   void getAllPropsCb(Glib::RefPtr<Gio::AsyncResult>& r);
   void setPropCb(Glib::RefPtr<Gio::AsyncResult>& r);
-  void populateInitState();
+  void populateInitState(const Glib::VariantContainerBase& getAllReply);
   bool handleToggle(GdkEventButton* const& e) override;
 
  private:

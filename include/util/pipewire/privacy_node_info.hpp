@@ -31,6 +31,7 @@ class PWPrivacyNodeInfo {
   std::string pipewire_access_portal_app_id;
   std::string application_icon_name;
 
+  struct pw_proxy* proxy = nullptr;
   struct spa_hook object_listener;
   struct spa_hook proxy_listener;
 

@@ -2,11 +2,13 @@
 
 #include <fmt/format.h>
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <util/command.hpp>
 
 #include "config.hpp"
+#include "util/tooltip.hpp"
 
 namespace waybar {
 
@@ -18,23 +20,25 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
               enable_scroll),
       format_(config_["format"].isString() ? config_["format"].asString() : format),
 
-      // Leave the default option outside of the std::max(1L, ...), because the zero value
+      // Leave the default option outside of the clamp, because the zero value
       // (default) is used in modules/custom.cpp to make the difference between
       // two types of custom scripts. Fixes #4521.
-      interval_(config_["interval"] == "once"
-                    ? std::chrono::milliseconds::max()
-                    : std::chrono::milliseconds(
-                          (config_["interval"].isNumeric()
-                               ? (config_["interval"].asDouble() > 0
-                                      // Minimum 1ms due to millisecond precision
-                                      ? std::max(1L, static_cast<long>(
-                                                         config_["interval"].asDouble() * 1000))
-                                      // Only modules with no periodic default use 0 as an
-                                      // event-driven sentinel. Periodic modules fall back to their
-                                      // default interval so interval:0 cannot busy-loop or hit
-                                      // modulo-by-zero clock code.
-                                      : (interval == 0 ? 0L : 1000L * static_cast<long>(interval)))
-                               : 1000 * (long)interval))),
+      interval_(
+          config_["interval"] == "once"
+              ? std::chrono::milliseconds::max()
+              : std::chrono::milliseconds(
+                    (config_["interval"].isNumeric()
+                         ? (config_["interval"].asDouble() > 0
+                                // 1ms precision; the cap keeps the cast and the nanosecond
+                                // sleep from overflowing
+                                ? static_cast<long>(
+                                      std::clamp(config_["interval"].asDouble(), 0.001, 1e9) * 1000)
+                                // Only modules with no periodic default use 0 as an
+                                // event-driven sentinel. Periodic modules fall back to their
+                                // default interval so interval:0 cannot busy-loop or hit
+                                // modulo-by-zero clock code.
+                                : (interval == 0 ? 0L : 1000L * static_cast<long>(interval)))
+                         : 1000 * (long)interval))),
       default_format_(format_) {
   label_.set_name(name);
   if (!id.empty()) {
@@ -60,6 +64,22 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
     event_box_.signal_leave_notify_event().connect([this](GdkEventCrossing*) {
       active_tooltip_.reset();
       return false;
+    });
+    // GTK hides the tooltip on every scroll event and only shows it again once
+    // the pointer moves, so a value being scrolled (volume, brightness) cannot
+    // be read while changing it. event-after also fires when a handler consumed
+    // the scroll, but before GTK's own tooltip handling, hence the idle.
+    event_box_.signal_event_after().connect([this](GdkEvent* e) {
+      if (e->type != GDK_SCROLL) {
+        return;
+      }
+      tooltip_requery_.disconnect();
+      tooltip_requery_ = Glib::signal_idle().connect([this] {
+        if (pointerOverModule()) {
+          label_.trigger_tooltip_query();
+        }
+        return false;
+      });
     });
   }
   if (config_["max-length"].isUInt()) {
@@ -176,7 +196,12 @@ bool ALabel::setLabelMarkup(const Glib::ustring& markup) {
     return false;
   }
 
-  label_.set_markup(markup);
+  // GTK rejects markup that is not valid UTF-8 and keeps showing the previous text
+  if (markup.validate()) {
+    label_.set_markup(markup);
+  } else {
+    label_.set_markup(markup.make_valid());
+  }
   last_label_markup_ = markup.raw();
   return true;
 }
@@ -186,12 +211,15 @@ bool ALabel::pointerOverModule() const {
   if (!gdk_window || !event_box_.get_mapped()) {
     return false;
   }
-  int x = 0;
-  int y = 0;
-  Gdk::ModifierType mask;
-  gdk_window->get_device_position(gdk_window->get_display()->get_default_seat()->get_pointer(), x,
-                                  y, mask);
-  return x >= 0 && y >= 0 && x < gdk_window->get_width() && y < gdk_window->get_height();
+  // On Wayland the pointer position is relative to whichever surface has the pointer, possibly
+  // another bar, so look for this window among the ancestors of the one under the pointer.
+  auto pointer = gdk_window->get_display()->get_default_seat()->get_pointer();
+  for (auto window = pointer->get_window_at_position(); window; window = window->get_parent()) {
+    if (window == gdk_window) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
@@ -199,12 +227,18 @@ bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
     return false;
   }
 
-  last_tooltip_markup_ = markup.raw();
+  // Stored valid and bounded, since the query-tooltip handler hands it to GTK as well
+  std::string tooltip = markup.validate() ? markup.raw() : markup.make_valid().raw();
+  util::limit_tooltip_markup(tooltip);
+  if (last_tooltip_markup_ == tooltip) {
+    return false;
+  }
+  last_tooltip_markup_ = std::move(tooltip);
   if (active_tooltip_) {
     // leave-notify is not always delivered when the pointer moves between
     // adjacent modules, so active_tooltip_ may belong to another module.
     if (pointerOverModule()) {
-      active_tooltip_->set_markup(markup);
+      active_tooltip_->set_markup(*last_tooltip_markup_);
     } else {
       active_tooltip_.reset();
     }
@@ -309,6 +343,7 @@ void ALabel::copyToClipboard(const std::string& literal) {
 }
 
 bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
+  bool handled = false;
   if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
     alt_ = !alt_;
     if (alt_ && config_["format-alt"].isString()) {
@@ -316,12 +351,14 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
     } else {
       format_ = default_format_;
     }
+    handled = true;
   }
 
   if (config_["on-click-copy"].isBool() && config_["on-click-copy"].asBool()) {
     copyToClipboard(label_.get_text());
+    handled = true;
   }
-  return AModule::handleToggle(e);
+  return AModule::handleToggle(e) || handled;
 }
 
 void ALabel::handleGtkMenuEvent(GtkMenuItem* /*menuitem*/, gpointer data) {

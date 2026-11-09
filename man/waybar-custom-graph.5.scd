@@ -13,7 +13,8 @@ Addressed by *custom-graph/<name>*
 
 *exec*: ++
 	typeof: string ++
-	The path to the script, which should be executed.
+	The path to the script, which should be executed. ++
+	At most 256 KiB of its output (of each line, if the script runs continuously) is used; the rest is discarded.
 
 *exec-if*: ++
 	typeof: string ++

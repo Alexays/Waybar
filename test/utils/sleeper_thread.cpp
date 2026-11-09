@@ -4,12 +4,15 @@
 #include <catch2/catch.hpp>
 #endif
 
+#include <fcntl.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include <chrono>
+#include <future>
 #include <thread>
 
+#include "util/scoped_fd.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::util {
@@ -47,6 +50,25 @@ int run_reassignment_regression() {
   return 0;
 }
 
+int run_explicit_join_regression() {
+  std::promise<void> entered;
+  std::atomic<bool> exited{false};
+  waybar::util::SleeperThread thread;
+  thread = [&] {
+    struct ExitMarker {
+      std::atomic<bool>& exited;
+      ~ExitMarker() { exited.store(true); }
+    } marker{exited};
+    entered.set_value();
+    thread.sleep_for(std::chrono::hours(1));
+  };
+  entered.get_future().wait();
+  thread.stop();
+  thread.join();
+  // The callback must have unwound before its resources can be released.
+  return exited.load() ? 0 : 1;
+}
+
 int run_control_flag_stress() {
   for (int i = 0; i < 200; ++i) {
     waybar::util::SleeperThread thread;
@@ -68,13 +90,39 @@ int run_control_flag_stress() {
   }
   return 0;
 }
+
+int run_stop_from_own_thread() {
+  std::atomic<bool> done{false};
+  waybar::util::SleeperThread thread;
+  thread = [&thread, &done] {
+    {
+      // ~ScopedFd() calls close(), a cancellation point, from a noexcept destructor.
+      waybar::util::ScopedFd fd(open("/dev/null", O_RDONLY | O_CLOEXEC));
+      thread.stop();
+    }
+    done.store(true);
+  };
+  while (!done.load()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+  return 0;
+}
 }  // namespace
 
 TEST_CASE("SleeperThread reassignment does not terminate process", "[util][sleeper_thread]") {
   REQUIRE(run_in_subprocess(run_reassignment_regression) == 0);
 }
 
+TEST_CASE("SleeperThread can be joined before its owner releases resources",
+          "[util][sleeper_thread]") {
+  REQUIRE(run_in_subprocess(run_explicit_join_regression) == 0);
+}
+
 TEST_CASE("SleeperThread control flags are stable under concurrent wake and stop",
           "[util][sleeper_thread]") {
   REQUIRE(run_in_subprocess(run_control_flag_stress) == 0);
+}
+
+TEST_CASE("SleeperThread stopping itself does not terminate process", "[util][sleeper_thread]") {
+  REQUIRE(run_in_subprocess(run_stop_from_own_thread) == 0);
 }
