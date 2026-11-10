@@ -21,6 +21,7 @@
 #include "bar.hpp"
 #include "client.hpp"
 #include "util/SafeSignal.hpp"
+#include "util/cancel_safe_sink.hpp"
 
 std::mutex reap_mtx;
 std::list<pid_t> reap;
@@ -226,6 +227,8 @@ static void logToJournalIfRunAsService() {
 
 int main(int argc, char* argv[]) {
   logToJournalIfRunAsService();
+  // Module workers are stopped with pthread_cancel(): keep it out of log writes
+  waybar::util::makeLoggerCancelSafe(*spdlog::default_logger());
 
   try {
     auto* client = waybar::Client::inst();
