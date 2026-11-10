@@ -35,6 +35,7 @@ class Custom : public AIconLabel {
   void setOutput(util::command::res output);
   bool handleScroll(GdkEventScroll* e) override;
   bool handleToggle(GdkEventButton* const& e) override;
+  void setHovered(bool hovered) override;
 
   const std::string name_;
   const std::string output_name_;
