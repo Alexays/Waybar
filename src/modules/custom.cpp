@@ -201,6 +201,19 @@ bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
   return ret;
 }
 
+void waybar::modules::Custom::setHovered(bool hovered) {
+  AIconLabel::setHovered(hovered);
+  // GTK does not pass PRELIGHT down to children, so when label_ carries the
+  // #custom-<name> widget name, it needs the state too for `:hover` to match.
+  if (module_widget_ == &label_) {
+    if (hovered) {
+      label_.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+    } else {
+      label_.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+    }
+  }
+}
+
 auto waybar::modules::Custom::update() -> void {
   // The worker thread must not replace output_ while it is parsed below
   std::lock_guard<std::mutex> lock(output_mutex_);
