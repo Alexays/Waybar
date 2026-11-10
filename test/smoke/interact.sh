@@ -309,5 +309,57 @@ smoke::assert_clean || fail=1
 kill "$WAYBAR_PID" 2>/dev/null || true
 echo "::endgroup::"
 
+# --- 8) :hover styles match the module's widget name (#5459) ---------------
+# A custom module without an image carries #custom-<name> on its label, an
+# `icon: true` one on its box: both must turn red under the pointer.
+echo "::group::hover style"
+cfg8="$(mktemp --suffix=.json)"
+css8="$(mktemp --suffix=.css)"
+cat > "$cfg8" <<EOF
+{
+  "layer": "top", "position": "top", "height": 30,
+  "modules-left": ["custom/plain"], "modules-right": ["custom/icon"],
+  "custom/plain": { "exec": "echo PLAIN", "interval": "once" },
+  "custom/icon": { "exec": "echo ICON", "interval": "once", "icon": true }
+}
+EOF
+cat "$DIR/style.css" > "$css8"
+cat >> "$css8" <<'EOF'
+#custom-plain, #custom-icon { padding: 0 20px; }
+#custom-plain:hover, #custom-icon:hover { background-color: #ff0000; }
+EOF
+# hovered_red <x>: the bar is red at x, inside a module's padding
+hovered_red() {
+    local shot
+    shot="$(mktemp --suffix=.png)"
+    grim -g "$1,$CY 1x1" "$shot"
+    [ "$(convert "$shot" -format '%[fx:r>0.9 && g<0.1 && b<0.1]' info:)" = 1 ]
+}
+smoke::launch_waybar "$cfg8" "$css8" 4
+smoke::assert_alive || fail=1
+for spot in "custom-plain 5" "custom-icon $((WIDTH - 5))"; do
+    read -r name x <<< "$spot"
+    if hovered_red "$x"; then
+        echo "::error::#$name is red before any hover"; fail=1
+    fi
+    pointer "$x" hover 1500 &
+    holder=$!
+    sleep 1
+    if hovered_red "$x"; then
+        echo "✓ #$name:hover matches under the pointer"
+    else
+        echo "::error::#$name:hover did not match under the pointer"; fail=1
+    fi
+    wait "$holder"
+    # Move away (destroying the virtual pointer sends no leave event)
+    pointer "$CX" hover 500
+    if hovered_red "$x"; then
+        echo "::error::#$name stayed red after the pointer left"; fail=1
+    fi
+done
+smoke::assert_clean || fail=1
+kill "$WAYBAR_PID" 2>/dev/null || true
+echo "::endgroup::"
+
 [ "$fail" = 0 ] || exit 1
 echo "✓ interaction tests passed"
