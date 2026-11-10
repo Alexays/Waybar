@@ -30,7 +30,7 @@ The brightness can be controlled by dragging the slider across the bar or clicki
 *device*: ++
     typeof: string ++
     The name of the preferred device to control. If left empty, a device will be chosen automatically. ++
-    Both screen backlights (the udev *backlight* subsystem) and keyboard backlights (LEDs in the udev *leds* subsystem, e.g. *white:kbd_backlight*) are supported; name such an LED here to control it. When left empty, a screen backlight is always preferred for automatic selection.
+    Both screen backlights (the udev *backlight* subsystem) and keyboard backlights (LEDs in the udev *leds* subsystem, e.g. *white:kbd_backlight*) are supported; name such an LED here to control it. When left empty, a screen backlight is always preferred for automatic selection; a keyboard backlight (an LED whose name contains *kbd_backlight*) is used only if there is no screen backlight, and other LEDs (e.g. *input3::capslock*) are never chosen automatically.
 
 *interval*: ++
     typeof: uint ++

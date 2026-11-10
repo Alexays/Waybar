@@ -48,6 +48,11 @@ test_src += files(
 
 test_src += files('utf8_string.cpp', '../../src/util/utf8_string.cpp')
 
+if libudev.found() and (is_linux or libepoll.found())
+  test_dep += [libudev, libepoll]
+  test_src += files('backlight_backend.cpp', '../../src/util/backlight_backend.cpp')
+endif
+
 utils_test = executable(
     'utils_test',
     test_src,
