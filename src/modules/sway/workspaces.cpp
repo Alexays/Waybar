@@ -1,14 +1,25 @@
 #include "modules/sway/workspaces.hpp"
 
+#include <pango/pango.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <cctype>
+#include <regex>
 #include <string>
 
 #include "util/string.hpp"
 
 namespace waybar::modules::sway {
+
+// Replace ampersands that are not part of an entity pango understands
+// (&amp; &lt; &gt; &quot; &apos; and the numeric forms) with "&amp;", so
+// that a name such as "<b>Name & Bold</b>" still parses as markup and
+// renders bold with a literal "&" displayed.
+std::string escapeBareAmpersands(const std::string& text) {
+  static const std::regex bare_amp("&(?!amp;|lt;|gt;|quot;|apos;|#[0-9]+;|#[xX][0-9a-fA-F]+;)");
+  return std::regex_replace(text, bare_amp, "&amp;");
+}
 
 // Helper function to assign a number to a workspace, just like sway. In fact
 // this is taken quite verbatim from `sway/ipc-json.c`.
@@ -412,10 +423,14 @@ auto Workspaces::update() -> void {
       button.get_style_context()->remove_class("current_output");
     }
     std::string full_name;
-    if (!config_["disable-markup"].asBool()) {
-      full_name = Glib::Markup::escape_text((*it)["name"].asString()).raw();
+    const auto& ws_name = (*it)["name"].asString();
+    if (config_["disable-markup"].asBool()) {
+      full_name = ws_name;
     } else {
-      full_name = (*it)["name"].asString();
+      full_name = escapeBareAmpersands(ws_name);
+      if (!isPangoMarkup(full_name)) {
+        full_name = Glib::Markup::escape_text(ws_name).raw();
+      }
     }
 
     std::string windows = "";
@@ -610,6 +625,15 @@ std::string Workspaces::trimWorkspaceName(const std::string& name) {
     return name.substr(found + 1);
   }
   return name;
+}
+
+bool Workspaces::isPangoMarkup(const std::string& text) {
+  GError* error = nullptr;
+  const bool valid = pango_parse_markup(text.c_str(), -1, '\0', nullptr, nullptr, nullptr, &error);
+  if (error != nullptr) {
+    g_error_free(error);
+  }
+  return valid;
 }
 
 std::optional<uint16_t> Workspaces::getCustomSortIndex(const std::string& name) const {
