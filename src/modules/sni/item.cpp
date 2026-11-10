@@ -217,6 +217,24 @@ ToolTip get_variant<ToolTip>(const Glib::VariantBase& value) {
   return result;
 }
 
+/**
+ * Announces the key an item is addressed by in the tray config. There is no
+ * other way for a user to learn it -- an Electron app's key is something like
+ * "Rocket.Chat_status_icon_1", which nobody guesses. Kept at info level for
+ * that reason, but logged only once per key: every bar runs its own Host with
+ * its own Item objects, so an unguarded log line fires once per output, and
+ * again on every Id property update.
+ */
+static void logItemKey(const std::string& key) {
+  static std::set<std::string> announced;
+  if (key.empty()) {
+    return;
+  }
+  if (announced.insert(key).second) {
+    spdlog::info("tray: item key '{}'", key);
+  }
+}
+
 // Names are compared as bytes: Glib::ustring compares with g_utf8_collate(), which normalizes the
 // item-supplied name on every comparison and lets look-alike names match.
 void Item::setProperty(const std::string& name, Glib::VariantBase& value) {
@@ -237,6 +255,9 @@ void Item::setProperty(const std::string& name, Glib::VariantBase& value) {
        * it might be my theme.
        */
       std::string icon_id = id;
+      // The key an item is addressed by in the tray config. setCustomIcon() below
+      // triggers a reorder, so this has to be in place before it is called.
+      sort_key = id;
       if (id == "chrome_status_icon_1") {
         Glib::VariantBase value;
         this->proxy_->get_cached_property(value, "ToolTip");
@@ -245,11 +266,13 @@ void Item::setProperty(const std::string& name, Glib::VariantBase& value) {
         }
         if (!tooltip.title.empty()) {
           icon_id = tooltip.title.lowercase();
+          sort_key = icon_id;
           setCustomIcon(icon_id);
         }
       } else {
         setCustomIcon(icon_id);
       }
+      logItemKey(sort_key);
 
       // Check if this item should be hidden
       if (IconManager::instance().isHidden(icon_id)) {
