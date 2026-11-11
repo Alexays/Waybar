@@ -58,6 +58,15 @@ void check_nn(const void* ptr, const char* message = "ptr was null") {
   }
 }
 
+// Rank used for automatic device selection, higher is better. Only screen
+// backlights (the "backlight" subsystem) are chosen automatically, as before the
+// "leds" subsystem was enumerated. Any "leds" device exposes brightness and
+// max_brightness, including Caps Lock and network link LEDs, so LEDs get 0 and are
+// used only when named in "device" (e.g. "white:kbd_backlight").
+int auto_select_rank(const waybar::util::BacklightDevice& dev) {
+  return dev.subsystem() == "backlight" ? 1 : 0;
+}
+
 }  // namespace
 
 namespace waybar::util {
@@ -273,23 +282,23 @@ const BacklightDevice* BacklightBackend::best_device(const std::vector<Backlight
   }
 
   // No device was explicitly configured (or the configured name did not match).
-  // Automatic selection must keep preferring a screen backlight (the "backlight"
-  // subsystem) so that a keyboard-backlight LED, now that the "leds" subsystem is
-  // also enumerated, is never accidentally picked as the default. Only fall back
-  // to other subsystems (e.g. "leds") when no "backlight" device exists at all.
+  // Automatic selection only picks a screen backlight (the "backlight" subsystem);
+  // LEDs, now that the "leds" subsystem is also enumerated, are never picked as the
+  // default (see auto_select_rank()). With no screen backlight there is no device.
   const auto max = std::max_element(devices.begin(), devices.end(),
                                     [](const BacklightDevice& l, const BacklightDevice& r) {
-                                      const bool l_backlight = l.subsystem() == "backlight";
-                                      const bool r_backlight = r.subsystem() == "backlight";
-                                      if (l_backlight != r_backlight) {
-                                        // Rank any non-backlight device below every backlight
-                                        // device.
-                                        return r_backlight;
+                                      const int l_rank = auto_select_rank(l);
+                                      const int r_rank = auto_select_rank(r);
+                                      if (l_rank != r_rank) {
+                                        return l_rank < r_rank;
                                       }
                                       return l.get_max() < r.get_max();
                                     });
 
-  return max == devices.end() ? nullptr : &(*max);
+  if (max == devices.end() || auto_select_rank(*max) == 0) {
+    return nullptr;
+  }
+  return &(*max);
 }
 
 const BacklightDevice* BacklightBackend::get_previous_best_device() {
