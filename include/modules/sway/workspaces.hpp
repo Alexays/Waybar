@@ -5,6 +5,7 @@
 #include <gtkmm/label.h>
 
 #include <optional>
+#include <set>
 #include <string_view>
 #include <unordered_map>
 
@@ -39,6 +40,7 @@ class Workspaces : public AModule, public sigc::trackable {
   static bool hasFlag(const Json::Value&, const std::string&);
   void updateWindows(const Json::Value&, std::string&);
   Gtk::Button& addButton(const Json::Value&);
+  bool isNumAmbiguous(int num);
   void onButtonReady(const Json::Value&, Gtk::Button&);
   std::string getIcon(const std::string&, const Json::Value&);
   std::string getCycleWorkspace(std::vector<Json::Value>::iterator, bool prev) const;
@@ -58,6 +60,7 @@ class Workspaces : public AModule, public sigc::trackable {
   util::JsonParser parser_;
   std::unordered_map<std::string, Gtk::Button> buttons_;
   std::unordered_map<std::string, uint16_t> custom_sort_priorities_;
+  std::set<int> ambiguous_nums_;
   std::mutex mutex_;
   Ipc ipc_;
 };

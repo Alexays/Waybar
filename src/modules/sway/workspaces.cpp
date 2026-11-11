@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <map>
 #include <string>
 
 #include "util/string.hpp"
@@ -149,6 +150,31 @@ void Workspaces::onCmd(const struct Ipc::ipc_response& res) {
         std::lock_guard<std::mutex> lock(mutex_);
         auto payload = parser_.parse(res.payload);
         workspaces_.clear();
+
+        // Workspace numbers that are in use by more than one workspace across
+        // all outputs are ambiguous: sway resolves "workspace number N" to the
+        // first workspace with that number in tree order, which is not
+        // necessarily the workspace shown by this bar. Clicks on such
+        // workspaces fall back to switching by exact name.
+        std::map<int, int> num_counts;
+        for (const auto& output : payload["nodes"]) {
+          if (output["name"].asString() == "__i3") {
+            continue;
+          }
+          for (const auto& workspace : output["nodes"]) {
+            const int num = workspace["num"].asInt();
+            if (num >= 0) {
+              ++num_counts[num];
+            }
+          }
+        }
+        ambiguous_nums_.clear();
+        for (const auto& [num, count] : num_counts) {
+          if (count > 1) {
+            ambiguous_nums_.insert(num);
+          }
+        }
+
         std::vector<Json::Value> outputs;
         bool alloutputs = config_["all-outputs"].asBool();
         std::copy_if(payload["nodes"].begin(), payload["nodes"].end(), std::back_inserter(outputs),
@@ -456,6 +482,11 @@ auto Workspaces::update() -> void {
   AModule::update();
 }
 
+bool Workspaces::isNumAmbiguous(int num) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return ambiguous_nums_.count(num) != 0;
+}
+
 Gtk::Button& Workspaces::addButton(const Json::Value& node) {
   auto pair = buttons_.emplace(node["name"].asString(), node["name"].asString());
   auto&& button = pair.first->second;
@@ -479,7 +510,7 @@ Gtk::Button& Workspaces::addButton(const Json::Value& node) {
                          fmt::format("[workspace=\"^{}$\"] move workspace to output current; "
                                      "workspace number {} \"{}\"",
                                      node["name"].asString(), flag, node["name"].asString()));
-          } else if (node["num"].asInt() >= 0) {
+          } else if (node["num"].asInt() >= 0 && !isNumAmbiguous(node["num"].asInt())) {
             ipc_.sendCmd(IPC_COMMAND,
                          fmt::format(workspace_switch_number_cmd_, flag, node["num"].asInt()));
           } else {
