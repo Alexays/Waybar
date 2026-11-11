@@ -27,13 +27,15 @@ TEST_CASE("Backlight auto-selection prefers a screen backlight", "[backlight]") 
   REQUIRE(best_name(devices) == "amdgpu_bl1");
 }
 
-TEST_CASE("Backlight auto-selection falls back to a keyboard backlight only", "[backlight]") {
+TEST_CASE("Backlight auto-selection never picks an LED", "[backlight]") {
   const std::vector<BacklightDevice> devices{
       {"input3::capslock", 0, 1, true, "leds"},
       {"enp5s0-0::lan", 0, 255, true, "leds"},
       {"white:kbd_backlight", 1, 3, true, "leds"},
   };
-  REQUIRE(best_name(devices) == "white:kbd_backlight");
+  REQUIRE(best_name(devices) == "<none>");
+  // A config shared with a laptop names a screen backlight this machine lacks.
+  REQUIRE(best_name(devices, "intel_backlight") == "<none>");
 }
 
 TEST_CASE("Backlight auto-selection ignores LEDs that are not backlights", "[backlight]") {

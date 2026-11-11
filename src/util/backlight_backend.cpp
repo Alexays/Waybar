@@ -58,19 +58,13 @@ void check_nn(const void* ptr, const char* message = "ptr was null") {
   }
 }
 
-// Rank used for automatic device selection, higher is better. Any "leds" device
-// exposes brightness and max_brightness, but only keyboard backlights (the kernel's
-// "kbd_backlight" LED function, e.g. "white:kbd_backlight") are backlights. Other
-// LEDs such as Caps Lock or network link LEDs get 0 and are never chosen
-// automatically; they can still be used by naming them in "device".
+// Rank used for automatic device selection, higher is better. Only screen
+// backlights (the "backlight" subsystem) are chosen automatically, as before the
+// "leds" subsystem was enumerated. Any "leds" device exposes brightness and
+// max_brightness, including Caps Lock and network link LEDs, so LEDs get 0 and are
+// used only when named in "device" (e.g. "white:kbd_backlight").
 int auto_select_rank(const waybar::util::BacklightDevice& dev) {
-  if (dev.subsystem() == "backlight") {
-    return 2;
-  }
-  if (dev.name().find("kbd_backlight") != std::string::npos) {
-    return 1;
-  }
-  return 0;
+  return dev.subsystem() == "backlight" ? 1 : 0;
 }
 
 }  // namespace
@@ -288,11 +282,9 @@ const BacklightDevice* BacklightBackend::best_device(const std::vector<Backlight
   }
 
   // No device was explicitly configured (or the configured name did not match).
-  // Automatic selection must keep preferring a screen backlight (the "backlight"
-  // subsystem) so that a keyboard-backlight LED, now that the "leds" subsystem is
-  // also enumerated, is never accidentally picked as the default. Only fall back
-  // to a keyboard-backlight LED when no "backlight" device exists at all, and
-  // never to other LEDs (see auto_select_rank()).
+  // Automatic selection only picks a screen backlight (the "backlight" subsystem);
+  // LEDs, now that the "leds" subsystem is also enumerated, are never picked as the
+  // default (see auto_select_rank()). With no screen backlight there is no device.
   const auto max = std::max_element(devices.begin(), devices.end(),
                                     [](const BacklightDevice& l, const BacklightDevice& r) {
                                       const int l_rank = auto_select_rank(l);
