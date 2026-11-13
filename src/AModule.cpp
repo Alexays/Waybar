@@ -62,7 +62,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
   if (enable_click || hasUserEvents) {
     hasUserEvents_ = true;
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
-    event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
+    connectPress([this](GdkEventButton* e) { return handleToggle(e); });
   } else {
     hasUserEvents_ = false;
   }
@@ -75,7 +75,8 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       }) != eventMap_.cend();
   if (hasReleaseEvent) {
     event_box_.add_events(Gdk::BUTTON_RELEASE_MASK);
-    event_box_.signal_button_release_event().connect(sigc::mem_fun(*this, &AModule::handleRelease));
+    event_box_.signal_button_release_event().connect(
+        [this](GdkEventButton* e) { return !leavesTouchToParent(e) && handleRelease(e); });
   }
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() ||
       config_["on-scroll-left"].isString() || config_["on-scroll-right"].isString() ||
@@ -205,6 +206,21 @@ bool AModule::handleMouseLeave(GdkEventCrossing* const& e) {
 bool AModule::handleToggle(GdkEventButton* const& e) { return handleUserEvent(e); }
 
 bool AModule::handleRelease(GdkEventButton* const& e) { return handleUserEvent(e); }
+
+bool AModule::fromTouchscreen(const GdkEvent* e) {
+  GdkDevice* device = gdk_event_get_source_device(e);
+  return device != nullptr && gdk_device_get_source(device) == GDK_SOURCE_TOUCHSCREEN;
+}
+
+bool AModule::leavesTouchToParent(GdkEventButton* e) const {
+  return pass_touch_to_parent_ && fromTouchscreen(reinterpret_cast<GdkEvent*>(e));
+}
+
+// Checked here rather than in handleToggle, which modules override
+void AModule::connectPress(const sigc::slot<bool(GdkEventButton*)>& handler) {
+  event_box_.signal_button_press_event().connect(
+      [this, handler](GdkEventButton* e) { return !leavesTouchToParent(e) && handler(e); });
+}
 
 bool AModule::handleUserEvent(GdkEventButton* const& e) {
   bool handled = false;

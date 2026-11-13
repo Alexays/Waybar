@@ -105,7 +105,7 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
       sigc::mem_fun(*this, &Gamemode::disappear),
       Gio::DBus::BusNameWatcherFlags::BUS_NAME_WATCHER_FLAGS_AUTO_START);
 
-  event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &Gamemode::handleToggle));
+  connectPress(sigc::mem_fun(*this, &Gamemode::handleToggle));
 }
 
 Gamemode::~Gamemode() {

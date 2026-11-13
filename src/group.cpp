@@ -6,6 +6,7 @@
 
 #include "gtkmm/enums.h"
 #include "gtkmm/widget.h"
+#include "util/drawer_tap.hpp"
 
 namespace waybar {
 
@@ -129,10 +130,10 @@ Group::~Group() {
   }
 }
 
-void Group::show_group() {
+void Group::show_group(bool keep_leader) {
   box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   revealer.set_reveal_child(true);
-  if (hide_leader_when_expanded) {
+  if (hide_leader_when_expanded && !keep_leader) {
     leader_revealer.set_reveal_child(false);
   }
   box.get_style_context()->add_class("expanded");
@@ -196,7 +197,8 @@ void Group::hide_group() {
 }
 
 bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
-  if (!click_to_reveal) {
+  // A touch has no hover; handleToggle opens the drawer on a tap instead
+  if (!click_to_reveal && !fromTouchscreen(reinterpret_cast<GdkEvent*>(e))) {
     if (reveal_delay > 0) {
       if (reveal_timeout_.connected()) {
         reveal_timeout_.disconnect();
@@ -216,7 +218,8 @@ bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
 }
 
 bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
-  if (!click_to_reveal && e->detail != GDK_NOTIFY_INFERIOR) {
+  if (!click_to_reveal && e->detail != GDK_NOTIFY_INFERIOR &&
+      !fromTouchscreen(reinterpret_cast<GdkEvent*>(e))) {
     if (reveal_delay > 0 && reveal_timeout_.connected()) {
       reveal_timeout_.disconnect();
     }
@@ -227,15 +230,36 @@ bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
 }
 
 bool Group::handleToggle(GdkEventButton* const& e) {
-  if (!click_to_reveal || e->button != 1 || e->type != GDK_BUTTON_PRESS) {
-    return false;
+  auto* event = reinterpret_cast<GdkEvent*>(e);
+  const bool touch = fromTouchscreen(event);
+  auto* target = Glib::wrap(gtk_get_event_widget(event));
+  const util::GroupPressState state{
+      .is_drawer = is_drawer,
+      .click_to_reveal = click_to_reveal,
+      .touch = touch,
+      .primary_press = e->button == 1 && e->type == GDK_BUTTON_PRESS,
+      .open = touch ? revealer.get_reveal_child()
+                    : (box.get_state_flags() & Gtk::StateFlags::STATE_FLAG_PRELIGHT) != 0U,
+      .on_drawer_child =
+          target != nullptr && (target == &revealer || target->is_ancestor(revealer)),
+  };
+  const auto action = util::group_press(state);
+  const bool leads_drawer = touch && passesTouchToParent();
+  if (action == util::GroupPress::Pass) {
+    // A tap inside this drawer isn't meant for the drawer this group leads
+    return leads_drawer && state.on_drawer_child;
   }
-  if ((box.get_state_flags() & Gtk::StateFlags::STATE_FLAG_PRELIGHT) != 0U) {
+  if (touch && reveal_timeout_.connected()) {
+    reveal_timeout_.disconnect();
+  }
+  if (action == util::GroupPress::Close) {
     hide_group();
   } else {
-    show_group();
+    // Keep the leader on screen after a tap so another tap on it can close the drawer
+    show_group(touch);
   }
-  return true;
+  // Like hover, a tap on a nested drawer leading another one toggles both
+  return !leads_drawer;
 }
 
 auto Group::update() -> void {
@@ -300,7 +324,9 @@ void Group::addWidget(AModule* module) {
     getBox().pack_start(widget, false, false);
   }
 
-  if (is_drawer && !is_first_widget) {
+  if (is_drawer && is_first_widget) {
+    module->passTouchToParent();
+  } else if (is_drawer) {
     widget.get_style_context()->add_class(add_class_to_drawer_children);
   }
 
