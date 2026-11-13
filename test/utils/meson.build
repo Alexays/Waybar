@@ -16,6 +16,7 @@ test_src = files(
     'SafeSignal.cpp',
     'format.cpp',
     'string.cpp',
+    'sway_command.cpp',
     'tooltip.cpp',
     'sleeper_thread.cpp',
     'command.cpp',
