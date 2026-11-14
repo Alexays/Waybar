@@ -775,7 +775,8 @@ void Item::onMenuDestroyed(Item* self, GObject* old_menu_pointer) {
   }
 }
 
-// Counts the entries below a "(ia{sv}av)" layout node, giving up once there are too many
+// Counts the entries below a "(ia{sv}av)" or "(ia{sv}a(ia{sv}av))" layout node, giving up once
+// there are too many
 static gsize countMenuEntries(GVariant* node, gsize count = 0) {
   if (!g_variant_is_of_type(node, G_VARIANT_TYPE("(ia{sv}av)")) &&
       !g_variant_is_of_type(node, G_VARIANT_TYPE("(ia{sv}a(ia{sv}av))"))) {
