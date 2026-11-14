@@ -60,12 +60,12 @@ auto waybar::modules::Memory::update() -> void {
     // Pre-round to 2 decimals so bare {total}/{used}/{avail} placeholders print
     // cleanly, matching the 0.15.0 behavior (an explicit spec like {used:.1f}
     // still overrides this).
-    float total_ram = 0.01f * std::round((memtotal / divisor) * 100.0f);
-    float total_swap = 0.01f * std::round((swaptotal / divisor) * 100.0f);
-    float used_ram = 0.01f * std::round(((memtotal - memfree) / divisor) * 100.0f);
-    float used_swap = 0.01f * std::round(((swaptotal - swapfree) / divisor) * 100.0f);
-    float available_ram = 0.01f * std::round((memfree / divisor) * 100.0f);
-    float available_swap = 0.01f * std::round((swapfree / divisor) * 100.0f);
+    float total_ram = 0.01 * std::round((memtotal / divisor) * 100.0f);
+    float total_swap = 0.01 * std::round((swaptotal / divisor) * 100.0f);
+    float used_ram = 0.01 * std::round(((memtotal - memfree) / divisor) * 100.0f);
+    float used_swap = 0.01 * std::round(((swaptotal - swapfree) / divisor) * 100.0f);
+    float available_ram = 0.01 * std::round((memfree / divisor) * 100.0f);
+    float available_swap = 0.01 * std::round((swapfree / divisor) * 100.0f);
 
     auto format = format_;
     auto state = getState(used_ram_percentage);
