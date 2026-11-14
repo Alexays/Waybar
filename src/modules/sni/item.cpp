@@ -777,17 +777,37 @@ void Item::onMenuDestroyed(Item* self, GObject* old_menu_pointer) {
 
 // Counts the entries below a "(ia{sv}av)" layout node, giving up once there are too many
 static gsize countMenuEntries(GVariant* node, gsize count = 0) {
+  if (!g_variant_is_of_type(node, G_VARIANT_TYPE("(ia{sv}av)")) &&
+      !g_variant_is_of_type(node, G_VARIANT_TYPE("(ia{sv}a(ia{sv}av))"))) {
+    return MENU_MAX_ENTRIES + 1;
+  }
+
   g_autoptr(GVariant) children = g_variant_get_child_value(node, 2);
   const gsize n_children = g_variant_n_children(children);
-  count += n_children;
-  for (gsize i = 0; i < n_children && count <= MENU_MAX_ENTRIES; ++i) {
-    g_autoptr(GVariant) boxed = g_variant_get_child_value(children, i);
-    g_autoptr(GVariant) child = g_variant_get_variant(boxed);
-    if (!g_variant_is_of_type(child, G_VARIANT_TYPE("(ia{sv}av)"))) {
-      return MENU_MAX_ENTRIES + 1;
-    }
-    count = countMenuEntries(child, count);
+
+  if (n_children > MENU_MAX_ENTRIES - count) {
+    return MENU_MAX_ENTRIES + 1;
   }
+
+  count += n_children;
+
+  for (gsize i = 0; i < n_children; ++i) {
+    g_autoptr(GVariant) element = g_variant_get_child_value(children, i);
+    g_autoptr(GVariant) child = nullptr;
+
+    if (g_variant_is_of_type(children, G_VARIANT_TYPE("av"))) {
+      child = g_variant_get_variant(element);
+    } else {
+      child = g_steal_pointer(&element);
+    }
+
+    count = countMenuEntries(child, count);
+
+    if (count > MENU_MAX_ENTRIES) {
+      return count;
+    }
+  }
+
   return count;
 }
 
