@@ -11,6 +11,9 @@ namespace waybar::modules::SNI {
 
 static const unsigned RETRY_DELAY_MS = 200;
 static const unsigned MAX_RETRIES = 10;
+// The watcher may be any process, and the object path ends up in the header of every call to the
+// item. Keep in sync with Watcher.
+static const std::size_t MAX_SERVICE_LENGTH = 1024;
 
 Host::Host(std::size_t id, const Json::Value& config, const Bar& bar,
            const std::vector<std::string>& ignore_list,
@@ -111,7 +114,10 @@ void Host::nameAppeared(const Glib::RefPtr<Gio::DBus::Connection>& conn, const G
     return;
   }
   cancellable_ = g_cancellable_new();
-  sn_watcher_proxy_new(conn->gobj(), G_DBUS_PROXY_FLAGS_NONE, "org.kde.StatusNotifierWatcher",
+  // A proxy for the well-known name would follow every change of owner on its own and outlive
+  // nameVanished meanwhile; watch_name already follows the name for us.
+  watcher_owner_ = name_owner;
+  sn_watcher_proxy_new(conn->gobj(), G_DBUS_PROXY_FLAGS_NONE, watcher_owner_.c_str(),
                        "/StatusNotifierWatcher", cancellable_, &Host::proxyReady, this);
 }
 
@@ -121,6 +127,10 @@ void Host::nameVanished(const Glib::RefPtr<Gio::DBus::Connection>& conn,
   retry_count_ = 0;
   g_cancellable_cancel(cancellable_);
   g_clear_object(&cancellable_);
+  if (watcher_ != nullptr) {
+    // The proxy may outlive this reference and must not call back into the host after that.
+    g_signal_handlers_disconnect_by_data(watcher_, this);
+  }
   g_clear_object(&watcher_);
   clearItems();
 }
@@ -156,7 +166,8 @@ void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
           }
           try {
             auto conn = Gio::DBus::Connection::get_sync(Gio::DBus::BusType::BUS_TYPE_SESSION);
-            host->nameAppeared(conn, "org.kde.StatusNotifierWatcher", "");
+            // nameVanished disconnects this timer, so the last owner seen is still the current one.
+            host->nameAppeared(conn, "org.kde.StatusNotifierWatcher", host->watcher_owner_);
           } catch (const Glib::Error& e) {
             spdlog::error("Host: retry get_sync failed: {}", static_cast<std::string>(e.what()));
             if (host->retry_count_ < MAX_RETRIES) {
@@ -275,6 +286,10 @@ std::tuple<std::string, std::string> Host::getBusNameAndObjectPath(const std::st
 }
 
 void Host::addRegisteredItem(const std::string& service) {
+  if (service.size() > MAX_SERVICE_LENGTH) {
+    spdlog::warn("Host: Ignoring service of {} bytes", service.size());
+    return;
+  }
   // Check service string directly before parsing
   for (const auto& ignored : ignore_list_) {
     if (service.find(ignored) != std::string::npos) {
@@ -287,6 +302,12 @@ void Host::addRegisteredItem(const std::string& service) {
   std::tie(bus_name, object_path) = getBusNameAndObjectPath(service);
   spdlog::debug("SNI item registered: bus_name={}, object_path={}, full_service={}", bus_name,
                 object_path, service);
+  // The watcher may be a foreign process, and a proxy for an invalid name or path never completes.
+  if (g_dbus_is_name(bus_name.c_str()) == FALSE ||
+      g_variant_is_object_path(object_path.c_str()) == FALSE) {
+    spdlog::warn("Host: Ignoring SNI item with invalid service string '{}'", service);
+    return;
+  }
   auto it = std::ranges::find_if(items_, [&bus_name, &object_path](const auto& item) {
     return bus_name == item->bus_name && object_path == item->object_path;
   });

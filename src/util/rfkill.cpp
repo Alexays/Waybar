@@ -27,7 +27,7 @@
 #include <cerrno>
 
 waybar::util::Rfkill::Rfkill(const enum rfkill_type rfkill_type) : rfkill_type_(rfkill_type) {
-  fd_ = open("/dev/rfkill", O_RDONLY);
+  fd_ = open("/dev/rfkill", O_RDONLY | O_CLOEXEC);
   if (fd_ < 0) {
     spdlog::error("Can't open RFKILL control device");
     return;

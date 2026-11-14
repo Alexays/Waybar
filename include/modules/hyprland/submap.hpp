@@ -21,6 +21,9 @@ class Submap : public waybar::ALabel, public EventHandler {
  private:
   auto parseConfig(const Json::Value&) -> void;
   void onEvent(const std::string& ev) override;
+  void onReconnect() override;
+  void initSubmap();
+  void setSubmap(const std::string& name);
 
   std::mutex mutex_;
   const Bar& bar_;

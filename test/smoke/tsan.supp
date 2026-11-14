@@ -1,0 +1,15 @@
+# ThreadSanitizer suppressions for the smoke tiers: third-party code only.
+#
+# GLib's GMutex and GCond are raw futexes on Linux, invisible to TSan, so every
+# handoff between GLib's own threads (pango's fontconfig loader, the GDBus
+# worker, the GTask pool) looks like a race. These libraries are not
+# instrumented: their frames only show up as the direct caller of an
+# intercepted call (malloc, memcpy, close), never in the middle of a Waybar
+# stack, so an entry matches only when the library made the access itself,
+# allocated the memory or created the thread.
+race:libglib-2.0.so.0
+race:libgobject-2.0.so.0
+race:libgio-2.0.so.0
+race:libdconfsettings.so
+race:libpangoft2-1.0.so.0
+race:libfontconfig.so.1

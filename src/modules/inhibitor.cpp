@@ -143,13 +143,14 @@ auto Inhibitor::update() -> void {
   label_.get_style_context()->add_class(status_text);
 
   if (tooltipEnabled()) {
-    label_.set_tooltip_markup(status_text);
+    setTooltipMarkup(status_text);
   }
 
   return ALabel::update();
 }
 
 auto Inhibitor::handleToggle(GdkEventButton* const& e) -> bool {
+  bool handled = false;
   if (e->button == 1) {
     if (activated()) {
       ::close(handle_);
@@ -163,9 +164,10 @@ auto Inhibitor::handleToggle(GdkEventButton* const& e) -> bool {
         spdlog::error("cannot get inhibitor locks");
       }
     }
+    handled = true;
   }
 
-  return ALabel::handleToggle(e);
+  return ALabel::handleToggle(e) || handled;
 }
 
 }  // namespace waybar::modules

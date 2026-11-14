@@ -40,7 +40,9 @@ the screen or playing audio.
 *ignore-monitor* ++
 	typeof: bool ++
 	default: true ++
-	Ignore streams with *stream.monitor* property.
+	Ignore audio input streams with the *stream.monitor* property (for example
+	volume meters). Applications set this property on their own streams, so
+	set this to false to show every audio input stream.
 
 *ignore* ++
 	typeof: array of objects ++

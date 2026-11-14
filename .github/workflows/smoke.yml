@@ -32,7 +32,7 @@ jobs:
     # Safety net: the whole smoke job is minutes of work. Cap it so a hung tier
     # (e.g. a daemon left running under a bare `wait`) fails fast instead of
     # burning the default 6h runner budget.
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
 
@@ -41,14 +41,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y \
             sway labwc grim imagemagick fonts-dejavu-core jq \
-            at-spi2-core python3-pyatspi dbus-x11 \
-            mpd mpc pulseaudio pulseaudio-utils umockdev \
+            at-spi2-core python3-pyatspi dbus-x11 python3-dbusmock \
+            mpd mpc pulseaudio pulseaudio-utils umockdev bubblewrap \
             meson ninja-build g++ pkg-config scdoc wayland-protocols \
             gobject-introspection libdbusmenu-gtk3-dev libevdev-dev libfmt-dev \
             libgirepository1.0-dev libgtk-3-dev libgtkmm-3.0-dev libinput-dev \
             libjsoncpp-dev libmpdclient-dev libnl-3-dev libnl-genl-3-dev \
             libpulse-dev libsigc++-2.0-dev libspdlog-dev libwayland-dev \
-            upower libxkbregistry-dev libxkbcommon-dev
+            upower libxkbregistry-dev libxkbcommon-dev foot wayland-utils \
+            libupower-glib-dev libplayerctl-dev libmm-glib-dev
 
       # Cheap static gate (source-only): every Factory module must be classified
       # for smoke coverage. Runs before the build so it fails fast.
@@ -59,8 +60,10 @@ jobs:
         run: |
           # _GLIBCXX_ASSERTIONS turns libstdc++ container bounds/precondition
           # violations (e.g. out-of-range vector access) into aborts under ASan.
+          # The D-Bus tier needs these modules: fail here rather than skip them.
           meson setup build -Dman-pages=disabled -Db_sanitize=address \
-            -Dcpp_args=-D_GLIBCXX_ASSERTIONS
+            -Dcpp_args=-D_GLIBCXX_ASSERTIONS \
+            -Dupower_glib=enabled -Dmpris=enabled -Dwwan=enabled -Dlogind=enabled
           ninja -C build
 
       # --- Tier 0 + 2: render + sanitizer/critical gate ---
@@ -109,33 +112,41 @@ jobs:
       - name: Custom-backend fuzz
         run: ./test/smoke/fuzz.sh
 
+      # --- Tier 4: config robustness (wrong types / edge values per option) ---
+      - name: Config fuzz
+        run: dbus-run-session -- ./test/smoke/config_fuzz.sh
+
       # --- Tier 5: state transitions with real daemons (mpd/pulseaudio) ---
-      # Best-effort: daemon setup varies by runner; keep non-blocking for now.
       - name: State transitions (mpd / pulseaudio)
-        continue-on-error: true
-        run: ./test/smoke/state.sh
+        run: dbus-run-session -- ./test/smoke/state.sh
 
-      # --- Tier 6: fake hardware via umockdev (backlight/slider, battery) ---
-      # Best-effort: the mock device descriptions may need per-distro tuning.
+      # --- Tier 6: fake hardware via umockdev (battery, backlight, temperature) ---
       - name: Fake hardware (umockdev)
-        continue-on-error: true
-        run: ./test/smoke/hardware.sh
+        run: |
+          # Ubuntu 24.04 confines unprivileged user namespaces through AppArmor
+          # and has no profile for bwrap, so lift the restriction on this VM.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          dbus-run-session -- ./test/smoke/hardware.sh
 
-      # --- Leak check (report-only) — we fixed several leaks recently ---
-      - name: Leak check (LSan, report-only)
-        continue-on-error: true
+      # --- Tier 6: cpu / memory / cpu_frequency / disk on fake /proc (bwrap) ---
+      - name: Fake /proc and sysfs (bubblewrap)
+        run: dbus-run-session -- ./test/smoke/procfs.sh
+
+      # --- Leak check: any leak outside the third-party lsan.supp fails ---
+      - name: Leak check (LSan)
         run: ./test/smoke/leakcheck.sh
 
-      # --- Tier 2: pointer interaction (best-effort) ---
-      # Headless seats may not expose a pointer capability, so injected clicks
-      # can be dropped; keep this non-blocking while it is hardened.
-      - name: Interaction (click + format-alt)
-        continue-on-error: true
-        run: ./test/smoke/interact.sh interaction-shots
+      # --- Tier 2: pointer interaction through a virtual pointer ---
+      - name: Interaction (click, scroll, buttons, menu, tooltips)
+        run: dbus-run-session -- ./test/smoke/interact.sh interaction-shots
 
       # --- Tier 2: accessibility assertions ---
       - name: Accessibility (AT-SPI) assertions
         run: dbus-run-session -- ./test/smoke/a11y.sh
+
+      # --- Tier 2: compositor modules driven through sway IPC (+ taskbar under labwc) ---
+      - name: Compositor modules (sway, wlr/taskbar)
+        run: dbus-run-session -- ./test/smoke/compositor.sh
 
       # --- Tier 3: layout matrix (positions + HiDPI) ---
       - name: Layout matrix (top/bottom/left + scale 2)
@@ -144,6 +155,18 @@ jobs:
       # --- Tier 3: second compositor ---
       - name: Launch under labwc
         run: COMPOSITOR=labwc ./test/smoke/run.sh test/smoke/config.jsonc test/smoke/style.css labwc.png
+
+      # --- Tier 2: compositor IPC modules against fake IPC servers ---
+      - name: Compositor IPC modules (fake Hyprland / niri / mango / Umbriel / Wayfire)
+        run: dbus-run-session -- ./test/smoke/ipc.sh
+
+      # --- Tier 4: tray input from session-bus clients ---
+      - name: Tray hostile input
+        run: dbus-run-session -- ./test/smoke/tray.sh
+
+      # --- Tier 5: modules backed by D-Bus services (python-dbusmock fakes) ---
+      - name: D-Bus service modules
+        run: dbus-run-session -- ./test/smoke/dbus.sh
 
       - name: Upload screenshots & diffs
         uses: actions/upload-artifact@v4
@@ -158,3 +181,77 @@ jobs:
             interaction-shots/
             layout-shots/
           if-no-files-found: warn
+
+  # Endurance: minutes of reload / toggle / hotplug churn on fast modules, with
+  # RSS, descriptor, thread and child-process counts sampled. No sanitizer, so
+  # RSS means what it says.
+  smoke-soak:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            sway fonts-dejavu-core jq \
+            meson ninja-build g++ pkg-config scdoc wayland-protocols \
+            gobject-introspection libdbusmenu-gtk3-dev libevdev-dev libfmt-dev \
+            libgirepository1.0-dev libgtk-3-dev libgtkmm-3.0-dev libinput-dev \
+            libjsoncpp-dev libmpdclient-dev libnl-3-dev libnl-genl-3-dev \
+            libpulse-dev libsigc++-2.0-dev libspdlog-dev libwayland-dev \
+            upower libxkbregistry-dev libxkbcommon-dev
+
+      - name: Build Waybar
+        run: |
+          meson setup build -Dman-pages=disabled --buildtype=debugoptimized
+          ninja -C build waybar
+
+      - name: Soak (reload / toggle / hotplug churn, resource growth)
+        run: ./test/smoke/soak.sh
+
+  # Data races: the module, lifecycle and (short) soak tiers under
+  # ThreadSanitizer. tsan.supp holds third-party entries only.
+  smoke-tsan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            sway grim imagemagick fonts-dejavu-core jq dbus-daemon \
+            meson ninja-build g++ pkg-config scdoc wayland-protocols \
+            gobject-introspection libdbusmenu-gtk3-dev libevdev-dev libfmt-dev \
+            libgirepository1.0-dev libgtk-3-dev libgtkmm-3.0-dev libinput-dev \
+            libjsoncpp-dev libmpdclient-dev libnl-3-dev libnl-genl-3-dev \
+            libpulse-dev libsigc++-2.0-dev libspdlog-dev libwayland-dev \
+            upower libxkbregistry-dev libxkbcommon-dev
+
+      - name: Build Waybar with ThreadSanitizer
+        run: |
+          meson setup build -Dman-pages=disabled -Db_sanitize=thread
+          ninja -C build waybar
+
+      - name: Prepare the TSan runtime
+        run: |
+          # TSan's shadow memory layout does not fit the runner kernel's
+          # default 32 bits of mmap randomization.
+          sudo sysctl vm.mmap_rnd_bits=28
+          gcc -shared -fPIC -O2 -o "$RUNNER_TEMP/tsan_signal.so" test/smoke/tsan_signal.c
+          echo "LD_PRELOAD=$RUNNER_TEMP/tsan_signal.so" >> "$GITHUB_ENV"
+          echo "TSAN_OPTIONS=suppressions=$PWD/test/smoke/tsan.supp:halt_on_error=0:second_deadlock_stack=1" >> "$GITHUB_ENV"
+
+      - name: Per-module matrix under TSan
+        run: ./test/smoke/modules.sh module-shots
+
+      - name: Lifecycle under TSan
+        if: success() || failure()
+        run: ./test/smoke/lifecycle.sh
+
+      - name: Short soak under TSan
+        if: success() || failure()
+        run: SOAK_CYCLES=6 ./test/smoke/soak.sh

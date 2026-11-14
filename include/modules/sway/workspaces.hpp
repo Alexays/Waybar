@@ -35,7 +35,6 @@ class Workspaces : public AModule, public sigc::trackable {
   auto populateIgnoreWorkspacesConfig(const Json::Value& config) -> void;
   bool isWorkspaceIgnored(std::string const& name);
   void onCmd(const struct Ipc::ipc_response&);
-  void onEvent(const struct Ipc::ipc_response&);
   bool filterButtons();
   static bool hasFlag(const Json::Value&, const std::string&);
   void updateWindows(const Json::Value&, std::string&);

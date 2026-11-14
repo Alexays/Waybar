@@ -37,6 +37,7 @@ class Battery : public ALabel {
   const std::string getAdapterStatus(uint8_t capacity) const;
   std::tuple<uint8_t, float, std::string, float, uint16_t, float> getInfos();
   const std::string formatTimeRemaining(float hoursRemaining);
+  const std::string formatETA(float hoursRemaining);
   void setBarClass(std::string&);
   void processEvents(std::string& state, std::string& status, uint8_t capacity);
 

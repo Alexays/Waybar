@@ -5,10 +5,14 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <array>
 #include <cerrno>
+#include <chrono>
 #include <cstring>
 #include <stdexcept>
+#include <string_view>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -71,6 +75,7 @@ void emitBufferedLines(std::string& buffer,
     if (!line.empty() && line.back() == '\r') {
       line.pop_back();
     }
+    waybar::util::command::truncateOutput(line);
     on_output(line);
   }
 
@@ -80,6 +85,7 @@ void emitBufferedLines(std::string& buffer,
     if (!line.empty() && line.back() == '\r') {
       line.pop_back();
     }
+    waybar::util::command::truncateOutput(line);
     on_output(line);
   }
 }
@@ -124,15 +130,27 @@ void waybar::util::command::LineStream::stop() {
   stdout_connection_.disconnect();
   child_connection_.disconnect();
 
+  // Close the pipe before signalling: a child blocked writing to it may never act on SIGTERM
+  closeStdout();
+  buffer_.clear();
+
   if (pid_ != 0) {
+    using namespace std::chrono_literals;
+    constexpr auto grace_period = 1000ms;
+    constexpr auto poll_interval = 5ms;
+
+    // This runs on the main loop, so a child that ignores SIGTERM is killed rather than waited for
     killpg(pid_, SIGTERM);
-    waitpid(pid_, nullptr, 0);
+    for (auto waited = 0ms; waitpid(pid_, nullptr, WNOHANG) == 0; waited += poll_interval) {
+      if (waited == grace_period) {
+        spdlog::warn("Cmd {} is still running after SIGTERM, killing it", pid_);
+        killpg(pid_, SIGKILL);
+      }
+      std::this_thread::sleep_for(poll_interval);
+    }
     Glib::spawn_close_pid(pid_);
     pid_ = 0;
   }
-
-  closeStdout();
-  buffer_.clear();
 }
 
 bool waybar::util::command::LineStream::running() const { return pid_ != 0; }
@@ -185,7 +203,12 @@ void waybar::util::command::LineStream::drainStdout(bool flush_trailing_line) {
   while (true) {
     const auto bytes_read = ::read(stdout_fd_, chunk.data(), chunk.size());
     if (bytes_read > 0) {
-      buffer_.append(chunk.data(), static_cast<size_t>(bytes_read));
+      std::string_view data(chunk.data(), static_cast<size_t>(bytes_read));
+      if (buffer_.size() > kMaxOutputSize) {
+        // The pending line is already too long: skip to its end
+        data.remove_prefix(std::min(data.find('\n'), data.size()));
+      }
+      buffer_.append(data);
       emitBufferedLines(buffer_, on_output_, false);
       continue;
     }

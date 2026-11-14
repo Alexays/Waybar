@@ -39,7 +39,7 @@ int IPC::connectToSocket() {
   }
 
   struct sockaddr_un addr;
-  util::ScopedFd socketfd(socket(AF_UNIX, SOCK_STREAM, 0));
+  util::ScopedFd socketfd(socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0));
 
   if (socketfd == -1) {
     throw std::runtime_error("socketfd failed");
@@ -208,14 +208,14 @@ void IPC::parseIPC(const std::string& line) {
                              [id](const auto& win) { return win["id"].asUInt64() == id; });
       if (it == windows_.end()) {
         windows_.push_back(window);
-
-        if (window["is_focused"].asBool()) {
-          for (auto& win : windows_) {
-            win["is_focused"] = win["id"].asUInt64() == id;
-          }
-        }
       } else {
         *it = window;
+      }
+
+      if (window["is_focused"].asBool()) {
+        for (auto& win : windows_) {
+          win["is_focused"] = win["id"].asUInt64() == id;
+        }
       }
     } else if (const auto& payload = ev["WindowClosed"]) {
       const auto id = payload["id"].asUInt64();

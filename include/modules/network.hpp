@@ -26,19 +26,19 @@ namespace waybar::modules {
 class Network : public ALabel {
  public:
   Network(const std::string&, const Json::Value&);
-  virtual ~Network();
+  ~Network() override;
   auto update() -> void override;
 
  private:
-  static const uint8_t MAX_RETRY{5};
   static const uint8_t EPOLL_MAX{200};
 
   static int handleEvents(struct nl_msg*, void*);
   static int handleEventsDone(struct nl_msg*, void*);
+  static int handleDumpInterrupted(struct nl_msg*, void*);
   static int handleScan(struct nl_msg*, void*);
-  static int handleStationGet(struct nl_msg *msg, void *data);
+  static int handleStationGet(struct nl_msg* msg, void* data);
 
-  void askForStateDump(void);
+  void askForStateDump();
 
   void worker();
   void createInfoSocket();
@@ -52,14 +52,13 @@ class Network : public ALabel {
                       std::string& matched) const;
   auto getInfo() -> void;
   bool isWireless() const;
-  const std::string getNetworkState() const;
+  std::string getNetworkState() const;
   void clearIface();
   std::optional<std::pair<unsigned long long, unsigned long long>> readBandwidthUsage();
   uint32_t readLinkSpeed() const;
 
   int ifid_{-1};
   ip_addr_pref addr_pref_{ip_addr_pref::IPV4};
-  struct sockaddr_nl nladdr_{0};
   struct nl_sock* sock_{nullptr};
   struct nl_sock* ev_sock_{nullptr};
   struct nl_sock* station_sock_{nullptr};
@@ -78,6 +77,7 @@ class Network : public ALabel {
   unsigned long long bandwidth_up_total_{0};
   unsigned long long bandwidth_down_prev_{0};
   unsigned long long bandwidth_up_prev_{0};
+  double bandwidth_sample_seconds_{1.0};
   std::chrono::steady_clock::time_point bandwidth_last_sample_time_;
 
   std::string state_;
@@ -92,10 +92,10 @@ class Network : public ALabel {
   std::string netmask6_;
   int cidr_{0};
   int cidr6_{0};
-  int32_t signal_strength_dbm_;
-  uint8_t signal_strength_;
+  int32_t signal_strength_dbm_{0};
+  uint8_t signal_strength_{0};
   std::string signal_strength_app_;
-  uint32_t route_priority;
+  uint32_t route_priority_;
   uint32_t link_speed_{0};
 
   util::SleeperThread thread_;
@@ -104,8 +104,8 @@ class Network : public ALabel {
   util::Rfkill rfkill_{RFKILL_TYPE_WLAN};
 #endif
   float frequency_{0};
-  uint32_t tx_bitrate_{0};
-  uint32_t rx_bitrate_{0};
+  uint64_t tx_bitrate_{0};
+  uint64_t rx_bitrate_{0};
 };
 
 }  // namespace waybar::modules

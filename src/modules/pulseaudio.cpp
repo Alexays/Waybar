@@ -1,5 +1,7 @@
 #include "modules/pulseaudio.hpp"
 
+#include "util/string.hpp"
+
 waybar::modules::Pulseaudio::Pulseaudio(const std::string& id, const Json::Value& config)
     : ALabel(config, "pulseaudio", id, "{volume}%") {
   event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
@@ -116,8 +118,10 @@ auto waybar::modules::Pulseaudio::update() -> void {
   }
 
   auto source_volume = backend->getSourceVolume();
-  auto sink_desc = backend->getSinkDesc();
-  auto source_desc = backend->getSourceDesc();
+  const std::string sink_desc =
+      Glib::Markup::escape_text(toSingleLine(backend->getSinkDesc())).raw();
+  const std::string source_desc =
+      Glib::Markup::escape_text(toSingleLine(backend->getSourceDesc())).raw();
 
   format_source = fmt::format(fmt::runtime(format_source), fmt::arg("volume", source_volume),
                               fmt::arg("source_desc", source_desc));

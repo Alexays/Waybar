@@ -136,6 +136,8 @@ void WindowCount::queryActiveWorkspace() {
 
 void WindowCount::onEvent(const std::string& ev) { dp.emit(); }
 
+void WindowCount::onReconnect() { dp.emit(); }
+
 void WindowCount::setClass(const std::string& classname, bool enable) {
   if (enable) {
     if (!bar_.window.get_style_context()->has_class(classname)) {

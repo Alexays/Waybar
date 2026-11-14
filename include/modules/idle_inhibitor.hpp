@@ -12,7 +12,8 @@ namespace waybar::modules {
 
 class IdleInhibitor : public ALabel {
   sigc::connection timeout_;
-  ext_idle_notification_v1* idle_notification_;
+  // Shared like `status`: what ends the inhibition must outlive the module that started it
+  static ext_idle_notification_v1* idle_notification_;
   uint32_t idle_timeout_ms_;
 
  public:
@@ -20,7 +21,7 @@ class IdleInhibitor : public ALabel {
   virtual ~IdleInhibitor();
   auto update() -> void override;
   auto refresh(int) -> void override;
-  static std::list<waybar::AModule*> modules;
+  static std::list<IdleInhibitor*> modules;
   static bool status;
   static long deactivationTime;
 
@@ -30,7 +31,7 @@ class IdleInhibitor : public ALabel {
 
   void toggleStatus(int force_status = -1);
   void setupIdleNotification();
-  void teardownIdleNotification();
+  static void teardownIdleNotification();
   static void handleIdled(void* data, ext_idle_notification_v1* notification);
   static void handleResumed(void* data, ext_idle_notification_v1* notification);
 

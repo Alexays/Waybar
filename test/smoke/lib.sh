@@ -10,8 +10,10 @@
 #   smoke::screenshot out.png
 #   smoke::stop
 #
-# Environment knobs (optional): WIDTH HEIGHT SCALE COMPOSITOR WAYBAR_BIN
+# Environment knobs (optional): WIDTH HEIGHT SCALE COMPOSITOR WAYBAR_BIN SWAY_CONFIG_EXTRA
 set -uo pipefail
+
+SMOKE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 WIDTH="${WIDTH:-1920}"
 HEIGHT="${HEIGHT:-1080}"
@@ -39,6 +41,11 @@ smoke::setup() {
     # a clean exit for LSan's atexit hook to run.
     export ASAN_OPTIONS="detect_leaks=${SMOKE_DETECT_LEAKS:-0}:halt_on_error=1:abort_on_error=1:detect_odr_violation=0"
     export UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1"
+    # SMOKE_A11Y=1 exposes the widget tree to a11y.py (needs a session bus)
+    if [ "${SMOKE_A11Y:-0}" = 1 ]; then
+        unset NO_AT_BRIDGE
+        export GTK_A11Y=1
+    fi
 }
 
 smoke::start_compositor() {
@@ -47,6 +54,7 @@ smoke::start_compositor() {
             local cfg; cfg="$(mktemp)"
             cat > "$cfg" <<EOF
 output HEADLESS-1 resolution ${WIDTH}x${HEIGHT} scale ${SCALE} background #000000 solid_color
+${SWAY_CONFIG_EXTRA:-}
 EOF
             sway -c "$cfg" >/tmp/compositor.log 2>&1 &
             COMP_PID=$!
@@ -108,10 +116,12 @@ smoke::assert_alive() {
     echo "✓ waybar is alive"
 }
 
-# Fail on sanitizer reports and GTK/GLib criticals in the log.
+# Fail on sanitizer reports and GTK/GLib criticals in the log, except lines matching the
+# SMOKE_LOG_IGNORE regex.
 smoke::assert_clean() {
     local bad
-    bad="$(grep -iE 'AddressSanitizer|runtime error:|LeakSanitizer|Gtk-CRITICAL|GLib-CRITICAL|GLib-GObject-CRITICAL|assertion .*failed|segfault|terminate called|SUMMARY: .*Sanitizer|ASan runtime does not come first' "$SMOKE_LOG" || true)"
+    bad="$(grep -iE 'AddressSanitizer|runtime error:|LeakSanitizer|Gtk-CRITICAL|GLib-CRITICAL|GLib-GObject-CRITICAL|assertion .*failed|segfault|terminate called|SUMMARY: .*Sanitizer|ASan runtime does not come first' "$SMOKE_LOG" \
+        | grep -vE "${SMOKE_LOG_IGNORE:-^$}" || true)"
     if [ -n "$bad" ]; then
         echo "::error::waybar reported sanitizer/critical issues:"
         echo "$bad"

@@ -21,7 +21,6 @@ class Scratchpad : public ALabel {
  private:
   auto getTree() -> void;
   auto onCmd(const struct Ipc::ipc_response&) -> void;
-  auto onEvent(const struct Ipc::ipc_response&) -> void;
 
   std::string tooltip_format_;
   bool show_empty_;

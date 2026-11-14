@@ -137,13 +137,46 @@ void from_json(const Json::Value& j, std::map<Key, Value>& m) {
   }
 }
 
+static void limitSize(int& minimum, int& natural, int available) {
+  // A monitor whose geometry is not known yet reports 0
+  if (available > 0) {
+    minimum = std::min(minimum, available);
+    natural = std::min(natural, available);
+  }
+}
+
 };  // namespace waybar
+
+waybar::BarWindow::BarWindow(const Glib::RefPtr<Gdk::Monitor>& monitor)
+    : Gtk::Window{Gtk::WindowType::WINDOW_TOPLEVEL}, monitor_(monitor) {}
+
+void waybar::BarWindow::get_preferred_width_vfunc(int& minimum, int& natural) const {
+  Gtk::Window::get_preferred_width_vfunc(minimum, natural);
+  limitSize(minimum, natural, monitor_->property_geometry().get_value().get_width());
+}
+
+void waybar::BarWindow::get_preferred_height_vfunc(int& minimum, int& natural) const {
+  Gtk::Window::get_preferred_height_vfunc(minimum, natural);
+  limitSize(minimum, natural, monitor_->property_geometry().get_value().get_height());
+}
+
+void waybar::BarWindow::get_preferred_width_for_height_vfunc(int height, int& minimum,
+                                                             int& natural) const {
+  Gtk::Window::get_preferred_width_for_height_vfunc(height, minimum, natural);
+  limitSize(minimum, natural, monitor_->property_geometry().get_value().get_width());
+}
+
+void waybar::BarWindow::get_preferred_height_for_width_vfunc(int width, int& minimum,
+                                                             int& natural) const {
+  Gtk::Window::get_preferred_height_for_width_vfunc(width, minimum, natural);
+  limitSize(minimum, natural, monitor_->property_geometry().get_value().get_height());
+}
 
 waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
       config(w_config),
       surface(nullptr),
-      window{Gtk::WindowType::WINDOW_TOPLEVEL},
+      window{w_output->monitor},
       x_global(0),
       y_global(0),
       margins_{.top = 0, .right = 0, .bottom = 0, .left = 0},
@@ -237,6 +270,12 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   }
 
   window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Bar::onConfigure));
+  window.signal_draw().connect(
+      [this](const Cairo::RefPtr<Cairo::Context>&) {
+        painted_scale_ = window.get_scale_factor();
+        return false;
+      },
+      false);
   output->monitor->property_geometry().signal_changed().connect(
       sigc::mem_fun(*this, &Bar::onOutputGeometryChanged));
 
@@ -277,15 +316,18 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     setVisible(false);
   }
 
-  window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
-
   unmap_conn_ = window.signal_unmap().connect([this]() {
     spdlog::debug("Output {} unmapped, suspending modules", output->name);
+    painted_scale_ = 0;  // GTK detaches the buffer
+    surface = nullptr;   // and destroys the wl_surface; onMap() fetches the new one
     toggleSuspend(true);
   });
 
+  // `map` is emitted synchronously from show_all(), so modules have the surface in their first
+  // update(); the queued `map-event` only arrives after those updates.
   map_conn_ = window.signal_map().connect([this]() {
     spdlog::debug("Output {} mapped, resuming modules", output->name);
+    onMap();
     toggleSuspend(false);
   });
 
@@ -333,6 +375,18 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 
   setupWidgets();
   window.show_all();
+
+  // The first update of every module, in one source: a dispatcher emit per module before the
+  // main loop runs fills the pipe and blocks the main thread with enough modules.
+  Glib::signal_idle().connect(sigc::track_obj(
+                                  [this] {
+                                    for (auto const& module : modules_all_) {
+                                      module->dp.dispatchPending();
+                                    }
+                                    return false;
+                                  },
+                                  *this),
+                              Glib::PRIORITY_DEFAULT);
 
   /*
    * If gtk-layer-shell's synchronous wait for the initial configure timed out, show_all() can
@@ -431,7 +485,18 @@ void waybar::Bar::setMode(const struct bar_mode& mode) {
 void waybar::Bar::forceLayerCommit() {
   auto* gtk_window = window.gobj();
   if (gtk_window != nullptr && gtk_widget_get_realized(GTK_WIDGET(gtk_window))) {
-    gtk_layer_try_force_commit(gtk_window);
+    /*
+     * On a scale change GTK sets the new buffer scale immediately but attaches a matching buffer
+     * only on its next paint. Committing in between applies the new scale to the old buffer, a
+     * protocol error that gets waybar disconnected. GTK commits itself once it has repainted.
+     */
+    int scale = window.get_scale_factor();
+    if (painted_scale_ != 0 && painted_scale_ != scale) {
+      spdlog::debug("Output {} scale changed {} -> {}, skipping forced commit until repainted",
+                    output->name, painted_scale_, scale);
+    } else {
+      gtk_layer_try_force_commit(gtk_window);
+    }
   }
   wl_display_flush(Client::inst()->wl_display);
 }
@@ -488,7 +553,7 @@ void waybar::Bar::setPosition(Gtk::PositionType position) {
   }
 }
 
-void waybar::Bar::onMap(GdkEventAny* /*unused*/) {
+void waybar::Bar::onMap() {
   /*
    * Obtain a pointer to the custom layer surface for modules that require it (idle_inhibitor).
    */
@@ -594,7 +659,7 @@ void waybar::Bar::updateBlurRegion() {
   }
   ext_background_effect_surface_v1_set_blur_region(background_effect_surface_, region);
   wl_region_destroy(region);
-  wl_surface_commit(surface);
+  forceLayerCommit();
 }
 #endif
 
@@ -727,7 +792,6 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
             spdlog::error("{}: {}", ref, e.what());
           }
         });
-        module->dp.emit();
       } catch (const std::exception& e) {
         spdlog::warn("module {}: {}", name.asString(), e.what());
       }
@@ -861,6 +925,7 @@ void waybar::Bar::configureGlobalOffset(int width, int height) {
 
 void waybar::Bar::onOutputGeometryChanged() {
   configureGlobalOffset(window.get_width(), window.get_height());
+  window.queue_resize();
 }
 
 void waybar::Bar::toggleSuspend(bool suspend) {

@@ -58,7 +58,6 @@ class IPC {
   std::thread ipc_thread_;
   mutable std::mutex data_mutex_;
   std::unordered_map<std::string, Json::Value> monitors_;
-  std::unordered_map<uint64_t, Json::Value> clients_;
   uint64_t focusing_client_id_ = 0;
   std::string keyboard_layout_;
   std::string keymode_;

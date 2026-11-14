@@ -25,6 +25,7 @@
 | [Mango](https://github.com/Alexays/Waybar/wiki/Module:-Mango) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | [DWL](https://github.com/Alexays/Waybar/wiki/Module:-Dwl) | ✅ | ✅ | | | |
 | [Wayfire](https://github.com/Alexays/Waybar/wiki/Module:-Wayfire) | ✅ | ✅ | | | |
+| [Umbriel](https://github.com/Alexays/Waybar/wiki/Module:-Umbriel) | ✅ | ✅ | ✅ | | |
 
 > DWL requires the [dwl IPC patch](https://codeberg.org/dwl/dwl-patches/src/branch/main/patches/ipc).
 

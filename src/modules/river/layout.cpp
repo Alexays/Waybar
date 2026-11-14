@@ -108,6 +108,8 @@ Layout::Layout(const std::string& id, const waybar::Bar& bar, const Json::Value&
   struct wl_registry* registry = wl_display_get_registry(display);
   wl_registry_add_listener(registry, &registry_listener_impl, this);
   wl_display_roundtrip(display);
+  // The listener points at this module and must not fire for globals announced after it is gone
+  wl_registry_destroy(registry);
 
   output_ = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
 

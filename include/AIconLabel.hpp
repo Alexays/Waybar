@@ -22,6 +22,9 @@ class AIconLabel : public ALabel {
   unsigned app_icon_size_{24};
 
   bool label_contains_icon{false};
+  // Only a label written by the user may embed an icon directive: foreign text such as a
+  // window title must not pick a file for the bar to open.
+  bool embedded_icon_enabled_{false};
 
   bool iconEnabled() const;
 };

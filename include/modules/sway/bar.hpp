@@ -1,5 +1,6 @@
 #pragma once
 #include <atomic>
+#include <set>
 #include <string>
 
 #include "modules/sway/ipc/client.hpp"
@@ -27,6 +28,7 @@ struct swaybar_config {
 class BarIpcClient {
  public:
   BarIpcClient(waybar::Bar& bar);
+  ~BarIpcClient();
 
  private:
   void onInitialConfig(const struct Ipc::ipc_response& res);
@@ -48,6 +50,8 @@ class BarIpcClient {
   bool visible_by_mode_ = false;
   bool visible_by_modifier_ = false;
   bool visible_by_urgency_ = false;
+  std::set<std::string> urgent_workspaces_;
+  sigc::connection workspaces_query_;
   std::atomic<bool> modifier_no_action_ = false;
 
   SafeSignal<bool> signal_mode_;

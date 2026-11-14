@@ -11,6 +11,7 @@
 #include <regex>
 #include <string>
 
+#include "util/css_class.hpp"
 #include "util/gtk_icon.hpp"
 #include "util/rewrite_string.hpp"
 
@@ -19,22 +20,21 @@ namespace waybar::modules::sway {
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     : AAppIconLabel(config, "window", id, "{}", 0, true), bar_(bar), windowId_(-1) {
   ipc_.subscribe(R"(["window","workspace"])");
-  ipc_.signal_event.connect(sigc::mem_fun(*this, &Window::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Window::onCmd));
+  // Only the newest tree matters
+  ipc_.signal_cmd.set_max_queued_events(1);
   // Get Initial focused window
   getTree();
   // Launch worker
   ipc_.setWorker([this] {
     try {
-      ipc_.handleEvent();
+      ipc_.handleEvents(IPC_GET_TREE);
     } catch (const std::exception& e) {
       spdlog::error("Window: {}", e.what());
       spdlog::trace("Window::Window exception");
     }
   });
 }
-
-void Window::onEvent(const struct Ipc::ipc_response& res) { getTree(); }
 
 void Window::onCmd(const struct Ipc::ipc_response& res) {
   try {
@@ -43,7 +43,7 @@ void Window::onCmd(const struct Ipc::ipc_response& res) {
     auto output = payload["output"].isString() ? payload["output"].asString() : "";
     std::tie(app_nb_, floating_count_, windowId_, window_, app_id_, app_class_, shell_, layout_,
              marks_) = getFocusedNode(payload["nodes"], output);
-    // Do not resolve the app icon here: onCmd runs on the sway IPC worker thread and
+    // Do not resolve the app icon here: onCmd can run on the sway IPC worker thread and
     // updateAppIconName() touches the global Gtk::IconTheme cache, which is not thread-safe.
     // The icon is resolved in update() on the main thread instead (triggered by dp.emit()).
     dp.emit();
@@ -90,18 +90,19 @@ auto Window::update() -> void {
   setClass("stacked", ((mode & 16) > 0));
   setClass("tiled", ((mode & 32) > 0));
 
-  if ((mode & 2) > 0 && !app_id_.empty() && !bar_.window.get_style_context()->has_class(app_id_)) {
+  if ((mode & 2) > 0 && waybar::util::add_app_id_class(bar_.window.get_style_context(), app_id_)) {
     spdlog::trace("Adding app_id class: {}", app_id_);
-    bar_.window.get_style_context()->add_class(app_id_);
     old_app_id_ = app_id_;
   }
 
   setLabelMarkup(waybar::util::rewriteString(
-      fmt::format(fmt::runtime(format_), fmt::arg("title", window_), fmt::arg("app_id", app_id_),
+      fmt::format(fmt::runtime(format_), fmt::arg("title", window_),
+                  fmt::arg("app_id", Glib::Markup::escape_text(app_id_).raw()),
                   fmt::arg("shell", shell_), fmt::arg("marks", marks_)),
       config_["rewrite"]));
   if (tooltipEnabled()) {
-    setTooltipMarkup(Glib::Markup::escape_text(window_));
+    // window_ is markup already: an escaped name or the user's offscreen-css-text
+    setTooltipMarkup(window_);
   }
 
   // Resolve the app icon on the main thread to avoid racing with GTK draw on the
@@ -221,7 +222,7 @@ gfnWithWorkspace(const Json::Value& nodes, std::string& output, const Json::Valu
                 node["id"].asInt(),
                 (((all_leaf_nodes.first > 0) || (all_leaf_nodes.second > 0)) &&
                  (config_["show-focused-workspace-name"].asBool()))
-                    ? node["name"].asString()
+                    ? Glib::Markup::escape_text(node["name"].asString()).raw()
                     : "",
                 "",
                 "",

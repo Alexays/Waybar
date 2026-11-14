@@ -69,6 +69,8 @@ Mode::Mode(const std::string& id, const waybar::Bar& bar, const Json::Value& con
   struct wl_registry* registry = wl_display_get_registry(display);
   wl_registry_add_listener(registry, &registry_listener_impl, this);
   wl_display_roundtrip(display);
+  // The listener points at this module and must not fire for globals announced after it is gone
+  wl_registry_destroy(registry);
 
   if (!status_manager_) {
     spdlog::error("river_status_manager_v1 not advertised");
