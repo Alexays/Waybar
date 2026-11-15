@@ -42,6 +42,7 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
       label_.get_style_context()->add_class(id);
     }
     module_widget_ = &label_;
+    label_.set_hexpand(expandEnabled());
   }
 
   if (!config_["signal"].empty() && config_["interval"].empty() &&
