@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "modules/hyprland/workspaces.hpp"
+#include "util/app_icon_image.hpp"
 #include "util/command.hpp"
 #include "util/icon_loader.hpp"
 #include "util/regex_input.hpp"
@@ -616,8 +617,8 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
     if (m_workspaceManager.taskbarWithIcon()) {
       auto app_info_ = IconLoader::get_app_info_from_app_id_list(window_repr->window_class);
       int icon_size = m_workspaceManager.taskbarIconSize();
-      auto window_icon = Gtk::make_managed<Gtk::Image>();
-      m_workspaceManager.iconLoader().image_load_icon(*window_icon, app_info_, icon_size);
+      auto window_icon = Gtk::make_managed<AppIconImage>();
+      window_icon->setAppInfo(m_workspaceManager.iconLoader(), app_info_, icon_size);
       window_box->pack_start(*window_icon, false, false);
     }
 
