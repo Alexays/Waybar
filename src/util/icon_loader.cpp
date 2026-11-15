@@ -129,19 +129,45 @@ Glib::RefPtr<Gdk::Pixbuf> IconLoader::load_icon_from_file(std::string const& ico
   }
 }
 
+bool IconLoader::icon_is_native_to_theme(const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
+                                         const std::string& theme_name,
+                                         const std::string& icon_name, int size) {
+  if (theme_name.empty() || icon_name.empty()) return false;
+  auto info = icon_theme->lookup_icon(icon_name, size);
+  if (!info) return false;
+  // Icon themes always live in <basedir>/icons/<ThemeName>/..., so the theme
+  // name appears as a path component of anything the theme itself provides. An
+  // icon with no filename (built in, or served from a cache) counts as foreign,
+  // which falls back to the desktop entry's Icon= rather than guessing.
+  return info.get_filename().find("/" + theme_name + "/") != std::string::npos;
+}
+
 std::string IconLoader::get_icon_name_from_icon_theme(
-    const Glib::RefPtr<Gtk::IconTheme>& icon_theme, const std::string& app_id) {
+    const Glib::RefPtr<Gtk::IconTheme>& icon_theme, const std::string& theme_name,
+    const std::string& app_id) {
+  if (app_id.empty()) return "";
+
+  // StartupWMClass is only incidentally a valid icon name -- its job is to match
+  // a window to its desktop entry. Preferring it over the entry's Icon= pays off
+  // only when the configured theme genuinely ships an icon under that name.
+  // Because lookup_icon() follows Inherits=, an unguarded probe also succeeds via
+  // a parent theme, which silently overrides the icon the desktop entry declares
+  // and defeats the configured icon-theme.
+  if (!theme_name.empty())
+    return icon_is_native_to_theme(icon_theme, theme_name, app_id, 24) ? app_id : "";
+
   if (icon_theme->lookup_icon(app_id, 24)) return app_id;
 
   return "";
 }
 
 bool IconLoader::image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
+                                 const std::string& theme_name,
                                  Glib::RefPtr<Gio::DesktopAppInfo> app_info, int size) {
   std::string ret_icon_name = "unknown";
   if (app_info) {
     std::string icon_name =
-        get_icon_name_from_icon_theme(icon_theme, app_info->get_startup_wm_class());
+        get_icon_name_from_icon_theme(icon_theme, theme_name, app_info->get_startup_wm_class());
     if (!icon_name.empty()) {
       ret_icon_name = icon_name;
     } else {
@@ -186,18 +212,21 @@ bool IconLoader::image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::Icon
 void IconLoader::add_custom_icon_theme(const std::string& theme_name) {
   auto icon_theme = Gtk::IconTheme::create();
   icon_theme->set_custom_theme(theme_name);
-  custom_icon_themes_.push_back(icon_theme);
+  custom_icon_themes_.emplace_back(theme_name, icon_theme);
   spdlog::debug("Use custom icon theme: {}", theme_name);
 }
 
 bool IconLoader::image_load_icon(Gtk::Image& image, Glib::RefPtr<Gio::DesktopAppInfo> app_info,
                                  int size) const {
-  for (auto& icon_theme : custom_icon_themes_) {
-    if (image_load_icon(image, icon_theme, app_info, size)) {
+  for (const auto& [theme_name, icon_theme] : custom_icon_themes_) {
+    if (image_load_icon(image, icon_theme, theme_name, app_info, size)) {
       return true;
     }
   }
-  return image_load_icon(image, default_icon_theme_, app_info, size);
+  // Empty theme name: the default theme has no configured identity to protect,
+  // so the historical unguarded probe stays in place there. This confines the
+  // behavior change to users who set `icon-theme`.
+  return image_load_icon(image, default_icon_theme_, "", app_info, size);
 }
 
 Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_from_app_id_list(

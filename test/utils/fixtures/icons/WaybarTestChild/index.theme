@@ -1,0 +1,10 @@
+[Icon Theme]
+Name=WaybarTestChild
+Comment=Ships only the desktop entry Icon= name, and inherits the parent
+Inherits=WaybarTestParent
+Directories=apps/48x48
+
+[apps/48x48]
+Size=48
+Context=Applications
+Type=Fixed
