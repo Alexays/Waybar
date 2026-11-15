@@ -714,6 +714,11 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
   populateBoolConfig(config, "unique-icons", m_uniqueIcons);
   populateBoolConfig(config, "enable-bar-scroll", m_barScroll);
 
+  const auto& drag_hover_delay = config["drag-hover-delay"];
+  if (drag_hover_delay.isUInt()) {
+    drag_hover_delay_ = drag_hover_delay.asUInt();
+  }
+
   m_persistentWorkspaceConfig = config.get("persistent-workspaces", Json::Value());
   populateSortByConfig(config);
   populateIgnoreWorkspacesConfig(config);
