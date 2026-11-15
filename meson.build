@@ -202,6 +202,7 @@ src_files = files(
     'src/util/hosts_check.cpp',
     'src/util/gtk_icon.cpp',
     'src/util/icon_loader.cpp',
+    'src/util/app_icon_image.cpp',
     'src/util/regex_collection.cpp',
     'src/util/css_reload_helper.cpp',
     'src/util/transform_8bit_to_rgba.cpp',
