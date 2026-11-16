@@ -6,8 +6,28 @@
 #include <cctype>
 #include <cstdlib>
 #include <sstream>
+#include <string_view>
 
 #include "util/string.hpp"
+
+namespace {
+
+std::string_view safe_sv(const char* s) { return s ? std::string_view(s) : std::string_view{}; }
+
+std::string casefold_utf8(std::string_view sv) {
+  if (sv.empty()) {
+    return {};
+  }
+  if (!g_utf8_validate(sv.data(), static_cast<gssize>(sv.size()), nullptr)) {
+    return toLower(std::string(sv));
+  }
+  gchar* folded = g_utf8_casefold(sv.data(), static_cast<gssize>(sv.size()));
+  std::string result = folded ? folded : "";
+  g_free(folded);
+  return result;
+}
+
+}  // namespace
 
 std::vector<std::string> IconLoader::search_prefix() {
   std::vector<std::string> prefixes;
@@ -310,4 +330,64 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_from_app_id_list(
     }
   }
   return {};
+}
+
+Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_from_title(const std::string& title) {
+  const std::string trimmed = trim(title);
+  if (trimmed.empty() || !g_utf8_validate(trimmed.c_str(), trimmed.size(), nullptr)) {
+    return {};
+  }
+
+  if (auto app_info = get_app_info_by_name(trimmed)) {
+    return app_info;
+  }
+
+  const std::string lower = toLower(trimmed);
+  if (lower != trimmed) {
+    if (auto app_info = get_app_info_by_name(lower)) {
+      return app_info;
+    }
+  }
+
+  const std::string folded_title = casefold_utf8(trimmed);
+  GList* apps = g_app_info_get_all();
+  GDesktopAppInfo* best = nullptr;
+  int best_score = 0;
+  for (GList* l = apps; l != nullptr; l = l->next) {
+    if (!G_IS_DESKTOP_APP_INFO(l->data)) {
+      continue;
+    }
+    auto* info = G_DESKTOP_APP_INFO(l->data);
+    int score = 0;
+    auto desktop_id = safe_sv(g_app_info_get_id(G_APP_INFO(info)));
+    if (desktop_id.ends_with(".desktop")) {
+      desktop_id.remove_suffix(8);
+    }
+    if (!desktop_id.empty() && casefold_utf8(desktop_id) == folded_title) {
+      score = 2;
+    } else {
+      const auto wm_class = safe_sv(g_desktop_app_info_get_startup_wm_class(info));
+      if (!wm_class.empty() && casefold_utf8(wm_class) == folded_title) {
+        score = 2;
+      } else {
+        const auto name = safe_sv(g_app_info_get_name(G_APP_INFO(info)));
+        const auto display_name = safe_sv(g_app_info_get_display_name(G_APP_INFO(info)));
+        if ((!name.empty() && casefold_utf8(name) == folded_title) ||
+            (!display_name.empty() && casefold_utf8(display_name) == folded_title)) {
+          score = 1;
+        }
+      }
+    }
+    if (score > best_score) {
+      best = info;
+      best_score = score;
+      if (best_score >= 2) {
+        break;
+      }
+    }
+  }
+  Glib::RefPtr<Gio::DesktopAppInfo> match =
+      best ? Glib::wrap(best, true) : Glib::RefPtr<Gio::DesktopAppInfo>{};
+  g_list_free_full(apps, g_object_unref);
+  return match;
 }

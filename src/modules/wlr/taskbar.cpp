@@ -354,10 +354,12 @@ void Task::lookup_app_info() {
   }
   if (title_lookup_pending_) {
     title_lookup_pending_ = false;
-    if (!app_info_ && title_ != lookup_source_) {
+    const bool title_fallback =
+        !config_["title-fallback"].isBool() || config_["title-fallback"].asBool();
+    if (!app_info_ && title_fallback && title_ != lookup_source_) {
       lookup_source_ = title_;
       looked_up = true;
-      app_info_ = IconLoader::get_app_info_from_app_id_list(title_);
+      app_info_ = IconLoader::get_app_info_from_title(title_);
       name_ = app_info_ ? app_info_->get_display_name() : title_;
     }
   }

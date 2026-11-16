@@ -117,6 +117,11 @@ Addressed by *wlr/taskbar*
 	typeof: object ++
 	Dictionary of app_id to be replaced with
 
+*title-fallback*: ++
+	typeof: bool ++
+	default: true ++
+	If set to true, and no matching desktop entry is found for a window's app_id, fall back to matching the window title against desktop entry names and identifiers. Set to false to disable title-based fallback lookups.
+
 *rewrite*: ++
 	typeof: object ++
 	Rules to rewrite the module format output. See *rewrite rules*.

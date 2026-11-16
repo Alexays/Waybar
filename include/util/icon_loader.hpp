@@ -33,4 +33,5 @@ class IconLoader {
                        const std::string& app_id = "") const;
   static Glib::RefPtr<Gio::DesktopAppInfo> get_app_info_from_app_id_list(
       const std::string& app_id_list);
+  static Glib::RefPtr<Gio::DesktopAppInfo> get_app_info_from_title(const std::string& title);
 };

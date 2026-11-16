@@ -4,6 +4,7 @@
 #include <glibmm/miscutils.h>
 
 #include <cstdlib>
+#include <string>
 
 #if __has_include(<catch2/catch_test_macros.hpp>)
 #include <catch2/catch_test_macros.hpp>
@@ -45,4 +46,26 @@ TEST_CASE("IconLoader resolves desktop entries by name only", "[util][icon_loade
     REQUIRE_FALSE(
         IconLoader::get_app_info_from_app_id_list("../fixtures/applications/waybar-test"));
   }
+}
+
+TEST_CASE("IconLoader title lookup avoids keyword collisions", "[util][icon_loader]") {
+  use_fixture_data_dirs();
+
+  REQUIRE_FALSE(IconLoader::get_app_info_from_title("elite launcher"));
+  REQUIRE_FALSE(IconLoader::get_app_info_from_title("Elite - Dangerous (CLIENT)"));
+  REQUIRE_FALSE(IconLoader::get_app_info_from_title("Elite Dangerous"));
+  REQUIRE_FALSE(IconLoader::get_app_info_from_title("   "));
+  REQUIRE_FALSE(IconLoader::get_app_info_from_title("\xc1\xa1"));
+
+  auto companion = IconLoader::get_app_info_from_title("Planisphere");
+  REQUIRE(companion);
+  REQUIRE(companion->get_name() == "Planisphere");
+
+  auto companion_lower = IconLoader::get_app_info_from_title("planisphere");
+  REQUIRE(companion_lower);
+  REQUIRE(companion_lower->get_name() == "Planisphere");
+
+  auto test_app = IconLoader::get_app_info_from_title("Waybar Test");
+  REQUIRE(test_app);
+  REQUIRE(test_app->get_name() == "Waybar Test");
 }
