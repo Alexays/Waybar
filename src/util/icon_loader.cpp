@@ -1,5 +1,7 @@
 #include "util/icon_loader.hpp"
 
+#include <glibmm/miscutils.h>
+
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -192,7 +194,8 @@ Glib::RefPtr<Gdk::Pixbuf> IconLoader::load_app_info_pixbuf(
   if (auto pb = try_theme(default_icon_theme_)) {
     return pb;
   }
-  if (!desktop_icon.empty() && Glib::file_test(desktop_icon, Glib::FILE_TEST_EXISTS)) {
+  if (!desktop_icon.empty() && Glib::path_is_absolute(desktop_icon) &&
+      Glib::file_test(desktop_icon, Glib::FILE_TEST_IS_REGULAR)) {
     return load_icon_from_file(desktop_icon, size);
   }
   return {};
