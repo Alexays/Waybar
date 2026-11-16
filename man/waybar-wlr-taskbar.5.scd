@@ -120,7 +120,7 @@ Addressed by *wlr/taskbar*
 *title-fallback*: ++
 	typeof: bool ++
 	default: true ++
-	If set to true, and no matching desktop entry is found for a window's app_id, fall back to matching the window title against desktop entry names and identifiers. Set to false to disable title-based fallback lookups.
+	If set to true, and no matching desktop entry is found for a window's app_id (excluding Steam app IDs such as steam_app_<appid> and steam_app_default), fall back to matching the window title against desktop entry names and identifiers. Set to false to disable title-based fallback lookups.
 
 *rewrite*: ++
 	typeof: object ++

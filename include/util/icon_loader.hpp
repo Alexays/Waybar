@@ -26,6 +26,7 @@ class IconLoader {
   Glib::RefPtr<Gdk::Pixbuf> load_pixbuf_from_themes(const std::string& icon_name, int size) const;
   Glib::RefPtr<Gdk::Pixbuf> load_app_info_pixbuf(const Glib::RefPtr<Gio::DesktopAppInfo>& app_info,
                                                  int size) const;
+  Glib::RefPtr<Gdk::Pixbuf> load_steam_pixbuf(const std::string& steam_app_id, int size) const;
 
  public:
   void add_custom_icon_theme(const std::string& theme_name);

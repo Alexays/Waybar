@@ -8,6 +8,7 @@
 #include <sstream>
 #include <string_view>
 
+#include "util/steam_icon.hpp"
 #include "util/string.hpp"
 
 namespace {
@@ -96,6 +97,23 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_desktop_app_info(const std::st
   auto app_info = get_app_info_by_name(app_id);
   if (app_info) {
     return app_info;
+  }
+
+  if (const auto steam_app_id = waybar::util::steam::extract_app_id(app_id)) {
+    const std::string lower_app_id = toLower(app_id);
+    if (lower_app_id != app_id) {
+      if (auto lower_info = get_app_info_by_name(lower_app_id)) {
+        return lower_info;
+      }
+    }
+    return waybar::util::steam::find_desktop_app_info(*steam_app_id);
+  }
+  if (waybar::util::steam::is_default_app_id(app_id)) {
+    const std::string lower_app_id = toLower(app_id);
+    if (lower_app_id != app_id) {
+      return get_app_info_by_name(lower_app_id);
+    }
+    return {};
   }
 
   // App ids come from other clients and g_desktop_app_info_search() crashes on invalid UTF-8
@@ -221,6 +239,22 @@ Glib::RefPtr<Gdk::Pixbuf> IconLoader::load_app_info_pixbuf(
   return {};
 }
 
+Glib::RefPtr<Gdk::Pixbuf> IconLoader::load_steam_pixbuf(const std::string& steam_app_id,
+                                                        int size) const {
+  if (!steam_app_id.empty()) {
+    if (auto pb = load_pixbuf_from_themes("steam_icon_" + steam_app_id, size)) {
+      return pb;
+    }
+    if (const std::string cache_path = waybar::util::steam::find_library_icon(steam_app_id);
+        !cache_path.empty()) {
+      if (auto pb = load_icon_from_file(cache_path, size)) {
+        return pb;
+      }
+    }
+  }
+  return load_pixbuf_from_themes("steam", size);
+}
+
 void IconLoader::add_custom_icon_theme(const std::string& theme_name) {
   auto icon_theme = Gtk::IconTheme::create();
   icon_theme->set_custom_theme(theme_name);
@@ -233,7 +267,19 @@ bool IconLoader::image_load_icon(Gtk::Image& image, Glib::RefPtr<Gio::DesktopApp
   const int scaled_icon_size = size * image.get_scale_factor();
   auto pixbuf = load_app_info_pixbuf(app_info, scaled_icon_size);
 
-  if (!pixbuf && !app_id.empty()) {
+  bool steam_fallback = false;
+  if (!pixbuf) {
+    auto steam_id = waybar::util::steam::extract_fallback_from_list(app_id);
+    if (!steam_id && app_info) {
+      steam_id = waybar::util::steam::extract_fallback_from_list(app_info->get_startup_wm_class());
+    }
+    if (steam_id) {
+      steam_fallback = true;
+      pixbuf = load_steam_pixbuf(*steam_id, scaled_icon_size);
+    }
+  }
+
+  if (!pixbuf && !app_id.empty() && !steam_fallback) {
     std::string token;
     std::istringstream stream(app_id);
     for (int i = 0; i < 8 && stream >> token; ++i) {
@@ -299,6 +345,9 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_from_app_id_list(
     auto app_info = get_desktop_app_info(app_id, search_words_left);
     if (app_info) {
       return app_info;
+    }
+    if (waybar::util::steam::is_fallback_app_id(app_id)) {
+      continue;
     }
 
     auto lower_app_id = app_id;

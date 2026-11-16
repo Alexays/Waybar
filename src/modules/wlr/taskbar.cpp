@@ -23,6 +23,7 @@
 #include "util/format.hpp"
 #include "util/gtk_icon.hpp"
 #include "util/rewrite_string.hpp"
+#include "util/steam_icon.hpp"
 #include "util/string.hpp"
 #include "util/tooltip.hpp"
 
@@ -356,7 +357,8 @@ void Task::lookup_app_info() {
     title_lookup_pending_ = false;
     const bool title_fallback =
         !config_["title-fallback"].isBool() || config_["title-fallback"].asBool();
-    if (!app_info_ && title_fallback && title_ != lookup_source_) {
+    if (!app_info_ && title_fallback && !waybar::util::steam::should_skip_title_fallback(app_id_) &&
+        title_ != lookup_source_) {
       lookup_source_ = title_;
       looked_up = true;
       app_info_ = IconLoader::get_app_info_from_title(title_);
