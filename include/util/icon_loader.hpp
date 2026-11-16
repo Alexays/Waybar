@@ -29,8 +29,8 @@ class IconLoader {
 
  public:
   void add_custom_icon_theme(const std::string& theme_name);
-  bool image_load_icon(Gtk::Image& image, Glib::RefPtr<Gio::DesktopAppInfo> app_info,
-                       int size) const;
+  bool image_load_icon(Gtk::Image& image, Glib::RefPtr<Gio::DesktopAppInfo> app_info, int size,
+                       const std::string& app_id = "") const;
   static Glib::RefPtr<Gio::DesktopAppInfo> get_app_info_from_app_id_list(
       const std::string& app_id_list);
 };

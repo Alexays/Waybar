@@ -209,9 +209,33 @@ void IconLoader::add_custom_icon_theme(const std::string& theme_name) {
 }
 
 bool IconLoader::image_load_icon(Gtk::Image& image, Glib::RefPtr<Gio::DesktopAppInfo> app_info,
-                                 int size) const {
+                                 int size, const std::string& app_id) const {
   const int scaled_icon_size = size * image.get_scale_factor();
   auto pixbuf = load_app_info_pixbuf(app_info, scaled_icon_size);
+
+  if (!pixbuf && !app_id.empty()) {
+    std::string token;
+    std::istringstream stream(app_id);
+    for (int i = 0; i < 8 && stream >> token; ++i) {
+      if (token.empty() || token.find('/') != std::string::npos) {
+        continue;
+      }
+      const std::string lower_token = toLower(token);
+      if (lower_token == "unknown") {
+        continue;
+      }
+      pixbuf = load_pixbuf_from_themes(token, scaled_icon_size);
+      if (pixbuf) {
+        break;
+      }
+      if (lower_token != token) {
+        pixbuf = load_pixbuf_from_themes(lower_token, scaled_icon_size);
+        if (pixbuf) {
+          break;
+        }
+      }
+    }
+  }
 
   if (!pixbuf) {
     pixbuf = load_pixbuf_from_themes("unknown", scaled_icon_size);

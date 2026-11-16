@@ -209,7 +209,7 @@ Task::Task(const waybar::Bar& bar, const Json::Value& config, Taskbar* tbar,
     if (!with_icon_) return;
     int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
     spdlog::debug("Task ({}) scale factor changed, reloading icon", id_);
-    if (tbar_->icon_loader().image_load_icon(icon_, app_info_, icon_size)) icon_.show();
+    if (tbar_->icon_loader().image_load_icon(icon_, app_info_, icon_size, app_id_)) icon_.show();
   });
 }
 
@@ -367,7 +367,7 @@ void Task::lookup_app_info() {
   }
 
   int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
-  if (tbar_->icon_loader().image_load_icon(icon_, app_info_, icon_size))
+  if (tbar_->icon_loader().image_load_icon(icon_, app_info_, icon_size, app_id_))
     icon_.show();
   else
     spdlog::debug("Couldn't find icon for {}", lookup_source_);
