@@ -848,8 +848,11 @@ auto Mpris::update() -> void {
     return;
   }
 
-  if (info.status == PLAYERCTL_PLAYBACK_STATUS_STOPPED) {
-    spdlog::debug("mpris[{}]: player stopped, skipping update", info.name);
+  if (info.status == PLAYERCTL_PLAYBACK_STATUS_STOPPED && format_stopped_.empty()) {
+    spdlog::debug("mpris[{}]: player stopped and format-stopped is empty, hiding module",
+                  info.name);
+    event_box_.set_visible(false);
+    ALabel::update();
     return;
   }
 

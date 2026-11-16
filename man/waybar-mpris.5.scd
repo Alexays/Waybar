@@ -31,7 +31,7 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *format-[status]*: ++
 	typeof: string ++
-	The status-specific text format.
+	The status-specific text format. When a player is stopped and *format-stopped* is not set, the module is hidden.
 
 *tooltip*: ++
 	typeof: bool ++
