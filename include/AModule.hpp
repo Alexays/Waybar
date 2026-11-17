@@ -33,6 +33,9 @@ class AModule : public IModule {
 
   bool expandEnabled() const;
 
+  /// Exported as WAYBAR_OUTPUT_NAME to the on-enter and on-leave commands
+  void setOutputName(const std::string& name) { bar_output_name_ = name; }
+
   virtual void suspend() {};
   virtual void resume() {};
   bool shouldSuspend() const { return disable_on_sleep_; }
@@ -125,6 +128,8 @@ class AModule : public IModule {
   // exception escaping a GTK signal handler aborts the bar
   const std::string on_enter_cmd_;
   const std::string on_leave_cmd_;
+  // Custom already has an output_name_
+  std::string bar_output_name_;
   util::HoverLatch hover_;
   static const inline std::map<std::pair<uint, GdkEventType>, std::string> eventMap_{
       {std::make_pair(1, GdkEventType::GDK_BUTTON_PRESS), "on-click"},

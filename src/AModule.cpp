@@ -231,7 +231,7 @@ void AModule::runCrossingEvent(bool entering) {
       const bool isModuleAction = actionIt != eventActionMap_.cend() && cmd == actionIt->second;
       if (!isModuleAction) {
         forgetReapedChildren(pid_children_);
-        pid_children_.push_back(util::command::forkExec(cmd));
+        pid_children_.push_back(util::command::forkExec(cmd, bar_output_name_));
       }
     }
   } catch (const std::exception& err) {

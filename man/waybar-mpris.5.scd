@@ -142,11 +142,11 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *on-enter*: ++
 	typeof: string ++
-	Command to execute when the mouse enters the module.
+	Command to execute when the mouse enters the module. *WAYBAR_OUTPUT_NAME* holds the name of the bar's output.
 
 *on-leave*: ++
 	typeof: string ++
-	Command to execute when the mouse leaves the module.
+	Command to execute when the mouse leaves the module. *WAYBAR_OUTPUT_NAME* holds the name of the bar's output.
 
 *on-enter-delay*: ++
 	typeof: integer ++
