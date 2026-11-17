@@ -52,7 +52,7 @@ Workspace::Workspace(const Json::Value& workspace_data, Workspaces& workspace_ma
       m_output(workspace_data["monitor"].asString()),  // TODO:allow using monitor desc
       m_windows(workspace_data["windows"].asInt()),
       m_isActive(true),
-      m_isPersistentRule(workspace_data["persistent-rule"].asBool()),
+      m_isPersistentRule(workspace_data["ispersistent"].asBool()),
       m_isPersistentConfig(workspace_data["persistent-config"].asBool()),
       m_ipc(IPC::inst()) {
   m_button.add_events(Gdk::BUTTON_PRESS_MASK);

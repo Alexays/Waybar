@@ -128,7 +128,7 @@ void Workspaces::createWorkspace(Json::Value const& workspace_data,
     // don't recreate workspace, but update persistency if necessary
     const auto keys = workspace_data.getMemberNames();
 
-    const auto* k = "persistent-rule";
+    const auto* k = "ispersistent";
     if (std::ranges::find(keys, k) != keys.end()) {
       spdlog::debug("Set dynamic persistency of workspace {} to: {}", workspaceAddress,
                     workspace_data[k].asBool() ? "true" : "false");
@@ -422,7 +422,6 @@ void Workspaces::onWorkspaceCreated(std::string const& payload, Json::Value cons
 
   const auto [workspaceAddress, _] = splitDoublePayload(payload);
 
-  auto const workspaceRules = m_ipc.getSocket1JsonReply("workspacerules");
   auto const workspacesJson = m_ipc.getSocket1JsonReply("workspaces");
 
   for (auto workspaceJson : workspacesJson) {
@@ -439,16 +438,6 @@ void Workspaces::onWorkspaceCreated(std::string const& payload, Json::Value cons
       if ((allOutputs() || m_bar.output->name == workspaceJson["monitor"].asString()) &&
           (showSpecial() || currentIdentity->kind != WorkspaceKind::Special) &&
           !isDoubleSpecial(workspaceName)) {
-        for (Json::Value const& rule : workspaceRules) {
-          auto ruleWorkspaceName = rule.isMember("defaultName")
-                                       ? rule["defaultName"].asString()
-                                       : rule["workspaceString"].asString();
-          if (ruleWorkspaceName == workspaceName) {
-            workspaceJson["persistent-rule"] = rule["persistent"].asBool();
-            break;
-          }
-        }
-
         m_workspacesToCreate.emplace_back(workspaceJson, clientsData);
         break;
       }
