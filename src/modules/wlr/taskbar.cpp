@@ -23,6 +23,7 @@
 #include "util/format.hpp"
 #include "util/gtk_icon.hpp"
 #include "util/rewrite_string.hpp"
+#include "util/steam_icon.hpp"
 #include "util/string.hpp"
 #include "util/tooltip.hpp"
 
@@ -209,7 +210,7 @@ Task::Task(const waybar::Bar& bar, const Json::Value& config, Taskbar* tbar,
     if (!with_icon_) return;
     int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
     spdlog::debug("Task ({}) scale factor changed, reloading icon", id_);
-    if (tbar_->icon_loader().image_load_icon(icon_, app_info_, icon_size)) icon_.show();
+    if (tbar_->icon_loader().image_load_icon(icon_, app_info_, icon_size, app_id_)) icon_.show();
   });
 }
 
@@ -354,10 +355,13 @@ void Task::lookup_app_info() {
   }
   if (title_lookup_pending_) {
     title_lookup_pending_ = false;
-    if (!app_info_ && title_ != lookup_source_) {
+    const bool title_fallback =
+        !config_["title-fallback"].isBool() || config_["title-fallback"].asBool();
+    if (!app_info_ && title_fallback && !waybar::util::steam::should_skip_title_fallback(app_id_) &&
+        title_ != lookup_source_) {
       lookup_source_ = title_;
       looked_up = true;
-      app_info_ = IconLoader::get_app_info_from_app_id_list(title_);
+      app_info_ = IconLoader::get_app_info_from_title(title_);
       name_ = app_info_ ? app_info_->get_display_name() : title_;
     }
   }
@@ -367,7 +371,7 @@ void Task::lookup_app_info() {
   }
 
   int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
-  if (tbar_->icon_loader().image_load_icon(icon_, app_info_, icon_size))
+  if (tbar_->icon_loader().image_load_icon(icon_, app_info_, icon_size, app_id_))
     icon_.show();
   else
     spdlog::debug("Couldn't find icon for {}", lookup_source_);

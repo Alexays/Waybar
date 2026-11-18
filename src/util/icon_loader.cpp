@@ -1,6 +1,34 @@
 #include "util/icon_loader.hpp"
 
+#include <glibmm/miscutils.h>
+
+#include <algorithm>
+#include <cctype>
+#include <cstdlib>
+#include <sstream>
+#include <string_view>
+
+#include "util/steam_icon.hpp"
 #include "util/string.hpp"
+
+namespace {
+
+std::string_view safe_sv(const char* s) { return s ? std::string_view(s) : std::string_view{}; }
+
+std::string casefold_utf8(std::string_view sv) {
+  if (sv.empty()) {
+    return {};
+  }
+  if (!g_utf8_validate(sv.data(), static_cast<gssize>(sv.size()), nullptr)) {
+    return toLower(std::string(sv));
+  }
+  gchar* folded = g_utf8_casefold(sv.data(), static_cast<gssize>(sv.size()));
+  std::string result = folded ? folded : "";
+  g_free(folded);
+  return result;
+}
+
+}  // namespace
 
 std::vector<std::string> IconLoader::search_prefix() {
   std::vector<std::string> prefixes;
@@ -71,6 +99,23 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_desktop_app_info(const std::st
     return app_info;
   }
 
+  if (const auto steam_app_id = waybar::util::steam::extract_app_id(app_id)) {
+    const std::string lower_app_id = toLower(app_id);
+    if (lower_app_id != app_id) {
+      if (auto lower_info = get_app_info_by_name(lower_app_id)) {
+        return lower_info;
+      }
+    }
+    return waybar::util::steam::find_desktop_app_info(*steam_app_id);
+  }
+  if (waybar::util::steam::is_default_app_id(app_id)) {
+    const std::string lower_app_id = toLower(app_id);
+    if (lower_app_id != app_id) {
+      return get_app_info_by_name(lower_app_id);
+    }
+    return {};
+  }
+
   // App ids come from other clients and g_desktop_app_info_search() crashes on invalid UTF-8
   if (!g_utf8_validate(app_id.c_str(), app_id.size(), nullptr)) {
     return {};
@@ -129,58 +174,85 @@ Glib::RefPtr<Gdk::Pixbuf> IconLoader::load_icon_from_file(std::string const& ico
   }
 }
 
-std::string IconLoader::get_icon_name_from_icon_theme(
-    const Glib::RefPtr<Gtk::IconTheme>& icon_theme, const std::string& app_id) {
-  if (icon_theme->lookup_icon(app_id, 24)) return app_id;
-
-  return "";
+Glib::RefPtr<Gdk::Pixbuf> IconLoader::load_icon_from_theme(
+    const Glib::RefPtr<Gtk::IconTheme>& icon_theme, const std::string& icon_name, int size) {
+  if (!icon_theme || icon_name.empty()) {
+    return {};
+  }
+  try {
+    if (auto info = icon_theme->lookup_icon(icon_name, size, Gtk::ICON_LOOKUP_FORCE_SIZE)) {
+      return info.load_icon();
+    }
+  } catch (...) {
+  }
+  return {};
 }
 
-bool IconLoader::image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
-                                 Glib::RefPtr<Gio::DesktopAppInfo> app_info, int size) {
-  std::string ret_icon_name = "unknown";
-  if (app_info) {
-    std::string icon_name =
-        get_icon_name_from_icon_theme(icon_theme, app_info->get_startup_wm_class());
-    if (!icon_name.empty()) {
-      ret_icon_name = icon_name;
-    } else {
-      if (app_info->get_icon()) {
-        ret_icon_name = app_info->get_icon()->to_string();
+Glib::RefPtr<Gdk::Pixbuf> IconLoader::load_pixbuf_from_themes(const std::string& icon_name,
+                                                              int size) const {
+  if (icon_name.empty()) {
+    return {};
+  }
+  for (const auto& icon_theme : custom_icon_themes_) {
+    if (auto pb = load_icon_from_theme(icon_theme, icon_name, size)) {
+      return pb;
+    }
+  }
+  return load_icon_from_theme(default_icon_theme_, icon_name, size);
+}
+
+Glib::RefPtr<Gdk::Pixbuf> IconLoader::load_app_info_pixbuf(
+    const Glib::RefPtr<Gio::DesktopAppInfo>& app_info, int size) const {
+  if (!app_info) {
+    return {};
+  }
+
+  const std::string startup_wm_class = app_info->get_startup_wm_class();
+  const std::string desktop_icon = app_info->get_icon() ? app_info->get_icon()->to_string() : "";
+  auto try_theme =
+      [&](const Glib::RefPtr<Gtk::IconTheme>& icon_theme) -> Glib::RefPtr<Gdk::Pixbuf> {
+    if (!startup_wm_class.empty()) {
+      if (auto pb = load_icon_from_theme(icon_theme, startup_wm_class, size)) {
+        return pb;
+      }
+    }
+    if (!desktop_icon.empty()) {
+      if (auto pb = load_icon_from_theme(icon_theme, desktop_icon, size)) {
+        return pb;
+      }
+    }
+    return {};
+  };
+
+  for (const auto& icon_theme : custom_icon_themes_) {
+    if (auto pb = try_theme(icon_theme)) {
+      return pb;
+    }
+  }
+  if (auto pb = try_theme(default_icon_theme_)) {
+    return pb;
+  }
+  if (!desktop_icon.empty() && Glib::path_is_absolute(desktop_icon) &&
+      Glib::file_test(desktop_icon, Glib::FILE_TEST_IS_REGULAR)) {
+    return load_icon_from_file(desktop_icon, size);
+  }
+  return {};
+}
+
+Glib::RefPtr<Gdk::Pixbuf> IconLoader::load_steam_pixbuf(const std::string& steam_app_id,
+                                                        int size) const {
+  if (!steam_app_id.empty()) {
+    if (auto pb = load_pixbuf_from_themes("steam_icon_" + steam_app_id, size)) {
+      return pb;
+    }
+    if (const std::string cache_path = waybar::util::steam::find_library_icon(steam_app_id);
+        !cache_path.empty()) {
+      if (auto pb = load_icon_from_file(cache_path, size)) {
+        return pb;
       }
     }
   }
-
-  Glib::RefPtr<Gdk::Pixbuf> pixbuf;
-  auto scaled_icon_size = size * image.get_scale_factor();
-
-  try {
-    pixbuf = icon_theme->load_icon(ret_icon_name, scaled_icon_size, Gtk::ICON_LOOKUP_FORCE_SIZE);
-  } catch (...) {
-    if (Glib::file_test(ret_icon_name, Glib::FILE_TEST_EXISTS)) {
-      pixbuf = load_icon_from_file(ret_icon_name, scaled_icon_size);
-    } else {
-      try {
-        pixbuf = DefaultGtkIconThemeWrapper::load_icon(
-            "image-missing", scaled_icon_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
-      } catch (...) {
-        pixbuf = {};
-      }
-    }
-  }
-
-  if (pixbuf) {
-    if (pixbuf->get_width() != scaled_icon_size && pixbuf->get_height() > 0) {
-      int width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
-      pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
-    }
-    auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image.get_scale_factor(),
-                                                          image.get_window());
-    image.set(surface);
-    return true;
-  }
-
-  return false;
+  return load_pixbuf_from_themes("steam", size);
 }
 
 void IconLoader::add_custom_icon_theme(const std::string& theme_name) {
@@ -191,13 +263,72 @@ void IconLoader::add_custom_icon_theme(const std::string& theme_name) {
 }
 
 bool IconLoader::image_load_icon(Gtk::Image& image, Glib::RefPtr<Gio::DesktopAppInfo> app_info,
-                                 int size) const {
-  for (auto& icon_theme : custom_icon_themes_) {
-    if (image_load_icon(image, icon_theme, app_info, size)) {
-      return true;
+                                 int size, const std::string& app_id) const {
+  const int scaled_icon_size = size * image.get_scale_factor();
+  auto pixbuf = load_app_info_pixbuf(app_info, scaled_icon_size);
+
+  bool steam_fallback = false;
+  if (!pixbuf) {
+    auto steam_id = waybar::util::steam::extract_fallback_from_list(app_id);
+    if (!steam_id && app_info) {
+      steam_id = waybar::util::steam::extract_fallback_from_list(app_info->get_startup_wm_class());
+    }
+    if (steam_id) {
+      steam_fallback = true;
+      pixbuf = load_steam_pixbuf(*steam_id, scaled_icon_size);
     }
   }
-  return image_load_icon(image, default_icon_theme_, app_info, size);
+
+  if (!pixbuf && !app_id.empty() && !steam_fallback) {
+    std::string token;
+    std::istringstream stream(app_id);
+    for (int i = 0; i < 8 && stream >> token; ++i) {
+      if (token.empty() || token.find('/') != std::string::npos) {
+        continue;
+      }
+      const std::string lower_token = toLower(token);
+      if (lower_token == "unknown") {
+        continue;
+      }
+      pixbuf = load_pixbuf_from_themes(token, scaled_icon_size);
+      if (pixbuf) {
+        break;
+      }
+      if (lower_token != token) {
+        pixbuf = load_pixbuf_from_themes(lower_token, scaled_icon_size);
+        if (pixbuf) {
+          break;
+        }
+      }
+    }
+  }
+
+  if (!pixbuf) {
+    pixbuf = load_pixbuf_from_themes("unknown", scaled_icon_size);
+  }
+  if (!pixbuf) {
+    try {
+      pixbuf = DefaultGtkIconThemeWrapper::load_icon("image-missing", scaled_icon_size,
+                                                     Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+    } catch (...) {
+      pixbuf = {};
+    }
+  }
+
+  if (pixbuf) {
+    if (pixbuf->get_width() != scaled_icon_size && pixbuf->get_height() > 0) {
+      int width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
+      if (width > 0) {
+        pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
+      }
+    }
+    auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image.get_scale_factor(),
+                                                          image.get_window());
+    image.set(surface);
+    return true;
+  }
+
+  return false;
 }
 
 Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_from_app_id_list(
@@ -214,6 +345,9 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_from_app_id_list(
     auto app_info = get_desktop_app_info(app_id, search_words_left);
     if (app_info) {
       return app_info;
+    }
+    if (waybar::util::steam::is_fallback_app_id(app_id)) {
+      continue;
     }
 
     auto lower_app_id = app_id;
@@ -245,4 +379,64 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_from_app_id_list(
     }
   }
   return {};
+}
+
+Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_from_title(const std::string& title) {
+  const std::string trimmed = trim(title);
+  if (trimmed.empty() || !g_utf8_validate(trimmed.c_str(), trimmed.size(), nullptr)) {
+    return {};
+  }
+
+  if (auto app_info = get_app_info_by_name(trimmed)) {
+    return app_info;
+  }
+
+  const std::string lower = toLower(trimmed);
+  if (lower != trimmed) {
+    if (auto app_info = get_app_info_by_name(lower)) {
+      return app_info;
+    }
+  }
+
+  const std::string folded_title = casefold_utf8(trimmed);
+  GList* apps = g_app_info_get_all();
+  GDesktopAppInfo* best = nullptr;
+  int best_score = 0;
+  for (GList* l = apps; l != nullptr; l = l->next) {
+    if (!G_IS_DESKTOP_APP_INFO(l->data)) {
+      continue;
+    }
+    auto* info = G_DESKTOP_APP_INFO(l->data);
+    int score = 0;
+    auto desktop_id = safe_sv(g_app_info_get_id(G_APP_INFO(info)));
+    if (desktop_id.ends_with(".desktop")) {
+      desktop_id.remove_suffix(8);
+    }
+    if (!desktop_id.empty() && casefold_utf8(desktop_id) == folded_title) {
+      score = 2;
+    } else {
+      const auto wm_class = safe_sv(g_desktop_app_info_get_startup_wm_class(info));
+      if (!wm_class.empty() && casefold_utf8(wm_class) == folded_title) {
+        score = 2;
+      } else {
+        const auto name = safe_sv(g_app_info_get_name(G_APP_INFO(info)));
+        const auto display_name = safe_sv(g_app_info_get_display_name(G_APP_INFO(info)));
+        if ((!name.empty() && casefold_utf8(name) == folded_title) ||
+            (!display_name.empty() && casefold_utf8(display_name) == folded_title)) {
+          score = 1;
+        }
+      }
+    }
+    if (score > best_score) {
+      best = info;
+      best_score = score;
+      if (best_score >= 2) {
+        break;
+      }
+    }
+  }
+  Glib::RefPtr<Gio::DesktopAppInfo> match =
+      best ? Glib::wrap(best, true) : Glib::RefPtr<Gio::DesktopAppInfo>{};
+  g_list_free_full(apps, g_object_unref);
+  return match;
 }

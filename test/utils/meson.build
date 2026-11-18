@@ -43,6 +43,7 @@ test_dep += giounix
 test_src += files(
     'icon_loader.cpp',
     '../../src/util/icon_loader.cpp',
+    '../../src/util/steam_icon.cpp',
     '../../src/util/gtk_icon.cpp',
 )
 

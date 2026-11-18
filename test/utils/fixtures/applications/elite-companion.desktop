@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Planisphere
+Comment=Elite Dangerous expedition flight planner
+Exec=true %u
+Icon=planisphere
+Keywords=elite;dangerous;expedition;default;
+StartupWMClass=planisphere
+NoDisplay=true

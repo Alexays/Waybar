@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Proton WMClass Game
+Exec=true
+Icon=steam_icon_999992
+StartupWMClass=steam_app_999992
+NoDisplay=true
