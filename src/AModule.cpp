@@ -177,9 +177,7 @@ void AModule::setCursor(Gdk::CursorType const& c) {
 }
 
 bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
-  if (auto* module = event_box_.get_child(); module != nullptr) {
-    module->set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
-  }
+  setHovered(true);
 
   // Default behavior indicating event availability
   if (hasUserEvents_ && !config_.isMember("cursor")) {
@@ -190,9 +188,7 @@ bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
 }
 
 bool AModule::handleMouseLeave(GdkEventCrossing* const& e) {
-  if (auto* module = event_box_.get_child(); module != nullptr) {
-    module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
-  }
+  setHovered(false);
 
   // Default behavior indicating event availability
   if (hasUserEvents_ && !config_.isMember("cursor")) {
@@ -200,6 +196,18 @@ bool AModule::handleMouseLeave(GdkEventCrossing* const& e) {
   }
 
   return false;
+}
+
+void AModule::setHovered(bool hovered) {
+  auto* module = event_box_.get_child();
+  if (module == nullptr) {
+    return;
+  }
+  if (hovered) {
+    module->set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  } else {
+    module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  }
 }
 
 bool AModule::handleToggle(GdkEventButton* const& e) { return handleUserEvent(e); }
@@ -236,9 +244,7 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
       gtk_menu_popup_at_pointer(GTK_MENU(menu_), reinterpret_cast<GdkEvent*>(e));
       handled = true;
       // Manually reset prelight to make sure the module doesn't stay in a hover state
-      if (auto* module = event_box_.get_child(); module != nullptr) {
-        module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
-      }
+      setHovered(false);
     }
   }
   // Second call user scripts

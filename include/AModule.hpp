@@ -93,6 +93,8 @@ class AModule : public IModule {
   virtual bool handleToggle(GdkEventButton* const& ev);
   virtual bool handleMouseEnter(GdkEventCrossing* const& ev);
   virtual bool handleMouseLeave(GdkEventCrossing* const& ev);
+  // Sets or clears the hover (PRELIGHT) state that `:hover` selectors match.
+  virtual void setHovered(bool hovered);
   virtual bool handleScroll(GdkEventScroll*);
   virtual bool handleRelease(GdkEventButton* const& ev);
 
