@@ -43,8 +43,7 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
   deactivationTime = time(nullptr) + timeout * 60;
 
   event_box_.add_events(Gdk::BUTTON_PRESS_MASK | Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-  event_box_.signal_button_press_event().connect(
-      sigc::mem_fun(*this, &IdleInhibitor::handleToggle));
+  connectPress(sigc::mem_fun(*this, &IdleInhibitor::handleToggle));
 
   // Only connect our own scroll handler when the user hasn't configured on-scroll-*
   // commands. When on-scroll-* is set, AModule already connects a scroll handler that
