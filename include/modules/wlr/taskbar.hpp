@@ -148,6 +148,9 @@ class Task {
 
  public:
   void update();
+  /* Rasterize the icon again from the already-resolved desktop entry. Public so
+   * Taskbar can refresh every task at once when the icon theme changes. */
+  void reload_icon();
 
  public:
   /* Interaction with the tasks */
@@ -174,6 +177,13 @@ class Taskbar : public waybar::AModule {
 
   /* A redraw is queued on dp, which a burst of events must not flood */
   bool update_queued_ = false;
+
+  /* Set when the icon theme changed and every task icon needs rasterizing
+   * again. Deferred to update() rather than done in the signal handler: a theme
+   * change touches every task at once, and GTK emits the signal more than once
+   * per change. Plain bool, like update_queued_ above -- both are only ever
+   * touched on the main loop. */
+  bool icon_theme_dirty_ = false;
 
  private:
   const waybar::Bar& bar_;
@@ -216,6 +226,7 @@ class Taskbar : public waybar::AModule {
   void remove_task(uint32_t);
   void assign_current_workspace(Task&);
   void update_bar_css_classes();
+  void notify_icon_theme_changed();
 
   bool show_output(struct wl_output*) const;
   bool all_outputs() const;
