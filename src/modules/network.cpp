@@ -1,5 +1,7 @@
 #include "modules/network.hpp"
 
+#include <glibmm.h>
+#include <glibmm/variant.h>
 #include <linux/if.h>
 #include <linux/if_link.h>
 #include <netlink/netlink.h>
@@ -25,6 +27,37 @@
 namespace {
 using namespace waybar::util;
 constexpr const char* DEFAULT_FORMAT = "{ifname}";
+
+constexpr const char* NM_DBUS_NAME = "org.freedesktop.NetworkManager";
+constexpr const char* NM_DBUS_PATH = "/org/freedesktop/NetworkManager";
+constexpr const char* NM_DBUS_IFACE_DEVICE = "org.freedesktop.NetworkManager.Device";
+
+// Subset of NMDeviceState (nm-dbus-interface.h) that we care about. The
+// activating states form the contiguous range [PREPARE, SECONDARIES]; anything
+// outside it is either settled or inactive.
+constexpr uint32_t NM_DEVICE_STATE_PREPARE = 40;
+constexpr uint32_t NM_DEVICE_STATE_SECONDARIES = 90;
+
+// NMConnectivityState.
+constexpr uint32_t NM_CONNECTIVITY_PORTAL = 2;
+constexpr uint32_t NM_CONNECTIVITY_LIMITED = 3;
+
+bool nmStateIsActivating(uint32_t state) {
+  return state >= NM_DEVICE_STATE_PREPARE && state <= NM_DEVICE_STATE_SECONDARIES;
+}
+
+// PORTAL ("traffic is being intercepted") and LIMITED ("connected to a network,
+// but it has no access to the Internet") are the two that mean the link is up
+// but the internet is not reachable through it.
+//
+// NONE is deliberately excluded. It means "the host is not connected to any
+// network", which disconnected and linked already cover -- and NM publishes it
+// as the starting value of an activation, clearing it to FULL a couple of
+// milliseconds *after* the device reaches ACTIVATED. Treating it as limited put
+// a one-frame "no-internet" flash at the end of every reconnect.
+bool nmConnectivityIsLimited(uint32_t connectivity) {
+  return connectivity == NM_CONNECTIVITY_PORTAL || connectivity == NM_CONNECTIVITY_LIMITED;
+}
 }  // namespace
 
 constexpr const char* NETDEV_FILE =
@@ -139,6 +172,12 @@ waybar::modules::Network::Network(const std::string& id, const Json::Value& conf
     want_addr_dump_ = true;
   }
 
+  want_nm_connecting_ = wantsNMState("connecting");
+  want_nm_limited_ = wantsNMState("no-internet");
+  if (config_["connecting-min-duration"].isUInt()) {
+    nm_connecting_min_ = std::chrono::milliseconds(config_["connecting-min-duration"].asUInt());
+  }
+
   createEventSocket();
   createInfoSocket();
 
@@ -147,9 +186,15 @@ waybar::modules::Network::Network(const std::string& id, const Json::Value& conf
   // will be called again which will ask for addresses dump.
   askForStateDump();
   worker();
+
+  // Only reach for DBus when one of the NM-only states is actually configured.
+  if (want_nm_connecting_ || want_nm_limited_) {
+    nmInit();
+  }
 }
 
 waybar::modules::Network::~Network() {
+  nm_connecting_hold_conn_.disconnect();
   thread_.stop();
   thread_timer_.stop();
   thread_.join();
@@ -173,6 +218,187 @@ waybar::modules::Network::~Network() {
   if (station_sock_ != nullptr) {
     nl_close(station_sock_);
     nl_socket_free(station_sock_);
+  }
+}
+
+// A state coming out of getNetworkState() picks "format-<state>", and falls
+// back to plain "format" when that key is absent. Returning a brand new state
+// name for a config written before these states existed would therefore
+// silently replace that user's icon with their "format" string. So the NM
+// states are only ever returned when the matching format is configured, which
+// doubles as the opt-in for talking to DBus at all.
+bool waybar::modules::Network::wantsNMState(const char* state) const {
+  if (config_["networkmanager"].isBool() && !config_["networkmanager"].asBool()) {
+    return false;
+  }
+  return config_[std::string("format-") + state].isString();
+}
+
+void waybar::modules::Network::nmInit() {
+  Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SYSTEM, NM_DBUS_NAME, NM_DBUS_PATH,
+                                   NM_DBUS_NAME, sigc::mem_fun(*this, &Network::nmBusConnectedCb));
+}
+
+void waybar::modules::Network::nmBusConnectedCb(Glib::RefPtr<Gio::AsyncResult>& r) {
+  try {
+    nm_proxy_ = Gio::DBus::Proxy::create_for_bus_finish(r);
+  } catch (const Glib::Error& e) {
+    spdlog::debug("network: NetworkManager unavailable, staying netlink-only: {}",
+                  std::string(e.what()));
+    return;
+  } catch (const std::exception& e) {
+    spdlog::debug("network: NetworkManager unavailable, staying netlink-only: {}", e.what());
+    return;
+  }
+  nm_proxy_->signal_properties_changed().connect(
+      sigc::mem_fun(*this, &Network::nmManagerPropsChangedCb));
+  nmReadManagerProps();
+  std::scoped_lock lock(mutex_);
+  nmBindDevice(ifname_);
+}
+
+void waybar::modules::Network::nmManagerPropsChangedCb(
+    const Gio::DBus::Proxy::MapChangedProperties& /*changed*/,
+    const std::vector<Glib::ustring>& /*invalidated*/) {
+  nmReadManagerProps();
+}
+
+// Whether NM is actually probing for reachability. With the check disabled --
+// the default on many distributions, and whenever ConnectivityCheckUri is unset
+// -- NM derives its connectivity value from nothing more than the presence of a
+// default route, and reports FULL unconditionally. It then carries no
+// information that "linked" and "wifi" do not already express, so the
+// no-internet state must not be driven from it.
+void waybar::modules::Network::nmReadManagerProps() {
+  if (!nm_proxy_) {
+    return;
+  }
+  bool enabled = false;
+  Glib::VariantBase v;
+  nm_proxy_->get_cached_property(v, "ConnectivityCheckEnabled");
+  if (v && v.is_of_type(Glib::VARIANT_TYPE_BOOL)) {
+    enabled = Glib::VariantBase::cast_dynamic<Glib::Variant<bool>>(v).get();
+  }
+  bool changed;
+  {
+    std::scoped_lock lock(mutex_);
+    changed = enabled != nm_connectivity_check_;
+    nm_connectivity_check_ = enabled;
+  }
+  if (changed) {
+    dp.emit();
+  }
+}
+
+// Resolve the NM device object for whichever interface netlink has settled on.
+// With no "interface" configured that choice follows the default route, so it
+// can change at runtime and we rebind when it does. nm_bound_ifname_ and the
+// two proxies are only ever touched from the main loop (this runs either from a
+// DBus callback or from update()), so they need no locking of their own.
+void waybar::modules::Network::nmBindDevice(const std::string& ifname) {
+  // An empty ifname means netlink has no interface selected just now -- the
+  // link went down, or its default route was withdrawn. That is not a reason to
+  // forget the device. NM keeps the same object for an interface across a radio
+  // toggle, and that gap is exactly when NM is the only one who knows a
+  // connection is being brought up. Unbinding here dropped the state for as
+  // long as it took to resolve the device again, and the module filled the gap
+  // from netlink alone -- which, with the address and essid already restored by
+  // then, rendered a connected wifi icon for ~80ms mid-reconnect.
+  if (!nm_proxy_ || ifname.empty()) {
+    return;
+  }
+  nm_bound_ifname_ = ifname;
+  // Drop the previous proxy before resolving the new one, so a late signal from
+  // the interface we just left cannot write its state over the new one's.
+  nm_device_proxy_.reset();
+  nm_device_state_ = 0;
+  nm_connectivity_ = 0;
+  using IfaceVar = Glib::Variant<std::tuple<Glib::ustring>>;
+  nm_proxy_->call("GetDeviceByIpIface", sigc::mem_fun(*this, &Network::nmDeviceResolvedCb),
+                  IfaceVar::create(std::make_tuple(Glib::ustring(ifname))));
+}
+
+void waybar::modules::Network::nmDeviceResolvedCb(Glib::RefPtr<Gio::AsyncResult>& r) {
+  Glib::Variant<Glib::DBusObjectPathString> path;
+  try {
+    auto reply = nm_proxy_->call_finish(r);
+    reply.get_child(path, 0);
+  } catch (const Glib::Error& e) {
+    // Perfectly normal: the interface may be unmanaged by NM, or managed by
+    // iwd/systemd-networkd instead. Netlink keeps driving the other states.
+    spdlog::debug("network: no NetworkManager device for {}: {}", nm_bound_ifname_,
+                  std::string(e.what()));
+    return;
+  } catch (const std::exception& e) {
+    spdlog::debug("network: no NetworkManager device for {}: {}", nm_bound_ifname_, e.what());
+    return;
+  }
+  Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SYSTEM, NM_DBUS_NAME,
+                                   Glib::ustring(path.get()), NM_DBUS_IFACE_DEVICE,
+                                   sigc::mem_fun(*this, &Network::nmDeviceProxyCb));
+}
+
+void waybar::modules::Network::nmDeviceProxyCb(Glib::RefPtr<Gio::AsyncResult>& r) {
+  try {
+    nm_device_proxy_ = Gio::DBus::Proxy::create_for_bus_finish(r);
+  } catch (const Glib::Error& e) {
+    spdlog::debug("network: can't proxy the NetworkManager device: {}", std::string(e.what()));
+    return;
+  } catch (const std::exception& e) {
+    spdlog::debug("network: can't proxy the NetworkManager device: {}", e.what());
+    return;
+  }
+  nm_device_proxy_->signal_properties_changed().connect(
+      sigc::mem_fun(*this, &Network::nmDevicePropsChangedCb));
+  nmReadDeviceProps();
+}
+
+void waybar::modules::Network::nmDevicePropsChangedCb(
+    const Gio::DBus::Proxy::MapChangedProperties& /*changed*/,
+    const std::vector<Glib::ustring>& /*invalidated*/) {
+  // Both properties we read are emits-change, so any notification just means
+  // "re-read the cache"; which key moved does not matter.
+  nmReadDeviceProps();
+}
+
+// Both properties are declared emits-change, so the proxy's cache is current
+// and this needs no round trip.
+void waybar::modules::Network::nmReadDeviceProps() {
+  if (!nm_device_proxy_) {
+    return;
+  }
+  auto read = [this](const char* name, uint32_t fallback) -> uint32_t {
+    Glib::VariantBase v;
+    nm_device_proxy_->get_cached_property(v, name);
+    if (!v || !v.is_of_type(Glib::VARIANT_TYPE_UINT32)) {
+      return fallback;
+    }
+    return Glib::VariantBase::cast_dynamic<Glib::Variant<uint32_t>>(v).get();
+  };
+
+  auto state = read("State", 0);
+  // Ip4Connectivity and Ip6Connectivity are per-device, unlike the manager's
+  // global Connectivity property. Take the better of the two: a host with
+  // working IPv6 and a broken IPv4 path still has internet.
+  auto connectivity = std::max(read("Ip4Connectivity", 0), read("Ip6Connectivity", 0));
+
+  bool changed;
+  {
+    std::scoped_lock lock(mutex_);
+    changed = state != nm_device_state_ || connectivity != nm_connectivity_;
+    // Stamp the start of an activation, so the minimum dwell is measured from
+    // when the state became visible rather than from when NM finished.
+    if (nmStateIsActivating(state) && !nmStateIsActivating(nm_device_state_)) {
+      nm_connecting_since_ = std::chrono::steady_clock::now();
+    }
+    nm_device_state_ = state;
+    nm_connectivity_ = connectivity;
+  }
+  // A device emits PropertiesChanged for far more than the two properties read
+  // here -- StateReason, Ip4Config, Ports, statistics -- so redrawing on every
+  // notification would relabel the module for changes that cannot affect it.
+  if (changed) {
+    dp.emit();
   }
 }
 
@@ -341,6 +567,19 @@ bool waybar::modules::Network::isWireless() const {
 }
 
 std::string waybar::modules::Network::getNetworkState() const {
+  bool connecting = false;
+  if (want_nm_connecting_) {
+    if (nmStateIsActivating(nm_device_state_)) {
+      connecting = true;
+    } else if (nm_connecting_min_ > std::chrono::milliseconds::zero() &&
+               nm_connecting_since_ != std::chrono::steady_clock::time_point{} &&
+               std::chrono::steady_clock::now() - nm_connecting_since_ < nm_connecting_min_) {
+      // Still inside the minimum dwell, so keep reporting connecting even
+      // though NM has finished. update() arms the timer that ends this.
+      connecting = true;
+    }
+  }
+
   if (ifid_ == -1 || !carrier_) {
 #ifdef WANT_RFKILL
     bool display_rfkill = true;
@@ -356,15 +595,46 @@ std::string waybar::modules::Network::getNetworkState() const {
       return "disabled";
     }
 #endif
+    // NetworkManager drives the entire association phase, which rtnetlink
+    // cannot distinguish from an idle disconnected interface: while
+    // wpa_supplicant authenticates, the link flags and the operstate are
+    // byte-identical to those of a radio that is simply sitting unconnected.
+    // This is why "connecting" needs NM and cannot be synthesised from the
+    // netlink state below.
+    if (connecting) return "connecting";
     return "disconnected";
   }
+  // The carrier is up. NM stays in an activating state until it has finished IP
+  // configuration, so prefer "connecting" over "linked" while it does: the
+  // kernel's own DORMANT window here is only a few hundred milliseconds and
+  // already covered by "linked".
+  if (connecting) return "connecting";
   if (ipaddr_.empty() && ipaddr6_.empty()) return "linked";
-  if (essid_.empty()) return "ethernet";
+  if (want_nm_limited_ && nm_connectivity_check_ && nmConnectivityIsLimited(nm_connectivity_)) {
+    return "no-internet";
+  }
+  // An 802.11 interface is never "ethernet". essid_ is cleared by clearIface()
+  // and only refilled by getInfo() on the timer thread, so between a carrier
+  // coming up and that fetch landing there is a window where the essid is not
+  // known yet -- and keying the wired state off an empty essid alone rendered
+  // format-ethernet into it, flashing a wired glyph part way through every
+  // wireless reconnect. Ask the kernel what the interface is instead.
+  if (essid_.empty() && !isWireless()) return "ethernet";
   return "wifi";
 }
 
 auto waybar::modules::Network::update() -> void {
   std::scoped_lock lock(mutex_);
+
+  // Netlink may have moved us to a different interface since the last update
+  // (the default route changed, or a configured interface reappeared), so keep
+  // the NM device proxy pointed at whichever one we are reporting on. nm_proxy_
+  // is only ever set when one of the NM states was opted into. An empty ifname
+  // is deliberately not a rebind -- see nmBindDevice.
+  if (nm_proxy_ && !ifname_.empty() && nm_bound_ifname_ != ifname_) {
+    nmBindDevice(ifname_);
+  }
+
   std::string tooltip_format;
   auto now = std::chrono::steady_clock::now();
   auto elapsed_seconds = std::chrono::duration<double>(now - bandwidth_last_sample_time_).count();
@@ -409,6 +679,34 @@ auto waybar::modules::Network::update() -> void {
 
   if (!alt_) {
     auto state = getNetworkState();
+    // Every state change is one repaint of the module, so a transient one is a
+    // visible flicker. Log the transition with the inputs that produced it:
+    // chasing a flash otherwise means guessing which of netlink and NM moved
+    // first, and they are driven by different threads.
+    // NM goes quiet once the device is activated, so while the dwell is holding
+    // "connecting" on screen nothing else would come along to clear it. Arm a
+    // one-shot for the remainder. connected() doubles as the armed flag --
+    // glibmm drops the connection when the slot returns false.
+    if (state == "connecting" && !nmStateIsActivating(nm_device_state_) &&
+        !nm_connecting_hold_conn_.connected()) {
+      auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - nm_connecting_since_);
+      if (elapsed < nm_connecting_min_) {
+        nm_connecting_hold_conn_ = Glib::signal_timeout().connect(
+            [this]() {
+              dp.emit();
+              return false;
+            },
+            (nm_connecting_min_ - elapsed).count() + 1);
+      }
+    }
+    if (state != state_) {
+      spdlog::debug(
+          "network: state {} -> {} (if={} carrier={} v4={} v6={} essid={} nm_state={} nm_conn={})",
+          state_.empty() ? "-" : state_, state, ifname_.empty() ? "-" : ifname_, carrier_,
+          !ipaddr_.empty(), !ipaddr6_.empty(), essid_.empty() ? "-" : essid_, nm_device_state_,
+          nm_connectivity_);
+    }
     if (!state_.empty() && label_.get_style_context()->has_class(state_)) {
       label_.get_style_context()->remove_class(state_);
     }
