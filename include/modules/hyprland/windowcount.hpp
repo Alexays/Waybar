@@ -4,13 +4,13 @@
 
 #include <string>
 
-#include "AAppIconLabel.hpp"
+#include "ALabel.hpp"
 #include "bar.hpp"
 #include "modules/hyprland/backend.hpp"
 
 namespace waybar::modules::hyprland {
 
-class WindowCount : public waybar::AAppIconLabel, public EventHandler {
+class WindowCount : public waybar::ALabel, public EventHandler {
  public:
   WindowCount(const std::string&, const waybar::Bar&, const Json::Value&);
   ~WindowCount() override;
