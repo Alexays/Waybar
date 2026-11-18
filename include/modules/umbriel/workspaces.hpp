@@ -12,6 +12,7 @@
 #include "bar.hpp"
 #include "modules/umbriel/backend.hpp"
 #include "modules/umbriel/workspace.hpp"
+#include "util/icon_loader.hpp"
 #include "util/regex_collection.hpp"
 
 namespace waybar::modules::umbriel {
@@ -25,6 +26,7 @@ class Workspaces : public AModule, public EventHandler {
 
   const Json::Value& config() const { return config_; }
   const Bar& bar() const { return bar_; }
+  const IconLoader& iconLoader() const { return icon_loader_; }
 
   std::string getIcon(const std::string& value, const Json::Value& ws) const;
 
@@ -44,6 +46,8 @@ class Workspaces : public AModule, public EventHandler {
 
   const Bar& bar_;
   Gtk::Box box_;
+
+  IconLoader icon_loader_;
 
   std::vector<std::unique_ptr<Workspace>> workspaces_;
 

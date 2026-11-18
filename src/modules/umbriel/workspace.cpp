@@ -1,14 +1,9 @@
 #include "modules/umbriel/workspace.hpp"
 
 #include <fmt/format.h>
-#include <gdkmm/pixbuf.h>
-#include <giomm/desktopappinfo.h>
-#include <giomm/icon.h>
-#include <gtkmm/icontheme.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
-#include <cctype>
 #include <string>
 
 #include "modules/umbriel/backend.hpp"
@@ -191,11 +186,14 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
     util::limit_tooltip_text(tooltip);
     btn->set_tooltip_text(tooltip);
 
-    auto pixbuf = loadIcon(app_id, icon_size);
-    if (pixbuf) {
-      auto* img = Gtk::make_managed<Gtk::Image>(pixbuf);
-      btn->add(*img);
+    Gtk::Widget* child = nullptr;
+    auto* icon = new AppIconImage();
+    if (icon->setAppId(manager_.iconLoader(), app_id, icon_size) ==
+        IconLoader::LoadResult::LOADED) {
+      child = Gtk::manage(icon);
     } else {
+      // Not in a container yet, so it can still make room for the label
+      delete icon;
       // Three characters, not bytes, and none that break or widen the line
       std::string fallback;
       const char* p = (app_id.empty() ? title : app_id).c_str();
@@ -207,9 +205,9 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
         ++n;
       }
       if (fallback.empty()) fallback = "?";
-      auto* lbl = Gtk::make_managed<Gtk::Label>(fallback);
-      btn->add(*lbl);
+      child = Gtk::make_managed<Gtk::Label>(fallback);
     }
+    btn->add(*child);
 
     if (!win_id.empty()) {
       // Left click → focus window.
@@ -246,53 +244,6 @@ void Workspace::rebuildTaskbar(const std::vector<Json::Value>& my_windows) {
     taskbar_box_.pack_start(*btn, false, false, 0);
     btn->show_all();
   }
-}
-
-Glib::RefPtr<Gdk::Pixbuf> Workspace::loadIcon(const std::string& app_id, int size) {
-  if (app_id.empty()) return {};
-
-  auto app_info = Gio::DesktopAppInfo::create(app_id + ".desktop");
-  if (app_info) {
-    auto icon = app_info->get_icon();
-    if (icon) {
-      auto theme = Gtk::IconTheme::get_default();
-      auto icon_info = theme->lookup_icon(icon, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
-      if (icon_info) {
-        try {
-          return icon_info.load_icon();
-        } catch (...) {
-        }
-      }
-    }
-  }
-
-  auto theme = Gtk::IconTheme::get_default();
-
-  auto tryLoad = [&](const std::string& name) -> Glib::RefPtr<Gdk::Pixbuf> {
-    if (!theme->has_icon(name)) return {};
-    try {
-      return theme->load_icon(name, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
-    } catch (...) {
-      return {};
-    }
-  };
-
-  if (auto pb = tryLoad(app_id)) return pb;
-
-  std::string lower = app_id;
-  std::transform(lower.begin(), lower.end(), lower.begin(),
-                 [](unsigned char c) { return std::tolower(c); });
-  if (auto pb = tryLoad(lower)) return pb;
-
-  const auto dot = app_id.rfind('.');
-  if (dot != std::string::npos) {
-    std::string last = app_id.substr(dot + 1);
-    std::transform(last.begin(), last.end(), last.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
-    if (auto pb = tryLoad(last)) return pb;
-  }
-
-  return {};
 }
 
 }  // namespace waybar::modules::umbriel

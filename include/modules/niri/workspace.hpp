@@ -2,12 +2,13 @@
 
 #include <gtkmm/box.h>
 #include <gtkmm/button.h>
-#include <gtkmm/image.h>
 #include <gtkmm/label.h>
 #include <json/value.h>
 
 #include <map>
 #include <string>
+
+#include "util/app_icon_image.hpp"
 
 namespace waybar::modules::niri {
 
@@ -31,15 +32,13 @@ class Workspace {
   // Kept per window id so that the press and release of a click reach the same widget.
   struct TaskbarButton {
     Gtk::Button button;
-    Gtk::Image image;
+    AppIconImage image;
     Gtk::Label label;
     std::string app_id;
     bool middle_pressed = false;
   };
 
   void rebuildTaskbar(const std::vector<Json::Value>& my_windows);
-
-  Glib::RefPtr<Gdk::Pixbuf> loadIcon(const std::string& app_id, int size);
 
   Workspaces& manager_;
   uint64_t id_;
@@ -49,9 +48,9 @@ class Workspace {
   //                 ├─ label_        workspace label / icon
   //                 └─ taskbar_box_  app icon buttons (shown only when taskbar enabled)
   Gtk::Button button_;
-  Gtk::Box box_;   
+  Gtk::Box box_;
   Gtk::Label label_;
-  Gtk::Box taskbar_box_; 
+  Gtk::Box taskbar_box_;
   std::map<uint64_t, TaskbarButton> taskbar_buttons_;
 };
 

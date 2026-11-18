@@ -2,12 +2,13 @@
 
 #include <gtkmm/box.h>
 #include <gtkmm/button.h>
-#include <gtkmm/image.h>
 #include <gtkmm/label.h>
 #include <json/value.h>
 
 #include <string>
 #include <vector>
+
+#include "util/app_icon_image.hpp"
 
 namespace waybar::modules::umbriel {
 
@@ -29,8 +30,6 @@ class Workspace {
 
  private:
   void rebuildTaskbar(const std::vector<Json::Value>& my_windows);
-
-  Glib::RefPtr<Gdk::Pixbuf> loadIcon(const std::string& app_id, int size);
 
   Workspaces& manager_;
   std::string id_;
