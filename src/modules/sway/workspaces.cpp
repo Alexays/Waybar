@@ -6,6 +6,7 @@
 #include <cctype>
 #include <string>
 
+#include "modules/sway/ipc/command.hpp"
 #include "util/string.hpp"
 
 namespace waybar::modules::sway {
@@ -464,35 +465,46 @@ Gtk::Button& Workspaces::addButton(const Json::Value& node) {
   button.set_relief(Gtk::RELIEF_NONE);
   button.get_style_context()->add_class("workspace-index-" + node["num"].asString());
   if (!config_["disable-click"].asBool()) {
-    button.signal_pressed().connect([this, node] {
-      try {
-        if (node["target_output"].isString()) {
-          ipc_.sendCmd(IPC_COMMAND,
-                       fmt::format(persistent_workspace_switch_cmd_, "--no-auto-back-and-forth",
-                                   node["name"].asString(), node["target_output"].asString(),
-                                   "--no-auto-back-and-forth", node["name"].asString()));
-        } else {
-          std::string flag =
-              config_["disable-auto-back-and-forth"].asBool() ? "--no-auto-back-and-forth" : "";
-          if (config_["no-switch-output"].asBool()) {
-            ipc_.sendCmd(IPC_COMMAND,
-                         fmt::format("[workspace=\"^{}$\"] move workspace to output current; "
-                                     "workspace number {} \"{}\"",
-                                     node["name"].asString(), flag, node["name"].asString()));
-          } else if (node["num"].asInt() >= 0) {
-            ipc_.sendCmd(IPC_COMMAND,
-                         fmt::format(workspace_switch_number_cmd_, flag, node["num"].asInt()));
-          } else {
-            ipc_.sendCmd(IPC_COMMAND,
-                         fmt::format(workspace_switch_cmd_, flag, node["name"].asString()));
-          }
-        }
-      } catch (const std::exception& e) {
-        spdlog::error("Workspaces: {}", e.what());
-      }
-    });
+    button.signal_pressed().connect([this, node] { onButtonPressed(node); });
   }
   return button;
+}
+
+// Each click sends a single command list: sway runs it as one transaction.
+void Workspaces::onButtonPressed(const Json::Value& node) {
+  const std::string name = node["name"].asString();
+  const auto quoted = ipc::quote_workspace_name(name);
+  if (!quoted) {
+    spdlog::warn("Workspaces: unsupported workspace name '{}'", name);
+    return;
+  }
+  std::string cmd;
+  if (node["target_output"].isString()) {
+    // Persistent workspace that does not exist yet: create it, then move it to its output.
+    const auto output = ipc::quote_arg(node["target_output"].asString());
+    if (!output) {
+      spdlog::warn("Workspaces: unsupported output name '{}'", node["target_output"].asString());
+      return;
+    }
+    cmd = fmt::format(
+        "workspace --no-auto-back-and-forth {0}; move workspace to output {1}; "
+        "workspace --no-auto-back-and-forth {0}",
+        *quoted, *output);
+  } else {
+    if (config_["no-switch-output"].asBool()) {
+      // Fails without aborting the list when the workspace holds no container to match.
+      cmd = fmt::format(R"([workspace="^{}$"] move workspace to output current; )",
+                        ipc::regex_literal(name));
+    }
+    const char* flag =
+        config_["disable-auto-back-and-forth"].asBool() ? "--no-auto-back-and-forth " : "";
+    cmd += fmt::format("workspace {}{}", flag, *quoted);
+  }
+  try {
+    ipc_.sendCmd(IPC_COMMAND, cmd);
+  } catch (const std::exception& e) {
+    spdlog::error("Workspaces: {}", e.what());
+  }
 }
 
 std::string Workspaces::getIcon(const std::string& name, const Json::Value& node) {
@@ -572,7 +584,11 @@ bool Workspaces::handleScroll(GdkEventScroll* e) {
     if (noWarp) {
       ipc_.sendCmd(IPC_COMMAND, "mouse_warping none");
     }
-    ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, "--no-auto-back-and-forth", name));
+    if (const auto quoted = ipc::quote_workspace_name(name)) {
+      ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace --no-auto-back-and-forth {}", *quoted));
+    } else {
+      spdlog::warn("Workspaces: unsupported workspace name '{}'", name);
+    }
   } catch (const std::exception& e) {
     spdlog::error("Workspaces: {}", e.what());
   }

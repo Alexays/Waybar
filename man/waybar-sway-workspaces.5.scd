@@ -160,6 +160,14 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *persistent*: Will be shown, when workspace is persistent.
 - *high-priority-named*: Icons by names will be shown always for those workspaces, independent by state.
 
+# WORKSPACE NAMES
+
+Clicking or scrolling switches to a workspace by its name. This works for any name that is valid
+UTF-8 and contains no newline and no backslash, except the names that sway reserves as keywords
+of its *workspace* command, in any case: *next*, *prev*, *next_on_output*, *prev_on_output*,
+*current*, *back_and_forth*, *number*, *output*, *gaps* and *--no-auto-back-and-forth*.
+Other workspaces are shown, but switching to them is not supported and logs a warning.
+
 # PERSISTENT WORKSPACES
 
 Each entry of *persistent_workspace* names a workspace that should always be shown.
