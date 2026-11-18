@@ -769,6 +769,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
         } else {
           module = factory.makeModule(ref, pos);
         }
+        module->setOutputName(output->name);
 
         std::shared_ptr<AModule> module_sp(module);
         modules_all_.emplace_back(module_sp);
