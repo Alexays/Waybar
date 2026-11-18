@@ -121,6 +121,20 @@ launch hyprland "$hypr_config"
 "${A11Y[@]}" "mode resize"
 step 'submap'
 "${A11Y[@]}" --absent "mode resize"
+# persistent-only keeps what Hyprland reports persistent, at startup and once created (#5486)
+smoke::assert_clean_exit
+launch hyprland '{
+  "layer": "top", "position": "top", "height": 30,
+  "modules-left": ["hyprland/workspaces"],
+  "hyprland/workspaces": {"format": "ws {name}{icon}", "persistent-only": true,
+    "format-icons": {"active": "*", "default": ""}}
+}'
+"${A11Y[@]}" "ws 1*"
+"${A11Y[@]}" --absent "ws 2"
+step 'workspace 4'
+"${A11Y[@]}" "ws 4*" "ws 1"
+step 'workspace 1'
+"${A11Y[@]}" "ws 1*" "ws 4"
 compositor_gone "ws 1*"
 unset HYPRLAND_INSTANCE_SIGNATURE
 
