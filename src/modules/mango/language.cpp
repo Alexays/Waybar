@@ -4,9 +4,31 @@
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbregistry.h>
 
+#include <optional>
+#include <vector>
+
 #include "util/string.hpp"
 
 namespace waybar::modules::mango {
+
+namespace {
+
+auto findFormatKey(const Json::Value& config, const std::vector<std::string>& names,
+                   const std::string& variant) -> std::optional<std::string> {
+  if (!variant.empty()) {
+    for (const auto& name : names) {
+      auto key = "format-" + name + "-" + variant;
+      if (config[key].isString()) return key;
+    }
+  }
+  for (const auto& name : names) {
+    auto key = "format-" + name;
+    if (config[key].isString()) return key;
+  }
+  return std::nullopt;
+}
+
+}  // namespace
 
 Language::Language(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "language", id, "{}", 0, false), bar_(bar), rxkb_ctx_(nullptr) {
@@ -52,27 +74,15 @@ void Language::doUpdate() {
     last_short_name_ = layout.short_name;
   }
 
-  std::string layoutName;
-  std::string variant_key = "format-" + layout.short_description + "-" + layout.variant;
-  if (!layout.variant.empty() && config_.isMember(variant_key)) {
-    layoutName =
-        fmt::format(fmt::runtime(config_[variant_key].asString()),
-                    fmt::arg("long", layout.full_name), fmt::arg("short", layout.short_name),
-                    fmt::arg("shortDescription", layout.short_description),
-                    fmt::arg("variant", layout.variant));
-  } else if (config_.isMember("format-" + layout.short_description)) {
-    std::string key = "format-" + layout.short_description;
-    layoutName =
-        fmt::format(fmt::runtime(config_[key].asString()), fmt::arg("long", layout.full_name),
-                    fmt::arg("short", layout.short_name),
-                    fmt::arg("shortDescription", layout.short_description),
-                    fmt::arg("variant", layout.variant));
-  } else {
-    layoutName = fmt::format(fmt::runtime(format_), fmt::arg("long", layout.full_name),
-                             fmt::arg("short", layout.short_name),
-                             fmt::arg("shortDescription", layout.short_description),
-                             fmt::arg("variant", layout.variant));
+  auto format = format_;
+  auto key = findFormatKey(config_, {layout.short_description, layout.short_name}, layout.variant);
+  if (key) {
+    format = config_[*key].asString();
   }
+  auto layoutName = fmt::format(fmt::runtime(format), fmt::arg("long", layout.full_name),
+                                fmt::arg("short", layout.short_name),
+                                fmt::arg("shortDescription", layout.short_description),
+                                fmt::arg("variant", layout.variant));
 
   if (!layoutName.empty()) {
     label_.show();
