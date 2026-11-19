@@ -44,6 +44,7 @@ class Workspaces : public AModule, public sigc::trackable {
   std::string getCycleWorkspace(std::vector<Json::Value>::iterator, bool prev) const;
   uint16_t getWorkspaceIndex(const std::string& name) const;
   static std::string trimWorkspaceName(const std::string&);
+  static bool isPangoMarkup(const std::string& text);
   std::optional<uint16_t> getCustomSortIndex(const std::string& name) const;
   bool handleScroll(GdkEventScroll* /*unused*/) override;
 
