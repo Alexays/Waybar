@@ -50,6 +50,7 @@ class SystemdFailedUnits : public ALabel, public sigc::trackable {
   void RequestFailedUnits(const std::function<void()>& next);
   void RequestFailedUnitsList(const std::function<void()>& next);
   void RequestSystemState(const std::function<void()>& next);
+  void SubscribeManager(const char* kind, Glib::RefPtr<Gio::DBus::Proxy>& proxy);
   std::vector<FailedUnit> LoadFailedUnitsList(const char* kind,
                                               Glib::RefPtr<Gio::DBus::Proxy>& proxy,
                                               const std::string& scope,
