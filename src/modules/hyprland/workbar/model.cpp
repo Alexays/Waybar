@@ -1,0 +1,1 @@
+#include "modules/hyprland/workbar/model.hpp"
