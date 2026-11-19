@@ -147,7 +147,7 @@ bool AGraph::onDraw(const Cairo::RefPtr<Cairo::Context>& cr) {
 
   cr->set_line_width(1.0);
 
-  const double step_width = static_cast<double>(width) / datapoints_;
+  const double step_width = static_cast<double>(width) / (datapoints_ > 1 ? datapoints_ - 1 : 1);
   const int values_count = values_.size();
   const int empty_space = datapoints_ - values_count;
 
