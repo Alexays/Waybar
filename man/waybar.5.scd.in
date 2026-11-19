@@ -122,6 +122,12 @@ The visual display elements for waybar use a CSS stylesheet. Waybar supports *st
 	default: *true* ++
 	Option to request an exclusive zone from the compositor. Disable this to allow drawing application windows underneath or on top of the bar.
 
+*exclusive_output* ++
+	typeof: bool ++
+	default: *false* ++
+	Displays Waybar on the first monitor in a monitor list if multiple monitors are connected.
+
+
 *fixed-center* ++
 	typeof: bool ++
 	default: *true*
