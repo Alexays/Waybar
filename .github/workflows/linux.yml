@@ -63,6 +63,8 @@ jobs:
             libsystemd-dev \
             systemd-dev \
             libepoxy-dev \
+            libumockdev-dev \
+            umockdev \
             libfftw3-dev
       - name: configure
         # Every feature forced to `enabled`/`true`: any missing dependency or
