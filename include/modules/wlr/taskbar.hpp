@@ -136,6 +136,7 @@ class Task {
   /* Callbacks for Gtk events */
   bool handle_clicked(GdkEventButton*);
   bool handle_button_release(GdkEventButton*);
+  bool handle_scroll(GdkEventScroll* e);
   bool handle_motion_notify(GdkEventMotion*);
   void handle_drag_data_get(const Glib::RefPtr<Gdk::DragContext>& context,
                             Gtk::SelectionData& selection_data, guint info, guint time);
