@@ -34,7 +34,11 @@ int run_in_subprocess(int (*task)()) {
     return -1;
   }
   if (pid == 0) {
-    alarm(5);
+    // A watchdog against a genuine hang, not a time budget for the work. The
+    // control-flag stress case is 400 thread create/join pairs and 20,000
+    // sched_yield() calls: 0.44s on an idle 16-thread machine, but well past
+    // 5s once the cores are contended, which on CI they routinely are.
+    alarm(60);
     _exit(task());
   }
 
