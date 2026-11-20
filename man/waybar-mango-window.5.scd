@@ -40,6 +40,18 @@ Addressed by *mango/window*
 	typeof: integer ++
 	The maximum length in character the module should display.
 
+*format-icons*: ++
+	typeof: object ++
+	The icons for each app ID. The priority is set as follows:
+	. Icon configured for this app_id (exact or lowercase match)
+	. "default" icon from the config
+	. The application's own icon, if *icon* option is set to *true*
+
+*tooltip-format*: ++
+	typeof: string ++
+	default: same as *format* (respecting *rewrite* string)++
+	The format used to display the tooltip. It accepts the same placeholders as *format*.
+
 # FORMAT REPLACEMENTS
 
 *{title}*: The current window title.
