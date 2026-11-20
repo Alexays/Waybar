@@ -234,11 +234,11 @@ bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
     return false;
   }
   last_tooltip_markup_ = std::move(tooltip);
-  if (active_tooltip_) {
+  if (auto active = active_tooltip_.get()) {
     // leave-notify is not always delivered when the pointer moves between
     // adjacent modules, so active_tooltip_ may belong to another module.
     if (pointerOverModule()) {
-      active_tooltip_->set_markup(*last_tooltip_markup_);
+      active->set_markup(*last_tooltip_markup_);
     } else {
       active_tooltip_.reset();
     }

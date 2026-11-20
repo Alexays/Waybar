@@ -3,6 +3,7 @@
 #include <fmt/args.h>
 #include <fmt/format.h>
 #include <glibmm/markup.h>
+#include <glibmm/weakref.h>
 #include <gtkmm/label.h>
 #include <gtkmm/tooltip.h>
 #include <json/json.h>
@@ -96,7 +97,9 @@ class ALabel : public AModule {
   // no collation weight, so two different icons compare equal.
   std::optional<std::string> last_label_markup_;
   std::optional<std::string> last_tooltip_markup_;
-  Glib::RefPtr<Gtk::Tooltip> active_tooltip_;
+  // Weak: GTK drops its tooltip once the pointer has left tooltips for a while, and keeping
+  // that one alive keeps a custom tooltip widget (the clock's calendar) inside its window.
+  Glib::WeakRef<Gtk::Tooltip> active_tooltip_;
   sigc::connection tooltip_requery_;
 };
 

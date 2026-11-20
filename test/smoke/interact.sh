@@ -309,5 +309,44 @@ smoke::assert_clean || fail=1
 kill "$WAYBAR_PID" 2>/dev/null || true
 echo "::endgroup::"
 
+# --- 8) the clock's calendar after another bar's tooltip -------------------
+# The clock hands GTK its own label as tooltip. Hovering a module of one bar, then the clock of
+# another, puts that label in the tooltip GTK showed for the module; once GTK drops that tooltip,
+# the label must be free to go in the next one, or the calendar shows as an empty bubble.
+echo "::group::calendar tooltip across bars"
+cfg8="$(mktemp --suffix=.json)"
+cat > "$cfg8" <<EOF
+{
+  "layer": "top", "position": "top", "height": 30,
+  "modules-left": ["custom/tip"], "modules-right": ["clock"],
+  "custom/tip": { "exec": "echo TOOLTIP-TARGET-MODULE", "interval": "once", "tooltip-format": "STATIC TOOLTIP" },
+  "clock": { "tooltip-format": "<tt>{calendar}</tt>" }
+}
+EOF
+smoke::launch_waybar "$cfg8" "$DIR/style.css" 4
+smoke::add_output
+sleep 3
+smoke::assert_alive || fail=1
+# The second output sits right of the first: one pointer goes from the module to that bar's clock
+"$CLICK/pointer_click" "40,$((2 * WIDTH - 30))" "$CY" $((2 * WIDTH)) "$HEIGHT" hover 1500
+sleep 1
+"$CLICK/pointer_click" $((2 * WIDTH - 30)) "$CY" $((2 * WIDTH)) "$HEIGHT" hover 2500 &
+holder=$!
+sleep 1.5
+if tooltip_shown $((2 * WIDTH - 400)); then
+    echo "✓ the calendar shows again after another bar's tooltip"
+else
+    echo "::error::the calendar tooltip is empty after another bar's tooltip"; fail=1
+fi
+smoke::screenshot "$SHOTDIR/calendar-tooltip.png"
+wait "$holder"
+if smoke::log | grep -q 'already inside a container'; then
+    echo "::error::GTK could not put the calendar label in the tooltip window"; fail=1
+fi
+smoke::assert_clean || fail=1
+smoke::remove_output
+kill "$WAYBAR_PID" 2>/dev/null || true
+echo "::endgroup::"
+
 [ "$fail" = 0 ] || exit 1
 echo "✓ interaction tests passed"

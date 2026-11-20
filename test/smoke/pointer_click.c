@@ -5,7 +5,8 @@
 // Moves to (X, Y), then ACTION: an evdev button code to click (default BTN_LEFT), `double` for a
 // left double click, `hover` to only move, or `up` / `down` / `left` / `right` for one wheel
 // notch. The device is then kept for HOLD_MS: destroying it removes the seat's pointer, which
-// counts as the pointer leaving.
+// counts as the pointer leaving. X can list positions, comma-separated: the pointer stays HOLD_MS
+// on each before the last, where ACTION happens.
 #include <linux/input-event-codes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,7 +46,8 @@ int main(int argc, char** argv) {
     fprintf(stderr, "usage: %s X Y OUTPUT_WIDTH OUTPUT_HEIGHT [ACTION] [HOLD_MS]\n", argv[0]);
     return 2;
   }
-  uint32_t x = strtoul(argv[1], NULL, 0), y = strtoul(argv[2], NULL, 0);
+  char* xs = argv[1];
+  uint32_t y = strtoul(argv[2], NULL, 0);
   uint32_t w = strtoul(argv[3], NULL, 0), h = strtoul(argv[4], NULL, 0);
   const char* action = argc > 5 ? argv[5] : "0x110";
   useconds_t hold = argc > 6 ? strtoul(argv[6], NULL, 0) * 1000 : 200000;
@@ -68,9 +70,13 @@ int main(int argc, char** argv) {
   // Clients bind wl_pointer only once the seat announces the new capability
   usleep(300000);
 
-  zwlr_virtual_pointer_v1_motion_absolute(pointer, 0, x, y, w, h);
-  zwlr_virtual_pointer_v1_frame(pointer);
-  wl_display_roundtrip(display);
+  for (;;) {
+    zwlr_virtual_pointer_v1_motion_absolute(pointer, 0, strtoul(xs, &xs, 0), y, w, h);
+    zwlr_virtual_pointer_v1_frame(pointer);
+    wl_display_roundtrip(display);
+    if (*xs++ != ',') break;
+    usleep(hold);
+  }
   usleep(200000);
 
   int vertical = strcmp(action, "up") == 0 || strcmp(action, "down") == 0;

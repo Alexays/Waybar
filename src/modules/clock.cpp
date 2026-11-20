@@ -300,8 +300,11 @@ auto waybar::modules::Clock::getTZtext(sys_seconds now) -> std::string {
     // Skip local timezone (nullptr) - never show it in tooltip
     if (tzList_[tz_idx] == nullptr) continue;
 
-    // Skip current timezone unless timezone-tooltip-format is specified
-    if (static_cast<int>(tz_idx) == tzCurrIdx_ && tzTooltipFormat_.empty()) continue;
+    // Skip the timezone the bar is currently showing: {tz_list} is the list of
+    // the *other* timezones, and the current one is already on the bar. This
+    // does not depend on timezone-tooltip-format, which only decides how the
+    // entries are formatted, not which ones appear.
+    if (static_cast<int>(tz_idx) == tzCurrIdx_) continue;
 
     const auto* tz = tzList_[tz_idx];
     auto zt{zoned_time{tz, now}};
