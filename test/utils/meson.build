@@ -24,6 +24,8 @@ test_src = files(
     'css_reload_helper.cpp',
     '../../src/util/css_reload_helper.cpp',
     '../../src/util/command_line_stream.cpp',
+    'transform_8bit_to_rgba.cpp',
+    '../../src/util/transform_8bit_to_rgba.cpp',
 )
 
 test_src += files('regex_collection.cpp', '../../src/util/regex_collection.cpp')
