@@ -118,3 +118,99 @@ TEST_CASE("transform_8bit_to_hex converts 8-bit colors", "[util][transform_8bit_
     CHECK(contains(result.css, "@import \"a.css\";"));
   }
 }
+
+TEST_CASE("transform_8bit_to_hex does not inline imports inside comments",
+          "[util][transform_8bit_to_rgba]") {
+  TempDir dir;
+  const std::string theme = "/* theme */ @define-color a #11223344; .leak{color:red;}";
+  dir.write("th.css", theme);
+
+  SECTION("commented-out import is left byte-for-byte") {
+    const std::string original = "/* @import \"th.css\"; */ .real{color:#fff}";
+    const auto main = dir.write("style.css", original);
+    auto result = transform_8bit_to_hex(main);
+    CHECK_FALSE(result.was_transformed);
+    CHECK(result.css == original);
+    CHECK_FALSE(contains(result.css, ".leak"));
+  }
+
+  SECTION("commented-out import does not inline, but real colors still convert") {
+    const auto main =
+        dir.write("style.css", "/* @import \"th.css\"; */ window { color: #11223344; }");
+    auto result = transform_8bit_to_hex(main);
+    CHECK(result.was_transformed);
+    CHECK(contains(result.css, "/* @import \"th.css\"; */"));
+    CHECK_FALSE(contains(result.css, "@define-color"));
+    CHECK_FALSE(contains(result.css, ".leak"));
+    CHECK(contains(result.css, "rgba(17,34,51,0.27)"));
+  }
+}
+
+TEST_CASE("transform_8bit_to_hex keeps relative url() paths valid",
+          "[util][transform_8bit_to_rgba]") {
+  TempDir dir;
+
+  SECTION("relative url in an inlined file resolves against that file's directory") {
+    dir.write("sub/inc.css",
+              "@define-color c #11223344;\n.a { background-image: url(\"img.png\"); }");
+    const auto main = dir.write("style.css", "@import \"sub/inc.css\";\nwindow { color: @c; }");
+    auto result = transform_8bit_to_hex(main);
+    const std::string expected = (fs::canonical(main).parent_path() / "sub" / "img.png").string();
+    CHECK(result.was_transformed);
+    CHECK(contains(result.css, "url(\"" + expected + "\")"));
+    CHECK_FALSE(contains(result.css, "url(\"img.png\")"));
+  }
+
+  SECTION("relative url in the main file resolves against the main file's directory") {
+    const auto main = dir.write("style.css",
+                                ".a { background-image: url('bg.png'); }\n"
+                                ".b { background-image: url(bg2.png); }\n"
+                                "window { color: #11223344; }");
+    auto result = transform_8bit_to_hex(main);
+    const fs::path base = fs::canonical(main).parent_path();
+    CHECK(result.was_transformed);
+    CHECK(contains(result.css, "url('" + (base / "bg.png").string() + "')"));
+    CHECK(contains(result.css, "url(\"" + (base / "bg2.png").string() + "\")"));
+  }
+
+  SECTION("absolute, scheme and data: urls are left unchanged") {
+    const std::string urls =
+        ".a { background-image: url(\"data:image/png;base64,AAAA\"); }\n"
+        ".b { background-image: url(file:///x/y.png); }\n"
+        ".c { background-image: url(\"/abs/z.png\"); }\n"
+        ".d { background-image: url(http://example.com/q.png); }\n";
+    const auto main = dir.write("style.css", urls + "window { color: #11223344; }");
+    auto result = transform_8bit_to_hex(main);
+    CHECK(result.was_transformed);
+    CHECK(contains(result.css, urls));
+  }
+
+  SECTION("url() inside a comment is left unchanged") {
+    const auto main = dir.write("style.css", "/* url(\"c.png\") */ window { color: #11223344; }");
+    auto result = transform_8bit_to_hex(main);
+    CHECK(contains(result.css, "/* url(\"c.png\") */"));
+  }
+
+  SECTION("relative url without an 8-bit color keeps was_transformed false") {
+    const std::string original = ".a { background-image: url(\"img.png\"); }";
+    const auto main = dir.write("style.css", original);
+    auto result = transform_8bit_to_hex(main);
+    CHECK_FALSE(result.was_transformed);
+    CHECK(result.css == original);
+  }
+}
+
+TEST_CASE("transform_8bit_to_hex strips a UTF-8 BOM from inlined files",
+          "[util][transform_8bit_to_rgba]") {
+  TempDir dir;
+  const std::string bom = "\xEF\xBB\xBF";
+
+  SECTION("BOM at the start of an inlined file is removed") {
+    dir.write("colors.css", bom + "@define-color fg #aabbccdd;");
+    const auto main = dir.write("style.css", "@import \"colors.css\";\nwindow { color: @fg; }");
+    auto result = transform_8bit_to_hex(main);
+    CHECK(result.was_transformed);
+    CHECK_FALSE(contains(result.css, bom));
+    CHECK(contains(result.css, "rgba(170,187,204,0.87)"));
+  }
+}
