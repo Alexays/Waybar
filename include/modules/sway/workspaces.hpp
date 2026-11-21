@@ -24,11 +24,6 @@ class Workspaces : public AModule, public sigc::trackable {
   auto update() -> void override;
 
  private:
-  static constexpr std::string_view workspace_switch_cmd_ = "workspace {} \"{}\"";
-  static constexpr std::string_view workspace_switch_number_cmd_ = "workspace {} number {}";
-  static constexpr std::string_view persistent_workspace_switch_cmd_ =
-      R"(workspace {} "{}"; move workspace to output "{}"; workspace {} "{}")";
-
   static int convertWorkspaceNameToNum(const std::string& name);
   static int windowRewritePriorityFunction(std::string const& window_rule);
 
@@ -39,6 +34,7 @@ class Workspaces : public AModule, public sigc::trackable {
   static bool hasFlag(const Json::Value&, const std::string&);
   void updateWindows(const Json::Value&, std::string&);
   Gtk::Button& addButton(const Json::Value&);
+  void onButtonPressed(const Json::Value&);
   void onButtonReady(const Json::Value&, Gtk::Button&);
   std::string getIcon(const std::string&, const Json::Value&);
   std::string getCycleWorkspace(std::vector<Json::Value>::iterator, bool prev) const;
