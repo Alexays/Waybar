@@ -22,7 +22,7 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
       timeout_step(config_["timeout-step"].isDouble() ? config_["timeout-step"].asDouble() : 10),
       wait_for_activity_(false) {
   embedded_icon_enabled_ = true;
-  
+
   if (waybar::Client::inst()->idle_inhibit_manager == nullptr) {
     throw std::runtime_error("idle-inhibit not available");
   }
