@@ -167,7 +167,7 @@ auto Inhibitor::handleToggle(GdkEventButton* const& e) -> bool {
     handled = true;
   }
 
-  return AIconLabel::handleToggle(e);
+  return AIconLabel::handleToggle(e) || handled;
 }
 
 }  // namespace waybar::modules
