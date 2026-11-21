@@ -113,31 +113,35 @@ auto AIconLabel::update() -> void {
   std::string cleanLabel;
   if (embedded_icon_enabled_) {
     std::tie(iconLabel, cleanLabel) = extractIcon(label_.get_label().raw());
+    if (!label_.get_label().empty() && !iconLabel.empty()) {
+      label_contains_icon = !iconLabel.empty();
+      iconLabel_ = iconLabel;
+    }
   }
   label_contains_icon = !iconLabel.empty();
 
   if (label_contains_icon) {
     label_.set_markup(cleanLabel);
 
-    if (iconLabel.front() == '/') {
+    if (iconLabel_.front() == '/') {
       try {
         // A FIFO or a device would block the main loop in open() or read()
         if (!Glib::file_test(iconLabel, Glib::FILE_TEST_IS_REGULAR)) {
           throw Glib::FileError(Glib::FileError::INVALID_ARGUMENT, "not a regular file");
         }
         int scaled_icon_size = app_icon_size_ * image_.get_scale_factor();
-        auto pixbuf = Gdk::Pixbuf::create_from_file(iconLabel, scaled_icon_size, scaled_icon_size);
+        auto pixbuf = Gdk::Pixbuf::create_from_file(iconLabel_, scaled_icon_size, scaled_icon_size);
 
         auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
                                                               image_.get_window());
         image_.set(surface);
         image_.set_visible(true);
       } catch (const Glib::Exception& e) {
-        spdlog::warn("Failed to load embedded icon {}: {}", iconLabel, std::string(e.what()));
+        spdlog::warn("Failed to load embedded icon {}: {}", iconLabel_, std::string(e.what()));
         image_.set_visible(false);
       }
     } else {
-      image_.set_from_icon_name(iconLabel, Gtk::ICON_SIZE_INVALID);
+      image_.set_from_icon_name(iconLabel_, Gtk::ICON_SIZE_INVALID);
       image_.set_visible(true);
     }
   }
