@@ -119,7 +119,7 @@ auto getInhibitors(const Json::Value& config) -> std::string {
 namespace waybar::modules {
 
 Inhibitor::Inhibitor(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "inhibitor", id, "{status}", true),
+    : AIconLabel(config, "inhibitor", id, "{status}", true),
       dbus_(::dbus()),
       inhibitors_(::getInhibitors(config)) {
   event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
@@ -146,7 +146,7 @@ auto Inhibitor::update() -> void {
     setTooltipMarkup(status_text);
   }
 
-  return ALabel::update();
+  return AIconLabel::update();
 }
 
 auto Inhibitor::handleToggle(GdkEventButton* const& e) -> bool {
@@ -167,7 +167,11 @@ auto Inhibitor::handleToggle(GdkEventButton* const& e) -> bool {
     handled = true;
   }
 
+<<<<<<< HEAD
   return ALabel::handleToggle(e) || handled;
+=======
+  return AIconLabel::handleToggle(e);
+>>>>>>> 18dd95cc (refactor: change base class from ALabel to AIconLabel for modules)
 }
 
 }  // namespace waybar::modules
