@@ -34,8 +34,14 @@ class ALabel : public AModule {
   bool alt_ = false;
   std::string default_format_;
 
-  bool setLabelMarkup(const Glib::ustring& markup);
-  bool setTooltipMarkup(const Glib::ustring& markup);
+  // Raw UTF-8 bytes, not Glib::ustring: ustring::operator== collates with
+  // g_utf8_collate(), which gives private-use codepoints (nerd-font icons)
+  // no collation weight, so two different icons compare equal.
+  std::optional<std::string> last_label_markup_;
+  std::optional<std::string> last_tooltip_markup_;
+
+  virtual bool setLabelMarkup(const Glib::ustring& markup);
+  virtual bool setTooltipMarkup(const Glib::ustring& markup);
 
   // resolveTooltipFormat() / resolveFormat() are inherited from AModule.
 
@@ -92,11 +98,6 @@ class ALabel : public AModule {
  private:
   bool pointerOverModule() const;
 
-  // Raw UTF-8 bytes, not Glib::ustring: ustring::operator== collates with
-  // g_utf8_collate(), which gives private-use codepoints (nerd-font icons)
-  // no collation weight, so two different icons compare equal.
-  std::optional<std::string> last_label_markup_;
-  std::optional<std::string> last_tooltip_markup_;
   // Weak: GTK drops its tooltip once the pointer has left tooltips for a while, and keeping
   // that one alive keeps a custom tooltip widget (the clock's calendar) inside its window.
   Glib::WeakRef<Gtk::Tooltip> active_tooltip_;
