@@ -118,7 +118,7 @@ auto AIconLabel::update() -> void {
       iconLabel_ = iconLabel;
     }
   }
-  label_contains_icon = !iconLabel.empty();
+  label_contains_icon = !iconLabel_.empty();
 
   if (label_contains_icon) {
     label_.set_markup(cleanLabel);
