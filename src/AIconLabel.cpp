@@ -146,6 +146,17 @@ auto AIconLabel::update() -> void {
   ALabel::update();
 }
 
+bool AIconLabel::setTooltipMarkup(const Glib::ustring& markup) {
+  if (last_tooltip_markup_ == markup) {
+    return false;
+  }
+
+  box_.set_tooltip_markup(markup);
+
+  last_tooltip_markup_ = markup;
+  return true;
+}
+
 bool AIconLabel::iconEnabled() const {
   return label_contains_icon || (config_["icon"].isBool() ? config_["icon"].asBool() : false);
 }
