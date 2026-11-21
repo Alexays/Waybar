@@ -16,10 +16,10 @@
 waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
     : AIconLabel(config, "cpu", id, "{usage}%", 10) {
   thread_ = [this] {
-    embedded_icon_enabled_ = true;
     dp.emit();
     thread_.sleep_for(interval_);
   };
+  embedded_icon_enabled_ = true;
 }
 
 auto waybar::modules::Cpu::update() -> void {
