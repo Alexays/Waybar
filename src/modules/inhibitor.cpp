@@ -122,6 +122,8 @@ Inhibitor::Inhibitor(const std::string& id, const Bar& bar, const Json::Value& c
     : AIconLabel(config, "inhibitor", id, "{status}", true),
       dbus_(::dbus()),
       inhibitors_(::getInhibitors(config)) {
+  embedded_icon_enabled_ = true;
+  
   event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
   event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &Inhibitor::handleToggle));
 }

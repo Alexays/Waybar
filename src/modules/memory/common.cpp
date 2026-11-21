@@ -17,6 +17,7 @@ waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config
     dp.emit();
     thread_.sleep_for(interval_);
   };
+  embedded_icon_enabled_ = true;
   if (config["unit"].isString()) {
     unit_ = config["unit"].asString();
     if (!kUnits.contains(unit_)) {

@@ -14,6 +14,8 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
 #if defined(__FreeBSD__)
 // FreeBSD uses sysctlbyname instead of read from a file
 #else
+  embedded_icon_enabled_ = true;
+
   auto traverseAsArray = [](const Json::Value& value, auto&& check_set_path) {
     if (value.isString())
       check_set_path(value.asString());

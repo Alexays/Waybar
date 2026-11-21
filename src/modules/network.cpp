@@ -106,6 +106,8 @@ uint32_t waybar::modules::Network::readLinkSpeed() const {
 
 waybar::modules::Network::Network(const std::string& id, const Json::Value& config)
     : AIconLabel(config, "network", id, DEFAULT_FORMAT, 60) {
+  embedded_icon_enabled_ = true;
+      
   // Start with some "text" in the module's label_. update() will then
   // update it. Since the text should be different, update() will be able
   // to show or hide the event_box_. This is to work around the case where
