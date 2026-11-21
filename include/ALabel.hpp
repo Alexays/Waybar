@@ -98,11 +98,6 @@ class ALabel : public AModule {
  private:
   bool pointerOverModule() const;
 
-  // Raw UTF-8 bytes, not Glib::ustring: ustring::operator== collates with
-  // g_utf8_collate(), which gives private-use codepoints (nerd-font icons)
-  // no collation weight, so two different icons compare equal.
-  std::optional<std::string> last_label_markup_;
-  std::optional<std::string> last_tooltip_markup_;
   // Weak: GTK drops its tooltip once the pointer has left tooltips for a while, and keeping
   // that one alive keeps a custom tooltip widget (the clock's calendar) inside its window.
   Glib::WeakRef<Gtk::Tooltip> active_tooltip_;
