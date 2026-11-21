@@ -10,10 +10,12 @@
 #endif
 
 waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
-    : ALabel(config, "temperature", id, "{temperatureC}°C", 10) {
+    : AIconLabel(config, "temperature", id, "{temperatureC}°C", 10) {
 #if defined(__FreeBSD__)
 // FreeBSD uses sysctlbyname instead of read from a file
 #else
+  embedded_icon_enabled_ = true;
+
   auto traverseAsArray = [](const Json::Value& value, auto&& check_set_path) {
     if (value.isString())
       check_set_path(value.asString());
@@ -160,7 +162,7 @@ auto waybar::modules::Temperature::update() -> void {
                         fmt::arg("temperatureK", temperature_k),
                         fmt::arg("icon", getIcon(temperature_c, "", max_temp)));
   // Call parent update
-  ALabel::update();
+  AIconLabel::update();
 }
 
 float waybar::modules::Temperature::getTemperature() {
