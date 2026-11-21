@@ -50,10 +50,6 @@ void Idle::stop() {
   ctx_->setState(std::make_unique<Stopped>(ctx_));
 }
 
-void Idle::update() noexcept {
-  // This is intentionally blank.
-}
-
 void Idle::entry() noexcept {
   auto conn = ctx_->connection().get();
   assert(conn != nullptr);
@@ -67,7 +63,7 @@ void Idle::entry() noexcept {
       spdlog::debug("mpd: Idle: watching FD");
       sigc::slot<bool, Glib::IOCondition const&> idle_slot = sigc::mem_fun(*this, &Idle::on_io);
       idle_connection_ =
-          Glib::signal_io().connect(idle_slot, mpd_connection_get_fd(conn),
+          ctx_->signal_io().connect(idle_slot, mpd_connection_get_fd(conn),
                                     Glib::IO_IN | Glib::IO_PRI | Glib::IO_ERR | Glib::IO_HUP);
     }
   } catch (std::exception const& e) {
@@ -93,13 +89,13 @@ bool Idle::on_io(Glib::IOCondition const&) {
   mpd_response_finish(conn);
   try {
     ctx_->checkErrors(conn);
+    ctx_->fetchState();
   } catch (std::exception const& e) {
     spdlog::warn("mpd: Idle: error: {}", e.what());
     ctx_->setState(std::make_unique<Disconnected>(ctx_));
     return false;
   }
 
-  ctx_->fetchState();
   ctx_->emit();
   mpd_state state = ctx_->state();
 
@@ -143,7 +139,7 @@ void Playing::timer() noexcept {
   }
 
   sigc::slot<bool> timer_slot = sigc::mem_fun(*this, &Playing::on_timer);
-  timer_connection_ = Glib::signal_timeout().connect(timer_slot, ctx_->playing_interval());
+  timer_connection_ = ctx_->signal_timeout().connect(timer_slot, ctx_->playing_interval());
 }
 
 void Playing::idle() noexcept {
@@ -159,7 +155,7 @@ void Playing::idle() noexcept {
       spdlog::trace("mpd: Playing: watching FD");
       sigc::slot<bool, Glib::IOCondition const&> idle_slot = sigc::mem_fun(*this, &Playing::on_io);
       idle_connection_ =
-          Glib::signal_io().connect(idle_slot, mpd_connection_get_fd(conn),
+          ctx_->signal_io().connect(idle_slot, mpd_connection_get_fd(conn),
                                     Glib::IO_IN | Glib::IO_PRI | Glib::IO_ERR | Glib::IO_HUP);
     }
   } catch (std::exception const& e) {
@@ -269,11 +265,9 @@ void Playing::pause() {
   ctx_->setState(std::make_unique<Paused>(ctx_));
 }
 
-void Playing::update() noexcept { ctx_->do_update(); }
-
 void Paused::entry() noexcept {
   sigc::slot<bool> timer_slot = sigc::mem_fun(*this, &Paused::on_timer);
-  timer_connection_ = Glib::signal_timeout().connect(timer_slot, /* milliseconds */ 200);
+  timer_connection_ = ctx_->signal_timeout().connect(timer_slot, /* milliseconds */ 200);
   spdlog::debug("mpd: Paused: enabled 200 ms periodic timer.");
 }
 
@@ -339,11 +333,9 @@ void Paused::stop() {
   ctx_->setState(std::make_unique<Stopped>(ctx_));
 }
 
-void Paused::update() noexcept { ctx_->do_update(); }
-
 void Stopped::entry() noexcept {
   sigc::slot<bool> timer_slot = sigc::mem_fun(*this, &Stopped::on_timer);
-  timer_connection_ = Glib::signal_timeout().connect(timer_slot, /* milliseconds */ 200);
+  timer_connection_ = ctx_->signal_timeout().connect(timer_slot, /* milliseconds */ 200);
   spdlog::debug("mpd: Stopped: enabled 200 ms periodic timer.");
 }
 
@@ -409,8 +401,6 @@ void Stopped::pause() {
   ctx_->setState(std::make_unique<Paused>(ctx_));
 }
 
-void Stopped::update() noexcept { ctx_->do_update(); }
-
 bool Disconnected::arm_timer(int interval) noexcept {
   // check if it's necessary to modify the timer
   if (timer_connection_ && last_interval_ == interval) {
@@ -422,7 +412,7 @@ bool Disconnected::arm_timer(int interval) noexcept {
   // register timer
   last_interval_ = interval;
   sigc::slot<bool> timer_slot = sigc::mem_fun(*this, &Disconnected::on_timer);
-  timer_connection_ = Glib::signal_timeout().connect_seconds(timer_slot, interval);
+  timer_connection_ = ctx_->signal_timeout().connect_seconds(timer_slot, interval);
   spdlog::debug("mpd: Disconnected: enabled {}s interval timer.", interval);
   return false;
 }
@@ -468,8 +458,6 @@ bool Disconnected::on_timer() {
 
   return arm_timer(ctx_->interval());
 }
-
-void Disconnected::update() noexcept { ctx_->do_update(); }
 
 #undef RUN_NOIDLE_AND_CMD
 }  // namespace waybar::modules::detail

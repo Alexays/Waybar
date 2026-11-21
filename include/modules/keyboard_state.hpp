@@ -26,6 +26,7 @@ class KeyboardState : public AModule {
 
  private:
   auto tryAddDevice(const std::string&) -> void;
+  auto releaseLibinput() -> void;
 
   Gtk::Box box_;
   Gtk::Label numlock_label_;
@@ -43,6 +44,8 @@ class KeyboardState : public AModule {
   std::unordered_map<std::string, struct libinput_device*> libinput_devices_;
   std::mutex devices_mutex_;  // protects libinput_devices_ and libinput_ context (libinput is not
                               // thread-safe)
+  // descriptors libinput has open and their last seen LEDs, protected by devices_mutex_
+  std::unordered_map<int, unsigned long> device_leds_;
   std::set<int> binding_keys;
 
   util::SleeperThread libinput_thread_, hotplug_thread_;

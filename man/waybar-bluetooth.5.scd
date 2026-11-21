@@ -183,7 +183,7 @@ At the time of writing, the experimental features of BlueZ need to be turned on,
 *{device_battery_percentage}*: Battery percentage of the displayed device if available. Use only in the config options defined below.
 
 *{device_battery_percentage_peripheral}*: Battery percentage of the peripheral half of a split keyboard (e.g., ZMK keyboards with separate central and peripheral batteries). ++
-This is read from GATT Battery Service characteristics that have a User Description descriptor. Use only in the config options defined below.
+This is read from GATT Battery Service characteristics that have a User Description descriptor, in the background and at most every 10 seconds. Use only in the config options defined below.
 
 ## CONFIGURATION
 

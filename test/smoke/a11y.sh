@@ -7,12 +7,11 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$DIR/lib.sh"
 
 # Make sure GTK registers with the AT-SPI bridge.
-unset NO_AT_BRIDGE
-export GTK_A11Y=1
+export SMOKE_A11Y=1
 
 smoke::setup
 smoke::start_compositor
 trap smoke::stop EXIT
 smoke::launch_waybar "$DIR/config.jsonc" "$DIR/style.css" 6
 smoke::assert_alive
-python3 "$DIR/a11y.py"
+python3 "$DIR/a11y.py" "Waybar" "CI smoke test" "12:34"

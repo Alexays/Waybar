@@ -79,14 +79,10 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
     glyph = config_["glyph"].asString();
   }
 
-  gamemodeWatcher_id = Gio::DBus::watch_name(
-      Gio::DBus::BUS_TYPE_SESSION, dbus_name, sigc::mem_fun(*this, &Gamemode::appear),
-      sigc::mem_fun(*this, &Gamemode::disappear),
-      Gio::DBus::BusNameWatcherFlags::BUS_NAME_WATCHER_FLAGS_AUTO_START);
-
-  // Connect to gamemode
-  gamemode_proxy = Gio::DBus::Proxy::create_for_bus_sync(Gio::DBus::BusType::BUS_TYPE_SESSION,
-                                                         dbus_name, dbus_obj_path, dbus_interface);
+  // Connect to gamemode; its cached properties are never read, so don't wait for a GetAll
+  gamemode_proxy = Gio::DBus::Proxy::create_for_bus_sync(
+      Gio::DBus::BusType::BUS_TYPE_SESSION, dbus_name, dbus_obj_path, dbus_interface, {},
+      Gio::DBus::PROXY_FLAGS_DO_NOT_LOAD_PROPERTIES);
   if (!gamemode_proxy) {
     throw std::runtime_error("Unable to connect to gamemode DBus!...");
   } else {
@@ -103,6 +99,12 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
         "org.freedesktop.login1.Manager", "PrepareForSleep", "/org/freedesktop/login1");
   }
 
+  // Registered last: only the destructor removes it, and that never runs if the constructor throws
+  gamemodeWatcher_id = Gio::DBus::watch_name(
+      Gio::DBus::BUS_TYPE_SESSION, dbus_name, sigc::mem_fun(*this, &Gamemode::appear),
+      sigc::mem_fun(*this, &Gamemode::disappear),
+      Gio::DBus::BusNameWatcherFlags::BUS_NAME_WATCHER_FLAGS_AUTO_START);
+
   event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &Gamemode::handleToggle));
 }
 
@@ -118,27 +120,45 @@ Gamemode::~Gamemode() {
   }
 }
 
-// Gets the DBus ClientCount
+// Asks for the DBus ClientCount; the main loop must not wait for the name owner's answer
 void Gamemode::getData() {
   if (gamemodeRunning && gamemode_proxy) {
-    try {
-      // Get game count
-      auto parameters = Glib::VariantContainerBase(
-          g_variant_new("(ss)", dbus_get_interface.c_str(), "ClientCount"));
-      Glib::VariantContainerBase data = gamemode_proxy->call_sync("Get", parameters);
-      if (data && data.is_of_type(Glib::VariantType("(v)"))) {
-        Glib::VariantBase variant;
-        g_variant_get(const_cast<GVariant*>(data.gobj()), "(v)", &variant);
-        if (variant && variant.is_of_type(Glib::VARIANT_TYPE_INT32)) {
-          g_variant_get(const_cast<GVariant*>(variant.gobj()), "i", &gameCount);
-          return;
-        }
-      }
-    } catch (Glib::Error& e) {
-      spdlog::error("Gamemode Error {}", e.what().c_str());
+    // One request in flight at a time, however long the answer takes
+    if (getDataRunning) {
+      getDataAgain = true;
+      return;
     }
+    getDataRunning = true;
+    // Get game count
+    auto parameters = Glib::VariantContainerBase(
+        g_variant_new("(ss)", dbus_get_interface.c_str(), "ClientCount"));
+    gamemode_proxy->call("Get", sigc::mem_fun(*this, &Gamemode::getData_cb), parameters);
+    return;
   }
   gameCount = 0;
+}
+
+void Gamemode::getData_cb(Glib::RefPtr<Gio::AsyncResult>& result) {
+  gameCount = 0;
+  try {
+    Glib::VariantContainerBase data = gamemode_proxy->call_finish(result);
+    if (data && data.is_of_type(Glib::VariantType("(v)"))) {
+      Glib::VariantBase variant;
+      g_variant_get(const_cast<GVariant*>(data.gobj()), "(v)", &variant);
+      if (variant && variant.is_of_type(Glib::VARIANT_TYPE_INT32)) {
+        g_variant_get(const_cast<GVariant*>(variant.gobj()), "i", &gameCount);
+      }
+    }
+  } catch (Glib::Error& e) {
+    spdlog::error("Gamemode Error {}", e.what().c_str());
+  }
+  dp.emit();
+
+  getDataRunning = false;
+  if (getDataAgain) {
+    getDataAgain = false;
+    getData();
+  }
 }
 
 // Whenever the DBus ClientCount changes

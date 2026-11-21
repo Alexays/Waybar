@@ -98,7 +98,15 @@ Sndio::Sndio(const std::string& id, const Json::Value& config)
   };
 }
 
-Sndio::~Sndio() { sioctl_close(hdl_); }
+Sndio::~Sndio() {
+  // thread_ polls the handle and replaces it after a disconnect.
+  thread_.stop();
+  thread_.join();
+  // hdl_ is null from a lost connection until a reconnect succeeds.
+  if (hdl_ != nullptr) {
+    sioctl_close(hdl_);
+  }
+}
 
 auto Sndio::update() -> void {
   auto format = format_;

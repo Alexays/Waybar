@@ -6,6 +6,8 @@
 #include <cctype>
 #include <string>
 
+#include "util/string.hpp"
+
 namespace waybar::modules::sway {
 
 // Helper function to assign a number to a workspace, just like sway. In fact
@@ -82,14 +84,19 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
     std::string windowRewriteDefault =
         windowRewriteDefaultConfig.isString() ? windowRewriteDefaultConfig.asString() : "?";
     m_windowRewriteRules = waybar::util::RegexCollection(
-        windowRewrite, std::move(windowRewriteDefault), windowRewritePriorityFunction);
+        windowRewrite, std::move(windowRewriteDefault), windowRewritePriorityFunction, true);
   }
   populateIgnoreWorkspacesConfig(config);
   ipc_.subscribe(R"(["workspace"])");
   ipc_.subscribe(R"(["window"])");
-  ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Workspaces::onCmd));
-  ipc_.sendCmd(IPC_GET_TREE);
+  // Only the newest tree matters
+  ipc_.signal_cmd.set_max_queued_events(1);
+  try {
+    ipc_.sendCmd(IPC_GET_TREE);
+  } catch (const std::exception& e) {
+    spdlog::error("Workspaces: {}", e.what());
+  }
   if (config["enable-bar-scroll"].asBool()) {
     auto& window = const_cast<Bar&>(bar_).window;
     window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
@@ -98,19 +105,11 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
   // Launch worker
   ipc_.setWorker([this] {
     try {
-      ipc_.handleEvent();
+      ipc_.handleEvents(IPC_GET_TREE);
     } catch (const std::exception& e) {
       spdlog::error("Workspaces: {}", e.what());
     }
   });
-}
-
-void Workspaces::onEvent(const struct Ipc::ipc_response& res) {
-  try {
-    ipc_.sendCmd(IPC_GET_TREE);
-  } catch (const std::exception& e) {
-    spdlog::error("Workspaces: {}", e.what());
-  }
 }
 
 auto Workspaces::populateIgnoreWorkspacesConfig(const Json::Value& config) -> void {
@@ -323,18 +322,24 @@ bool Workspaces::hasFlag(const Json::Value& node, const std::string& flag) {
 void Workspaces::updateWindows(const Json::Value& node, std::string& windows) {
   if ((node["type"].asString() == "con" || node["type"].asString() == "floating_con") &&
       node["name"].isString()) {
-    std::string title = g_markup_escape_text(node["name"].asString().c_str(), -1);
-    std::string windowClass = node["app_id"].isString()
-                                  ? node["app_id"].asString()
-                                  : node["window_properties"]["class"].asString();
+    std::string title = Glib::Markup::escape_text(toSingleLine(node["name"].asString())).raw();
+    std::string windowClass =
+        Glib::Markup::escape_text(toSingleLine(node["app_id"].isString()
+                                                   ? node["app_id"].asString()
+                                                   : node["window_properties"]["class"].asString()))
+            .raw();
 
     // Only add window rewrites that can be looked up
     if (!windowClass.empty()) {
       std::string windowReprKey = fmt::format("class<{}> title<{}>", windowClass, title);
       std::string window = m_windowRewriteRules.get(windowReprKey);
       // allow result to have formatting
-      window = fmt::format(fmt::runtime(window), fmt::arg("name", title),
-                           fmt::arg("class", windowClass));
+      try {
+        window = fmt::format(fmt::runtime(window), fmt::arg("name", title),
+                             fmt::arg("class", windowClass));
+      } catch (const fmt::format_error& e) {
+        spdlog::warn("Formatting window-rewrite error: {}", e.what());
+      }
       windows.append(window);
       windows.append(m_formatWindowSeparator);
     }
@@ -408,7 +413,7 @@ auto Workspaces::update() -> void {
     }
     std::string full_name;
     if (!config_["disable-markup"].asBool()) {
-      full_name = g_markup_escape_text((*it)["name"].asString().c_str(), -1);
+      full_name = Glib::Markup::escape_text((*it)["name"].asString()).raw();
     } else {
       full_name = (*it)["name"].asString();
     }
@@ -562,16 +567,21 @@ bool Workspaces::handleScroll(GdkEventScroll* e) {
       return true;
     }
   }
-  if (!config_["warp-on-scroll"].isNull() && !config_["warp-on-scroll"].asBool()) {
-    ipc_.sendCmd(IPC_COMMAND, fmt::format("mouse_warping none"));
-  }
+  const bool noWarp = !config_["warp-on-scroll"].isNull() && !config_["warp-on-scroll"].asBool();
   try {
+    if (noWarp) {
+      ipc_.sendCmd(IPC_COMMAND, "mouse_warping none");
+    }
     ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, "--no-auto-back-and-forth", name));
   } catch (const std::exception& e) {
     spdlog::error("Workspaces: {}", e.what());
   }
-  if (!config_["warp-on-scroll"].isNull() && !config_["warp-on-scroll"].asBool()) {
-    ipc_.sendCmd(IPC_COMMAND, fmt::format("mouse_warping container"));
+  if (noWarp) {
+    try {
+      ipc_.sendCmd(IPC_COMMAND, "mouse_warping container");
+    } catch (const std::exception& e) {
+      spdlog::error("Workspaces: {}", e.what());
+    }
   }
   return true;
 }

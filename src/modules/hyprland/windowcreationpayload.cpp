@@ -1,5 +1,6 @@
 #include "modules/hyprland/windowcreationpayload.hpp"
 
+#include <glibmm/ustring.h>
 #include <json/value.h>
 #include <spdlog/spdlog.h>
 
@@ -11,8 +12,18 @@
 
 namespace waybar::modules::hyprland {
 
+// Hyprland cuts socket2 events at 1024 bytes, possibly mid-character, and GTK rejects a label
+// whose text is not valid UTF-8.
+static std::string makeValidUtf8(std::string text) {
+  if (!g_utf8_validate(text.data(), static_cast<gssize>(text.size()), nullptr)) {
+    text = Glib::ustring(text).make_valid().raw();
+  }
+  return text;
+}
+
 WindowCreationPayload::WindowCreationPayload(Json::Value const& client_data)
-    : m_window(std::make_pair(client_data["class"].asString(), client_data["title"].asString())),
+    : m_window(std::make_pair(makeValidUtf8(client_data["class"].asString()),
+                              makeValidUtf8(client_data["title"].asString()))),
       m_windowAddress(client_data["address"].asString()),
       m_workspaceName(client_data["workspace"]["name"].asString()) {
   clearAddr();
@@ -32,7 +43,7 @@ WindowCreationPayload::WindowCreationPayload(const std::string& workspace_name,
                                              WindowAddress window_address,
                                              const std::string& window_class,
                                              const std::string& window_title, bool is_active)
-    : m_window(std::make_pair(std::move(window_class), std::move(window_title))),
+    : m_window(std::make_pair(makeValidUtf8(window_class), makeValidUtf8(window_title))),
       m_windowAddress(std::move(window_address)),
       m_workspaceName(std::move(workspace_name)),
       m_isActive(is_active) {

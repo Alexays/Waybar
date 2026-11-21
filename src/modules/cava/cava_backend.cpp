@@ -5,6 +5,13 @@
 #include <algorithm>
 #include <stdexcept>
 
+#ifdef HAVE_PIPEWIRE
+#include <pipewire/pipewire.h>
+#endif
+#ifdef HAVE_LIBPULSE
+#include <pulse/pulseaudio.h>
+#endif
+
 namespace {
 struct CavaConfigGuard {
   ::cava::config_params* prm;
@@ -17,6 +24,43 @@ struct CavaConfigGuard {
   }
   void release() { released = true; }
 };
+
+#ifdef HAVE_PIPEWIRE
+bool pipewireReachable() {
+  pw_init(nullptr, nullptr);
+  pw_loop* loop = pw_loop_new(nullptr);
+  pw_context* context = loop != nullptr ? pw_context_new(loop, nullptr, 0) : nullptr;
+  pw_core* core = context != nullptr ? pw_context_connect(context, nullptr, 0) : nullptr;
+  const bool reachable = core != nullptr;
+  if (core != nullptr) pw_core_disconnect(core);
+  if (context != nullptr) pw_context_destroy(context);
+  if (loop != nullptr) pw_loop_destroy(loop);
+  pw_deinit();
+  return reachable;
+}
+#endif
+
+#ifdef HAVE_LIBPULSE
+bool pulseReachable() {
+  pa_mainloop* loop = pa_mainloop_new();
+  pa_context* context = pa_context_new(pa_mainloop_get_api(loop), "waybar-cava");
+  bool reachable = false;
+  if (pa_context_connect(context, nullptr, PA_CONTEXT_NOFLAGS, nullptr) >= 0) {
+    pa_context_state_t state;
+    while (PA_CONTEXT_IS_GOOD(state = pa_context_get_state(context))) {
+      if (state == PA_CONTEXT_READY) {
+        reachable = true;
+        break;
+      }
+      if (pa_mainloop_iterate(loop, 1, nullptr) < 0) break;
+    }
+    pa_context_disconnect(context);
+  }
+  pa_context_unref(context);
+  pa_mainloop_free(loop);
+  return reachable;
+}
+#endif
 }  // namespace
 
 std::shared_ptr<waybar::modules::cava::CavaBackend> waybar::modules::cava::CavaBackend::inst(
@@ -33,9 +77,19 @@ waybar::modules::cava::CavaBackend::CavaBackend(const Json::Value& config) : con
       try {
         if (input_source_) {
           input_source_(&audio_data_);
+          if (audio_data_.error_message[0] != '\0') {
+            spdlog::warn("Cava backend. Audio input stopped: {}", audio_data_.error_message);
+            audio_data_.error_message[0] = '\0';
+          }
         }
       } catch (const std::exception& e) {
         spdlog::warn("Cava backend. Read source error: {0}", e.what());
+      } catch (...) {
+        // pthread_exit() in libcava's pulse input and pthread_cancel() from stop() unwind here.
+        if (read_thread_.isRunning()) {
+          spdlog::warn("Cava backend. Audio input stopped: {}", audio_data_.error_message);
+        }
+        throw;
       }
       if (!read_thread_.isRunning()) break;
       read_thread_.sleep_for(fetch_input_delay_);
@@ -46,11 +100,6 @@ waybar::modules::cava::CavaBackend::CavaBackend(const Json::Value& config) : con
         spdlog::error("{}", e.what());
       }
     }
-    {
-      std::lock_guard<std::mutex> lk(read_thread_exit_mutex_);
-      read_thread_exited_ = true;
-    }
-    read_thread_exit_cv_.notify_one();
   };
   out_thread_ = [this] {
     try {
@@ -74,14 +123,9 @@ waybar::modules::cava::CavaBackend::~CavaBackend() {
 
   out_thread_.stop();
   read_thread_.stop();
-
-  std::unique_lock<std::mutex> lk(read_thread_exit_mutex_);
-  if (!read_thread_exit_cv_.wait_for(lk, std::chrono::milliseconds(100),
-                                     [this] { return read_thread_exited_; })) {
-    spdlog::debug(
-        "Cava backend: read thread still blocked in input_source() on shutdown. "
-        "Proceeding with cleanup.");
-  }
+  // Both threads use the buffers and the plan freed below.
+  out_thread_.join();
+  read_thread_.join();
 
   std::lock_guard<std::recursive_mutex> lock(state_mutex_);
   freeBackend();
@@ -272,8 +316,13 @@ void waybar::modules::cava::CavaBackend::loadConfig() {
   if (cfg["higher_cutoff_freq"].isNumeric())
     new_prm.upper_cut_off = cfg["higher_cutoff_freq"].asLargestInt();
   if (cfg["sleep_timer"].isInt()) new_prm.sleep_timer = cfg["sleep_timer"].asInt();
-  if (cfg["method"].isString())
-    new_prm.input = ::cava::input_method_by_name(cfg["method"].asString().c_str());
+  if (cfg["method"].isString()) {
+    const std::string& method = cfg["method"].asString();
+    new_prm.input = ::cava::input_method_by_name(method.c_str());
+    if (new_prm.input == ::cava::INPUT_MAX) {
+      throw std::runtime_error("cava backend: unknown input method: " + method);
+    }
+  }
   if (cfg["source"].isString()) {
     if (new_prm.audio_source) free(new_prm.audio_source);
     new_prm.audio_source = strdup(cfg["source"].asString().c_str());
@@ -317,6 +366,17 @@ void waybar::modules::cava::CavaBackend::loadConfig() {
     audio_data_.terminate = 0;
     audio_data_.suspendFlag = false;
 
+    // With no server, libcava's pipewire input dereferences a null stream and pulse exit()s.
+#ifdef HAVE_PIPEWIRE
+    if (new_prm.input == ::cava::INPUT_PIPEWIRE && !pipewireReachable()) {
+      throw std::runtime_error("cava backend: no PipeWire server to read audio from");
+    }
+#endif
+#ifdef HAVE_LIBPULSE
+    if (new_prm.input == ::cava::INPUT_PULSE && !pulseReachable()) {
+      throw std::runtime_error("cava backend: no PulseAudio server to read audio from");
+    }
+#endif
     input_source_ = get_input(&audio_data_, &new_prm);
     if (!input_source_) {
       throw std::runtime_error("cava backend: API didn't provide an input audio source");

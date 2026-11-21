@@ -4,6 +4,7 @@
 #include <gtkmm/label.h>
 #include <spdlog/spdlog.h>
 
+#include "util/css_class.hpp"
 #include "util/rewrite_string.hpp"
 #include "util/sanitize_str.hpp"
 
@@ -76,7 +77,7 @@ void Window::doUpdate() {
 
     updateAppIconName(appId, "");
 
-    if (tooltipEnabled()) label_.set_tooltip_markup(sanitizedTitle);
+    if (tooltipEnabled()) setTooltipMarkup(sanitizedTitle);
 
     const auto id = window["id"].asUInt64();
     const auto workspaceId = window["workspace_id"].asUInt64();
@@ -84,11 +85,16 @@ void Window::doUpdate() {
       return win["id"].asUInt64() != id && win["workspace_id"].asUInt64() == workspaceId;
     });
     setClass("solo", isSolo);
-    if (!appId.empty()) setClass(appId, isSolo);
 
-    if (oldAppId_ != appId) {
-      if (!oldAppId_.empty()) setClass(oldAppId_, false);
-      oldAppId_ = appId;
+    // oldAppId_ is only ever a class this module added, so nothing else is removed
+    if (!isSolo || oldAppId_ != appId) {
+      if (!oldAppId_.empty()) {
+        setClass(oldAppId_, false);
+        oldAppId_.clear();
+      }
+      if (isSolo && waybar::util::add_app_id_class(bar_.window.get_style_context(), appId)) {
+        oldAppId_ = appId;
+      }
     }
   } else {
     if (config_["show-empty"].asBool()) {

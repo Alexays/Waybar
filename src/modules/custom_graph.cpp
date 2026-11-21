@@ -6,8 +6,10 @@
 #include <cmath>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include "util/scope_guard.hpp"
+#include "util/tooltip.hpp"
 
 waybar::modules::CustomGraph::CustomGraph(const std::string& name, const std::string& id,
                                           const Json::Value& config, const std::string& output_name)
@@ -34,25 +36,17 @@ waybar::modules::CustomGraph::CustomGraph(const std::string& name, const std::st
 }
 
 waybar::modules::CustomGraph::~CustomGraph() {
+  // release_command_ closes the pipe and reaps the command once the worker is joined
   if (pid_ != -1) {
     killpg(pid_, SIGTERM);
-    waitpid(pid_, NULL, 0);
-    pid_ = -1;
   }
 }
 
 void waybar::modules::CustomGraph::delayWorker() {
   thread_ = [this] {
-    for (int i : this->pid_children_) {
-      int status;
-      waitpid(i, &status, 0);
-    }
-
-    this->pid_children_.clear();
-
     bool can_update = true;
     if (config_["exec-if"].isString()) {
-      output_ = util::command::execNoRead(config_["exec-if"].asString());
+      setOutput(util::command::execNoRead(config_["exec-if"].asString()));
       if (output_.exit_code != 0) {
         can_update = false;
         dp.emit();
@@ -60,7 +54,7 @@ void waybar::modules::CustomGraph::delayWorker() {
     }
     if (can_update) {
       if (config_["exec"].isString()) {
-        output_ = util::command::exec(config_["exec"].asString(), output_name_);
+        setOutput(util::command::exec(config_["exec"].asString(), output_name_));
       }
       dp.emit();
     }
@@ -76,32 +70,31 @@ void waybar::modules::CustomGraph::continuousWorker() {
     throw std::runtime_error("Unable to open " + cmd);
   }
   thread_ = [this, cmd] {
-    char* buff = nullptr;
-    waybar::util::ScopeGuard buff_deleter([&buff]() {
-      if (buff) {
-        free(buff);
-      }
-    });
-    size_t len = 0;
-    if (getline(&buff, &len, fp_) == -1) {
+    std::string output;
+    if (!util::command::readLine(fp_, output)) {
       int exit_code = 1;
       if (fp_) {
-        exit_code = WEXITSTATUS(util::command::close(fp_, pid_));
-        fp_ = nullptr;
+        // fp_ is cleared first: the worker can be cancelled in close() after it closed the stream
+        exit_code = WEXITSTATUS(util::command::close(std::exchange(fp_, nullptr), pid_));
+        pid_ = -1;
       }
       if (exit_code != 0) {
-        output_ = {exit_code, ""};
+        setOutput({exit_code, ""});
         dp.emit();
         spdlog::error("{} stopped unexpectedly, is it endless?", name_);
       }
       if (config_["restart-interval"].isUInt()) {
-        pid_ = -1;
         thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
+        // stop() cuts the sleep short when the module is destroyed (e.g. its bar is removed); the
+        // command was just killed by the destructor, so don't start a copy nobody will stop.
+        if (!thread_.isRunning()) {
+          return;
+        }
         fp_ = util::command::open(cmd, pid_, output_name_);
         if (!fp_) {
           // Letting this exception escape the SleeperThread would call
           // std::terminate and kill all of Waybar. Degrade gracefully instead.
-          output_ = {1, ""};
+          setOutput({1, ""});
           dp.emit();
           spdlog::error("Unable to restart {}: unable to open {}", name_, cmd);
           thread_.stop();
@@ -112,13 +105,7 @@ void waybar::modules::CustomGraph::continuousWorker() {
         return;
       }
     } else {
-      std::string output = buff;
-
-      // Remove last newline
-      if (!output.empty() && output[output.length() - 1] == '\n') {
-        output.erase(output.length() - 1);
-      }
-      output_ = {0, output};
+      setOutput({0, std::move(output)});
       dp.emit();
     }
   };
@@ -128,7 +115,7 @@ void waybar::modules::CustomGraph::waitingWorker() {
   thread_ = [this] {
     bool can_update = true;
     if (config_["exec-if"].isString()) {
-      output_ = util::command::execNoRead(config_["exec-if"].asString());
+      setOutput(util::command::execNoRead(config_["exec-if"].asString()));
       if (output_.exit_code != 0) {
         can_update = false;
         dp.emit();
@@ -136,12 +123,17 @@ void waybar::modules::CustomGraph::waitingWorker() {
     }
     if (can_update) {
       if (config_["exec"].isString()) {
-        output_ = util::command::exec(config_["exec"].asString(), output_name_);
+        setOutput(util::command::exec(config_["exec"].asString(), output_name_));
       }
       dp.emit();
     }
     thread_.sleep();
   };
+}
+
+void waybar::modules::CustomGraph::setOutput(util::command::res output) {
+  std::lock_guard<std::mutex> lock(output_mutex_);
+  output_ = std::move(output);
 }
 
 void waybar::modules::CustomGraph::refresh(int sig) {
@@ -171,6 +163,8 @@ bool waybar::modules::CustomGraph::handleToggle(GdkEventButton* const& e) {
 }
 
 auto waybar::modules::CustomGraph::update() -> void {
+  // The worker thread must not replace output_ while it is parsed below
+  std::lock_guard<std::mutex> lock(output_mutex_);
   // Hide label if output is empty
   if ((config_["exec"].isString() || config_["exec-if"].isString()) &&
       (output_.out.empty() || output_.exit_code != 0)) {
@@ -190,8 +184,10 @@ auto waybar::modules::CustomGraph::update() -> void {
           auto tooltip = config_["tooltip-format"].asString();
           tooltip = fmt::format(fmt::runtime(tooltip), fmt::arg("text", text_),
                                 fmt::arg("alt", alt_), fmt::arg("percentage", percentage_));
+          util::limit_tooltip_markup(tooltip);
           graph_.set_tooltip_markup(tooltip);
         } else {
+          util::limit_tooltip_markup(tooltip_);
           if (graph_.get_tooltip_markup() != tooltip_) {
             graph_.set_tooltip_markup(tooltip_);
           }
@@ -304,10 +300,10 @@ void waybar::modules::CustomGraph::parseOutputJson() {
       tooltip_ = sanitize(parsed["tooltip"].asString());
     }
     if (parsed["class"].isString()) {
-      class_.push_back(parsed["class"].asString());
+      class_.push_back(sanitize(parsed["class"].asString()));
     } else if (parsed["class"].isArray()) {
       for (auto const& c : parsed["class"]) {
-        class_.push_back(c.asString());
+        class_.push_back(sanitize(c.asString()));
       }
     }
     if (!parsed["percentage"].asString().empty() && parsed["percentage"].isNumeric()) {

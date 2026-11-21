@@ -59,7 +59,7 @@ class GeoCluePrivacyItem : public PrivacyItem {
 class PWPrivacyItem : public PrivacyItem {
  public:
   PWPrivacyItem(const Json::Value& config_, enum PrivacyNodeType privacy_type_,
-                std::list<PWPrivacyNodeInfo*>* nodes_, Gtk::Orientation orientation,
+                std::list<PWPrivacyNodeInfo>* nodes_, Gtk::Orientation orientation,
                 const std::string& pos, const uint icon_size, const uint transition_duration)
       : PrivacyItem(config_, privacy_type_, orientation, pos, icon_size, transition_duration),
         nodes(nodes_) {}
@@ -67,7 +67,7 @@ class PWPrivacyItem : public PrivacyItem {
   void set_tooltip() override;
 
  private:
-  std::list<PWPrivacyNodeInfo*>* nodes;
+  std::list<PWPrivacyNodeInfo>* nodes;
 };
 
 }  // namespace waybar::modules::privacy

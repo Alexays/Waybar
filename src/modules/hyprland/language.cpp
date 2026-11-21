@@ -175,6 +175,11 @@ void Language::onEvent(const std::string& ev) {
   dp.emit();
 }
 
+void Language::onReconnect() {
+  std::lock_guard<std::mutex> lg(mutex_);
+  initLanguage();
+}
+
 void Language::initLanguage() {
   const auto inputDevices = m_ipc.getSocket1Reply("devices");
 

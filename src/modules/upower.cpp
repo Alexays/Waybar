@@ -1,10 +1,17 @@
 #include "modules/upower.hpp"
 
 #include <giomm/dbuswatchname.h>
+#include <glibmm/variant.h>
 #include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
 
+#include "util/string.hpp"
+
 namespace waybar::modules {
+
+static constexpr const char* UPOWER_NAME{"org.freedesktop.UPower"};
+static constexpr const char* UPOWER_PATH{"/org/freedesktop/UPower"};
+static constexpr const char* DISPLAY_DEVICE_PATH{"/org/freedesktop/UPower/devices/DisplayDevice"};
 
 UPower::UPower(const std::string& id, const Json::Value& config)
     : AIconLabel(config, "upower", id, "{percentage}", 0, true, true, true), sleeping_{false} {
@@ -54,31 +61,16 @@ UPower::UPower(const std::string& id, const Json::Value& config)
       Gio::DBus::BusType::BUS_TYPE_SYSTEM, "org.freedesktop.UPower",
       sigc::mem_fun(*this, &UPower::onAppear), sigc::mem_fun(*this, &UPower::onVanished),
       Gio::DBus::BusNameWatcherFlags::BUS_NAME_WATCHER_FLAGS_AUTO_START);
-  // Get DBus async connect
+  // Devices are requested once the connection is up: nothing here may wait for upowerd, which
+  // rules out UpClient since it blocks the main thread whenever a device is added
   Gio::DBus::Connection::get(Gio::DBus::BusType::BUS_TYPE_SYSTEM,
                              sigc::mem_fun(*this, &UPower::getConn_cb));
-
-  // Make UPower client
-  GError* gErr = NULL;
-  upClient_ = up_client_new_full(NULL, &gErr);
-  if (upClient_ == NULL) {
-    spdlog::error("Upower. UPower client connection error. {}",
-                  gErr ? gErr->message : "unknown error");
-    if (gErr) g_error_free(gErr);
-  }
-
-  // Subscribe UPower events
-  g_signal_connect(upClient_, "device-added", G_CALLBACK(deviceAdded_cb), this);
-  g_signal_connect(upClient_, "device-removed", G_CALLBACK(deviceRemoved_cb), this);
 
   // Subscribe tooltip query events
   box_.set_has_tooltip(AModule::tooltipEnabled());
   if (AModule::tooltipEnabled()) {
     box_.signal_query_tooltip().connect(sigc::mem_fun(*this, &UPower::queryTooltipCb), false);
   }
-
-  resetDevices();
-  setDisplayDevice();
 }
 
 UPower::~UPower() {
@@ -88,14 +80,17 @@ UPower::~UPower() {
     g_object_unref(upDevice_.upDevice);
     upDevice_.upDevice = NULL;
   }
-  if (upClient_ != NULL) {
-    g_signal_handlers_disconnect_by_data(upClient_, this);
-    g_object_unref(upClient_);
-    upClient_ = NULL;
-  }
   if (subscrID_ > 0u) {
     conn_->signal_unsubscribe(subscrID_);
     subscrID_ = 0u;
+  }
+  if (subscrAddedID_ > 0u) {
+    conn_->signal_unsubscribe(subscrAddedID_);
+    subscrAddedID_ = 0u;
+  }
+  if (subscrRemovedID_ > 0u) {
+    conn_->signal_unsubscribe(subscrRemovedID_);
+    subscrRemovedID_ = 0u;
   }
   Gio::DBus::unwatch_name(watcherID_);
   watcherID_ = 0u;
@@ -231,8 +226,8 @@ auto UPower::update() -> void {
 
   setLabelMarkup(getText(upDevice_, format_));
   // Set icon
-  if (upDevice_.icon_name == NULL || !gtkTheme_->has_icon(upDevice_.icon_name))
-    upDevice_.icon_name = (char*)NO_BATTERY.c_str();
+  if (upDevice_.icon_name.empty() || !gtkTheme_->has_icon(upDevice_.icon_name))
+    upDevice_.icon_name = NO_BATTERY;
   image_.set_from_icon_name(upDevice_.icon_name, Gtk::ICON_SIZE_INVALID);
 
   box_.show();
@@ -248,7 +243,12 @@ void UPower::getConn_cb(Glib::RefPtr<Gio::AsyncResult>& result) {
     subscrID_ = conn_->signal_subscribe(sigc::mem_fun(*this, &UPower::prepareForSleep_cb),
                                         "org.freedesktop.login1", "org.freedesktop.login1.Manager",
                                         "PrepareForSleep", "/org/freedesktop/login1");
-
+    subscrAddedID_ = conn_->signal_subscribe(sigc::mem_fun(*this, &UPower::deviceAdded_cb),
+                                             UPOWER_NAME, UPOWER_NAME, "DeviceAdded", UPOWER_PATH);
+    subscrRemovedID_ =
+        conn_->signal_subscribe(sigc::mem_fun(*this, &UPower::deviceRemoved_cb), UPOWER_NAME,
+                                UPOWER_NAME, "DeviceRemoved", UPOWER_PATH);
+    resetDevices();
   } catch (const Glib::Error& e) {
     spdlog::error("Upower. DBus connection error. {}", e.what().c_str());
   }
@@ -283,18 +283,74 @@ void UPower::prepareForSleep_cb(const Glib::RefPtr<Gio::DBus::Connection>& conne
   }
 }
 
-void UPower::deviceAdded_cb(UpClient* client, UpDevice* device, gpointer data) {
-  UPower* up{static_cast<UPower*>(data)};
-  up->addDevice(device);
-  up->setDisplayDevice();
-  // Update the widget
-  up->dp.emit();
+void UPower::enumerateDevices_cb(Glib::RefPtr<Gio::AsyncResult>& result) {
+  try {
+    const auto reply{conn_->call_finish(result)};
+    if (reply.is_of_type(Glib::VariantType("(ao)"))) {
+      Glib::Variant<std::vector<Glib::DBusObjectPathString>> objectPaths;
+      reply.get_child(objectPaths, 0);
+      for (const auto& objectPath : objectPaths.get()) loadDevice(objectPath);
+    }
+  } catch (const Glib::Error& e) {
+    spdlog::error("Upower. Enumerate devices error. {}", e.what().c_str());
+  }
 }
 
-void UPower::deviceRemoved_cb(UpClient* client, const gchar* objectPath, gpointer data) {
+void UPower::deviceAdded_cb(const Glib::RefPtr<Gio::DBus::Connection>& connection,
+                            const Glib::ustring& sender_name, const Glib::ustring& object_path,
+                            const Glib::ustring& interface_name, const Glib::ustring& signal_name,
+                            const Glib::VariantContainerBase& parameters) {
+  if (parameters.is_of_type(Glib::VariantType("(o)"))) {
+    Glib::Variant<Glib::DBusObjectPathString> objectPath;
+    parameters.get_child(objectPath, 0);
+    loadDevice(objectPath.get());
+  }
+}
+
+void UPower::deviceRemoved_cb(const Glib::RefPtr<Gio::DBus::Connection>& connection,
+                              const Glib::ustring& sender_name, const Glib::ustring& object_path,
+                              const Glib::ustring& interface_name, const Glib::ustring& signal_name,
+                              const Glib::VariantContainerBase& parameters) {
+  if (parameters.is_of_type(Glib::VariantType("(o)"))) {
+    Glib::Variant<Glib::DBusObjectPathString> objectPath;
+    parameters.get_child(objectPath, 0);
+    removeDevice(objectPath.get().c_str());
+    setDisplayDevice();
+    // Update the widget
+    dp.emit();
+  }
+}
+
+void UPower::deviceLoaded_cb(GObject* source, GAsyncResult* result, gpointer data) {
+  GTask* task{G_TASK(result)};
+  // The device was removed or requested anew, or the module is gone
+  if (g_cancellable_is_cancelled(g_task_get_cancellable(task))) return;
+
   UPower* up{static_cast<UPower*>(data)};
-  up->removeDevice(objectPath);
-  up->setDisplayDevice();
+  const std::string objectPath{static_cast<const gchar*>(g_task_get_task_data(task))};
+  up->loading_.erase(objectPath);
+
+  GError* gErr = NULL;
+  UpDevice* device{static_cast<UpDevice*>(g_task_propagate_pointer(task, &gErr))};
+  if (device == NULL) {
+    spdlog::error("Upower. Device {} error. {}", objectPath,
+                  gErr ? gErr->message : "unknown error");
+    if (gErr) g_error_free(gErr);
+    return;
+  }
+
+  if (objectPath == DISPLAY_DEVICE_PATH) {
+    std::lock_guard<std::mutex> guard{up->mutex_};
+    if (up->upDevice_.upDevice != NULL) {
+      g_signal_handlers_disconnect_by_data(up->upDevice_.upDevice, up);
+      g_object_unref(up->upDevice_.upDevice);
+    }
+    up->upDevice_.upDevice = device;
+    g_signal_connect(device, "notify", G_CALLBACK(deviceNotify_cb), up);
+  } else {
+    up->addDevice(device);
+    up->setDisplayDevice();
+  }
   // Update the widget
   up->dp.emit();
 }
@@ -305,21 +361,37 @@ void UPower::deviceNotify_cb(UpDevice* device, GParamSpec* pspec, gpointer data)
   up->dp.emit();
 }
 
+// libupower only builds a device with a blocking call, so that runs in a thread, as
+// up_client_get_devices_async() does; deviceLoaded_cb() takes the result on the main thread
+void UPower::loadDevice(const std::string& objectPath) {
+  auto& cancellable{loading_[objectPath]};
+  if (cancellable) cancellable->cancel();
+  cancellable = Gio::Cancellable::create();
+
+  GTask* task{g_task_new(NULL, cancellable->gobj(), deviceLoaded_cb, this)};
+  g_task_set_task_data(task, g_strdup(objectPath.c_str()), g_free);
+  g_task_run_in_thread(
+      task, [](GTask* task, gpointer source, gpointer objectPath, GCancellable* cancellable) {
+        GError* gErr = NULL;
+        UpDevice* device{up_device_new()};
+        if (up_device_set_object_path_sync(device, static_cast<const gchar*>(objectPath),
+                                           cancellable, &gErr)) {
+          g_task_return_pointer(task, device, g_object_unref);
+        } else {
+          g_object_unref(device);
+          g_task_return_error(task, gErr);
+        }
+      });
+  g_object_unref(task);
+}
+
+// Takes over the caller's reference
 void UPower::addDevice(UpDevice* device) {
   std::lock_guard<std::mutex> guard{mutex_};
 
   if (G_IS_OBJECT(device)) {
     const gchar* objectPath{up_device_get_object_path(device)};
-
-    // Due to the device getting cleared after this event is fired, we
-    // create a new object pointing to its objectPath
-    device = up_device_new();
     upDevice_output upDevice{.upDevice = device};
-    gboolean ret{up_device_set_object_path_sync(device, objectPath, NULL, NULL)};
-    if (!ret) {
-      g_object_unref(G_OBJECT(device));
-      return;
-    }
 
     if (devices_.find(objectPath) != devices_.cend()) {
       auto upDevice{devices_[objectPath]};
@@ -337,6 +409,10 @@ void UPower::addDevice(UpDevice* device) {
 
 void UPower::removeDevice(const gchar* objectPath) {
   std::lock_guard<std::mutex> guard{mutex_};
+  if (auto it{loading_.find(objectPath)}; it != loading_.cend()) {
+    it->second->cancel();
+    loading_.erase(it);
+  }
   if (devices_.find(objectPath) != devices_.cend()) {
     auto upDevice{devices_[objectPath]};
     if (G_IS_OBJECT(upDevice.upDevice)) {
@@ -349,6 +425,8 @@ void UPower::removeDevice(const gchar* objectPath) {
 
 void UPower::removeDevices() {
   std::lock_guard<std::mutex> guard{mutex_};
+  for (const auto& pairLoad : loading_) pairLoad.second->cancel();
+  loading_.clear();
   if (!devices_.empty()) {
     auto it{devices_.cbegin()};
     while (it != devices_.cend()) {
@@ -361,71 +439,55 @@ void UPower::removeDevices() {
   }
 }
 
-// Removes all devices and adds the current devices
+// Removes all devices and requests the current ones
 void UPower::resetDevices() {
-  // Remove all devices
   removeDevices();
 
-  // Adds all devices
-  GPtrArray* newDevices = up_client_get_devices2(upClient_);
-  if (newDevices != NULL)
-    for (guint i{0}; i < newDevices->len; ++i) {
-      UpDevice* device{(UpDevice*)g_ptr_array_index(newDevices, i)};
-      if (device && G_IS_OBJECT(device)) addDevice(device);
-    }
+  conn_->call(UPOWER_PATH, UPOWER_NAME, "EnumerateDevices", Glib::VariantContainerBase(),
+              sigc::mem_fun(*this, &UPower::enumerateDevices_cb), UPOWER_NAME);
+  if (nativePath_.empty() && model_.empty()) loadDevice(DISPLAY_DEVICE_PATH);
 }
 
 void UPower::setDisplayDevice() {
   std::lock_guard<std::mutex> guard{mutex_};
 
+  // UPower's own display device is loaded by resetDevices()
+  if (nativePath_.empty() && model_.empty()) return;
+
+  // The object belongs to devices_, which owns its notify handler
   if (upDevice_.upDevice != NULL) {
-    g_signal_handlers_disconnect_by_data(upDevice_.upDevice, this);
     g_object_unref(upDevice_.upDevice);
     upDevice_.upDevice = NULL;
   }
 
-  if (nativePath_.empty() && model_.empty()) {
-    upDevice_.upDevice = up_client_get_display_device(upClient_);
-    getUpDeviceInfo(upDevice_);
-  } else {
-    g_ptr_array_foreach(
-        up_client_get_devices2(upClient_),
-        [](gpointer data, gpointer user_data) {
-          upDevice_output upDevice;
-          auto thisPtr{static_cast<UPower*>(user_data)};
-          upDevice.upDevice = static_cast<UpDevice*>(data);
-          thisPtr->getUpDeviceInfo(upDevice);
-          upDevice_output displayDevice{NULL};
-          if (!thisPtr->nativePath_.empty()) {
-            if (upDevice.nativePath == nullptr) return;
-            if (0 == std::strcmp(upDevice.nativePath, thisPtr->nativePath_.c_str())) {
-              displayDevice = upDevice;
-            }
-          } else {
-            if (upDevice.model == nullptr) return;
-            if (0 == std::strcmp(upDevice.model, thisPtr->model_.c_str())) {
-              displayDevice = upDevice;
-            }
-          }
-          // Unref current upDevice if it exists
-          if (displayDevice.upDevice != NULL) {
-            thisPtr->upDevice_ = displayDevice;
-          }
-        },
-        this);
+  for (const auto& pairDev : devices_) {
+    upDevice_output upDevice{.upDevice = pairDev.second.upDevice};
+    getUpDeviceInfo(upDevice);
+    if (nativePath_.empty() ? upDevice.model == model_ : upDevice.nativePath == nativePath_) {
+      upDevice_ = upDevice;
+    }
   }
 
-  if (upDevice_.upDevice != NULL)
-    g_signal_connect(upDevice_.upDevice, "notify", G_CALLBACK(deviceNotify_cb), this);
+  // devices_ owns its elements, so keep a reference of our own
+  if (upDevice_.upDevice != NULL) g_object_ref(upDevice_.upDevice);
 }
 
 void UPower::getUpDeviceInfo(upDevice_output& upDevice_) {
   if (upDevice_.upDevice != NULL && G_IS_OBJECT(upDevice_.upDevice)) {
+    // g_object_get() returns newly allocated copies of the string properties
+    gchar* icon_name{NULL};
+    gchar* nativePath{NULL};
+    gchar* model{NULL};
     g_object_get(upDevice_.upDevice, "kind", &upDevice_.kind, "state", &upDevice_.state,
-                 "percentage", &upDevice_.percentage, "icon-name", &upDevice_.icon_name,
-                 "time-to-empty", &upDevice_.time_empty, "time-to-full", &upDevice_.time_full,
-                 "temperature", &upDevice_.temperature, "native-path", &upDevice_.nativePath,
-                 "model", &upDevice_.model, NULL);
+                 "percentage", &upDevice_.percentage, "icon-name", &icon_name, "time-to-empty",
+                 &upDevice_.time_empty, "time-to-full", &upDevice_.time_full, "temperature",
+                 &upDevice_.temperature, "native-path", &nativePath, "model", &model, NULL);
+    upDevice_.icon_name = (icon_name != NULL) ? icon_name : "";
+    upDevice_.nativePath = (nativePath != NULL) ? nativePath : "";
+    upDevice_.model = (model != NULL) ? model : "";
+    g_free(icon_name);
+    g_free(nativePath);
+    g_free(model);
     spdlog::debug(
         "UPower. getUpDeviceInfo. kind: \"{0}\". state: \"{1}\". percentage: \"{2}\". \
 icon_name: \"{3}\". time-to-empty: \"{4}\". time-to-full: \"{5}\". temperature: \"{6}\". \
@@ -458,7 +520,8 @@ const Glib::ustring UPower::getText(const upDevice_output& upDevice_, const std:
         fmt::arg("percentage", std::to_string((int)std::round(upDevice_.percentage)) + '%'),
         fmt::arg("time", timeStr),
         fmt::arg("temperature", fmt::format("{:-.2g}C", upDevice_.temperature)),
-        fmt::arg("model", upDevice_.model), fmt::arg("native-path", upDevice_.nativePath));
+        fmt::arg("model", Glib::Markup::escape_text(toSingleLine(upDevice_.model)).raw()),
+        fmt::arg("native-path", Glib::Markup::escape_text(upDevice_.nativePath).raw()));
   }
 
   return ret;
@@ -468,8 +531,11 @@ bool UPower::queryTooltipCb(int x, int y, bool keyboard_tooltip,
                             const Glib::RefPtr<Gtk::Tooltip>& tooltip) {
   std::lock_guard<std::mutex> guard{mutex_};
 
-  // Clear content box
-  contentBox_.forall([this](Gtk::Widget& wg) { contentBox_.remove(wg); });
+  // remove() only unparents a record; deleting it also destroys its managed children
+  for (auto* child : contentBox_.get_children()) {
+    contentBox_.remove(*child);
+    delete child;
+  }
 
   // Fill content box with the content
   for (auto pairDev : devices_) {
@@ -479,33 +545,37 @@ bool UPower::queryTooltipCb(int x, int y, bool keyboard_tooltip,
     if (pairDev.second.kind != UpDeviceKind::UP_DEVICE_KIND_UNKNOWN &&
         pairDev.second.kind != UpDeviceKind::UP_DEVICE_KIND_LINE_POWER) {
       // Make box record
-      Gtk::Box* boxRec{new Gtk::Box{box_.get_orientation(), tooltip_spacing_}};
+      Gtk::Box* boxRec{Gtk::make_managed<Gtk::Box>(box_.get_orientation(), tooltip_spacing_)};
       contentBox_.add(*boxRec);
-      Gtk::Box* boxDev{new Gtk::Box{box_.get_orientation()}};
-      Gtk::Box* boxUsr{new Gtk::Box{box_.get_orientation()}};
+      Gtk::Box* boxDev{Gtk::make_managed<Gtk::Box>(box_.get_orientation())};
+      Gtk::Box* boxUsr{Gtk::make_managed<Gtk::Box>(box_.get_orientation())};
       boxRec->add(*boxDev);
       boxRec->add(*boxUsr);
       // Construct device box
       // Set icon from kind
       std::string iconNameDev{getDeviceIcon(pairDev.second.kind)};
       if (!gtkTheme_->has_icon(iconNameDev)) iconNameDev = (char*)NO_BATTERY.c_str();
-      Gtk::Image* iconDev{new Gtk::Image{}};
+      Gtk::Image* iconDev{Gtk::make_managed<Gtk::Image>()};
       iconDev->set_from_icon_name(iconNameDev, Gtk::ICON_SIZE_INVALID);
       iconDev->set_pixel_size(iconSize_);
       boxDev->add(*iconDev);
       // Set label from model
-      Gtk::Label* labelDev{new Gtk::Label{pairDev.second.model}};
+      Gtk::Label* labelDev{Gtk::make_managed<Gtk::Label>(pairDev.second.model)};
+      // The model comes from the device (a Bluetooth name); keep it within what GDK can draw
+      labelDev->set_max_width_chars(50);
+      labelDev->set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
+      labelDev->set_single_line_mode(true);
       boxDev->add(*labelDev);
       // Construct user box
       // Set icon from icon state
-      if (pairDev.second.icon_name == NULL || !gtkTheme_->has_icon(pairDev.second.icon_name))
-        pairDev.second.icon_name = (char*)NO_BATTERY.c_str();
-      Gtk::Image* iconTooltip{new Gtk::Image{}};
+      if (pairDev.second.icon_name.empty() || !gtkTheme_->has_icon(pairDev.second.icon_name))
+        pairDev.second.icon_name = NO_BATTERY;
+      Gtk::Image* iconTooltip{Gtk::make_managed<Gtk::Image>()};
       iconTooltip->set_from_icon_name(pairDev.second.icon_name, Gtk::ICON_SIZE_INVALID);
       iconTooltip->set_pixel_size(iconSize_);
       boxUsr->add(*iconTooltip);
       // Set markup text
-      Gtk::Label* labelTooltip{new Gtk::Label{}};
+      Gtk::Label* labelTooltip{Gtk::make_managed<Gtk::Label>()};
       labelTooltip->set_markup(getText(pairDev.second, tooltipFormat_));
       boxUsr->add(*labelTooltip);
     }

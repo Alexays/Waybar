@@ -18,7 +18,8 @@ class IconLoader {
   Glib::RefPtr<Gtk::IconTheme> default_icon_theme_ = Gtk::IconTheme::get_default();
   static std::vector<std::string> search_prefix();
   static Glib::RefPtr<Gio::DesktopAppInfo> get_app_info_by_name(const std::string& app_id);
-  static Glib::RefPtr<Gio::DesktopAppInfo> get_desktop_app_info(const std::string& app_id);
+  static Glib::RefPtr<Gio::DesktopAppInfo> get_desktop_app_info(const std::string& app_id,
+                                                                guint& search_words_left);
   static Glib::RefPtr<Gdk::Pixbuf> load_icon_from_file(std::string const& icon_path, int size);
   static std::string get_icon_name_from_icon_theme(const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
                                                    const std::string& app_id);

@@ -76,7 +76,7 @@ auto Workspaces::handleScroll(GdkEventScroll* e) -> bool {
     auto n = wset.ws_w * wset.ws_h;
     auto i = (wset.ws_idx() + delta + n) % n;
     data["x"] = Json::Value((uint64_t)i % wset.ws_w);
-    data["y"] = Json::Value((uint64_t)i / wset.ws_h);
+    data["y"] = Json::Value((uint64_t)i / wset.ws_w);
     data["output-id"] = Json::Value((uint64_t)output.id);
   }
   ipc->send("vswitch/set-workspace", std::move(data));
@@ -114,7 +114,7 @@ auto Workspaces::update_box() -> void {
       btn.signal_pressed().connect([=, this] {
         Json::Value data;
         data["x"] = Json::Value((uint64_t)i % ws_w);
-        data["y"] = Json::Value((uint64_t)i / ws_h);
+        data["y"] = Json::Value((uint64_t)i / ws_w);
         data["output-id"] = Json::Value((uint64_t)output.id);
         ipc->send("vswitch/set-workspace", std::move(data));
       });

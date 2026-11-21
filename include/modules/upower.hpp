@@ -1,8 +1,10 @@
 #pragma once
 
+#include <giomm/cancellable.h>
 #include <giomm/dbusconnection.h>
 #include <gtkmm/icontheme.h>
 #include <libupower-glib/upower.h>
+#include <sigc++/trackable.h>
 
 #include <unordered_map>
 
@@ -10,7 +12,8 @@
 
 namespace waybar::modules {
 
-class UPower final : public AIconLabel {
+// sigc::trackable revokes the pending Connection::get() slot on destruction
+class UPower final : public AIconLabel, public sigc::trackable {
  public:
   UPower(const std::string&, const Json::Value&);
   virtual ~UPower();
@@ -35,12 +38,12 @@ class UPower final : public AIconLabel {
     double temperature{0.0};
     guint64 time_full{0u};
     guint64 time_empty{0u};
-    gchar* icon_name{(char*)'\0'};
+    std::string icon_name;
     bool upDeviceValid{false};
-    UpDeviceState state;
-    UpDeviceKind kind;
-    char* nativePath{(char*)'\0'};
-    char* model{(char*)'\0'};
+    UpDeviceState state{UP_DEVICE_STATE_UNKNOWN};
+    UpDeviceKind kind{UP_DEVICE_KIND_UNKNOWN};
+    std::string nativePath;
+    std::string model;
   };
 
   // Technical variables
@@ -53,6 +56,7 @@ class UPower final : public AIconLabel {
   bool sleeping_;
 
   // Technical functions
+  void loadDevice(const std::string&);
   void addDevice(UpDevice*);
   void removeDevice(const gchar*);
   void removeDevices();
@@ -65,12 +69,15 @@ class UPower final : public AIconLabel {
   guint watcherID_;
   Glib::RefPtr<Gio::DBus::Connection> conn_;
   guint subscrID_{0u};
+  guint subscrAddedID_{0u};
+  guint subscrRemovedID_{0u};
 
   // UPower variables
-  UpClient* upClient_;
   upDevice_output upDevice_;  // Device to display
   typedef std::unordered_map<std::string, upDevice_output> Devices;
   Devices devices_;
+  // Devices being loaded in the background, by object path
+  std::unordered_map<std::string, Glib::RefPtr<Gio::Cancellable>> loading_;
   bool upRunning_{true};
 
   // DBus callbacks
@@ -82,10 +89,18 @@ class UPower final : public AIconLabel {
                           const Glib::ustring& sender_name, const Glib::ustring& object_path,
                           const Glib::ustring& interface_name, const Glib::ustring& signal_name,
                           const Glib::VariantContainerBase& parameters);
+  void enumerateDevices_cb(Glib::RefPtr<Gio::AsyncResult>& result);
+  void deviceAdded_cb(const Glib::RefPtr<Gio::DBus::Connection>& connection,
+                      const Glib::ustring& sender_name, const Glib::ustring& object_path,
+                      const Glib::ustring& interface_name, const Glib::ustring& signal_name,
+                      const Glib::VariantContainerBase& parameters);
+  void deviceRemoved_cb(const Glib::RefPtr<Gio::DBus::Connection>& connection,
+                        const Glib::ustring& sender_name, const Glib::ustring& object_path,
+                        const Glib::ustring& interface_name, const Glib::ustring& signal_name,
+                        const Glib::VariantContainerBase& parameters);
 
   // UPower callbacks
-  static void deviceAdded_cb(UpClient* client, UpDevice* device, gpointer data);
-  static void deviceRemoved_cb(UpClient* client, const gchar* objectPath, gpointer data);
+  static void deviceLoaded_cb(GObject* source, GAsyncResult* result, gpointer data);
   static void deviceNotify_cb(UpDevice* device, GParamSpec* pspec, gpointer user_data);
   // UPower secondary functions
   void getUpDeviceInfo(upDevice_output& upDevice_);

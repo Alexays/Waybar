@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <bit>
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -111,7 +112,7 @@ auto IPC::connect() -> Sock {
     throw std::runtime_error{"Wayfire IPC: ipc not available"};
   }
 
-  util::ScopedFd sock(socket(AF_UNIX, SOCK_STREAM, 0));
+  util::ScopedFd sock(socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0));
   if (sock == -1) {
     throw std::runtime_error{"Wayfire IPC: socket() failed"};
   }
@@ -136,7 +137,7 @@ auto IPC::receive(Sock& sock) -> Json::Value {
 
   Json::Value json;
   std::string err;
-  auto* reader = reader_builder.newCharReader();
+  auto reader = std::unique_ptr<Json::CharReader>(reader_builder.newCharReader());
   if (!reader->parse(&*buf.begin(), &*buf.end(), &json, &err)) {
     throw std::runtime_error{"Wayfire IPC: parse json failed: " + err};
   }
@@ -157,40 +158,56 @@ auto IPC::send(const std::string& method, Json::Value&& data) -> Json::Value {
   return res;
 }
 
-auto IPC::start() -> void {
-  spdlog::info("Wayfire IPC: starting");
-
-  // init state
+auto IPC::init_state() -> void {
   send("window-rules/list-outputs", {});
   send("window-rules/list-wsets", {});
   send("window-rules/list-views", {});
   send("window-rules/get-focused-view", {});
   send("window-rules/get-focused-output", {});
+}
 
-  std::thread([self = shared_from_this()] {
-    try {
-      auto sock = connect();
+auto IPC::start() -> void {
+  spdlog::info("Wayfire IPC: starting");
 
-      {
-        Json::Value json;
-        json["method"] = "window-rules/events/watch";
+  init_state();
 
-        pack_and_write(sock, Json::writeString(self->writer_builder, json));
-        if (self->receive(sock)["result"] != "ok") {
-          spdlog::error(
-              "Wayfire IPC: method \"window-rules/events/watch\""
-              " have failed");
-          return;
+  std::thread([weak = weak_from_this()] {
+    // Wayfire drops a subscriber that does not drain its events fast enough. The IPC is only
+    // held while connected, so the thread ends at the next drop once the modules are gone.
+    for (bool reconnecting = false;; reconnecting = true) {
+      auto self = weak.lock();
+      if (!self) break;
+
+      try {
+        auto sock = connect();
+
+        {
+          Json::Value json;
+          json["method"] = "window-rules/events/watch";
+
+          pack_and_write(sock, Json::writeString(self->writer_builder, json));
+          if (self->receive(sock)["result"] != "ok") {
+            throw std::runtime_error{
+                "Wayfire IPC: method \"window-rules/events/watch\""
+                " have failed"};
+          }
         }
+
+        // events were missed while disconnected
+        if (reconnecting) self->init_state();
+
+        while (auto json = self->receive(sock)) {
+          auto ev = json["event"].asString();
+          spdlog::debug("Wayfire IPC: received event \"{}\"", ev);
+          self->root_event_handler(ev, json);
+        }
+      } catch (const std::exception& e) {
+        spdlog::error("Wayfire IPC event thread: {}", e.what());
       }
 
-      while (auto json = self->receive(sock)) {
-        auto ev = json["event"].asString();
-        spdlog::debug("Wayfire IPC: received event \"{}\"", ev);
-        self->root_event_handler(ev, json);
-      }
-    } catch (const std::exception& e) {
-      spdlog::error("Wayfire IPC event thread stopped: {}", e.what());
+      self.reset();
+      spdlog::warn("Wayfire IPC: event stream closed, reconnecting");
+      std::this_thread::sleep_for(std::chrono::seconds(2));
     }
   }).detach();
 }
@@ -407,6 +424,15 @@ auto IPC::update_state_handler(const std::string& event, const Json::Value& data
                                 .h = output_data["geometry"]["height"].asUInt(),
                                 .wset_idx = output_data["wset-index"].asUInt(),
                             });
+    }
+
+    // The wsets still point at the outputs destroyed above, and the state is unlocked before
+    // the list-wsets reply replaces them.
+    for (auto& [_, wset] : state.wsets) wset.output.reset();
+    for (auto& [_, output] : state.outputs) {
+      if (auto it = state.wsets.find(output.wset_idx); it != state.wsets.end()) {
+        it->second.output = output;
+      }
     }
     return;
   }

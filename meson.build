@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.15.0',
+    version: '0.16.0',
     license: 'MIT',
     meson_version: '>= 0.59.0',
     default_options : [
@@ -392,6 +392,22 @@ if get_option('mango')
     )
 endif
 
+if get_option('umbriel')
+    add_project_arguments('-DHAVE_UMBRIEL', language: 'cpp')
+    src_files += files(
+        'src/modules/umbriel/backend.cpp',
+        'src/modules/umbriel/layout.cpp',
+        'src/modules/umbriel/window.cpp',
+        'src/modules/umbriel/workspace.cpp',
+        'src/modules/umbriel/workspaces.cpp',
+    )
+    man_files += files(
+        'man/waybar-umbriel-layout.5.scd',
+        'man/waybar-umbriel-window.5.scd',
+        'man/waybar-umbriel-workspaces.5.scd',
+    )
+endif
+
 if wayland_protos.version().version_compare('>=1.41')
     # Bar-level blur-behind support (ext-background-effect-v1)
     add_project_arguments('-DHAVE_BAR_BLUR', language: 'cpp')
@@ -557,23 +573,39 @@ cava = dependency('libcava',
                   fallback : ['libcava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')
 
-eproxy = dependency('epoxy', required: false)
+epoxy = dependency('epoxy', required: false)
+
+# cava and gps are built as loadable modules so their libraries stay optional
+# at runtime: packagers can ship them in separate packages.
+module_dir = prefix / get_option('libdir') / 'waybar'
+module_deps = [fmt, spdlog, sigcpp, jsoncpp, gtkmm]
+libdl = compiler.find_library('dl', required: false)
+add_project_arguments('-DWAYBAR_MODULE_DIR="@0@"'.format(module_dir), language: 'cpp')
 
 if cava.found()
    add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
-   src_files += files('src/modules/cava/cavaRaw.cpp',
-                      'src/modules/cava/cava_backend.cpp')
+   cava_src_files = files('src/modules/cava/cavaRaw.cpp',
+                          'src/modules/cava/cava_backend.cpp',
+                          'src/modules/cava/cava_frontend.cpp')
+   cava_deps = [cava]
    man_files += files('man/waybar-cava.5.scd')
 
-   if eproxy.found()
+   if epoxy.found()
       add_project_arguments('-DHAVE_LIBCAVAGLSL', language: 'cpp')
-      src_files += files('src/modules/cava/cavaGLSL.cpp')
+      cava_src_files += files('src/modules/cava/cavaGLSL.cpp')
+      cava_deps += epoxy
+   endif
+   # The backend checks the audio server is reachable before libcava's input uses it.
+   if pipewire.found()
+      cava_deps += pipewire
+   endif
+   if libpulse.found()
+      cava_deps += libpulse
    endif
 endif
 
 if libgps.found()
    add_project_arguments('-DHAVE_LIBGPS', language: 'cpp')
-   src_files += files('src/modules/gps.cpp')
    man_files += files('man/waybar-gps.5.scd')
 endif
 
@@ -581,6 +613,26 @@ if libmm_glib.found()
    add_project_arguments('-DHAVE_LIBMM_GLIB', language: 'cpp')
    src_files += files('src/modules/wwan.cpp')
    man_files += files('man/waybar-wwan.5.scd')
+endif
+
+# Declared after every add_project_arguments() call: meson rejects those once a
+# target exists.
+if cava.found()
+   shared_module('waybar-cava', cava_src_files,
+                 name_prefix: '',
+                 dependencies: [module_deps, cava_deps],
+                 include_directories: inc_dirs,
+                 install: true,
+                 install_dir: module_dir)
+endif
+
+if libgps.found()
+   shared_module('waybar-gps', files('src/modules/gps.cpp'),
+                 name_prefix: '',
+                 dependencies: [module_deps, libgps],
+                 include_directories: inc_dirs,
+                 install: true,
+                 install_dir: module_dir)
 endif
 
 subdir('protocol')
@@ -622,13 +674,12 @@ executable(
         gtk_layer_shell,
         libsndio,
         tz_dep,
-		xkbregistry,
-        cava,
-        eproxy,
-        libgps,
-        libmm_glib
+        xkbregistry,
+        libmm_glib,
+        libdl
     ],
     include_directories: inc_dirs,
+    export_dynamic: true,
     install: true,
 )
 

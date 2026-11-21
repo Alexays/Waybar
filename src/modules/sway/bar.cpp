@@ -1,5 +1,6 @@
 #include "modules/sway/bar.hpp"
 
+#include <glibmm/main.h>
 #include <spdlog/spdlog.h>
 
 #include <sstream>
@@ -60,6 +61,8 @@ BarIpcClient::BarIpcClient(waybar::Bar& bar) : bar_{bar} {
   });
 }
 
+BarIpcClient::~BarIpcClient() { workspaces_query_.disconnect(); }
+
 bool BarIpcClient::isModuleEnabled(const std::string& name) {
   for (const auto& section : {"modules-left", "modules-center", "modules-right"}) {
     if (const auto& modules = bar_.config.get(section, {}); modules.isArray()) {
@@ -99,26 +102,24 @@ void BarIpcClient::onInitialConfig(const struct Ipc::ipc_response& res) {
 
 void BarIpcClient::onIpcEvent(const struct Ipc::ipc_response& res) {
   try {
+    if (res.type == IPC_EVENT_WORKSPACE) {
+      // The payload is the whole workspace tree, sized and paced by clients: leave it unparsed and
+      // answer all the queued events with one GET_WORKSPACES once the main loop is idle.
+      modifier_no_action_ = false;
+      if (!workspaces_query_.connected()) {
+        workspaces_query_ = Glib::signal_idle().connect([this] {
+          try {
+            ipc_.sendCmd(IPC_GET_WORKSPACES);
+          } catch (const std::exception& e) {
+            spdlog::error("Bar: {}", e.what());
+          }
+          return false;
+        });
+      }
+      return;
+    }
     auto payload = parser_.parse(res.payload);
     switch (res.type) {
-      case IPC_EVENT_WORKSPACE:
-        if (payload.isMember("change")) {
-          // only check and send signal if the workspace update reason was because of a urgent
-          // change
-          if (payload["change"] == "urgent") {
-            auto urgent = payload["current"]["urgent"];
-            if (urgent.asBool()) {
-              // Event for a new urgency, update the visibly
-              signal_urgency_(true);
-            } else if (!urgent.asBool() && visible_by_urgency_) {
-              // Event clearing an urgency, bar is visible, check if another workspace still has
-              // the urgency hint set
-              ipc_.sendCmd(IPC_GET_WORKSPACES);
-            }
-          }
-          modifier_no_action_ = false;
-        }
-        break;
       case IPC_EVENT_MODE:
         if (payload.isMember("change")) {
           signal_mode_(payload["change"] != "default");
@@ -153,17 +154,23 @@ void BarIpcClient::onCmd(const struct Ipc::ipc_response& res) {
   if (res.type == IPC_GET_WORKSPACES) {
     try {
       auto payload = parser_.parse(res.payload);
+      std::set<std::string> urgent_workspaces;
+      bool new_urgency = false;
       for (auto& ws : payload) {
         if (ws["urgent"].asBool()) {
-          spdlog::debug("Found workspace {} with urgency set. Stopping search.", ws["name"]);
-          // Found one workspace with urgency set, signal bar visibility
-          signal_urgency_(true);
-          return;
+          spdlog::debug("Found workspace {} with urgency set.", ws["name"]);
+          auto name = ws["name"].asString();
+          new_urgency |= !urgent_workspaces_.contains(name);
+          urgent_workspaces.insert(std::move(name));
         }
       }
-      // Command to get workspaces was sent after a change in workspaces was based on "urgent",
-      // if no workspace has this flag set to true, all flags must be cleared.
-      signal_urgency_(false);
+      // Show the bar only for a newly urgent workspace, so that hiding it sticks
+      urgent_workspaces_ = std::move(urgent_workspaces);
+      if (new_urgency) {
+        signal_urgency_(true);
+      } else if (urgent_workspaces_.empty() && visible_by_urgency_) {
+        signal_urgency_(false);
+      }
     } catch (const std::exception& e) {
       spdlog::error("Bar: {}", e.what());
     }

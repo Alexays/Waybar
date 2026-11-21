@@ -5,6 +5,9 @@
 #include <jack/thread.h>
 
 #include <fstream>
+#include <memory>
+#include <mutex>
+#include <string>
 
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
@@ -23,16 +26,19 @@ class JACK : public ALabel {
   void shutdown();
 
  private:
-  std::string JACKState();
+  void JACKState();
 
-  jack_client_t* client_;
-  jack_nframes_t bufsize_;
-  jack_nframes_t samplerate_;
-  unsigned int xruns_;
-  float load_;
-  bool running_;
+  // Guarded by mutex_.
+  jack_nframes_t bufsize_ = 0;
+  jack_nframes_t samplerate_ = 0;
+  unsigned int xruns_ = 0;
+  float load_ = 0;
+  bool running_ = false;
+  std::string state_ = "disconnected";
   std::mutex mutex_;
-  std::string state_;
+  // Only used by thread_. Declared after what its callbacks use and before thread_, so it is
+  // closed once thread_ is joined and while the callbacks can still run.
+  std::unique_ptr<jack_client_t, decltype(&jack_client_close)> client_{nullptr, &jack_client_close};
   util::SleeperThread thread_;
 };
 

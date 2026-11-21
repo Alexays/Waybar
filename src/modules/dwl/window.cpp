@@ -3,6 +3,7 @@
 #include <gdkmm/pixbuf.h>
 #include <glibmm/fileutils.h>
 #include <glibmm/keyfile.h>
+#include <glibmm/main.h>
 #include <glibmm/miscutils.h>
 #include <gtkmm/enums.h>
 #include <spdlog/spdlog.h>
@@ -73,6 +74,17 @@ static void handle_global_remove(void* data, struct wl_registry* registry, uint3
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
+// dwl destroys the zdwl_ipc_output_v2 objects of a removed monitor; a request on one is fatal
+static bool monitor_present(const Glib::RefPtr<Gdk::Monitor>& monitor) {
+  auto display = monitor->get_display();
+  for (int i = 0; i < display->get_n_monitors(); ++i) {
+    if (display->get_monitor(i) == monitor) {
+      return true;
+    }
+  }
+  return false;
+}
+
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     : AAppIconLabel(config, "window", id, "{}", 0, true),
       bar_(bar),
@@ -90,6 +102,8 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
 
   wl_registry_add_listener(registry, &registry_listener_impl, this);
   wl_display_roundtrip(display);
+  // The listener points at this module and must not fire for globals announced after it is gone
+  wl_registry_destroy(registry);
 
   if (status_manager_ == nullptr) {
     spdlog::error("dwl_status_manager_v2 not advertised");
@@ -99,12 +113,17 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
   struct wl_output* output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
   output_status_ = zdwl_ipc_manager_v2_get_output(status_manager_, output);
   zdwl_ipc_output_v2_add_listener(output_status_, &output_status_listener_impl, this);
-  zdwl_ipc_manager_v2_destroy(status_manager_);
+  zdwl_ipc_manager_v2_release(status_manager_);
 }
 
 Window::~Window() {
+  idle_render_.disconnect();
   if (output_status_ != nullptr) {
-    zdwl_ipc_output_v2_destroy(output_status_);
+    if (monitor_present(bar_.output->monitor)) {
+      zdwl_ipc_output_v2_release(output_status_);
+    } else {
+      zdwl_ipc_output_v2_destroy(output_status_);
+    }
   }
 }
 
@@ -121,14 +140,24 @@ void Window::handle_layout_symbol(const char* layout_symbol) {
 void Window::handle_layout(const uint32_t layout) { layout_ = layout; }
 
 void Window::handle_frame() {
+  // dwl sends a frame per status change (each title the focused window sets): render once per batch
+  if (!idle_render_.connected()) {
+    idle_render_ = Glib::signal_idle().connect(sigc::mem_fun(*this, &Window::render));
+  }
+}
+
+bool Window::render() {
   label_.set_markup(waybar::util::rewriteString(
       fmt::format(fmt::runtime(format_), fmt::arg("title", title_),
                   fmt::arg("layout", layout_symbol_), fmt::arg("app_id", appid_)),
       config_["rewrite"]));
-  updateAppIconName(appid_, "");
+  if (icon_appid_ != appid_) {
+    icon_appid_ = appid_;
+    updateAppIconName(appid_, "");
+  }
   updateAppIcon();
   if (tooltipEnabled()) {
-    label_.set_tooltip_markup(title_);
+    setTooltipMarkup(title_);
   }
   if (hide_empty_ && title_.empty()) {
     box_.set_visible(false);
@@ -141,6 +170,7 @@ void Window::handle_frame() {
       box_.set_visible(!hide_inactive_);
     }
   }
+  return false;
 }
 
 }  // namespace waybar::modules::dwl

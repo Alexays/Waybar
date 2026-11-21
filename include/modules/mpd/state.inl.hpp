@@ -12,9 +12,11 @@ constexpr inline std::size_t Context::interval() const { return mpd_module_->int
 inline unsigned Context::playing_interval() const { return mpd_module_->playing_interval(); }
 inline void Context::tryConnect() const { mpd_module_->tryConnect(); }
 inline unique_connection& Context::connection() { return mpd_module_->connection_; }
+inline Glib::SignalTimeout Context::signal_timeout() const {
+  return mpd_module_->main_context_->signal_timeout();
+}
+inline Glib::SignalIO Context::signal_io() const { return mpd_module_->main_context_->signal_io(); }
 constexpr inline mpd_state Context::state() const { return mpd_module_->state_; }
-
-inline void Context::do_update() { mpd_module_->setLabel(); }
 
 inline void Context::checkErrors(mpd_connection* conn) const { mpd_module_->checkErrors(conn); }
 inline void Context::fetchState() const { mpd_module_->fetchState(); }

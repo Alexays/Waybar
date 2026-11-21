@@ -34,6 +34,25 @@ inline std::string toLower(const std::string& str) {
   return result;
 }
 
+// Replaces the line breaks Pango honours (LF, CR, U+2028, U+2029) with spaces: each one left in
+// client-chosen text makes a multi-line label, and the bar with it, one line taller.
+inline std::string toSingleLine(std::string s) {
+  size_t out = 0;
+  for (size_t i = 0; i < s.size(); ++i) {
+    char c = s[i];
+    if (c == '\n' || c == '\r') {
+      c = ' ';
+    } else if (c == '\xe2' && i + 2 < s.size() && s[i + 1] == '\x80' &&
+               (s[i + 2] == '\xa8' || s[i + 2] == '\xa9')) {
+      c = ' ';
+      i += 2;
+    }
+    s[out++] = c;
+  }
+  s.resize(out);
+  return s;
+}
+
 // Finds the last occurrence of `c` that is not nested inside parentheses,
 // scanning from the end. Unbalanced brackets are tolerated: a stray '(' never
 // pushes the depth below zero, and a stray ')' only shields what precedes it.

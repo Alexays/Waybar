@@ -12,6 +12,9 @@
 #include "modules/hyprland/workspaces.hpp"
 #include "util/command.hpp"
 #include "util/icon_loader.hpp"
+#include "util/regex_input.hpp"
+#include "util/string.hpp"
+#include "util/tooltip.hpp"
 
 namespace {
 constexpr std::string_view kCssClassPrefix = "ws-";
@@ -494,11 +497,12 @@ void Workspace::update(const std::string& workspace_icon, const std::string& wor
     }
   }
 
-  if (!workspace_tooltip.empty()) {
-    m_button.set_tooltip_text(fmt::format(
-        fmt::runtime(workspace_tooltip), fmt::arg("id", address()), fmt::arg("name", name()),
-        fmt::arg("icon", workspace_icon), fmt::arg("windows", windows)));
-  }
+  // Also when empty: an empty tooltip label shows no tooltip, which clears the previous one
+  util::set_tooltip_markup(
+      m_button, fmt::format(fmt::runtime(workspace_tooltip),
+                            fmt::arg("id", Glib::Markup::escape_text(address()).raw()),
+                            fmt::arg("name", Glib::Markup::escape_text(name()).raw()),
+                            fmt::arg("icon", workspace_icon), fmt::arg("windows", windows)));
 
   auto formatBefore = m_workspaceManager.formatBefore();
   m_labelBefore.set_markup(fmt::format(fmt::runtime(formatBefore), fmt::arg("id", address()),
@@ -584,8 +588,11 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
       windowSeparator->show();
     }
 
+    const std::string title = toSingleLine(window_repr->window_title);
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
-    window_box->set_tooltip_markup(window_repr->window_title);
+    std::string tooltip = title;
+    util::limit_tooltip_text(tooltip);
+    window_box->set_tooltip_text(tooltip);
 
     auto button = Gtk::manage(new Gtk::Button());
     button->set_relief(Gtk::RELIEF_NONE);
@@ -600,7 +607,7 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
     }
 
     auto text_before = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatBefore()),
-                                   fmt::arg("title", window_repr->window_title));
+                                   fmt::arg("title", title));
     if (!text_before.empty()) {
       auto window_label_before = Gtk::make_managed<Gtk::Label>(text_before);
       window_box->pack_start(*window_label_before, true, true);
@@ -615,7 +622,7 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
     }
 
     auto text_after = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatAfter()),
-                                  fmt::arg("title", window_repr->window_title));
+                                  fmt::arg("title", title));
     if (!text_after.empty()) {
       auto window_label_after = Gtk::make_managed<Gtk::Label>(text_after);
       window_box->pack_start(*window_label_after, true, true);
@@ -653,9 +660,17 @@ bool Workspace::handleClick(const GdkEventButton* event_button, WindowAddress co
 
 bool Workspace::shouldSkipWindow(const WindowRepr& window_repr) const {
   auto ignore_list = m_workspaceManager.getIgnoredWindows();
-  auto it = std::ranges::find_if(ignore_list, [&window_repr](const auto& ignoreItem) {
-    return std::regex_match(window_repr.window_class, ignoreItem) ||
-           std::regex_match(window_repr.window_title, ignoreItem);
+  auto matches = [](const std::string& text, const std::regex& rule) {
+    try {
+      util::RegexInput input{text};
+      return std::regex_match(input.begin(), input.end(), rule);
+    } catch (const std::regex_error&) {
+      return false;
+    }
+  };
+  auto it = std::ranges::find_if(ignore_list, [&window_repr, &matches](const auto& ignoreItem) {
+    return matches(window_repr.window_class, ignoreItem) ||
+           matches(window_repr.window_title, ignoreItem);
   });
   return it != ignore_list.end();
 }

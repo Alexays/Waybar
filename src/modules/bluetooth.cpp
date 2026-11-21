@@ -7,6 +7,7 @@
 #include <sstream>
 
 #include "util/scope_guard.hpp"
+#include "util/string.hpp"
 
 namespace {
 
@@ -112,24 +113,21 @@ auto configUsesPeripheralBattery(const Json::Value& config) -> bool {
   return false;
 }
 
-auto readBatteryCharacteristicValue(GDBusProxy* proxy_char) -> std::optional<unsigned char> {
-  GVariantBuilder builder;
-  g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
+// A ReadValue completes when the remote device answers, which may be never.
+constexpr gint GATT_READ_TIMEOUT_MS = 2000;
+// The remote device controls how often a scan is requested; longer than the read timeout so the
+// reads of one scan are over before the next one starts.
+constexpr gint64 GATT_SCAN_INTERVAL_US = 10 * G_USEC_PER_SEC;
+// Looking up the descriptor of a characteristic walks all objects of the manager once more.
+constexpr unsigned GATT_SCAN_MAX_CHARACTERISTICS = 8;
 
-  GError* error = nullptr;
-  // Use a small finite timeout (2s) instead of the default (-1 == 25s) so a sleeping or
-  // dropped BLE peripheral cannot stall the Waybar main thread for ~25s on a synchronous read.
-  GVariant* gvar =
-      g_dbus_proxy_call_sync(proxy_char, "ReadValue", g_variant_new("(a{sv})", &builder),
-                             G_DBUS_CALL_FLAGS_NONE, 2000, nullptr, &error);
-  if (error != nullptr) {
-    g_error_free(error);
-    return std::nullopt;
-  }
-  if (gvar == nullptr) {
-    return std::nullopt;
-  }
+struct GattBatteryRead {
+  waybar::modules::Bluetooth* bt;
+  std::string device_path;
+  bool peripheral;
+};
 
+auto parseBatteryCharacteristicValue(GVariant* gvar) -> std::optional<unsigned char> {
   GVariant* value_array = g_variant_get_child_value(gvar, 0);
   gsize n_elements;
   const auto* data = static_cast<const guchar*>(
@@ -141,7 +139,6 @@ auto readBatteryCharacteristicValue(GDBusProxy* proxy_char) -> std::optional<uns
   }
 
   g_variant_unref(value_array);
-  g_variant_unref(gvar);
   return result;
 }
 
@@ -179,7 +176,8 @@ waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& 
 #ifdef WANT_RFKILL
       rfkill_{RFKILL_TYPE_BLUETOOTH},
 #endif
-      manager_(generateManager()) {
+      manager_(generateManager()),
+      cancellable_(g_cancellable_new()) {
 
   if (config_["format-device-preference"].isArray()) {
     std::transform(config_["format-device-preference"].begin(),
@@ -216,6 +214,8 @@ waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& 
 }
 
 waybar::modules::Bluetooth::~Bluetooth() {
+  g_cancellable_cancel(cancellable_);
+  g_clear_object(&cancellable_);
   if (manager_) {
     g_signal_handlers_disconnect_by_data(manager_.get(), this);
   }
@@ -310,6 +310,13 @@ auto waybar::modules::Bluetooth::update() -> void {
   update_style_context(state, true);
   state_ = state;
 
+  // Aliases are chosen by the devices: kept raw for matching, escaped and folded for display
+  const std::string controller_alias =
+      cur_controller_ ? Glib::Markup::escape_text(toSingleLine(cur_controller_->alias)).raw()
+                      : "null";
+  const std::string device_alias =
+      Glib::Markup::escape_text(toSingleLine(cur_focussed_device_.alias)).raw();
+
   if (format_.empty()) {
     event_box_.hide();
   } else {
@@ -320,10 +327,10 @@ auto waybar::modules::Bluetooth::update() -> void {
         fmt::arg("controller_address", cur_controller_ ? cur_controller_->address : "null"),
         fmt::arg("controller_address_type",
                  cur_controller_ ? cur_controller_->address_type : "null"),
-        fmt::arg("controller_alias", cur_controller_ ? cur_controller_->alias : "null"),
+        fmt::arg("controller_alias", controller_alias),
         fmt::arg("device_address", cur_focussed_device_.address),
         fmt::arg("device_address_type", cur_focussed_device_.address_type),
-        fmt::arg("device_alias", cur_focussed_device_.alias), fmt::arg("icon", icon_label),
+        fmt::arg("device_alias", device_alias), fmt::arg("icon", icon_label),
         fmt::arg("device_battery_percentage", cur_focussed_device_.battery_percentage.value_or(0)),
         fmt::arg("device_battery_percentage_peripheral",
                  cur_focussed_device_.battery_percentage_peripheral.value_or(0))));
@@ -350,7 +357,8 @@ auto waybar::modules::Bluetooth::update() -> void {
           ss << fmt::format(
               fmt::runtime(enumerate_format), fmt::arg("device_address", dev.address),
               fmt::arg("device_address_type", dev.address_type),
-              fmt::arg("device_alias", dev.alias), fmt::arg("icon", enumerate_icon),
+              fmt::arg("device_alias", Glib::Markup::escape_text(toSingleLine(dev.alias)).raw()),
+              fmt::arg("icon", enumerate_icon),
               fmt::arg("device_battery_percentage", dev.battery_percentage.value_or(0)),
               fmt::arg("device_battery_percentage_peripheral",
                        dev.battery_percentage_peripheral.value_or(0)),
@@ -360,7 +368,7 @@ auto waybar::modules::Bluetooth::update() -> void {
               fmt::arg("controller_address", cur_controller_ ? cur_controller_->address : "null"),
               fmt::arg("controller_address_type",
                        cur_controller_ ? cur_controller_->address_type : "null"),
-              fmt::arg("controller_alias", cur_controller_ ? cur_controller_->alias : "null"));
+              fmt::arg("controller_alias", controller_alias));
         }
       }
       device_enumerate_ = ss.str();
@@ -375,10 +383,10 @@ auto waybar::modules::Bluetooth::update() -> void {
         fmt::arg("controller_address", cur_controller_ ? cur_controller_->address : "null"),
         fmt::arg("controller_address_type",
                  cur_controller_ ? cur_controller_->address_type : "null"),
-        fmt::arg("controller_alias", cur_controller_ ? cur_controller_->alias : "null"),
+        fmt::arg("controller_alias", controller_alias),
         fmt::arg("device_address", cur_focussed_device_.address),
         fmt::arg("device_address_type", cur_focussed_device_.address_type),
-        fmt::arg("device_alias", cur_focussed_device_.alias), fmt::arg("icon", icon_tooltip),
+        fmt::arg("device_alias", device_alias), fmt::arg("icon", icon_tooltip),
         fmt::arg("device_battery_percentage", cur_focussed_device_.battery_percentage.value_or(0)),
         fmt::arg("device_battery_percentage_peripheral",
                  cur_focussed_device_.battery_percentage_peripheral.value_or(0)),
@@ -411,21 +419,23 @@ auto waybar::modules::Bluetooth::onObjectRemoved(GDBusObjectManager* manager, GD
     return;
   }
 
+  std::string object_path = g_dbus_object_get_object_path(object);
   proxy_controller = G_DBUS_PROXY(g_dbus_object_get_interface(object, "org.bluez.Adapter1"));
 
   if (proxy_controller != NULL) {
-    std::string object_path = g_dbus_object_get_object_path(object);
-
     if (object_path == bt->cur_controller_->path) {
       bt->cur_controller_ = bt->findCurController();
+      bt->connected_devices_.clear();
       if (bt->cur_controller_.has_value()) {
-        bt->connected_devices_.clear();
         bt->findConnectedDevices(bt->cur_controller_->path, bt->connected_devices_);
       }
       bt->dp.emit();
     }
 
     g_object_unref(proxy_controller);
+  } else if (std::erase_if(bt->connected_devices_,
+                           [&object_path](const auto& d) { return d.path == object_path; })) {
+    bt->dp.emit();
   }
 }
 
@@ -502,17 +512,27 @@ auto waybar::modules::Bluetooth::getDeviceBatteryPercentage(GDBusObject* object)
   return std::nullopt;
 }
 
-auto waybar::modules::Bluetooth::getDeviceGattBatteryLevels(
-    GDBusObject* device_object, std::optional<unsigned char>& central_battery,
-    std::optional<unsigned char>& peripheral_battery) -> void {
+// Returns the cached levels and, unless the last scan is recent, starts an asynchronous one whose
+// values arrive in onGattBatteryLevelRead().
+auto waybar::modules::Bluetooth::getDeviceGattBatteryLevels(GDBusObject* device_object)
+    -> const GattBatteryLevels& {
   const std::string BATTERY_SERVICE_UUID = "0000180f-0000-1000-8000-00805f9b34fb";
   const std::string BATTERY_LEVEL_UUID = "00002a19-0000-1000-8000-00805f9b34fb";
   const std::string USER_DESCRIPTION_UUID = "00002901-0000-1000-8000-00805f9b34fb";
 
-  GList* objects = g_dbus_object_manager_get_objects(manager_.get());
   std::string device_path = g_dbus_object_get_object_path(device_object);
+  auto [it, inserted] = gatt_battery_levels_.try_emplace(device_path);
+  GattBatteryLevels& levels = it->second;
+  const gint64 now = g_get_monotonic_time();
+  if (!inserted && now - levels.last_scan < GATT_SCAN_INTERVAL_US) {
+    return levels;
+  }
+  levels.last_scan = now;
 
-  for (GList* l = objects; l != nullptr; l = l->next) {
+  GList* objects = g_dbus_object_manager_get_objects(manager_.get());
+  GattBatteryScan scan{device_path, GATT_SCAN_MAX_CHARACTERISTICS};
+
+  for (GList* l = objects; l != nullptr && !scan.done(); l = l->next) {
     GDBusObject* service_object = G_DBUS_OBJECT(l->data);
     std::string service_path = g_dbus_object_get_object_path(service_object);
 
@@ -535,18 +555,17 @@ auto waybar::modules::Bluetooth::getDeviceGattBatteryLevels(
     }
 
     processBatteryServiceCharacteristics(objects, service_path, BATTERY_LEVEL_UUID,
-                                         USER_DESCRIPTION_UUID, central_battery,
-                                         peripheral_battery);
+                                         USER_DESCRIPTION_UUID, scan);
   }
 
   g_list_free_full(objects, g_object_unref);
+  return levels;
 }
 
 auto waybar::modules::Bluetooth::processBatteryServiceCharacteristics(
     GList* objects, const std::string& service_path, const std::string& battery_level_uuid,
-    const std::string& user_description_uuid, std::optional<unsigned char>& central_battery,
-    std::optional<unsigned char>& peripheral_battery) -> void {
-  for (GList* m = objects; m != nullptr; m = m->next) {
+    const std::string& user_description_uuid, GattBatteryScan& scan) -> void {
+  for (GList* m = objects; m != nullptr && !scan.done(); m = m->next) {
     GDBusObject* char_object = G_DBUS_OBJECT(m->data);
     std::string char_path = g_dbus_object_get_object_path(char_object);
 
@@ -566,21 +585,61 @@ auto waybar::modules::Bluetooth::processBatteryServiceCharacteristics(
       continue;
     }
 
-    auto battery_value = readBatteryCharacteristicValue(proxy_char);
-    g_object_unref(proxy_char);
-
-    if (!battery_value.has_value()) {
-      continue;
+    --scan.characteristics_left;
+    bool peripheral = hasUserDescriptionDescriptor(objects, char_path, user_description_uuid);
+    // One read per displayable value, so same-kind characteristics don't clobber each other.
+    bool& requested = peripheral ? scan.peripheral_requested : scan.central_requested;
+    if (!requested) {
+      requested = true;
+      GVariantBuilder builder;
+      g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
+      g_dbus_proxy_call(proxy_char, "ReadValue", g_variant_new("(a{sv})", &builder),
+                        G_DBUS_CALL_FLAGS_NONE, GATT_READ_TIMEOUT_MS, cancellable_,
+                        onGattBatteryLevelRead,
+                        new GattBatteryRead{this, scan.device_path, peripheral});
     }
+    g_object_unref(proxy_char);
+  }
+}
 
-    if (hasUserDescriptionDescriptor(objects, char_path, user_description_uuid)) {
-      peripheral_battery = battery_value.value();
-    } else if (!central_battery.has_value()) {
-      // Only fill the central sink once so multiple non-described 0x2a19 characteristics don't
-      // clobber each other (order-dependent last-writer-wins) or an already-set Battery1 value.
-      central_battery = battery_value.value();
+auto waybar::modules::Bluetooth::onGattBatteryLevelRead(GObject* source, GAsyncResult* result,
+                                                        gpointer user_data) -> void {
+  std::unique_ptr<GattBatteryRead> read{static_cast<GattBatteryRead*>(user_data)};
+
+  GError* error = nullptr;
+  GVariant* gvar = g_dbus_proxy_call_finish(G_DBUS_PROXY(source), result, &error);
+  if (error != nullptr) {
+    // A cancelled read means the module is gone, so don't touch it on any error.
+    g_error_free(error);
+    return;
+  }
+
+  auto battery_value = parseBatteryCharacteristicValue(gvar);
+  g_variant_unref(gvar);
+  if (!battery_value.has_value()) {
+    return;
+  }
+
+  Bluetooth* bt = read->bt;
+  const std::string& device_path = read->device_path;
+  auto levels = bt->gatt_battery_levels_.find(device_path);
+  auto device = std::find_if(bt->connected_devices_.begin(), bt->connected_devices_.end(),
+                             [&device_path](const auto& d) { return d.path == device_path; });
+  if (levels == bt->gatt_battery_levels_.end() || device == bt->connected_devices_.end()) {
+    return;
+  }
+
+  if (read->peripheral) {
+    levels->second.peripheral = battery_value;
+    device->battery_percentage_peripheral = battery_value;
+  } else {
+    levels->second.central = battery_value;
+    // org.bluez.Battery1 stays authoritative for {device_battery_percentage}.
+    if (!device->battery_percentage.has_value()) {
+      device->battery_percentage = battery_value;
     }
   }
+  bt->dp.emit();
 }
 
 auto waybar::modules::Bluetooth::getDeviceProperties(GDBusObject* object, DeviceInfo& device_info)
@@ -603,19 +662,17 @@ auto waybar::modules::Bluetooth::getDeviceProperties(GDBusObject* object, Device
     g_object_unref(proxy_device);
 
     device_info.battery_percentage = getDeviceBatteryPercentage(object);
-    // Only perform the (synchronous, over-the-air) GATT battery scan when the peripheral battery
-    // placeholder is actually used and the device's services are resolved. This keeps the scan off
-    // the frequent property-changed hot path (RSSI/TxPower updates leave ServicesResolved false or
-    // unchanged) and opt-in for split-keyboard style peripherals.
+    // The over-the-air GATT scan is opt-in and needs resolved services.
     if (device_info.services_resolved && configUsesPeripheralBattery(config_)) {
-      // Read the GATT central level into a separate local; only fall back to it when the
-      // authoritative org.bluez.Battery1 percentage is absent, so the GATT scan can never overwrite
-      // the Battery1 value used by {device_battery_percentage}.
-      std::optional<unsigned char> gatt_central;
-      getDeviceGattBatteryLevels(object, gatt_central, device_info.battery_percentage_peripheral);
+      const auto& gatt_levels = getDeviceGattBatteryLevels(object);
+      device_info.battery_percentage_peripheral = gatt_levels.peripheral;
+      // org.bluez.Battery1 stays authoritative for {device_battery_percentage}.
       if (!device_info.battery_percentage.has_value()) {
-        device_info.battery_percentage = gatt_central;
+        device_info.battery_percentage = gatt_levels.central;
       }
+    } else {
+      // A device that comes back is scanned afresh.
+      gatt_battery_levels_.erase(device_info.path);
     }
 
     return true;

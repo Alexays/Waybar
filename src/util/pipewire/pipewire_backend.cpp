@@ -17,7 +17,10 @@ static const struct pw_node_events NODE_EVENTS = {
 };
 
 static void proxyDestroy(void* data) {
-  static_cast<PWPrivacyNodeInfo*>(data)->handleProxyEventDestroy();
+  auto* pNodeInfo = static_cast<PWPrivacyNodeInfo*>(data);
+  pNodeInfo->handleProxyEventDestroy();
+  // Lives in the proxy's user data, which libpipewire frees after this event
+  pNodeInfo->~PWPrivacyNodeInfo();
 }
 
 static const struct pw_proxy_events PROXY_EVENTS = {
@@ -72,7 +75,15 @@ PipewireBackend::PipewireBackend(PrivateConstructorTag tag)
   spa_zero(registryListener_);
   pw_registry_add_listener(registry_, &registryListener_, &REGISTRY_EVENTS, this);
   if (pw_thread_loop_start(mainloop_) < 0) {
+    pw_proxy_destroy((struct pw_proxy*)registry_);
+    registry_ = nullptr;
+    pw_core_disconnect(core_);
+    core_ = nullptr;
+    pw_context_destroy(context_);
+    context_ = nullptr;
     pw_thread_loop_unlock(mainloop_);
+    pw_thread_loop_destroy(mainloop_);
+    mainloop_ = nullptr;
     throw std::runtime_error("pw_thread_loop_start() failed.");
   }
   pw_thread_loop_unlock(mainloop_);
@@ -82,6 +93,11 @@ PipewireBackend::~PipewireBackend() {
   if (mainloop_ != nullptr) {
     pw_thread_loop_lock(mainloop_);
   }
+
+  for (auto& node : privacy_nodes) {
+    pw_proxy_destroy(node.second->proxy);
+  }
+  privacy_nodes.clear();
 
   if (registry_ != nullptr) {
     pw_proxy_destroy((struct pw_proxy*)registry_);
@@ -116,12 +132,13 @@ void PipewireBackend::handleRegistryEventGlobal(uint32_t id, uint32_t permission
   const char* lookupStr = spa_dict_lookup(props, PW_KEY_MEDIA_CLASS);
   if (lookupStr == nullptr) return;
   std::string mediaClass = lookupStr;
+  // Applications may append a qualifier to their stream's class (Stream/Input/Audio/Internal)
   enum PrivacyNodeType mediaType = PRIVACY_NODE_TYPE_NONE;
-  if (mediaClass == "Stream/Input/Video") {
+  if (mediaClass.starts_with("Stream/Input/Video")) {
     mediaType = PRIVACY_NODE_TYPE_VIDEO_INPUT;
-  } else if (mediaClass == "Stream/Input/Audio") {
+  } else if (mediaClass.starts_with("Stream/Input/Audio")) {
     mediaType = PRIVACY_NODE_TYPE_AUDIO_INPUT;
-  } else if (mediaClass == "Stream/Output/Audio") {
+  } else if (mediaClass.starts_with("Stream/Output/Audio")) {
     mediaType = PRIVACY_NODE_TYPE_AUDIO_OUTPUT;
   } else {
     return;
@@ -135,6 +152,7 @@ void PipewireBackend::handleRegistryEventGlobal(uint32_t id, uint32_t permission
   auto* pNodeInfo = (PWPrivacyNodeInfo*)pw_proxy_get_user_data(proxy);
   new (pNodeInfo) PWPrivacyNodeInfo{};
   pNodeInfo->id = id;
+  pNodeInfo->proxy = proxy;
   pNodeInfo->data = this;
   pNodeInfo->type = mediaType;
   pNodeInfo->media_class = mediaClass;
@@ -150,15 +168,23 @@ void PipewireBackend::handleRegistryEventGlobal(uint32_t id, uint32_t permission
 }
 
 void PipewireBackend::handleRegistryEventGlobalRemove(uint32_t id) {
+  pw_proxy* proxy = nullptr;
+
   mutex_.lock();
   auto iter = privacy_nodes.find(id);
   if (iter != privacy_nodes.end()) {
-    privacy_nodes[id]->~PWPrivacyNodeInfo();
-    privacy_nodes.erase(id);
+    proxy = iter->second->proxy;
+    privacy_nodes.erase(iter);
   }
   mutex_.unlock();
 
   privacy_nodes_changed_signal_event.emit();
+
+  // libpipewire leaves destroying a removed global's proxy to us. Its destroy event frees the node
+  // info, so only do it once the listeners have dropped the node.
+  if (proxy != nullptr) {
+    pw_proxy_destroy(proxy);
+  }
 }
 
 }  // namespace waybar::util::PipewireBackend

@@ -2,7 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
-#include <cerrno>
+#include <algorithm>
 #include <stdexcept>
 #include <utility>
 
@@ -14,8 +14,34 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
       id_(id),
       tooltip_format_enabled_{config_["tooltip-format"].isString()},
       percentage_(0) {
+  // Escaped output is plain text and embeds no icon
+  embedded_icon_enabled_ = !(config_["escape"].isBool() && config_["escape"].asBool());
   if (config.isNull()) {
     spdlog::warn("There is no configuration for 'custom/{}', element will be hidden", name);
+  }
+
+  if (config_["image-path"].isString()) {
+    image_path_ = config_["image-path"].asString();
+  }
+  if (config_["image-name"].isString()) {
+    image_name_ = config_["image-name"].asString();
+  }
+
+  // Without a configured image the module renders as in 0.15.0, where it was a
+  // plain ALabel: the label carries the #custom-<name> widget name, the id and
+  // MODULE_CLASS, so selectors such as `label.module` keep matching. AIconLabel
+  // moved them onto box_; move them back so they live on exactly one widget.
+  if (image_path_.empty() && image_name_.empty() &&
+      !(config_["icon"].isBool() && config_["icon"].asBool())) {
+    box_.unset_name();
+    box_.get_style_context()->remove_class(MODULE_CLASS);
+    label_.set_name("custom-" + name);
+    label_.get_style_context()->add_class(MODULE_CLASS);
+    if (!id.empty()) {
+      box_.get_style_context()->remove_class(id);
+      label_.get_style_context()->add_class(id);
+    }
+    module_widget_ = &label_;
   }
 
   if (!config_["signal"].empty() && config_["interval"].empty() &&
@@ -25,12 +51,6 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
     delayWorker();
   } else if (config_["exec"].isString()) {
     continuousWorker();
-  }
-  if (config_["image-path"].isString()) {
-    image_path_ = config_["image-path"].asString();
-  }
-  if (config_["image-name"].isString()) {
-    image_name_ = config_["image-name"].asString();
   }
   if (config["icon-size"].isUInt()) {
     app_icon_size_ = config["icon-size"].asUInt();
@@ -51,24 +71,9 @@ void waybar::modules::Custom::delayWorker() {
   }
 
   thread_ = [this] {
-    for (auto it = this->pid_children_.begin(); it != this->pid_children_.end();) {
-      int status = 0;
-      const auto pid = static_cast<pid_t>(*it);
-      const auto waited = waitpid(pid, &status, WNOHANG);
-      if (waited == 0) {
-        ++it;
-        continue;
-      }
-      if (waited == -1 && errno != ECHILD) {
-        ++it;
-        continue;
-      }
-      it = this->pid_children_.erase(it);
-    }
-
     bool can_update = true;
     if (config_["exec-if"].isString()) {
-      output_ = util::command::execNoRead(config_["exec-if"].asString());
+      setOutput(util::command::execNoRead(config_["exec-if"].asString()));
       if (output_.exit_code != 0) {
         can_update = false;
         dp.emit();
@@ -76,7 +81,7 @@ void waybar::modules::Custom::delayWorker() {
     }
     if (can_update) {
       if (config_["exec"].isString()) {
-        output_ = util::command::exec(config_["exec"].asString(), output_name_);
+        setOutput(util::command::exec(config_["exec"].asString(), output_name_));
       }
       dp.emit();
     }
@@ -88,7 +93,7 @@ void waybar::modules::Custom::continuousWorker() {
   continuous_stream_ = std::make_unique<util::command::LineStream>(
       output_name_,
       [this](const std::string& output) {
-        output_ = {.exit_code = 0, .out = output};
+        setOutput({.exit_code = 0, .out = output});
         dp.emit();
       },
       [this](int exit_code) { handleContinuousProcessExit(exit_code); });
@@ -104,7 +109,7 @@ void waybar::modules::Custom::startContinuousProcess(bool throw_on_failure) {
     if (throw_on_failure) {
       throw std::runtime_error("Unable to open " + cmd + ": " + e.what().raw());
     }
-    output_ = {.exit_code = 1, .out = ""};
+    setOutput({.exit_code = 1, .out = ""});
     dp.emit();
     spdlog::error("Unable to restart {}: {}", name_, e.what().raw());
     scheduleContinuousRestart();
@@ -112,7 +117,7 @@ void waybar::modules::Custom::startContinuousProcess(bool throw_on_failure) {
     if (throw_on_failure) {
       throw;
     }
-    output_ = {.exit_code = 1, .out = ""};
+    setOutput({.exit_code = 1, .out = ""});
     dp.emit();
     spdlog::error("Unable to restart {}: {}", name_, e.what());
     scheduleContinuousRestart();
@@ -121,7 +126,7 @@ void waybar::modules::Custom::startContinuousProcess(bool throw_on_failure) {
 
 void waybar::modules::Custom::handleContinuousProcessExit(int exit_code) {
   if (exit_code != 0) {
-    output_ = {.exit_code = exit_code, .out = ""};
+    setOutput({.exit_code = exit_code, .out = ""});
     dp.emit();
     spdlog::error("{} stopped unexpectedly, is it endless?", name_);
   }
@@ -142,14 +147,14 @@ void waybar::modules::Custom::scheduleContinuousRestart() {
         startContinuousProcess(false);
         return false;
       },
-      std::max(1U, static_cast<unsigned>(config_["restart-interval"].asDouble() * 1000)));
+      static_cast<unsigned>(std::clamp(config_["restart-interval"].asDouble(), 0.001, 1e6) * 1000));
 }
 
 void waybar::modules::Custom::waitingWorker() {
   thread_ = [this] {
     bool can_update = true;
     if (config_["exec-if"].isString()) {
-      output_ = util::command::execNoRead(config_["exec-if"].asString());
+      setOutput(util::command::execNoRead(config_["exec-if"].asString()));
       if (output_.exit_code != 0) {
         can_update = false;
         dp.emit();
@@ -157,12 +162,17 @@ void waybar::modules::Custom::waitingWorker() {
     }
     if (can_update) {
       if (config_["exec"].isString()) {
-        output_ = util::command::exec(config_["exec"].asString(), output_name_);
+        setOutput(util::command::exec(config_["exec"].asString(), output_name_));
       }
       dp.emit();
     }
     thread_.sleep();
   };
+}
+
+void waybar::modules::Custom::setOutput(util::command::res output) {
+  std::lock_guard<std::mutex> lock(output_mutex_);
+  output_ = std::move(output);
 }
 
 void waybar::modules::Custom::refresh(int sig) {
@@ -192,6 +202,8 @@ bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
 }
 
 auto waybar::modules::Custom::update() -> void {
+  // The worker thread must not replace output_ while it is parsed below
+  std::lock_guard<std::mutex> lock(output_mutex_);
   // Hide label if output is empty
   if ((config_["exec"].isString() || config_["exec-if"].isString()) &&
       (output_.out.empty() || output_.exit_code != 0)) {
@@ -229,23 +241,23 @@ auto waybar::modules::Custom::update() -> void {
           setTooltipMarkup(tooltip_markup);
         }
         auto style = label_.get_style_context();
-        auto classes = style->list_classes();
-        for (auto const& c : classes) {
-          if (c == id_) continue;
-          style->remove_class(c);
+        if (module_widget_ != &label_) {
+          for (auto const& c : style->list_classes()) {
+            if (c == id_) continue;
+            style->remove_class(c);
+          }
         }
-        // Module-level classes belong on box_, which carries the #custom-<name>
-        // widget name and MODULE_CLASS (see AIconLabel). Adding them to label_
-        // as well makes box_ and label_ both match a .<class> selector, so any
-        // background, border or padding is applied twice, inset by the box's
-        // padding.
-        auto box_style = box_.get_style_context();
-        for (auto const& c : box_style->list_classes()) {
+        // Module-level classes belong only on the widget that carries the
+        // #custom-<name> widget name and MODULE_CLASS. Adding them to both box_
+        // and label_ makes both match a .<class> selector, so any background,
+        // border or padding is applied twice, inset by the box's padding.
+        auto module_style = module_widget_->get_style_context();
+        for (auto const& c : module_style->list_classes()) {
           if (c == id_ || c == MODULE_CLASS) continue;
-          box_style->remove_class(c);
+          module_style->remove_class(c);
         }
         for (auto const& c : class_) {
-          box_style->add_class(c);
+          module_style->add_class(c);
         }
         style->add_class("flat");
         style->add_class("text-button");
@@ -308,7 +320,6 @@ void waybar::modules::Custom::parseOutputRaw() {
         text_ = validated_line;
         tooltip_ = validated_line;
       }
-      tooltip_ = validated_line;
       class_.clear();
     } else if (i == 1) {
       if (config_["escape"].isBool() && config_["escape"].asBool()) {
@@ -357,10 +368,10 @@ void waybar::modules::Custom::parseOutputJson() {
       tooltip_ = sanitize(parsed["tooltip"].asString());
     }
     if (parsed["class"].isString()) {
-      class_.push_back(parsed["class"].asString());
+      class_.push_back(sanitize(parsed["class"].asString()));
     } else if (parsed["class"].isArray()) {
       for (auto const& c : parsed["class"]) {
-        class_.push_back(c.asString());
+        class_.push_back(sanitize(c.asString()));
       }
     }
 

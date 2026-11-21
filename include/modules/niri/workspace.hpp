@@ -6,6 +6,7 @@
 #include <gtkmm/label.h>
 #include <json/value.h>
 
+#include <map>
 #include <string>
 
 namespace waybar::modules::niri {
@@ -27,6 +28,15 @@ class Workspace {
               const std::string& windows_str, std::size_t total);
 
  private:
+  // Kept per window id so that the press and release of a click reach the same widget.
+  struct TaskbarButton {
+    Gtk::Button button;
+    Gtk::Image image;
+    Gtk::Label label;
+    std::string app_id;
+    bool middle_pressed = false;
+  };
+
   void rebuildTaskbar(const std::vector<Json::Value>& my_windows);
 
   Glib::RefPtr<Gdk::Pixbuf> loadIcon(const std::string& app_id, int size);
@@ -42,6 +52,7 @@ class Workspace {
   Gtk::Box box_;   
   Gtk::Label label_;
   Gtk::Box taskbar_box_; 
+  std::map<uint64_t, TaskbarButton> taskbar_buttons_;
 };
 
 }  // namespace waybar::modules::niri

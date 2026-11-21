@@ -7,6 +7,8 @@
 #include <string>
 #include <unordered_set>
 
+#include "util/string.hpp"
+
 bool isValidNodeId(uint32_t id) { return id > 0 && id < G_MAXUINT32; }
 
 std::list<waybar::modules::Wireplumber*> waybar::modules::Wireplumber::modules;
@@ -75,8 +77,15 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
   event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Wireplumber::handleScroll));
 
   if (!setupConnection()) {
-    spdlog::error("[{}]: Could not connect to PipeWire: '{}'", name_, type_);
-    throw std::runtime_error("Could not connect to PipeWire\n");
+    // A null wp_core_ means PipeWire is not usable at all, so retrying cannot help.
+    if (wp_core_ == nullptr) {
+      spdlog::error("[{}]: PipeWire is not usable (is it installed?); module disabled", name_);
+      return;
+    }
+    teardownConnection();
+    spdlog::warn("[{}]: PipeWire is not running; retrying every {} ms", name_,
+                 kReconnectIntervalMs);
+    scheduleReconnect();
   }
 }
 
@@ -87,9 +96,17 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
 bool waybar::modules::Wireplumber::setupConnection() {
   // New connection generation: any async load/activate callback still in flight from a previous
   // connection will see a mismatched generation and bail out instead of mutating this one's state.
-  ++connection_generation_;
+  // Shared by all modules: a module built right after another was destroyed often gets its
+  // address, so isModuleAlive() plus a per-object counter could not tell the two apart.
+  static uint32_t last_generation = 0;
+  connection_generation_ = ++last_generation;
 
   wp_core_ = wp_core_new(nullptr, nullptr, nullptr);
+  if (wp_core_get_pw_context(wp_core_) == nullptr) {
+    // No PipeWire client config or modules. Such a core crashes when finalized, so it is leaked.
+    wp_core_ = nullptr;
+    return false;
+  }
   apis_ = g_ptr_array_new_with_free_func(g_object_unref);
   om_ = wp_object_manager_new();
   pending_plugins_ = 0;
@@ -167,12 +184,13 @@ void waybar::modules::Wireplumber::scheduleReconnect() {
 // "disconnected" signal will re-arm the timer if needed).
 bool waybar::modules::Wireplumber::onReconnectTimeout() {
   teardownConnection();
-  spdlog::info("[{}]: attempting to reconnect to PipeWire...", name_);
+  spdlog::debug("[{}]: attempting to reconnect to PipeWire...", name_);
   if (setupConnection()) {
     spdlog::info("[{}]: reconnected to PipeWire", name_);
     return false;
   }
   teardownConnection();
+  dp.emit();
   spdlog::debug("[{}]: reconnect failed; retrying in {} ms", name_, kReconnectIntervalMs);
   return true;
 }
@@ -192,14 +210,14 @@ void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* 
   spdlog::debug("[{}]: updating '{}' node name with node.id {}", self->name_, self->type_, id);
 
   if (!isValidNodeId(id)) {
-    spdlog::warn("[{}]: '{}' is not a valid node ID. Ignoring '{}' node name update.", self->name_,
-                 id, self->type_);
+    spdlog::debug("[{}]: '{}' is not a valid node ID. Ignoring '{}' node name update.", self->name_,
+                  id, self->type_);
     return;
   }
 
-  auto* proxy = static_cast<WpProxy*>(wp_object_manager_lookup(self->om_, WP_TYPE_GLOBAL_PROXY,
-                                                               WP_CONSTRAINT_TYPE_G_PROPERTY,
-                                                               "bound-id", "=u", id, nullptr));
+  g_autoptr(WpProxy) proxy = static_cast<WpProxy*>(
+      wp_object_manager_lookup(self->om_, WP_TYPE_GLOBAL_PROXY, WP_CONSTRAINT_TYPE_G_PROPERTY,
+                               "bound-id", "=u", id, nullptr));
 
   if (proxy == nullptr) {
     auto err = fmt::format("Object '{}' not found\n", id);
@@ -252,14 +270,14 @@ void waybar::modules::Wireplumber::updateSourceName(waybar::modules::Wireplumber
   spdlog::debug("[{}]: updating source name with node.id {}", self->name_, id);
 
   if (!isValidNodeId(id)) {
-    spdlog::warn("[{}]: '{}' is not a valid source node ID. Ignoring source name update.",
-                 self->name_, id);
+    spdlog::debug("[{}]: '{}' is not a valid source node ID. Ignoring source name update.",
+                  self->name_, id);
     return;
   }
 
-  auto* proxy = static_cast<WpProxy*>(wp_object_manager_lookup(self->om_, WP_TYPE_GLOBAL_PROXY,
-                                                               WP_CONSTRAINT_TYPE_G_PROPERTY,
-                                                               "bound-id", "=u", id, nullptr));
+  g_autoptr(WpProxy) proxy = static_cast<WpProxy*>(
+      wp_object_manager_lookup(self->om_, WP_TYPE_GLOBAL_PROXY, WP_CONSTRAINT_TYPE_G_PROPERTY,
+                               "bound-id", "=u", id, nullptr));
 
   if (proxy == nullptr) {
     auto err = fmt::format("Source object '{}' not found\n", id);
@@ -289,7 +307,7 @@ void waybar::modules::Wireplumber::updateVolume(waybar::modules::Wireplumber* se
   GVariant* variant = nullptr;
 
   if (!isValidNodeId(id)) {
-    spdlog::error("[{}]: '{}' is not a valid '{}' node ID. Ignoring volume update.", self->name_,
+    spdlog::debug("[{}]: '{}' is not a valid '{}' node ID. Ignoring volume update.", self->name_,
                   id, self->type_);
     return;
   }
@@ -321,7 +339,7 @@ void waybar::modules::Wireplumber::updateSourceVolume(waybar::modules::Wireplumb
   GVariant* variant = nullptr;
 
   if (!isValidNodeId(id)) {
-    spdlog::error("[{}]: '{}' is not a valid source node ID. Ignoring source volume update.",
+    spdlog::debug("[{}]: '{}' is not a valid source node ID. Ignoring source volume update.",
                   self->name_, id);
     return;
   }
@@ -417,7 +435,7 @@ void waybar::modules::Wireplumber::onDefaultNodesApiChanged(waybar::modules::Wir
   }
 
   // Handle source
-  uint32_t defaultSourceId;
+  uint32_t defaultSourceId = 0;
   g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", "Audio/Source", &defaultSourceId);
 
   if (isValidNodeId(defaultSourceId)) {
@@ -441,6 +459,26 @@ void waybar::modules::Wireplumber::onDefaultNodesApiChanged(waybar::modules::Wir
         updateSourceName(self, defaultSourceId);
       }
     }
+  }
+}
+
+// The default-nodes "changed" signal can fire before the new default node has been bound (e.g. a
+// USB DAC re-enumerating on resume), so onDefaultNodesApiChanged cannot resolve it and drops the
+// update. Retry once that node shows up.
+void waybar::modules::Wireplumber::onObjectAdded(waybar::modules::Wireplumber* self,
+                                                 WpObject* object) {
+  if (!WP_IS_NODE(object)) {
+    return;
+  }
+
+  uint32_t id = wp_proxy_get_bound_id(WP_PROXY(object));
+  uint32_t defaultNodeId = 0;
+  uint32_t defaultSourceId = 0;
+  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", self->type_, &defaultNodeId);
+  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", "Audio/Source", &defaultSourceId);
+
+  if (id == defaultNodeId || id == defaultSourceId) {
+    onDefaultNodesApiChanged(self);
   }
 }
 
@@ -499,6 +537,7 @@ void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wir
   g_signal_connect_swapped(self->mixer_api_, "changed", (GCallback)onMixerChanged, self);
   g_signal_connect_swapped(self->def_nodes_api_, "changed", (GCallback)onDefaultNodesApiChanged,
                            self);
+  g_signal_connect_swapped(self->om_, "object-added", (GCallback)onObjectAdded, self);
 }
 
 void waybar::modules::Wireplumber::onPluginActivated(WpObject* p, GAsyncResult* res,
@@ -645,6 +684,12 @@ std::vector<std::string> waybar::modules::Wireplumber::getWPIcon() {
 }
 
 auto waybar::modules::Wireplumber::update() -> void {
+  if (mixer_api_ == nullptr || !isValidNodeId(node_id_)) {
+    event_box_.hide();
+    return;
+  }
+  event_box_.show();
+
   auto format = format_;
   std::string format_name = "format";
 
@@ -729,13 +774,16 @@ auto waybar::modules::Wireplumber::update() -> void {
   std::string formatted_source =
       fmt::format(fmt::runtime(format_source), fmt::arg("volume", source_vol));
 
+  const std::string node_name = Glib::Markup::escape_text(toSingleLine(node_name_)).raw();
+
   fmt::dynamic_format_arg_store<fmt::format_context> store;
-  store.push_back(fmt::arg("node_name", node_name_));
+  store.push_back(fmt::arg("node_name", node_name));
   store.push_back(fmt::arg("volume", vol));
   store.push_back(fmt::arg("icon", getIcon(vol, getWPIcon())));
   store.push_back(fmt::arg("format_source", formatted_source));
   store.push_back(fmt::arg("source_volume", source_vol));
-  store.push_back(fmt::arg("source_desc", source_name_));
+  store.push_back(
+      fmt::arg("source_desc", Glib::Markup::escape_text(toSingleLine(source_name_)).raw()));
   store.push_back(fmt::arg("volume_linear", volume_));
   store.push_back(fmt::arg("volume_cubic", vol_cube));
   store.push_back(fmt::arg("volume_db", vol_db));
@@ -750,7 +798,7 @@ auto waybar::modules::Wireplumber::update() -> void {
     if (!tooltipFormat.empty()) {
       setTooltipMarkup(fmt::vformat(tooltipFormat, store));
     } else {
-      setTooltipMarkup(node_name_);
+      setTooltipMarkup(node_name);
     }
   }
 
@@ -802,7 +850,11 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
   if (scale == "cubic") {
     newVol = pow(newVol, 3);
   } else if (scale == "db") {
+#ifdef __FreeBSD__
+    newVol = std::pow(10.0, newVol / 20.0);
+#else
     newVol = exp10(newVol / 20.0);
+#endif
   } else if (scale == "cubic_percent") {
     newVol = pow(newVol / 100.0, 3);
   }
@@ -1023,7 +1075,7 @@ uint32_t waybar::modules::Wireplumber::resolvePhysicalSink(uint32_t start_id) {
     current_id = next_id;
   }
 
-  GVariant* variant = nullptr;
+  g_autoptr(GVariant) variant = nullptr;
   g_signal_emit_by_name(mixer_api_, "get-volume", current_id, &variant);
 
   if (variant == nullptr) {

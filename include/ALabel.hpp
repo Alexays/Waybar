@@ -3,6 +3,7 @@
 #include <fmt/args.h>
 #include <fmt/format.h>
 #include <glibmm/markup.h>
+#include <glibmm/weakref.h>
 #include <gtkmm/label.h>
 #include <gtkmm/tooltip.h>
 #include <json/json.h>
@@ -21,7 +22,7 @@ class ALabel : public AModule {
   ALabel(const Json::Value&, const std::string&, const std::string&, const std::string& format,
          uint16_t interval = 0, bool ellipsize = false, bool enable_click = false,
          bool enable_scroll = false);
-  virtual ~ALabel() = default;
+  virtual ~ALabel() { tooltip_requery_.disconnect(); }
   auto update() -> void override;
   virtual std::string getIcon(uint16_t, const std::string& alt = "", uint16_t max = 0);
   virtual std::string getIcon(uint16_t, const std::vector<std::string>& alts, uint16_t max = 0);
@@ -100,7 +101,12 @@ class ALabel : public AModule {
   // Raw UTF-8 bytes, not Glib::ustring: ustring::operator== collates with
   // g_utf8_collate(), which gives private-use codepoints (nerd-font icons)
   // no collation weight, so two different icons compare equal.
-  Glib::RefPtr<Gtk::Tooltip> active_tooltip_;
+  std::optional<std::string> last_label_markup_;
+  std::optional<std::string> last_tooltip_markup_;
+  // Weak: GTK drops its tooltip once the pointer has left tooltips for a while, and keeping
+  // that one alive keeps a custom tooltip widget (the clock's calendar) inside its window.
+  Glib::WeakRef<Gtk::Tooltip> active_tooltip_;
+  sigc::connection tooltip_requery_;
 };
 
 }  // namespace waybar

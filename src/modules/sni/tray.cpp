@@ -116,14 +116,11 @@ void Tray::onRemove(std::unique_ptr<Item>& item) {
 }
 
 void Tray::reorderBox() {
-  const bool reverse =
-      config_["reverse-direction"].isBool() && config_["reverse-direction"].asBool();
   // Stable sort keeps insertion order among items sharing the same order value.
   std::stable_sort(items_.begin(), items_.end(),
                    [](const Item* a, const Item* b) { return a->order_ < b->order_; });
   for (std::size_t i = 0; i < items_.size(); ++i) {
-    const int pos = reverse ? static_cast<int>(items_.size() - 1 - i) : static_cast<int>(i);
-    box_.reorder_child(items_[i]->event_box, pos);
+    box_.reorder_child(items_[i]->event_box, static_cast<int>(i));
   }
 }
 
