@@ -107,6 +107,8 @@ class Hyprland(Fake):
                            2: [self.window("firefox", "Waybar wiki")]}
         self.active = 1
         self.submap = ""
+        # Workspaces the rules keep: Hyprland reports them persistent and never destroys them.
+        self.persistent = {1, 4}
         super().__init__(paths)
 
     def servers(self):
@@ -129,7 +131,7 @@ class Hyprland(Fake):
         return {"id": ws, "name": str(ws), "monitor": OUTPUT, "monitorID": 0,
                 "windows": len(windows), "hasfullscreen": False,
                 "lastwindow": last["address"], "lastwindowtitle": last["title"],
-                "ispersistent": False}
+                "ispersistent": ws in self.persistent}
 
     def reply(self, conn):
         request = conn.recv(4096).decode()
@@ -191,7 +193,7 @@ class Hyprland(Fake):
         self.active = ws
         self.emit(f"workspace>>{ws}", f"workspacev2>>{ws},{ws}")
         self.emit_focus()
-        if not self.workspaces[previous]:
+        if not self.workspaces[previous] and previous not in self.persistent:
             del self.workspaces[previous]
             self.emit(f"destroyworkspace>>{previous}",
                       f"destroyworkspacev2>>{previous},{previous}")
