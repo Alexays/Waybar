@@ -1,0 +1,4 @@
+[Icon Theme]
+Name=hicolor
+Comment=Empty fallback so GTK does not warn about a missing hicolor
+Directories=

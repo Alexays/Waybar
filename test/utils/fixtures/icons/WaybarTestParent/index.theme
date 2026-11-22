@@ -1,0 +1,9 @@
+[Icon Theme]
+Name=WaybarTestParent
+Comment=Ships only the StartupWMClass-named icon
+Directories=apps/48x48
+
+[apps/48x48]
+Size=48
+Context=Applications
+Type=Fixed
