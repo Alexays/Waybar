@@ -6,12 +6,14 @@
 #include <netlink/genl/ctrl.h>
 #include <netlink/genl/genl.h>
 #include <netlink/netlink.h>
+#include <sigc++/trackable.h>
 #include <sys/epoll.h>
 
 #include <optional>
 #include <vector>
 
 #include "ALabel.hpp"
+#include "giomm/dbusproxy.h"
 #include "util/sleeper_thread.hpp"
 #ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
@@ -23,7 +25,10 @@ enum ip_addr_pref : uint8_t { IPV4, IPV6, IPV4_6 };
 
 namespace waybar::modules {
 
-class Network : public ALabel {
+// sigc::trackable, as in PowerProfilesDaemon: the NetworkManager proxies below
+// are created with async callbacks bound via sigc::mem_fun, which must
+// auto-disconnect if the module is destroyed while one is still in flight.
+class Network : public ALabel, public sigc::trackable {
  public:
   Network(const std::string&, const Json::Value&);
   ~Network() override;
@@ -54,6 +59,25 @@ class Network : public ALabel {
   bool isWireless() const;
   std::string getNetworkState() const;
   void clearIface();
+
+  // NetworkManager is an optional enrichment layer over the netlink state
+  // below: it is the only source for the "connecting" and "no-internet"
+  // states, which cannot be derived from rtnetlink (see getNetworkState).
+  // Everything here degrades to a no-op when NM is absent, unmanaged or
+  // switched off, leaving the module purely netlink-driven as before.
+  bool wantsNMState(const char* state) const;
+  void nmInit();
+  void nmBusConnectedCb(Glib::RefPtr<Gio::AsyncResult>& r);
+  void nmManagerPropsChangedCb(const Gio::DBus::Proxy::MapChangedProperties& changed,
+                               const std::vector<Glib::ustring>& invalidated);
+  void nmReadManagerProps();
+  // Requires mutex_ to be held by the caller.
+  void nmBindDevice(const std::string& ifname);
+  void nmDeviceResolvedCb(Glib::RefPtr<Gio::AsyncResult>& r);
+  void nmDeviceProxyCb(Glib::RefPtr<Gio::AsyncResult>& r);
+  void nmDevicePropsChangedCb(const Gio::DBus::Proxy::MapChangedProperties& changed,
+                              const std::vector<Glib::ustring>& invalidated);
+  void nmReadDeviceProps();
   std::optional<std::pair<unsigned long long, unsigned long long>> readBandwidthUsage();
   uint32_t readLinkSpeed() const;
 
@@ -106,6 +130,33 @@ class Network : public ALabel {
   float frequency_{0};
   uint64_t tx_bitrate_{0};
   uint64_t rx_bitrate_{0};
+
+  // Optional NetworkManager layer. want_nm_connecting_/want_nm_limited_ record
+  // whether the user opted in by configuring the matching format, so that a
+  // config without them keeps exactly the old five-state behavior and no DBus
+  // connection is made at all.
+  bool want_nm_connecting_{false};
+  bool want_nm_limited_{false};
+  Glib::RefPtr<Gio::DBus::Proxy> nm_proxy_;
+  Glib::RefPtr<Gio::DBus::Proxy> nm_device_proxy_;
+  // The interface nm_device_proxy_ is bound to, so update() can notice when
+  // netlink picks a different one and rebind.
+  std::string nm_bound_ifname_;
+  uint32_t nm_device_state_{0};  // NM_DEVICE_STATE_UNKNOWN
+  uint32_t nm_connectivity_{0};  // NM_CONNECTIVITY_UNKNOWN
+  // NM's ConnectivityCheckEnabled. Without it the connectivity value above is
+  // just "is there a default route", so it must not drive "no-internet".
+  bool nm_connectivity_check_{false};
+
+  // Minimum time "connecting" stays on screen once entered. A healthy
+  // reconnect to a known AP activates in well under half a second, which the
+  // eye reads as a glitch rather than as a state, so the state is held past the
+  // end of the activation to make it legible. Zero disables the hold.
+  std::chrono::milliseconds nm_connecting_min_{1000};
+  std::chrono::steady_clock::time_point nm_connecting_since_{};
+  // Re-renders the module when the hold above lapses; nothing else would, since
+  // NM has already stopped sending us property changes by then.
+  sigc::connection nm_connecting_hold_conn_;
 };
 
 }  // namespace waybar::modules

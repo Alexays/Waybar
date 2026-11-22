@@ -56,6 +56,24 @@ Addressed by *network*
 	typeof: string ++
 	This format is used when rfkill is blocking wlan interfaces.
 
+*format-connecting*: ++
+	typeof: string ++
+	This format is used while the displayed interface is being brought up: associating, authenticating, or waiting for IP configuration. Requires NetworkManager, because the kernel's netlink interface does not distinguish an interface that is mid-association from one that is simply disconnected. Setting this key is what enables the state; without it the module behaves as it always has and makes no DBus connection. Takes precedence over *format-linked* while NetworkManager is still activating the connection.
+
+*format-no-internet*: ++
+	typeof: string ++
+	This format is used when the displayed interface has an IP address but no route to the internet -- NetworkManager's _LIMITED_ connectivity -- or when a captive portal is intercepting traffic, its _PORTAL_ connectivity. Requires NetworkManager with its connectivity checking enabled (*ConnectivityCheckEnabled=true*, which needs a *ConnectivityCheckUri* in NetworkManager.conf); with the check off, NetworkManager derives connectivity from nothing but the presence of a default route, so the module ignores it and this state never fires. Be aware that enabling the check makes NetworkManager poll that URI periodically. Setting this key is what enables the state.
+
+*connecting-min-duration*: ++
+	typeof: integer ++
+	default: _1000_ ++
+	Milliseconds that *format-connecting* stays on screen once it appears, even if NetworkManager finishes sooner. A reconnect to a known access point commonly activates in under half a second, which reads as a flicker rather than as a state; holding it makes the indicator legible. The cost is that the connecting icon lingers briefly after the link is already usable. Set to _0_ to follow NetworkManager exactly and show the state only for as long as the activation really takes.
+
+*networkmanager*: ++
+	typeof: bool ++
+	default: _true_ ++
+	Set to _false_ to keep the module from using NetworkManager at all, disabling *format-connecting* and *format-no-internet* even if they are configured. The module is otherwise driven entirely by netlink and works without NetworkManager; only these two states depend on it.
+
 *format-alt*: ++
 	typeof: string ++
 	On click, toggle between this format and the regular format. The click button is set with *format-alt-click* (defaults to the left button).
@@ -137,6 +155,14 @@ Addressed by *network*
 *tooltip-format-disabled*: ++
 	typeof: string ++
 	This format is used when rfkill is blocking wlan interfaces.
+
+*tooltip-format-connecting*: ++
+	typeof: string ++
+	This format is used while the displayed interface is being brought up. Only has an effect when *format-connecting* is also set.
+
+*tooltip-format-no-internet*: ++
+	typeof: string ++
+	This format is used when the displayed interface has an IP address but no route to the internet. Only has an effect when *format-no-internet* is also set.
 
 *menu*: ++
 	typeof: string ++
@@ -266,5 +292,7 @@ compatibility).
 - *#network.disconnected*
 - *#network.disabled*
 - *#network.linked*
+- *#network.connecting*
+- *#network.no-internet*
 - *#network.ethernet*
 - *#network.wifi*
