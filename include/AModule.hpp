@@ -58,15 +58,21 @@ class AModule : public IModule {
     }
     return defaultFormat;
   }
+
+  const Json::Value& configuredTooltipFormat(const std::string& state) const {
+    if (!state.empty()) {
+      const auto& format = config_["tooltip-format-" + state];
+      if (format.isString()) {
+        return format;
+      }
+    }
+    return config_["tooltip-format"];
+  }
+
   std::string resolveTooltipFormat(const std::string& defaultFormat,
                                    const std::string& state = "") const {
-    if (!state.empty() && config_["tooltip-format-" + state].isString()) {
-      return config_["tooltip-format-" + state].asString();
-    }
-    if (config_["tooltip-format"].isString()) {
-      return config_["tooltip-format"].asString();
-    }
-    return defaultFormat;
+    const auto& format = configuredTooltipFormat(state);
+    return format.isString() ? format.asString() : defaultFormat;
   }
 
   // Generic tooltip for any widget: honors the `tooltip` toggle and
@@ -77,8 +83,8 @@ class AModule : public IModule {
     if (!tooltipEnabled()) {
       return;
     }
-    widget.set_tooltip_markup(
-        fmt::format(fmt::runtime(resolveTooltipFormat(defaultFormat)), std::forward<Args>(args)...));
+    widget.set_tooltip_markup(fmt::format(fmt::runtime(resolveTooltipFormat(defaultFormat)),
+                                          std::forward<Args>(args)...));
   }
 
   std::vector<int> pid_children_;

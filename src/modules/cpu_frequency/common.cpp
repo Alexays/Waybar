@@ -18,7 +18,6 @@ waybar::modules::CpuFrequency::CpuFrequency(const std::string& id, const Json::V
 }
 
 auto waybar::modules::CpuFrequency::update() -> void {
-  // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
   auto [max_frequency, min_frequency, avg_frequency] = CpuFrequency::getCpuFrequency();
 
   auto format = format_;
