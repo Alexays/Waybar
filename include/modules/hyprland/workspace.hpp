@@ -96,6 +96,8 @@ class Workspace {
   bool m_isVisible = false;
 
   sigc::connection m_hoverCheckConnection;
+  sigc::connection drag_hover_timer_;
+  bool drag_hover_activated_ = false;
 
   std::vector<WindowRepr> m_windowMap;
 
@@ -105,6 +107,11 @@ class Workspace {
   Gtk::Label m_labelAfter;
 
   bool isEmpty() const;
+  bool activate() const;
+  bool activateFromDrag();
+  bool handleDragMotion(const Glib::RefPtr<Gdk::DragContext>& context, int x, int y, guint time);
+  void handleDragLeave(const Glib::RefPtr<Gdk::DragContext>& context, guint time);
+  void resetDragHover();
   void updateTaskbar(const std::string& workspace_icon);
   bool handleClick(const GdkEventButton* event_button, WindowAddress const& addr) const;
   bool shouldSkipWindow(const WindowRepr& window_repr) const;

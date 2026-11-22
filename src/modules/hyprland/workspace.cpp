@@ -64,6 +64,13 @@ Workspace::Workspace(const Json::Value& workspace_data, Workspaces& workspace_ma
   m_button.signal_button_press_event().connect(sigc::mem_fun(*this, &Workspace::handleClicked),
                                                false);
 
+  if (m_workspaceManager.dragHoverDelay() > 0) {
+    m_button.drag_dest_set(Gtk::DestDefaults(0),
+                           Gdk::ACTION_COPY | Gdk::ACTION_MOVE | Gdk::ACTION_LINK);
+    m_button.signal_drag_motion().connect(sigc::mem_fun(*this, &Workspace::handleDragMotion));
+    m_button.signal_drag_leave().connect(sigc::mem_fun(*this, &Workspace::handleDragLeave));
+  }
+
   m_button.set_relief(Gtk::RELIEF_NONE);
   if (m_workspaceManager.enableTaskbar()) {
     m_content.set_orientation(m_workspaceManager.taskbarOrientation());
@@ -80,6 +87,7 @@ Workspace::~Workspace() {
   // Disconnect the hover-check timeout so it can't fire on this destroyed
   // instance (Workspaces are removed at runtime while a check may be armed).
   stopHoverCheck();
+  resetDragHover();
 }
 
 void addOrRemoveClass(const Glib::RefPtr<Gtk::StyleContext>& context, bool condition,
@@ -199,32 +207,68 @@ bool Workspace::handleLeave(GdkEventCrossing* /*event*/) {
 }
 bool Workspace::handleClicked(GdkEventButton* bt) const {
   if (bt->type == GDK_BUTTON_PRESS) {
-    try {
-      if (kind() == WorkspaceKind::Numbered) {  // normal
-        if (m_workspaceManager.moveToMonitor()) {
-          IPC::dispatch("focusworkspaceoncurrentmonitor", address());
-        } else {
-          IPC::dispatch("workspace", address());
-        }
-      } else if (!isSpecial()) {  // named (this includes persistent)
-        if (m_workspaceManager.moveToMonitor()) {
-          IPC::dispatch("focusworkspaceoncurrentmonitor", "name:" + name());
-        } else {
-          IPC::dispatch("workspace", "name:" + name());
-        }
-      } else {  // special
-        // `togglespecialworkspace <name>` re-adds the namespace, so the display
-        // name is the right argument for every special workspace -- the generic
-        // one included, which Hyprland calls `special:special` and displays as
-        // `special`.
-        IPC::dispatch("togglespecialworkspace", name());
-      }
-      return true;
-    } catch (const std::exception& e) {
-      spdlog::error("Failed to dispatch workspace: {}", e.what());
-    }
+    return activate();
   }
   return false;
+}
+
+bool Workspace::activate() const {
+  try {
+    if (kind() == WorkspaceKind::Numbered) {  // normal
+      if (m_workspaceManager.moveToMonitor()) {
+        IPC::dispatch("focusworkspaceoncurrentmonitor", address());
+      } else {
+        IPC::dispatch("workspace", address());
+      }
+    } else if (!isSpecial()) {  // named (this includes persistent)
+      if (m_workspaceManager.moveToMonitor()) {
+        IPC::dispatch("focusworkspaceoncurrentmonitor", "name:" + name());
+      } else {
+        IPC::dispatch("workspace", "name:" + name());
+      }
+    } else {  // special
+      // `togglespecialworkspace <name>` re-adds the namespace, so the display
+      // name is the right argument for every special workspace -- the generic
+      // one included, which Hyprland calls `special:special` and displays as
+      // `special`.
+      IPC::dispatch("togglespecialworkspace", name());
+    }
+    return true;
+  } catch (const std::exception& e) {
+    spdlog::error("Failed to dispatch workspace: {}", e.what());
+  }
+  return false;
+}
+
+bool Workspace::handleDragMotion(const Glib::RefPtr<Gdk::DragContext>& context, int, int,
+                                 guint time) {
+  context->drag_status(context->get_suggested_action(), time);
+
+  if (!isActive() && !drag_hover_activated_ && !drag_hover_timer_.connected()) {
+    m_button.get_style_context()->add_class("drag-hover");
+    drag_hover_timer_ = Glib::signal_timeout().connect(
+        sigc::mem_fun(*this, &Workspace::activateFromDrag), m_workspaceManager.dragHoverDelay());
+  }
+  return true;
+}
+
+void Workspace::handleDragLeave(const Glib::RefPtr<Gdk::DragContext>&, guint) { resetDragHover(); }
+
+bool Workspace::activateFromDrag() {
+  m_button.get_style_context()->remove_class("drag-hover");
+  drag_hover_activated_ = true;
+  if (!isActive()) {
+    activate();
+  }
+  return false;
+}
+
+void Workspace::resetDragHover() {
+  if (drag_hover_timer_.connected()) {
+    drag_hover_timer_.disconnect();
+  }
+  drag_hover_activated_ = false;
+  m_button.get_style_context()->remove_class("drag-hover");
 }
 
 void Workspace::setAddress(std::string const& value) { m_identity.renumber(value); }

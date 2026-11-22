@@ -164,6 +164,13 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	Otherwise, the workspace will open on the monitor where it was previously assigned.
 	Analog to using `focusworkspaceoncurrentmonitor` dispatcher instead of `workspace` in Hyprland.
 
+*drag-hover-delay*: ++
+	typeof: int ++
+	default: 0 ++
+	Switch to a workspace after hovering over its button for this many milliseconds while dragging an item. ++
+	This makes it possible to drag files, images, or text into a window on another workspace. ++
+	Set to 0 to disable.
+
 *unique-icons*: ++
 	typeof: bool ++
 	default: false ++
@@ -259,6 +266,14 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *urgent*: Will be shown on non-active urgent workspaces
 
 # EXAMPLES
+
+Drag an item across workspaces after hovering over a workspace button for 350 milliseconds:
+
+```
+"hyprland/workspaces": {
+	"drag-hover-delay": 350
+}
+```
 
 ```
 "hyprland/workspaces": {
@@ -379,6 +394,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *#workspaces button.special*
 - *#workspaces button.urgent*
 - *#workspaces button.workspace-hover* (applied while the pointer is over the button)
+- *#workspaces button.drag-hover* (applied while a dragged item is waiting to switch workspaces)
 - *#workspaces button.<workspace-name>* (per-workspace class derived from the workspace name, sanitized to a valid CSS class name, e.g. a workspace named "1" yields '.ws-1'; special workspaces also get the raw name class)
 - *#workspaces button.hosting-monitor* (gets applied if workspace-monitor == waybar-monitor)
 - *#workspaces .workspace-label*
