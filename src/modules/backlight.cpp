@@ -61,6 +61,7 @@ auto waybar::modules::Backlight::update() -> void {
       event_box_.hide();
     }
   } else {
+    event_box_.hide();
     if (previous_best_device == nullptr) {
       return;
     }
