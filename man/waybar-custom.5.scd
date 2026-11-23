@@ -268,12 +268,12 @@ explicitly (e.g. *"format": "{icon} {text}"*).
 	"format": "{text}  ",
 	"exec": "checkupdates | wc -l",       // # of updates
 	"exec-if": "exit 0",                  // always run; consider advanced run conditions
-	"on-click": "termite -e 'sudo pacman -Syu'; pkill -SIGRTMIN+8 waybar", // update system
+	"on-click": "termite -e 'sudo pacman -Syu'; pkill -SIGRTMIN+8 -x waybar", // update system
 	"signal": 8
 }
 ```
 
-Under the premise that interval is not defined, you can use the signal and update the number of available packages with *pkill -RTMIN+8 waybar*.
+Under the premise that interval is not defined, you can use the signal and update the number of available packages with *pkill -RTMIN+8 -x waybar*.
 
 # STYLE
 

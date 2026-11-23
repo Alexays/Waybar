@@ -230,7 +230,7 @@ With exec
 "image#wexec": {
   "exec": "imageProvider.py",
   "size": 32,
-  "signal": 7 // e.g 'pkill -n waybar --signal 41' will trigger redraw
+  "signal": 7 // e.g 'pkill -n -x waybar --signal 41' will trigger redraw
 }
 ```
 
