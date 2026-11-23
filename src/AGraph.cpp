@@ -25,19 +25,21 @@ AGraph::AGraph(const Json::Value& config, const std::string& name, const std::st
                               ? static_cast<long>(
                                     std::clamp(config_["interval"].asDouble(), 0.001, 1e9) * 1000)
                               : 1000L * static_cast<long>(interval))) {
-  graph_.signal_draw().connect(sigc::mem_fun(*this, &AGraph::onDraw));
-  graph_.set_name(name);
+  // Make widget stylable by wrapping it in a box
+  box_.set_name(name);
   if (!id.empty()) {
-    graph_.get_style_context()->add_class(id);
+    box_.get_style_context()->add_class(id);
   }
-  graph_.get_style_context()->add_class(MODULE_CLASS);
+  box_.get_style_context()->add_class(MODULE_CLASS);
+  box_.add(graph_);
+  event_box_.add(box_);
+
+  graph_.signal_draw().connect(sigc::mem_fun(*this, &AGraph::onDraw));
   if (config_["width"].isUInt()) {
     graph_.set_size_request(config_["width"].asUInt(), -1);
   } else {
     graph_.set_size_request(100, -1);
   }
-
-  event_box_.add(graph_);
 
   if (config_["datapoints"].isUInt() && config_["datapoints"].asUInt() > 0) {
     datapoints_ = config_["datapoints"].asUInt();

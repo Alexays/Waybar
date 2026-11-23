@@ -193,7 +193,7 @@ auto waybar::modules::CustomGraph::update() -> void {
           }
         }
       }
-      auto style = graph_.get_style_context();
+      auto style = box_.get_style_context();
       auto classes = style->list_classes();
       for (auto const& c : classes) {
         if (c == id_) continue;
