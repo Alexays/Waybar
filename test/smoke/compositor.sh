@@ -69,19 +69,20 @@ cat > "$cfg" <<'EOF'
   "layer": "top", "position": "top", "height": 30,
   "modules-left": ["sway/workspaces", "sway/mode", "sway/scratchpad", "ext/workspaces"],
   "modules-center": ["sway/window"],
-  "modules-right": ["sway/language", "wlr/taskbar"],
+  "modules-right": ["sway/language", "sway/language#hide", "wlr/taskbar"],
   "sway/workspaces": { "format": "WS:{name}" },
   "sway/mode": { "format": "MODE:{}" },
   "sway/scratchpad": { "format": "SCRATCH:{count}", "show-empty": true },
   "sway/window": { "format": "WIN:{title}" },
   "sway/language": { "format": "LANG:{short}" },
+  "sway/language#hide": { "format": "HIDELANG:{short}", "hide-single-layout": true },
   "wlr/taskbar": { "format": "TASK:{title}" },
   "ext/workspaces": { "format": "EXT:{name}" }
 }
 EOF
 smoke::launch_waybar "$cfg" "$DIR/style.css" 4
 smoke::assert_alive || fail=1
-"${A11Y[@]}" WS:SMOKE-WS-A WIN:SMOKE-ONE SCRATCH:0 LANG:us TASK:SMOKE-ONE || fail=1
+"${A11Y[@]}" WS:SMOKE-WS-A WIN:SMOKE-ONE SCRATCH:0 LANG:us HIDELANG:us TASK:SMOKE-ONE || fail=1
 "${A11Y[@]}" --absent MODE: || fail=1
 [ "$EXT" = 0 ] || "${A11Y[@]}" EXT:SMOKE-WS-A || fail=1
 
@@ -118,8 +119,21 @@ swaymsg -q '[title="SMOKE-TWO"] scratchpad show'
 "${A11Y[@]}" --absent SCRATCH:1 || fail=1
 
 swaymsg -q input type:keyboard xkb_switch_layout next
-"${A11Y[@]}" LANG:fr || fail=1
+"${A11Y[@]}" LANG:fr HIDELANG:fr || fail=1
 "${A11Y[@]}" --absent LANG:us || fail=1
+
+# Removing a multi-layout keyboard shrinks layouts_map_ so hide-single-layout hides (#5517)
+"$VK/virtual_keyboard" de &
+VK_SINGLE_PID=$!
+for _ in $(seq 1 40); do
+    swaymsg -t get_inputs | jq -e '.[] | select(.xkb_active_layout_name? == "German")' >/dev/null && break
+    sleep 0.1
+done
+kill "$KEYBOARD_PID" 2>/dev/null || true
+wait "$KEYBOARD_PID" 2>/dev/null || true
+KEYBOARD_PID=$VK_SINGLE_PID
+"${A11Y[@]}" LANG:de || fail=1
+"${A11Y[@]}" --absent HIDELANG: || fail=1
 
 swaymsg -q '[title="SMOKE-ONE"] kill'
 "${A11Y[@]}" TASK:SMOKE-TWO || fail=1

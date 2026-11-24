@@ -60,6 +60,7 @@ class Language : public ALabel, public sigc::trackable {
   std::string tooltip_format_ = "";
   std::map<std::string, Layout> layouts_map_;
   bool hide_single_;
+  bool has_physical_keyboard_ = false;
   bool is_variant_displayed;
   std::byte displayed_short_flag = static_cast<std::byte>(DisplayedShortFlag::None);
 

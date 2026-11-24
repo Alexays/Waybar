@@ -14,6 +14,7 @@ test_src = files(
     'taskbar_dnd.cpp',
     'fit_label.cpp',
     'icon_manager.cpp',
+    'sway_language.cpp',
     '../src/config.cpp',
 )
 
