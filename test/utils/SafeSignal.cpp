@@ -7,6 +7,8 @@
 #else
 #include <catch2/catch.hpp>
 #endif
+#include <atomic>
+#include <mutex>
 #include <thread>
 #include <type_traits>
 #include <vector>
@@ -238,4 +240,63 @@ TEST_CASE_METHOD(GlibTestsFixture, "CoalescingDispatcher created pending defers 
   });
 
   REQUIRE(updates == 2);
+}
+
+// Concurrent worker threads updating mutex-protected state and emitting CoalescingDispatcher
+// outside the mutex must deliver the latest state without lock-order contention or races (#5395).
+TEST_CASE_METHOD(GlibTestsFixture, "CoalescingDispatcher concurrent worker updates outside mutex",
+                 "[signal][thread][util]") {
+  constexpr int NUM_WORKERS = 4;
+  constexpr int WORKER_TICKS = 1000;
+
+  std::mutex mtx;
+  int shared_state = 0;
+  int observed_state = 0;
+  std::atomic<int> finished_workers{0};
+
+  util::CoalescingDispatcher dp;
+
+  setTimeout(5000);
+
+  dp.connect([&]() {
+    std::scoped_lock lock(mtx);
+    observed_state = shared_state;
+  });
+
+  std::vector<std::thread> workers;
+
+  run([&]() {
+    for (int w = 0; w < NUM_WORKERS; ++w) {
+      workers.emplace_back([&]() {
+        for (int i = 0; i < WORKER_TICKS; ++i) {
+          bool emit_pending = false;
+          {
+            std::scoped_lock lock(mtx);
+            ++shared_state;
+            emit_pending = true;
+          }
+          if (emit_pending) {
+            dp.emit();
+          }
+        }
+        finished_workers.fetch_add(1);
+      });
+    }
+
+    Glib::signal_timeout().connect(
+        [&]() {
+          if (finished_workers.load() < NUM_WORKERS) {
+            return true;
+          }
+          dp.emit();
+          Glib::signal_timeout().connect_once([this]() { this->quit(); }, 20);
+          return false;
+        },
+        10);
+  });
+
+  for (auto& t : workers) {
+    t.join();
+  }
+  REQUIRE(observed_state == NUM_WORKERS * WORKER_TICKS);
 }
