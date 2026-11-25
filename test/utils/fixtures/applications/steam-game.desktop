@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Roadwarden
+Exec=env steam steam://rungameid/999991
+Icon=steam_icon_999991
+Categories=Game;
+NoDisplay=true
