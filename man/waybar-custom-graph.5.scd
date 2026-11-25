@@ -81,6 +81,19 @@ Addressed by *custom-graph/<name>*
 	typeof: string ++
 	Command to execute when the module is updated.
 
+*on-enter*: ++
+	typeof: string ++
+	Command to execute when the mouse enters the module. *WAYBAR_OUTPUT_NAME* holds the name of the bar's output.
+
+*on-leave*: ++
+	typeof: string ++
+	Command to execute when the mouse leaves the module. *WAYBAR_OUTPUT_NAME* holds the name of the bar's output.
+
+*on-enter-delay*: ++
+	typeof: integer ++
+	default: 0 ++
+	Milliseconds the mouse has to stay on the module before *on-enter* runs. If it leaves sooner, neither *on-enter* nor *on-leave* runs.
+
 *on-scroll-up*: ++
 	typeof: string ++
 	Command to execute when scrolling up on the module.

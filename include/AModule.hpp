@@ -12,6 +12,7 @@
 
 #include "IModule.hpp"
 #include "util/coalescing_dispatcher.hpp"
+#include "util/hover_latch.hpp"
 
 namespace waybar {
 
@@ -31,6 +32,9 @@ class AModule : public IModule {
   util::CoalescingDispatcher dp{true};
 
   bool expandEnabled() const;
+
+  /// Exported as WAYBAR_OUTPUT_NAME to the on-enter and on-leave commands
+  void setOutputName(const std::string& name) { bar_output_name_ = name; }
 
   virtual void suspend() {};
   virtual void resume() {};
@@ -93,6 +97,12 @@ class AModule : public IModule {
   virtual bool handleToggle(GdkEventButton* const& ev);
   virtual bool handleMouseEnter(GdkEventCrossing* const& ev);
   virtual bool handleMouseLeave(GdkEventCrossing* const& ev);
+  // Called from AModule's handleMouseEnter and handleMouseLeave. A subclass
+  // that overrides those without chaining up gets no on-enter or on-leave
+  // unless it calls this itself, as Group does
+  void handleCrossingEvent(GdkEventCrossing* const& ev, bool entering);
+  void runCrossingEvent(bool entering);
+
   virtual bool handleScroll(GdkEventScroll*);
   virtual bool handleRelease(GdkEventButton* const& ev);
 
@@ -114,6 +124,13 @@ class AModule : public IModule {
   gdouble distance_scrolled_y_;
   gdouble distance_scrolled_x_;
   sigc::connection cursor_timeout_conn_;
+  // Resolved in the constructor: jsoncpp throws on a non-object value, and an
+  // exception escaping a GTK signal handler aborts the bar
+  const std::string on_enter_cmd_;
+  const std::string on_leave_cmd_;
+  // Custom already has an output_name_
+  std::string bar_output_name_;
+  util::HoverLatch hover_;
   static const inline std::map<std::pair<uint, GdkEventType>, std::string> eventMap_{
       {std::make_pair(1, GdkEventType::GDK_BUTTON_PRESS), "on-click"},
       {std::make_pair(1, GdkEventType::GDK_BUTTON_RELEASE), "on-click-release"},
