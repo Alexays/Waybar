@@ -400,6 +400,11 @@ A group may hide all but one element, showing them only on mouse hover. In order
 	default: false ++
 	Whether left click should reveal the content rather than mouse over. Note that grouped modules may still process their own on-click events.
 
+*click-to-pin*: ++
+	typeof: bool ++
+	default: false ++
+	Whether left click should keep the drawer open after the mouse leaves, until the next left click. The drawer still opens on mouse over. Has no effect together with click-to-reveal. Note that grouped modules may still process their own on-click events; only clicks they do not handle pin the drawer.
+
 *start-expanded*: ++
 	typeof: bool ++
 	default: false ++
@@ -426,7 +431,7 @@ A group may hide all but one element, showing them only on mouse hover. In order
 	default: false ++
 	Whether the child should be revealed when Waybar starts up. This has to be used with click-to-reveal to take effect.
 
-Group drawers are also given the `.expanded` CSS class when they are expanded.
+Group drawers are also given the `.expanded` CSS class when they are expanded, and the `.pinned` CSS class while they are pinned with click-to-pin.
 
 ```
 "group/power": {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tier 2 — interaction: inject real pointer input through a virtual pointer and
 # assert on the behaviour (click, scroll and button commands, format-alt toggle,
-# click-to-reveal drawer, menu popup, tooltips), not on pixels alone.
+# click-to-reveal and click-to-pin drawers, menu popup, tooltips), not on pixels alone.
 # Needs a D-Bus session for the AT-SPI checks:
 #   dbus-run-session -- test/smoke/interact.sh [screenshot-dir]
 set -euo pipefail
@@ -154,6 +154,62 @@ if [ "$ae" -gt 100 ]; then
     echo "✓ left click on the leader revealed the drawer"
 else
     echo "::error::left click on the leader did not reveal the drawer ($ae px)"; fail=1
+fi
+smoke::assert_clean || fail=1
+kill "$WAYBAR_PID" 2>/dev/null || true; sleep 1
+echo "::endgroup::"
+
+# --- 3b) click-to-pin hover drawer -----------------------------------------
+# Removing the virtual pointer counts as the pointer leaving the drawer.
+echo "::group::click-to-pin drawer"
+cfg3b="$(mktemp --suffix=.json)"
+cat > "$cfg3b" <<EOF
+{
+  "layer": "top", "position": "top", "height": 30,
+  "modules-center": ["group/pin"],
+  "group/pin": {
+    "orientation": "horizontal",
+    "drawer": { "click-to-pin": true, "transition-duration": 0 },
+    "modules": ["custom/leader", "custom/child"]
+  },
+  "custom/leader": { "exec": "echo LEADER", "interval": "once", "tooltip": false },
+  "custom/child": { "exec": "echo HIDDEN-CHILD-MODULE", "interval": "once", "tooltip": false }
+}
+EOF
+smoke::launch_waybar "$cfg3b" "$DIR/style.css" 4
+smoke::assert_alive || fail=1
+smoke::screenshot "$SHOTDIR/pin-closed.png"
+pointer "$CX" hover 2500 &
+holder=$!
+sleep 1
+smoke::screenshot "$SHOTDIR/pin-hover.png"
+wait "$holder"
+sleep 1
+smoke::screenshot "$SHOTDIR/pin-hover-left.png"
+ae_hover="$(pixel_diff "$SHOTDIR/pin-closed.png" "$SHOTDIR/pin-hover.png")"
+ae_left="$(pixel_diff "$SHOTDIR/pin-closed.png" "$SHOTDIR/pin-hover-left.png")"
+if [ "$ae_hover" -gt 100 ] && [ "$ae_left" -le 100 ]; then
+    echo "✓ hover opened the drawer and leaving closed it"
+else
+    echo "::error::hover did not open and close the drawer ($ae_hover px open, $ae_left px after leaving)"; fail=1
+fi
+pointer "$CX"
+sleep 1
+smoke::screenshot "$SHOTDIR/pin-pinned.png"
+ae="$(pixel_diff "$SHOTDIR/pin-closed.png" "$SHOTDIR/pin-pinned.png")"
+if [ "$ae" -gt 100 ]; then
+    echo "✓ a left click kept the drawer open after the pointer left"
+else
+    echo "::error::the drawer closed after a pinning click ($ae px)"; fail=1
+fi
+pointer "$CX"
+sleep 1
+smoke::screenshot "$SHOTDIR/pin-unpinned.png"
+ae="$(pixel_diff "$SHOTDIR/pin-closed.png" "$SHOTDIR/pin-unpinned.png")"
+if [ "$ae" -le 100 ]; then
+    echo "✓ a second left click unpinned the drawer"
+else
+    echo "::error::the drawer stayed open after an unpinning click ($ae px)"; fail=1
 fi
 smoke::assert_clean || fail=1
 kill "$WAYBAR_PID" 2>/dev/null || true; sleep 1
