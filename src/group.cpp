@@ -70,6 +70,8 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
                                                      : false);
 
     click_to_reveal = drawer_config["click-to-reveal"].asBool();
+    click_to_pin_ =
+        drawer_config["click-to-pin"].isBool() && drawer_config["click-to-pin"].asBool();
     hide_leader_when_expanded = drawer_config["hide-leader-when-expanded"].asBool();
     always_visible_class = (drawer_config["always-visible-class"].isString()
                                 ? drawer_config["always-visible-class"].asString()
@@ -216,7 +218,7 @@ bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
 }
 
 bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
-  if (!click_to_reveal && e->detail != GDK_NOTIFY_INFERIOR) {
+  if (!click_to_reveal && !pinned_ && e->detail != GDK_NOTIFY_INFERIOR) {
     if (reveal_delay > 0 && reveal_timeout_.connected()) {
       reveal_timeout_.disconnect();
     }
@@ -227,6 +229,17 @@ bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
 }
 
 bool Group::handleToggle(GdkEventButton* const& e) {
+  // A pinned hover drawer ignores the pointer leaving until it is clicked again
+  if (click_to_pin_ && !click_to_reveal && e->button == 1 && e->type == GDK_BUTTON_PRESS) {
+    pinned_ = !pinned_;
+    if (pinned_) {
+      box.get_style_context()->add_class("pinned");
+      show_group();
+    } else {
+      box.get_style_context()->remove_class("pinned");
+    }
+    return true;
+  }
   if (!click_to_reveal || e->button != 1 || e->type != GDK_BUTTON_PRESS) {
     return false;
   }
