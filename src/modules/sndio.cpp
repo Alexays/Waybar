@@ -55,7 +55,7 @@ Sndio::Sndio(const std::string& id, const Json::Value& config)
 
   event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK | Gdk::BUTTON_PRESS_MASK);
   event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Sndio::handleScroll));
-  event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &Sndio::handleToggle));
+  connectPress(sigc::mem_fun(*this, &Sndio::handleToggle));
 
   thread_ = [this] {
     dp.emit();
