@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "modules/sway/ipc/ipc.hpp"
+#include "modules/sway/language_input.hpp"
 #include "util/string.hpp"
 
 namespace waybar::modules::sway {
@@ -52,31 +53,18 @@ void Language::onCmd(const struct Ipc::ipc_response& res) {
   try {
     std::lock_guard<std::mutex> lock(mutex_);
     auto payload = parser_.parse(res.payload);
-    std::vector<std::string> used_layouts;
-    // Union layout names across every keyboard input so hot-plugged devices contribute their
-    // layouts to the map. Track the device with the most layouts to seed the initially displayed
-    // layout, matching the previous behaviour at startup.
-    Json::ArrayIndex max_id = 0, max = 0;
-    for (Json::ArrayIndex i = 0; i < payload.size(); i++) {
-      if (payload[i]["type"].asString() != "keyboard") continue;
-      const auto& names = payload[i][XKB_LAYOUT_NAMES_KEY];
-      if (names.size() > max) {
-        max = names.size();
-        max_id = i;
-      }
-      for (const auto& layout : names) {
-        const auto name = layout.asString();
-        if (std::find(used_layouts.begin(), used_layouts.end(), name) == used_layouts.end()) {
-          used_layouts.push_back(name);
-        }
-      }
-    }
+    auto snapshot = collect_keyboard_layouts(payload);
+    has_physical_keyboard_ = snapshot.has_physical_keyboard;
 
     // Rebuild from scratch so init_layouts_map's duplicate-suffix pass doesn't compound across
     // refreshes (e.g. "us" -> "us1" -> "us11").
     layouts_map_.clear();
-    init_layouts_map(used_layouts);
-    set_current_layout(payload[max_id][XKB_ACTIVE_LAYOUT_NAME_KEY].asString());
+    init_layouts_map(snapshot.used_layouts);
+    if (snapshot.found_keyboard) {
+      set_current_layout(snapshot.active_layout);
+    } else {
+      layout_ = Layout{};
+    }
     dp.emit();
   } catch (const std::exception& e) {
     spdlog::error("Language: {}", e.what());
@@ -93,15 +81,12 @@ void Language::onEvent(const struct Ipc::ipc_response& res) {
     {
       std::lock_guard<std::mutex> lock(mutex_);
       auto root = parser_.parse(res.payload);
-      auto change = root["change"].asString();
-      auto payload = root["input"];
-      if (payload["type"].asString() == "keyboard") {
-        // A device was added or its keymap changed - the layout set may have grown, so refresh
-        // layouts_map_ via IPC_GET_INPUTS once we've released mutex_.
-        refresh_inputs = (change == "added" || change == "xkb_keymap");
-        set_current_layout(payload[XKB_ACTIVE_LAYOUT_NAME_KEY].asString());
+      auto action = classify_input_event(root, has_physical_keyboard_);
+      refresh_inputs = action.refresh_inputs;
+      if (action.update_layout) {
+        set_current_layout(action.active_layout);
+        dp.emit();
       }
-      dp.emit();
     }
     // sendCmd is synchronous: it blocks on the IPC reply and then emits signal_cmd on this same
     // thread, which lands in onCmd and re-locks mutex_. Must call it with mutex_ released.
