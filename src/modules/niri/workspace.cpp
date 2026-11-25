@@ -28,6 +28,7 @@ Workspace::Workspace(const Json::Value& workspace_data, Workspaces& manager)
   button_.add(box_);
   box_.pack_start(label_, false, false, 0);
   box_.pack_start(taskbar_box_, false, false, 0);
+  box_.set_halign(Gtk::ALIGN_CENTER);
 
   button_.set_relief(Gtk::RELIEF_NONE);
   button_.get_style_context()->add_class("niri-workspace");
