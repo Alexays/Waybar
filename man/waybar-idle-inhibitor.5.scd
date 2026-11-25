@@ -96,7 +96,7 @@ screensaver, also known as "presentation mode".
 	typeof: integer ++
 	The signal number used to toggle the idle inhibitor externally. ++
 	The number is valid between 1 and N, where *SIGRTMIN+N* = *SIGRTMAX*. ++
-	Use `pkill -SIGRTMIN+N waybar` to toggle the idle inhibitor from scripts or keybindings.
+	Use `pkill -SIGRTMIN+N -x waybar` to toggle the idle inhibitor from scripts or keybindings.
 
 *tooltip*: ++
 	typeof: bool ++
@@ -169,7 +169,7 @@ With dynamic timeouts (scroll to adjust the timeout):
 }
 ```
 
-With external control via signals (can be toggled with `pkill -SIGRTMIN+8 waybar`):
+With external control via signals (can be toggled with `pkill -SIGRTMIN+8 -x waybar`):
 
 ```
 "idle_inhibitor": {
