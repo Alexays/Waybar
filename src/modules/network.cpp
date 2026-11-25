@@ -257,6 +257,10 @@ void waybar::modules::Network::worker() {
       if (ifid_ > 0) {
         getInfo();
       }
+    }
+    // Emit outside mutex_: Glib::Dispatcher::emit() blocks once the main-context
+    // notifier pipe fills up, while the main thread blocks on mutex_ in update().
+    if (thread_timer_.isRunning()) {
       dp.emit();
     }
     thread_timer_.sleep_for(interval_);
@@ -321,6 +325,12 @@ void waybar::modules::Network::worker() {
         } else {
           thread_.stop();
           break;
+        }
+      }
+      if (emit_pending_) {
+        emit_pending_ = false;
+        if (thread_.isRunning()) {
+          dp.emit();
         }
       }
     }
@@ -626,7 +636,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
         // it have been deleted, so start looking for a new default route.
         spdlog::debug("network: if{} down", net->ifid_);
         net->clearIface();
-        net->dp.emit();
+        net->emit_pending_ = true;
         net->want_route_dump_ = true;
         net->askForStateDump();
         return NL_OK;
@@ -715,7 +725,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
         spdlog::debug("network: interface {}/{} deleted", net->ifname_, net->ifid_);
 
         net->clearIface();
-        net->dp.emit();
+        net->emit_pending_ = true;
       }
       break;
     }
@@ -810,7 +820,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
                             inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr)),
                             ifa->ifa_prefixlen);
             }
-            net->dp.emit();
+            net->emit_pending_ = true;
             break;
         }
       }
@@ -931,7 +941,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
                         priority);
 
           net->clearIface();
-          net->dp.emit();
+          net->emit_pending_ = true;
           /* Ask for a dump of all routes in case another one is already
            * setup. If there's none, there'll be an event with new one
            * later. */
