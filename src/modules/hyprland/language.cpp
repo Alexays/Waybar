@@ -4,6 +4,7 @@
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbregistry.h>
 
+#include "modules/hyprland/language_format.hpp"
 #include "util/sanitize_str.hpp"
 #include "util/string.hpp"
 
@@ -47,27 +48,8 @@ auto Language::update() -> void {
   spdlog::debug("hyprland language update with short description {}", layout_.short_description);
   spdlog::debug("hyprland language update with variant {}", layout_.variant);
 
-  std::string layoutName = std::string{};
-  if (config_.isMember("format-" + layout_.short_description + "-" + layout_.variant)) {
-    const auto propName = "format-" + layout_.short_description + "-" + layout_.variant;
-    layoutName =
-        trim(fmt::format(fmt::runtime(format_), config_[propName].asString(),
-                         fmt::arg("long", layout_.full_name), fmt::arg("short", layout_.short_name),
-                         fmt::arg("shortDescription", layout_.short_description),
-                         fmt::arg("variant", layout_.variant)));
-  } else if (config_.isMember("format-" + layout_.short_description)) {
-    const auto propName = "format-" + layout_.short_description;
-    layoutName =
-        trim(fmt::format(fmt::runtime(format_), config_[propName].asString(),
-                         fmt::arg("long", layout_.full_name), fmt::arg("short", layout_.short_name),
-                         fmt::arg("shortDescription", layout_.short_description),
-                         fmt::arg("variant", layout_.variant)));
-  } else {
-    layoutName = trim(fmt::format(fmt::runtime(format_), fmt::arg("long", layout_.full_name),
-                                  fmt::arg("short", layout_.short_name),
-                                  fmt::arg("shortDescription", layout_.short_description),
-                                  fmt::arg("variant", layout_.variant)));
-  }
+  std::string layoutName = formatLanguage(layout_.full_name, layout_.short_name, layout_.variant,
+                                          layout_.short_description, config_, format_, "format");
   spdlog::debug("hyprland language formatted layout name {}", layoutName);
 
   std::string tooltipContent = std::string{};
@@ -75,28 +57,10 @@ auto Language::update() -> void {
   if (tooltip_enabled) {
     // Default to "{long}" when no tooltip-format is provided, matching the man page
     auto tooltip_format =
-        config_.isMember("tooltip-format") ? config_["tooltip-format"].asString() : "{long}";
-    if (config_.isMember("tooltip-format-" + layout_.short_description + "-" + layout_.variant)) {
-      const auto propName = "tooltip-format-" + layout_.short_description + "-" + layout_.variant;
-      tooltipContent = trim(fmt::format(fmt::runtime(tooltip_format), config_[propName].asString(),
-                                        fmt::arg("long", layout_.full_name),
-                                        fmt::arg("short", layout_.short_name),
-                                        fmt::arg("shortDescription", layout_.short_description),
-                                        fmt::arg("variant", layout_.variant)));
-    } else if (config_.isMember("tooltip-format-" + layout_.short_description)) {
-      const auto propName = "tooltip-format-" + layout_.short_description;
-      tooltipContent = trim(fmt::format(fmt::runtime(tooltip_format), config_[propName].asString(),
-                                        fmt::arg("long", layout_.full_name),
-                                        fmt::arg("short", layout_.short_name),
-                                        fmt::arg("shortDescription", layout_.short_description),
-                                        fmt::arg("variant", layout_.variant)));
-    } else {
-      tooltipContent =
-          trim(fmt::format(fmt::runtime(tooltip_format), fmt::arg("long", layout_.full_name),
-                           fmt::arg("short", layout_.short_name),
-                           fmt::arg("shortDescription", layout_.short_description),
-                           fmt::arg("variant", layout_.variant)));
-    }
+        config_["tooltip-format"].isString() ? config_["tooltip-format"].asString() : "{long}";
+    tooltipContent =
+        formatLanguage(layout_.full_name, layout_.short_name, layout_.variant,
+                       layout_.short_description, config_, tooltip_format, "tooltip-format");
     spdlog::debug("hyprland language formatted tooltip content {}", tooltipContent);
   }
 

@@ -80,16 +80,17 @@ hypr_config='{
   "layer": "top", "position": "top", "height": 30,
   "modules-left": ["hyprland/workspaces", "hyprland/submap"],
   "modules-center": ["hyprland/window"],
-  "modules-right": ["hyprland/windowcount", "hyprland/language"],
+  "modules-right": ["hyprland/windowcount", "hyprland/language", "hyprland/language#override"],
   "hyprland/workspaces": {"format": "ws {name}{icon}",
     "format-icons": {"active": "*", "default": ""}},
   "hyprland/window": {"format": "win: {title}"},
   "hyprland/windowcount": {"format": "count {}"},
   "hyprland/language": {"format": "kb {long}"},
+  "hyprland/language#override": {"format": "ovr {short}", "format-de": "ovr DEU"},
   "hyprland/submap": {"format": "mode {}"}
 }'
 launch hyprland "$hypr_config"
-"${A11Y[@]}" "ws 1*" "ws 2" "win: foot ~" "count 1" "kb English (US)"
+"${A11Y[@]}" "ws 1*" "ws 2" "win: foot ~" "count 1" "kb English (US)" "ovr us"
 step 'workspace 3'
 "${A11Y[@]}" "ws 3*" "count 0"
 "${A11Y[@]}" --absent "ws 1*" "foot ~"
@@ -112,7 +113,8 @@ step 'pinned_switch 3'
 step 'workspace 1'
 "${A11Y[@]}" "ws 1*" "win: foot ~"
 step 'layout'
-"${A11Y[@]}" "kb German"
+"${A11Y[@]}" "kb German" "ovr DEU"
+"${A11Y[@]}" --absent "ovr us"
 step 'submap resize'
 "${A11Y[@]}" "mode resize"
 # Hyprland only announces changes: a bar started inside a submap has to ask for it (#4736)

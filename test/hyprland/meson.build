@@ -11,6 +11,7 @@ test_dep = [
 test_src = files(
     '../main.cpp',
     'backend.cpp',
+    'language.cpp',
     'workspace_identity.cpp',
     'workspace_order.cpp',
     '../../src/modules/hyprland/backend.cpp',
