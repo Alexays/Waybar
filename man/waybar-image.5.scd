@@ -135,7 +135,7 @@ For multiple *image*
 *size*: ++
 	typeof: integer ++
 	default: 16 ++
-	Minumum size of the rendered image in pixels.
+	Minimum size of the rendered image in pixels.
 
 *interval*: ++
 	typeof: integer or float ++
@@ -154,7 +154,7 @@ For multiple *image*
 	parameter is false.
 
 *signal*: ++
-	typeof: interger ++
+	typeof: integer ++
 	default: 0 ++
 	The signal number is used to redraw the module. ++
 	This is used if *interval* is not provided and module should change ++

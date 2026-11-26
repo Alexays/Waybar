@@ -25,7 +25,7 @@ Addressed by *sway/workspaces*
 *format-for-negative-index*: ++
 	typeof: string ++
 	default: *format* ++
-	An alternative format, which will be used for workspaces with no explict or negative index ("num" in sway terms). Requires *format* to be set.
+	An alternative format, which will be used for workspaces with no explicit or negative index ("num" in sway terms). Requires *format* to be set.
 
 *format-icons*: ++
 	typeof: array ++
