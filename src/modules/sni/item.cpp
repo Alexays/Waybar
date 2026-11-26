@@ -579,8 +579,9 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getOverlayIconPixbuf() {
 
 // Loads an icon file an item named, at the given height, or returns null if it is refused. Only a
 // regular file is read, through the opened descriptor so it cannot be swapped for a FIFO, and only
-// PNG (size checked in its header) and SVG (rendered at that height) are decoded: gdk-pixbuf
-// decodes other formats at the size the file declares, whatever height is asked for.
+// formats whose declared size can be checked before decoding are accepted: PNG and BMP (size read
+// from the header) and SVG (rendered at that height). gdk-pixbuf decodes other formats at the size
+// the file declares, whatever height is asked for.
 static Glib::RefPtr<Gdk::Pixbuf> loadIconFromFile(const std::string& path, int height) {
   int fd = open(path.c_str(), O_RDONLY | O_NONBLOCK | O_NOCTTY | O_CLOEXEC);
   if (fd == -1) {
@@ -613,14 +614,28 @@ static Glib::RefPtr<Gdk::Pixbuf> loadIconFromFile(const std::string& path, int h
     std::memcpy(&png_height, data + sizeof(png_header) + 4, 4);
     accepted = static_cast<guint64>(GUINT32_FROM_BE(width)) * GUINT32_FROM_BE(png_height) <=
                MAX_ICON_FILE_PIXELS;
+  } else if (size >= 26 && data[0] == 'B' && data[1] == 'M') {
+    // BMP, which is what SDL's tray support wrote before SDL 3.4 and what other toolkits still
+    // write. The DIB header declares the size up front, so the same bound as PNG applies.
+    guint32 bmp_width = 0;
+    gint32 bmp_height = 0;
+    std::memcpy(&bmp_width, data + 18, 4);   // biWidth
+    std::memcpy(&bmp_height, data + 22, 4);  // biHeight, negative when the rows are top-down
+    const guint64 bmp_rows = bmp_height < 0
+                                 ? 0ULL - static_cast<guint64>(static_cast<gint64>(bmp_height))
+                                 : static_cast<guint64>(bmp_height);
+    accepted = bmp_width > 0 && bmp_rows > 0 &&
+               static_cast<guint64>(bmp_width) * bmp_rows <= MAX_ICON_FILE_PIXELS;
   } else {
     // By content like gdk-pixbuf does; the file name is the item's choice
     g_autofree gchar* type = g_content_type_guess(nullptr, data, size, nullptr);
     accepted = g_content_type_is_a(type, "image/svg+xml") != FALSE;
   }
   if (!accepted) {
-    spdlog::warn("Tray: refusing icon file '{}': not a PNG of at most {} pixels or an SVG", path,
-                 MAX_ICON_FILE_PIXELS);
+    spdlog::warn(
+        "Tray: refusing icon file '{}': not a PNG or BMP of at most {} pixels, "
+        "and not an SVG",
+        path, MAX_ICON_FILE_PIXELS);
     return {};
   }
   return Gdk::Pixbuf::create_from_stream_at_scale(stream, -1, height, true);
