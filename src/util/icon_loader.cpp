@@ -136,51 +136,67 @@ std::string IconLoader::get_icon_name_from_icon_theme(
   return "";
 }
 
-bool IconLoader::image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
-                                 Glib::RefPtr<Gio::DesktopAppInfo> app_info, int size) {
-  std::string ret_icon_name = "unknown";
+std::string IconLoader::icon_name_for(const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
+                                      const Glib::RefPtr<Gio::DesktopAppInfo>& app_info) {
   if (app_info) {
     std::string icon_name =
         get_icon_name_from_icon_theme(icon_theme, app_info->get_startup_wm_class());
     if (!icon_name.empty()) {
-      ret_icon_name = icon_name;
-    } else {
-      if (app_info->get_icon()) {
-        ret_icon_name = app_info->get_icon()->to_string();
-      }
+      return icon_name;
+    }
+    if (app_info->get_icon()) {
+      return app_info->get_icon()->to_string();
     }
   }
 
-  Glib::RefPtr<Gdk::Pixbuf> pixbuf;
-  auto scaled_icon_size = size * image.get_scale_factor();
+  return "unknown";
+}
+
+bool IconLoader::set_missing_icon(Gtk::Image& image, int size) {
+  const int scaled_icon_size = size * image.get_scale_factor();
 
   try {
-    pixbuf = icon_theme->load_icon(ret_icon_name, scaled_icon_size, Gtk::ICON_LOOKUP_FORCE_SIZE);
-  } catch (...) {
-    if (Glib::file_test(ret_icon_name, Glib::FILE_TEST_EXISTS)) {
-      pixbuf = load_icon_from_file(ret_icon_name, scaled_icon_size);
-    } else {
-      try {
-        pixbuf = DefaultGtkIconThemeWrapper::load_icon(
-            "image-missing", scaled_icon_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
-      } catch (...) {
-        pixbuf = {};
-      }
-    }
-  }
-
-  if (pixbuf) {
-    if (pixbuf->get_width() != scaled_icon_size && pixbuf->get_height() > 0) {
-      int width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
-      pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
+    auto pixbuf = DefaultGtkIconThemeWrapper::load_icon(
+        "image-missing", scaled_icon_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+    if (!pixbuf) {
+      return false;
     }
     auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image.get_scale_factor(),
                                                           image.get_window());
     image.set(surface);
     return true;
+  } catch (...) {
+    return false;
+  }
+}
+
+IconLoader::LoadResult IconLoader::image_load_icon(Gtk::Image& image,
+                                                   const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
+                                                   const std::string& icon_name, int size) {
+  const int scaled_icon_size = size * image.get_scale_factor();
+  Glib::RefPtr<Gdk::Pixbuf> pixbuf;
+
+  try {
+    pixbuf = icon_theme->load_icon(icon_name, scaled_icon_size, Gtk::ICON_LOOKUP_FORCE_SIZE);
+  } catch (...) {
+    if (!Glib::file_test(icon_name, Glib::FILE_TEST_EXISTS)) {
+      return LoadResult::MISSING;
+    }
+    pixbuf = load_icon_from_file(icon_name, scaled_icon_size);
   }
 
-  return false;
+  if (!pixbuf) {
+    return LoadResult::MISSING;
+  }
+
+  if (pixbuf->get_width() != scaled_icon_size && pixbuf->get_height() > 0) {
+    int width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
+    pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
+  }
+  auto surface =
+      Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image.get_scale_factor(), image.get_window());
+  image.set(surface);
+  return LoadResult::LOADED;
 }
 
 void IconLoader::add_custom_icon_theme(const std::string& theme_name) {
@@ -190,14 +206,61 @@ void IconLoader::add_custom_icon_theme(const std::string& theme_name) {
   spdlog::debug("Use custom icon theme: {}", theme_name);
 }
 
-bool IconLoader::image_load_icon(Gtk::Image& image, Glib::RefPtr<Gio::DesktopAppInfo> app_info,
-                                 int size) const {
-  for (auto& icon_theme : custom_icon_themes_) {
-    if (image_load_icon(image, icon_theme, app_info, size)) {
-      return true;
+IconLoader::LoadResult IconLoader::image_load_icon(Gtk::Image& image,
+                                                   Glib::RefPtr<Gio::DesktopAppInfo> app_info,
+                                                   int size) const {
+  auto load_from = [&](const Glib::RefPtr<Gtk::IconTheme>& icon_theme) {
+    return image_load_icon(image, icon_theme, icon_name_for(icon_theme, app_info), size);
+  };
+
+  for (const auto& icon_theme : custom_icon_themes_) {
+    if (load_from(icon_theme) == LoadResult::LOADED) {
+      return LoadResult::LOADED;
     }
   }
-  return image_load_icon(image, default_icon_theme_, app_info, size);
+  if (load_from(default_icon_theme_) == LoadResult::LOADED) {
+    return LoadResult::LOADED;
+  }
+
+  return set_missing_icon(image, size) ? LoadResult::MISSING : LoadResult::FAILED;
+}
+
+IconLoader::LoadResult IconLoader::image_load_icon(Gtk::Image& image, const std::string& app_id,
+                                                   int size) const {
+  if (auto app_info = get_app_info_from_app_id_list(app_id)) {
+    if (image_load_icon(image, app_info, size) == LoadResult::LOADED) {
+      return LoadResult::LOADED;
+    }
+  }
+
+  /* A window can name a theme icon without shipping a desktop entry, and compositors send the
+   * app id in a few shapes: try all of them before settling for the missing-icon fallback */
+  std::string lower = app_id;
+  std::ranges::transform(lower, lower.begin(), [](char c) {
+    return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  });
+  const std::string last = app_id.substr(app_id.rfind('.') + 1);
+
+  auto load_from_any_theme = [&](const std::string& icon_name) {
+    for (const auto& icon_theme : custom_icon_themes_) {
+      if (image_load_icon(image, icon_theme, icon_name, size) == LoadResult::LOADED) {
+        return true;
+      }
+    }
+    return image_load_icon(image, default_icon_theme_, icon_name, size) == LoadResult::LOADED;
+  };
+
+  const std::string* const icon_names[] = {&app_id, &lower, &last};
+  for (const std::string* icon_name : icon_names) {
+    if (icon_name->empty()) {
+      continue;
+    }
+    if (load_from_any_theme(*icon_name)) {
+      return LoadResult::LOADED;
+    }
+  }
+
+  return set_missing_icon(image, size) ? LoadResult::MISSING : LoadResult::FAILED;
 }
 
 Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_from_app_id_list(

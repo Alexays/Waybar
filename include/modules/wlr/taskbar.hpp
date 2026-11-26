@@ -21,6 +21,7 @@
 #include "client.hpp"
 #include "ext-workspace-v1-client-protocol.h"
 #include "giomm/desktopappinfo.h"
+#include "util/app_icon_image.hpp"
 #include "util/icon_loader.hpp"
 #include "util/json.hpp"
 #include "wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
@@ -64,7 +65,7 @@ class Task {
   uint32_t id_;
 
   Gtk::Box content_;
-  Gtk::Image icon_;
+  AppIconImage icon_;
   Gtk::Label text_before_;
   Gtk::Label text_after_;
   Glib::RefPtr<Gio::DesktopAppInfo> app_info_;
