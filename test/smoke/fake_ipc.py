@@ -294,6 +294,12 @@ class Niri(Fake):
             self.workspaces.remove(previous)
             self.emit(self.workspaces_changed())
 
+    def op_overview(self, idx):
+        # in the overview niri moves focus with workspace events only (#5465)
+        self.active = self.workspaces[int(idx) - 1]
+        self.emit({"OverviewOpenedOrClosed": {"is_open": True}},
+                  {"WorkspaceActivated": {"id": self.active["id"], "focused": True}})
+
     def op_open(self, app, title):
         w = self.add_window(self.active, app, title)
         if self.active is self.workspaces[-1]:

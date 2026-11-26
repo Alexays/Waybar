@@ -141,6 +141,11 @@ launch niri '{
   "niri/language": {"format": "kb {long}"}
 }'
 "${A11Y[@]}" "ws 1*" "ws 2" "ws 3" "win: foot ~" "kb English (US)"
+step 'overview 2'
+"${A11Y[@]}" "ws 2*" "win: Waybar wiki"
+"${A11Y[@]}" --absent "foot ~"
+step 'workspace 1'
+"${A11Y[@]}" "ws 1*" "win: foot ~"
 step 'workspace 3'
 "${A11Y[@]}" "ws 3*"
 "${A11Y[@]}" --absent "ws 1*" "foot ~"

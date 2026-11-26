@@ -14,6 +14,12 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     : AAppIconLabel(config, "window", id, "{title}", 0, true), bar_(bar) {
   if (!gIPC) gIPC = std::make_unique<IPC>();
 
+  // doUpdate() reads the focused workspace's active_window_id, so redraw on
+  // workspace events too: in the overview niri sends only these on a focus
+  // change, without WindowFocusChanged (#5465)
+  gIPC->registerForIPC("WorkspacesChanged", this);
+  gIPC->registerForIPC("WorkspaceActivated", this);
+  gIPC->registerForIPC("WorkspaceActiveWindowChanged", this);
   gIPC->registerForIPC("WindowsChanged", this);
   gIPC->registerForIPC("WindowOpenedOrChanged", this);
   gIPC->registerForIPC("WindowClosed", this);
