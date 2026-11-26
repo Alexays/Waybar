@@ -8,13 +8,14 @@
 #include <algorithm>
 #include <vector>
 
+#include "ALabel.hpp"
 #include "modules/hyprland/backend.hpp"
 #include "modules/hyprland/workspace_identity.hpp"
 
 namespace waybar::modules::hyprland {
 
 WindowCount::WindowCount(const std::string& id, const Bar& bar, const Json::Value& config)
-    : AAppIconLabel(config, "windowcount", id, "{count}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
+    : waybar::ALabel(config, "windowcount", id, "{count}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
   separateOutputs_ =
       config.isMember("separate-outputs") ? config["separate-outputs"].asBool() : true;
 
@@ -62,7 +63,7 @@ auto WindowCount::update() -> void {
   }
 
   label_.show();
-  AAppIconLabel::update();
+  AModule::update();
 }
 
 auto WindowCount::getActiveWorkspace() -> Workspace {
