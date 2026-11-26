@@ -206,11 +206,19 @@ Task::Task(const waybar::Bar& bar, const Json::Value& config, Taskbar* tbar,
   /* Re-rasterize the icon if the bar ends up on an output with a different scale
    * than the one GTK guessed while the widget was not yet realized. */
   icon_.property_scale_factor().signal_changed().connect([this] {
-    if (!with_icon_) return;
-    int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
     spdlog::debug("Task ({}) scale factor changed, reloading icon", id_);
-    if (tbar_->icon_loader().image_load_icon(icon_, app_info_, icon_size)) icon_.show();
+    reload_icon();
   });
+}
+
+/* Rasterize the icon again from the entry this task already resolved. The
+ * pixbuf is produced once and then owned by the Gtk::Image, so anything that
+ * invalidates it -- a scale change, or the icon theme itself changing -- needs
+ * an explicit reload or the task keeps showing the stale image. */
+void Task::reload_icon() {
+  if (!with_icon_) return;
+  int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
+  if (tbar_->icon_loader().image_load_icon(icon_, app_info_, icon_size)) icon_.show();
 }
 
 Task::~Task() {
@@ -802,6 +810,12 @@ Taskbar::Taskbar(const std::string& id, const waybar::Bar& bar, const Json::Valu
   for (auto& t : tasks_) {
     t->handle_app_id(t->app_id().c_str());
   }
+
+  /* Task icons are rasterized once, when the toplevel appears. Nothing else
+   * re-reads the theme afterwards, so switching icon theme at runtime leaves
+   * every existing task showing an icon from the previous one. */
+  Gtk::IconTheme::get_default()->signal_changed().connect(
+      sigc::mem_fun(*this, &Taskbar::notify_icon_theme_changed));
 }
 
 Taskbar::~Taskbar() {
@@ -853,8 +867,22 @@ Taskbar::~Taskbar() {
   }
 }
 
+void Taskbar::notify_icon_theme_changed() {
+  spdlog::debug("Taskbar: icon theme changed, queueing a reload of every task icon");
+  icon_theme_dirty_ = true;
+  if (!update_queued_) {
+    update_queued_ = true;
+    dp.emit();
+  }
+}
+
 void Taskbar::update() {
   update_queued_ = false;
+  if (std::exchange(icon_theme_dirty_, false)) {
+    for (auto& t : tasks_) {
+      t->reload_icon();
+    }
+  }
   for (auto& t : tasks_) {
     t->update();
   }
