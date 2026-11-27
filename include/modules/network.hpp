@@ -71,6 +71,8 @@ class Network : public ALabel {
   bool want_link_dump_{false};
   bool want_addr_dump_{false};
   bool dump_in_progress_{false};
+  // Set by handleEvents() under mutex_; emitted by thread_ once mutex_ is released.
+  bool emit_pending_{false};
   bool is_p2p_{false};
 
   unsigned long long bandwidth_down_total_{0};

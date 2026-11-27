@@ -64,14 +64,18 @@ cfg="$(mktemp --suffix=.json)"
 cat > "$cfg" <<'EOF'
 {
   "layer": "top", "position": "top", "height": 30,
-  "modules-center": ["clock", "cpu", "memory", "custom/tick"],
+  "modules-center": ["clock", "cpu", "memory", "network#lo0", "network#lo1", "custom/tick"],
   "clock": { "interval": 1 },
   "cpu": { "interval": 1 },
   "memory": { "interval": 1 },
+  "network#lo0": { "interface": "lo", "interval": 0.05 },
+  "network#lo1": { "interface": "lo", "interval": 0.05 },
   "custom/tick": { "exec": "date +%s", "interval": 1 }
 }
 EOF
 smoke::launch_waybar "$cfg" "$STYLE" 8
+smoke::assert_alive || fail=1
+smoke::reload
 smoke::assert_alive || fail=1
 smoke::assert_clean_exit || fail=1   # SIGINT while worker threads are mid-tick
 echo "::endgroup::"
