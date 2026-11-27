@@ -1,17 +1,37 @@
 #include "modules/cpu.hpp"
 
+#include <fmt/args.h>
+
+#include <concepts>
+#include <cstddef>
+#include <optional>
+#include <tuple>
+
 #include "modules/cpu_frequency.hpp"
 #include "modules/cpu_usage.hpp"
 #include "modules/load.hpp"
+#include "util/lazy_format.hpp"
 
-// In the 80000 version of fmt library authors decided to optimize imports
-// and moved declarations required for fmt::dynamic_format_arg_store in new
-// header fmt/args.h
-#if (FMT_VERSION >= 80000)
-#include <fmt/args.h>
-#else
-#include <fmt/core.h>
-#endif
+namespace {
+// Read a tuple of CPU values when its first field is rendered and reuse the
+// sample for every label or tooltip field during this update.
+template <std::invocable auto Read>
+class CpuSample {
+ public:
+  template <std::size_t Index>
+  auto arg() {
+    return waybar::util::LazyFormatArg{[this] {
+      if (!values_) {
+        values_ = Read();
+      }
+      return std::get<Index>(*values_);
+    }};
+  }
+
+ private:
+  std::optional<decltype(Read())> values_;
+};
+}  // namespace
 
 waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
     : ALabel(config, "cpu", id, "{usage}%", 10) {
@@ -22,13 +42,10 @@ waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
 }
 
 auto waybar::modules::Cpu::update() -> void {
-  // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
-  auto [load1, load5, load15] = Load::getLoad();
-  auto [cpu_usage, tooltip] = CpuUsage::getCpuUsage(prev_times_);
-  auto [max_frequency, min_frequency, avg_frequency] = CpuFrequency::getCpuFrequency();
+  const auto sample = CpuUsage::getCpuUsage(prev_times_);
 
   auto format = format_;
-  auto total_usage = cpu_usage.empty() ? 0 : cpu_usage[0];
+  auto total_usage = sample.totalUsage();
   auto state = getState(total_usage);
   if (!state.empty() && config_["format-" + state].isString()) {
     format = config_["format-" + state].asString();
@@ -38,31 +55,23 @@ auto waybar::modules::Cpu::update() -> void {
     event_box_.hide();
   } else {
     event_box_.show();
-    auto icons = std::vector<std::string>{state};
+    CpuSample<Load::getLoad> load;
+    CpuSample<CpuFrequency::getCpuFrequency> frequencies;
+    CpuUsage::FormatArgs usage_args(*this, sample, state);
     fmt::dynamic_format_arg_store<fmt::format_context> store;
-    store.push_back(fmt::arg("load", load1));
-    store.push_back(fmt::arg("load1", load1));
-    store.push_back(fmt::arg("load5", load5));
-    store.push_back(fmt::arg("load15", load15));
-    store.push_back(fmt::arg("usage", total_usage));
-    store.push_back(fmt::arg("icon", getIcon(total_usage, icons)));
-    store.push_back(fmt::arg("max_frequency", max_frequency));
-    store.push_back(fmt::arg("min_frequency", min_frequency));
-    store.push_back(fmt::arg("avg_frequency", avg_frequency));
-    std::vector<std::string> arg_names;
-    arg_names.reserve(cpu_usage.size() * 2);
-    std::string all_icons;
-    for (size_t i = 1; i < cpu_usage.size(); ++i) {
-      auto core_i = i - 1;
-      arg_names.push_back(fmt::format("usage{}", core_i));
-      store.push_back(fmt::arg(arg_names.back().c_str(), cpu_usage[i]));
-      auto core_icon = getIcon(cpu_usage[i], icons);
-      all_icons += core_icon;
-      arg_names.push_back(fmt::format("icon{}", core_i));
-      store.push_back(fmt::arg(arg_names.back().c_str(), core_icon));
-    }
-    store.push_back(fmt::arg("icons", all_icons));
-    updateLabelAndTooltipForState(state, format, tooltip, store);
+    const auto num_args = 10 + sample.usage_.size() * 2;
+    store.reserve(num_args, num_args);
+    store.push_back(fmt::arg("load", load.arg<0>()));
+    store.push_back(fmt::arg("load1", load.arg<0>()));
+    store.push_back(fmt::arg("load5", load.arg<1>()));
+    store.push_back(fmt::arg("load15", load.arg<2>()));
+    usage_args.addTotal(store);
+    store.push_back(fmt::arg("max_frequency", frequencies.arg<0>()));
+    store.push_back(fmt::arg("min_frequency", frequencies.arg<1>()));
+    store.push_back(fmt::arg("avg_frequency", frequencies.arg<2>()));
+    usage_args.addCores(store);
+    updateLabelAndTooltipForState(state, format, store,
+                                  [&sample] { return sample.defaultTooltip(); });
   }
 
   // Call parent update

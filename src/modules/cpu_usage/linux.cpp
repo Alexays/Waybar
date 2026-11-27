@@ -1,4 +1,5 @@
-#include <filesystem>
+#include <fstream>
+#include <numeric>
 
 #include "modules/cpu_usage.hpp"
 
@@ -29,7 +30,7 @@ std::vector<std::tuple<size_t, size_t>> waybar::modules::CpuUsage::parseCpuinfo(
   std::string line;
   size_t current_cpu_number = -1;  // First line is total, second line is cpu 0
   while (getline(info, line)) {
-    if (line.substr(0, 3).compare("cpu") != 0) {
+    if (!line.starts_with("cpu")) {
       break;
     }
     size_t line_cpu_number;

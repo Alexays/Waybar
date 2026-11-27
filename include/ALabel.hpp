@@ -8,6 +8,7 @@
 #include <gtkmm/tooltip.h>
 #include <json/json.h>
 
+#include <concepts>
 #include <optional>
 #include <string>
 #include <utility>
@@ -22,7 +23,7 @@ class ALabel : public AModule {
   ALabel(const Json::Value&, const std::string&, const std::string&, const std::string& format,
          uint16_t interval = 0, bool ellipsize = false, bool enable_click = false,
          bool enable_scroll = false);
-  virtual ~ALabel() { tooltip_requery_.disconnect(); }
+  ~ALabel() override { tooltip_requery_.disconnect(); }
   auto update() -> void override;
   virtual std::string getIcon(uint16_t, const std::string& alt = "", uint16_t max = 0);
   virtual std::string getIcon(uint16_t, const std::vector<std::string>& alts, uint16_t max = 0);
@@ -49,10 +50,7 @@ class ALabel : public AModule {
                                      const std::string& tooltipDefault, Args&&... args) {
     fmt::dynamic_format_arg_store<fmt::format_context> store;
     (store.push_back(std::forward<Args>(args)), ...);
-    setLabelMarkup(fmt::vformat(labelFormat, store));
-    if (tooltipEnabled()) {
-      setTooltipMarkup(fmt::vformat(resolveTooltipFormat(tooltipDefault, state), store));
-    }
+    updateLabelAndTooltipForState(state, labelFormat, tooltipDefault, store);
   }
 
   template <typename... Args>
@@ -70,15 +68,26 @@ class ALabel : public AModule {
   void updateLabelAndTooltipForState(const std::string& state, const std::string& labelFormat,
                                      const std::string& tooltipDefault,
                                      fmt::dynamic_format_arg_store<fmt::format_context>& store) {
-    setLabelMarkup(fmt::vformat(labelFormat, store));
-    if (tooltipEnabled()) {
-      setTooltipMarkup(fmt::vformat(resolveTooltipFormat(tooltipDefault, state), store));
-    }
+    updateLabelAndTooltipForState(state, labelFormat, store, [&tooltipDefault, &store] {
+      return fmt::vformat(tooltipDefault, store);
+    });
   }
 
   void updateLabelAndTooltip(const std::string& labelFormat, const std::string& tooltipDefault,
                              fmt::dynamic_format_arg_store<fmt::format_context>& store) {
     updateLabelAndTooltipForState("", labelFormat, tooltipDefault, store);
+  }
+
+  // The callback supplies rendered markup when no tooltip format is configured.
+  void updateLabelAndTooltipForState(const std::string& state, const std::string& labelFormat,
+                                     fmt::dynamic_format_arg_store<fmt::format_context>& store,
+                                     std::invocable auto defaultTooltip) {
+    setLabelMarkup(fmt::vformat(labelFormat, store));
+    if (tooltipEnabled()) {
+      const auto& format = configuredTooltipFormat(state);
+      setTooltipMarkup(format.isString() ? fmt::vformat(format.asString(), store)
+                                         : defaultTooltip());
+    }
   }
 
   bool handleToggle(GdkEventButton* const& e) override;
