@@ -22,6 +22,7 @@ test_src = files(
     'command_line_stream.cpp',
     'css_class.cpp',
     'css_reload_helper.cpp',
+    'notch_layout.cpp',
     '../../src/util/css_reload_helper.cpp',
     '../../src/util/command_line_stream.cpp',
 )

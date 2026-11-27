@@ -128,6 +128,20 @@ The visual display elements for waybar use a CSS stylesheet. Waybar supports *st
 	Prefer fixed center position for the `modules-center` block. The center block will stay in the middle of the bar whenever possible. It can still be pushed around if other blocks need more space.
 	When false, the center block is centered in the space between the left and right block.
 
+*notch* ++
+	typeof: object ++
+	Keeps a no-go zone in the middle of a horizontal bar free, e.g. for a laptop's display notch.
+	The only key is *width*, in pixels; the zone is centered on the output. When set, the
+	modules in `modules-right` are laid out right to left from the bar's right edge across all the
+	space left by `modules-left`. A module that would touch the zone is placed on the zone's left
+	side instead and the flow continues from there, so modules move across the zone as their
+	widths change. Modules that no longer fit are hidden, starting with the first one in the
+	list. On such a bar `modules-center` is ignored, `modules-left` are not moved (keep them clear
+	of the zone), and `expand-right` as well as per-module `expand` in `modules-right` have no
+	effect. Only applies to horizontal bars. The `modules-right` box also gets the class *notch*,
+	and its background is drawn once on each side of the zone. ++
+	Example: *"notch": { "width": 200 }*
+
 *passthrough* ++
 	typeof: bool ++
 	default: *false* ++

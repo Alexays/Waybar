@@ -14,6 +14,7 @@
 
 #include "AModule.hpp"
 #include "group.hpp"
+#include "notch_box.hpp"
 #include "util/kill_signal.hpp"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
@@ -155,6 +156,8 @@ class Bar : public sigc::trackable {
   Gtk::Box center_;
   Gtk::Box right_;
   Gtk::Box box_;
+  /* Replaces right_ when the bar has a "notch" (see setupWidgets) */
+  std::unique_ptr<NotchBox> notch_box_;
   std::vector<std::shared_ptr<waybar::AModule>> modules_left_;
   std::vector<std::shared_ptr<waybar::AModule>> modules_center_;
   std::vector<std::shared_ptr<waybar::AModule>> modules_right_;

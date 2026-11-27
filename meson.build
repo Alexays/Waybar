@@ -194,6 +194,7 @@ src_files = files(
     'src/client.cpp',
     'src/config.cpp',
     'src/group.cpp',
+    'src/notch_box.cpp',
     'src/util/portal.cpp',
     'src/util/prepare_for_sleep.cpp',
     'src/util/ustring_clen.cpp',

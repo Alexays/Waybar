@@ -807,6 +807,41 @@ auto waybar::Bar::setupWidgets() -> void {
   bool expand_right = config["expand-right"].isBool() ? config["expand-right"].asBool() : false;
   bool no_center = config["no-center"].isBool() ? config["no-center"].asBool() : false;
 
+  // "notch": {"width": N} keeps a centered N px no-go zone free (a display notch). Right modules
+  // then flow right to left across the whole remaining width and hop over the zone.
+  int notch_width = 0;
+  if (config.isMember("notch")) {
+    if (orientation != Gtk::ORIENTATION_HORIZONTAL) {
+      spdlog::warn("'notch' only applies to horizontal bars, ignoring it");
+    } else if (config["notch"].isObject() && config["notch"]["width"].isInt() &&
+               config["notch"]["width"].asInt() > 0) {
+      notch_width = config["notch"]["width"].asInt();
+    } else {
+      spdlog::warn("Invalid 'notch': expected {{\"width\": <positive integer>}}");
+    }
+  }
+  if (notch_width > 0) {
+    no_center = true;
+    if (!config["modules-center"].empty()) {
+      spdlog::warn("'modules-center' is ignored on a bar with a 'notch'");
+    }
+    if (expand_right) {
+      spdlog::warn("'expand-right' has no effect on a bar with a 'notch'");
+    }
+    notch_box_ = std::make_unique<NotchBox>([this, notch_width]() {
+      const int monitor_width = output->monitor->property_geometry().get_value().get_width();
+      const int start = (monitor_width - notch_width) / 2 - margins_.left;
+      return std::pair<int, int>{start, start + notch_width};
+    });
+    notch_box_->get_style_context()->add_class("modules-right");
+    notch_box_->get_style_context()->add_class("notch");
+    if (config["spacing"].isInt()) {
+      notch_box_->setSpacing(config["spacing"].asInt());
+    }
+    box_.pack_end(*notch_box_, true, true);
+  } else {
+    box_.pack_end(right_, expand_right, expand_right);
+  }
   box_.pack_start(left_, expand_left, expand_left);
   if (!no_center) {
     if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
@@ -815,7 +850,6 @@ auto waybar::Bar::setupWidgets() -> void {
       box_.pack_start(center_, true, expand_center);
     }
   }
-  box_.pack_end(right_, expand_right, expand_right);
 
   // Convert to button code for every module that is used.
   setupAltFormatKeyForModuleList("modules-left");
@@ -839,9 +873,15 @@ auto waybar::Bar::setupWidgets() -> void {
     }
   }
 
-  std::reverse(modules_right_.begin(), modules_right_.end());
-  for (auto const& module : modules_right_) {
-    right_.pack_end(*module, module->expandEnabled(), module->expandEnabled());
+  if (notch_box_) {
+    for (auto const& module : modules_right_) {
+      notch_box_->add(*module);
+    }
+  } else {
+    std::reverse(modules_right_.begin(), modules_right_.end());
+    for (auto const& module : modules_right_) {
+      right_.pack_end(*module, module->expandEnabled(), module->expandEnabled());
+    }
   }
 }
 
